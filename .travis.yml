@@ -21,7 +21,7 @@ deploy:
   distributions: sdist bdist_wheel
   user: JackCurragh
   password:
-    secure: PLEASE_REPLACE_ME
+    secure: password 
   on:
     tags: true
     repo: JackCurragh/RibosomeProfiler
