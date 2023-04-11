@@ -7,6 +7,7 @@ from Bio import SeqIO
 from gffutils import create_db, FeatureDB
 import pysam
 import pandas as pd
+import random
 
 def parse_fasta(fasta_path: str) -> dict:
     '''
@@ -26,23 +27,56 @@ def parse_fasta(fasta_path: str) -> dict:
     return transcript_dict
 
 
-def parse_bam(bam_path: str) -> dict:
+def flagstat_bam(bam_path: str) -> dict:
     '''
-    Read in the bam file at the provided path and return a dictionary
+    Run samtools flagstat on the bam file at the provided path and return a dictionary
 
     Inputs:
         bam_path: Path to the bam file
 
     Outputs:
+        flagstat_dict: Dictionary containing the flagstat information
+    
+    '''
+    flagstat_dict = {}
+    with pysam.AlignmentFile(bam_path, "rb") as bamfile:
+        flagstat_dict['total_reads'] = bamfile.mapped + bamfile.unmapped
+        flagstat_dict['mapped_reads'] = bamfile.mapped
+        flagstat_dict['unmapped_reads'] = bamfile.unmapped
+        flagstat_dict['duplicates'] = bamfile.mapped + bamfile.unmapped
+    return flagstat_dict
+
+
+def parse_bam(bam_path: str, num_reads: int) -> dict:
+    '''
+    Read in the bam file at the provided path and return a dictionary
+
+    Inputs:
+        bam_path: Path to the bam file
+        num_reads: Number of reads to consider
+
+    Outputs:
         read_dict: Dictionary containing the read information (keys are the read names)
     '''
-    bam_file = pysam.AlignmentFile(bam_path, 'rb')
     read_dict = {}
-    for read in bam_file.fetch():
-        read_dict[read.query_name] = read
+    count = pysam.view("-c", f"{bam_path}")
+    fraction = num_reads / int(count)
+
+    pysam.view("-s", f"123.{str(fraction).split('.')[1]}", "-bo",  f"{bam_path}.subsampled.bam", f"{bam_path}")
+    pysam.index(f"{bam_path}.subsampled.bam")
+
+    with pysam.AlignmentFile(f"{bam_path}.subsampled.bam", "rb") as bamfile:
+        fraction = 0.1
+
+        # Use the view() function to create a generator that yields a fraction of the reads
+
+        # Loop over the subsampled reads and do something with each read
+        for read in bamfile.fetch():
+            # Do something with the read here
+            if read.query_name not in read_dict:
+                read_dict[read.query_name] = read
 
     return read_dict
-
 
 def get_top_transcripts(read_dict: dict, num_transcripts: int) -> list:
     '''

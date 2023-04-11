@@ -37,6 +37,66 @@ Output:
 '''
 
 import argparse
+from rich.console import Console
+from rich.text import Text
+from rich.table import Table
+from rich.emoji import Emoji
+
+from file_parser import parse_bam, get_top_transcripts, subset_gff, parse_fasta, parse_gff, flagstat_bam
+from qc import annotation_free_mode, annotation_mode, sequence_mode
+
+
+def print_logo(console):
+    '''
+    print the logo to the console
+    '''
+    logo = Text('''
+    ██████╗  ██╗ ██████╗  ██████╗ ███████╗ ██████╗ ███╗   ███╗███████╗
+    ██╔══██╗ ██║ ██╔══██╗██╔═══██╗██╔════╝██╔═══██╗████╗ ████║██╔════╝
+    ██████╔╝ ██║ ██████╔╝██║   ██║███████╗██║   ██║██╔████╔██║█████╗  
+    ██╔══██╗ ██║ ██╔══██╗██║   ██║╚════██║██║   ██║██║╚██╔╝██║██╔══╝  
+    ██║  ██║ ██║ ██████╔╝╚██████╔╝███████║╚██████╔╝██║ ╚═╝ ██║███████╗
+    ╚═╝  ╚═╝ ╚═╝ ══════╝  ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝
+    ''', style='bold blue')
+    logo += Text('''
+    ██████╗  ██████╗  ██████╗ ███████╗██╗██╗    ███████╗██████╗ 
+    ██╔══██╗ ██╔══██╗██╔═══██╗██╔════╝██║██║    ██╔════╝██╔══██╗
+    ██████╔╝ ██████╔╝██║   ██║█████╗  ██║██║    █████╗  ██████╔╝
+    ██╔═══╝  ██╔══██╗██║   ██║██╔══╝  ██║██║    ██╔══╝  ██╔══██╗
+    ██║      ██║  ██║╚██████╔╝██║     ██║██████╗███████╗██║  ██║
+    ╚═╝      ╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚═╝╚═════╝╚══════╝╚═╝  ╚═╝
+    ''', style='bold red')
+    console.print(logo)
+
+
+def print_table(args, console, mode):
+    console = Console()
+
+    Inputs = Table(show_header=True, header_style="bold magenta")
+    Inputs.add_column("Parameters", style="dim", width=20)
+    Inputs.add_column("Values")
+    Inputs.add_row("Bam File:", args.bam)
+    Inputs.add_row("Gff File:", args.gff)
+    Inputs.add_row("Transcriptome File:", args.fasta)
+
+    Configs = Table(show_header=True, header_style="bold yellow")
+    Configs.add_column("Options", style="dim", width=20)
+    Configs.add_column("Values")
+    Configs.add_row("Mode:", mode)
+    Configs.add_row("# of reads:", str(args.subsample))
+    Configs.add_row("# of transcripts:", str(args.transcripts))
+    Configs.add_row("Config file:", args.config)
+
+    Output = Table(show_header=True, header_style="bold blue")
+    Output.add_column("Output Options", style="dim", width=20)
+    Output.add_column("Values")
+    Output.add_row("JSON:", str(args.json))
+    Output.add_row("HTML:", str(args.html))
+    Output.add_row("CSV:", str(args.csv))
+    Output.add_row("All:", str(args.all))
+
+    # Print tables side by side
+    console.print(Inputs, Configs, Output, justify="inline", style="bold")
 
 
 def argumnet_parser():
@@ -51,10 +111,15 @@ def argumnet_parser():
     '''
     parser = argparse.ArgumentParser(
         description='''A python command-line utility for the generation of comprehensive reports on the quality of ribosome profiling (Ribo-Seq) datasets''',
+        epilog=f'''
+
+        Made with {Emoji('heart')} in LAPTI lab at University College Cork.
+        For more information, please visit https://ribosomeprofiler.readthedocs.io/en/latest/
+        '''
     )
     parser.add_argument('-b', '--bam', type=str, required=True, help='Path to the bam file')
     parser.add_argument('-g', '--gff', type=str, required=False, help='Path to the gff file')
-    parser.add_argument('-t', '--transcriptome', type=str, required=False, help='Path to the transcriptome fasta file')
+    parser.add_argument('-f', '--fasta', type=str, required=False, help='Path to the transcriptome fasta file')
 
     parser.add_argument('-n', '--name', type=str, required=False, help='Name of the sample being analysed (default: filename of bam file)')
     parser.add_argument('-S', '--subsample', type=int, required=False, default=10000000, help='Number of reads to subsample from the bam file (default: 10000000)')
@@ -62,7 +127,7 @@ def argumnet_parser():
     parser.add_argument('-c', '--config', type=str, required=False, default='config.yaml', help='Path to the config file (default: config.yaml)')
 
     parser.add_argument('--json', action='store_true', default=False, help='Output the results as a json file')
-    parser.add_argument('--html', action='store_true', help='Output the results as an html file (default)')
+    parser.add_argument('--html', action='store_true', default=True, help='Output the results as an html file (default)')
     parser.add_argument('--csv', action='store_true', default=False, help='Output the results as a csv file')
     parser.add_argument('--all', action='store_true', default=False, help='Output the results as all of the above')
 
@@ -81,18 +146,46 @@ def main():
     parser = argumnet_parser()
     args = parser.parse_args()
 
+    console = Console()
+    print_logo(console)
     if args.all:
         args.json = True
         args.html = True
         args.csv = True
 
     if args.gff is None:
-        print("Running annotation free mode")
+        print_table(args, console, 'Annotation Free Mode')
 
-    elif args.transcriptome is None:
-        print("Running annotation mode")
+    elif args.fasta is None:
+        print_table(args, console, 'Annotation Mode')
+    
     else:
-        print("Running sequence mode")
+        print_table(args, console, 'Sequence Mode')
+
+    flagstat = flagstat_bam(args.bam)
+    read_dict = parse_bam(args.bam, fraction=args.subsample/flagstat['total_reads'])
+    # console.print(f'Read in {len(read_dict)} reads', style='bold blue')
+    raise("STOP")
+
+    if args.gff is None:
+        results_dict = annotation_free_mode(read_dict, args.config)
+
+    elif args.fasta is None:
+        top_transcripts = get_top_transcripts(read_dict, args.transcripts)
+        gff_path = subset_gff(args.gff, top_transcripts)
+        gff_db = parse_gff(gff_path)
+        results_dict = annotation_mode(read_dict, gff_db, top_transcripts, args.config)
+
+    else:
+        fasta_dict = parse_fasta(args.fasta)
+        
+        top_transcripts = get_top_transcripts(read_dict, args.transcripts)
+        gff_path = subset_gff(args.gff, top_transcripts)
+        gff_db = parse_gff(gff_path)
+        results_dict = annotation_mode(read_dict, gff_db, top_transcripts, args.config)
+
+        results_dict = sequence_mode(results_dict, read_dict, fasta_dict, args.config)
+
 
 
 if __name__ == '__main__':
