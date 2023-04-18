@@ -7,7 +7,8 @@ from Bio import SeqIO
 from gffutils import create_db, FeatureDB
 import pysam
 import pandas as pd
-import random
+from rich import inspect
+import subprocess
 
 def parse_fasta(fasta_path: str) -> dict:
     '''
@@ -19,7 +20,6 @@ def parse_fasta(fasta_path: str) -> dict:
     Outputs:
         transcript_dict: Dictionary containing the transcript information
     '''
-    #read in with biopython
     transcript_dict = {}
     for record in SeqIO.parse(fasta_path, 'fasta'):
         transcript_dict[record.id] = record
@@ -47,59 +47,67 @@ def flagstat_bam(bam_path: str) -> dict:
     return flagstat_dict
 
 
-def parse_bam(bam_path: str, num_reads: int) -> dict:
+def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
     '''
     Read in the bam file at the provided path and return a dictionary
 
     Inputs:
-        bam_path: Path to the bam file
-        num_reads: Number of reads to consider
+        bam_file: Path to the bam file
 
     Outputs:
         read_dict: Dictionary containing the read information (keys are the read names)
     '''
-    read_dict = {}
-    count = pysam.view("-c", f"{bam_path}")
-    fraction = num_reads / int(count)
+    # Convert the BAM file to SAM format and read the output in chunks
+    cmd = f'samtools view {bam_file}'
+    print(f"Running {cmd}")
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, text=True)
+    print('Processing reads...')
+    read_list = []
+    for line in iter(process.stdout.readline, ''):
+        if line.startswith('@'):
+            continue
+        fields = line.strip().split('\t')
 
-    pysam.view("-s", f"123.{str(fraction).split('.')[1]}", "-bo",  f"{bam_path}.subsampled.bam", f"{bam_path}")
-    pysam.index(f"{bam_path}.subsampled.bam")
+        if '_x' in fields[0]:
+            count = int(fields[0].split('_x')[-1])
+        else:
+            count = 1
 
-    with pysam.AlignmentFile(f"{bam_path}.subsampled.bam", "rb") as bamfile:
-        fraction = 0.1
+        read_list.append({
+            'read_name': fields[0],
+            'read_length': len(fields[9]),
+            'reference_name': fields[2],
+            'reference_start': int(fields[3]) - 1,
+            'sequence': fields[9],
+            'sequence_qualities': fields[10],
+            'tags': fields[11:],
+            'count': count,
+            })
 
-        # Use the view() function to create a generator that yields a fraction of the reads
+        if len(read_list) > num_reads:
+            process.kill() # kill the process if we've read enough data
+            break
+        else:
+            print(f'Processed {len(read_list)} reads of {num_reads} ({round(len(read_list)/num_reads, 3) * 100}%)', end='\r')
 
-        # Loop over the subsampled reads and do something with each read
-        for read in bamfile.fetch():
-            # Do something with the read here
-            if read.query_name not in read_dict:
-                read_dict[read.query_name] = read
+    process.kill()
+    return pd.DataFrame(read_list)
 
-    return read_dict
 
-def get_top_transcripts(read_dict: dict, num_transcripts: int) -> list:
+def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
     '''
-    Get the top N transcripts based on the number of reads mapping to them
+    Get the top N transcripts with the most reads
 
     Inputs:
-        read_dict: Dictionary containing the read information (keys are the read names)
-        num_transcripts: Number of transcripts to consider
+        read_df: DataFrame containing the read information
+        num_transcripts: Number of transcripts to return
 
     Outputs:
         top_transcripts: List of the top N transcripts
     '''
-    #get the top N transcripts based on the number of reads mapping to them
-    transcript_dict = {}
-    for read in read_dict.values():
-        if read.reference_name in transcript_dict:
-            transcript_dict[read.reference_name] += 1
-        else:
-            transcript_dict[read.reference_name] = 1
+    count_sorted_df = read_df.groupby('reference_name').sum().sort_values('count', ascending=False)
 
-    top_transcripts = sorted(transcript_dict, key=transcript_dict.get, reverse=True)[:num_transcripts]
-
-    return top_transcripts
+    return count_sorted_df.index[:num_transcripts].tolist()
 
 
 def subset_gff(gff_path: str, transcript_list: list, output_dir: str) -> str:
