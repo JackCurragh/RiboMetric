@@ -23,25 +23,26 @@ def annotation_free_mode(read_df: pd.DataFrame, config: str) -> dict:
         results_dict: Dictionary containing the results of the qc analysis
     '''
     results_dict = {}
-    print(read_df.columns)
 
     read_len_dist = read_length_distribution(read_df, config)
     return results_dict
 
 
-def annotation_mode(read_df: pd.DataFrame, gff_path: str, transcript_list: list) -> dict:
+def annotation_mode(read_df: pd.DataFrame, gffdf: pd.DataFrame, transcript_list: list, config: str) -> dict:
     '''
     Run the annotation mode of the qc analysis
 
     Inputs:
         read_df: Dataframe containing the read information (keys are the read names)
-        gff_path: Path to the gff file
+        gffdf: Dataframe containing the gff information
         transcript_list: List of the top N transcripts
 
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     '''
     results_dict = {}
+    read_len_dist = read_length_distribution(read_df, config)
+    print(read_len_dist)
     
     return results_dict
 

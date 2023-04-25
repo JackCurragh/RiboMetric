@@ -19,6 +19,4 @@ def read_length_distribution(read_df: pd.DataFrame, config: dict) -> pd.DataFram
     '''
     read_lengths, read_counts = np.unique(read_df['read_length'], return_counts=True)
     read_length_distribution = dict(zip(read_lengths, read_counts))
-
-    print(read_length_distribution)
     return read_length_distribution

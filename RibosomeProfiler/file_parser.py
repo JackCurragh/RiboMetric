@@ -9,6 +9,21 @@ import pysam
 import pandas as pd
 from rich import inspect
 import subprocess
+import gffpandas.gffpandas as gffpd
+
+def parse_gff(gff_path: str) -> pd.DataFrame:
+    ''' 
+    Read in the gff file at the provided path and return a dataframe
+
+    Inputs:
+        gff_path: Path to the gff file
+
+    Outputs:
+        gff_df: Dataframe containing the gff information
+    '''
+    gff_df = gffpd.read_gff3(gff_path)
+    return gff_df
+
 
 def parse_fasta(fasta_path: str) -> dict:
     '''
@@ -127,22 +142,3 @@ def subset_gff(gff_path: str, transcript_list: list, output_dir: str) -> str:
     subsetted_gff.to_csv(f'{output_dir}/subsetted.gff', sep='\t', header=None, index=False)
 
     return f'{output_dir}/subsetted.gff'
-
-
-def parse_gff(gff_path: str) -> dict:
-    '''
-    Read in the annotation file at the provided path and return a dictionary
-
-    Inputs:
-        gff_path: Path to the annotation file
-
-    Outputs:
-        gene_dict: Dictionary containing the gene information
-    '''
-    #read in with gffutils
-    db = create_db(gff_path, dbfn=':memory:', force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
-    gene_dict = {}
-    for gene in db.features_of_type('gene'):
-        gene_dict[gene.id] = gene
-
-    return gene_dict

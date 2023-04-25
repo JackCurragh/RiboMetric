@@ -122,6 +122,7 @@ def argumnet_parser():
     parser.add_argument('-f', '--fasta', type=str, required=False, help='Path to the transcriptome fasta file')
 
     parser.add_argument('-n', '--name', type=str, required=False, help='Name of the sample being analysed (default: filename of bam file)')
+    parser.add_argument('-o', '--output', type=str, required=False, default='.', help='Path to the output directory (default: current directory)')
     parser.add_argument('-S', '--subsample', type=int, required=False, default=1000000, help='Number of reads to subsample from the bam file (default: 10000000)')
     parser.add_argument('-T', '--transcripts', type=int, required=False, default=100000, help='Number of transcripts to consider (default: 100000)')
     parser.add_argument('-c', '--config', type=str, required=False, default='config.yaml', help='Path to the config file (default: config.yaml)')
@@ -164,24 +165,24 @@ def main():
 
 
     read_df = parse_bam(args.bam, args.subsample)
-    print(read_df.head())
-
     if args.gff is None:
         results_dict = annotation_free_mode(read_df, args.config)
 
     elif args.fasta is None:
         top_transcripts = get_top_transcripts(read_df, args.transcripts)
         gff_path = subset_gff(args.gff, top_transcripts)
-        gff_db = parse_gff(gff_path)
-        results_dict = annotation_mode(read_df, gff_db, top_transcripts, args.config)
+        gffdf = parse_gff(gff_path)
+        results_dict = annotation_mode(read_df, gffdf.df, top_transcripts, args.config)
 
     else:
         fasta_dict = parse_fasta(args.fasta)
         
         top_transcripts = get_top_transcripts(read_df, args.transcripts)
-        gff_path = subset_gff(args.gff, top_transcripts)
-        gff_db = parse_gff(gff_path)
-        results_dict = annotation_mode(read_df, gff_db, top_transcripts, args.config)
+        gff_path = subset_gff(args.gff, top_transcripts, args.output)
+        gffdf = parse_gff(gff_path)
+        print(gffdf.df)
+
+        results_dict = annotation_mode(read_df, gffdf.df, top_transcripts, args.config)
 
         results_dict = sequence_mode(results_dict, read_df, fasta_dict, args.config)
 
