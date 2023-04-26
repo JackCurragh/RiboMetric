@@ -4,10 +4,8 @@ This script contains the functions used to load the required files in the Riboso
 The functions are called by the main script RibosomeProfiler.py
 '''
 from Bio import SeqIO
-from gffutils import create_db, FeatureDB
 import pysam
 import pandas as pd
-from rich import inspect
 import subprocess
 import gffpandas.gffpandas as gffpd
 
