@@ -19,9 +19,8 @@ def parse_gff(gff_path: str) -> pd.DataFrame:
     Outputs:
         gff_df: Dataframe containing the gff information
     '''
-    gff_df = gffpd.read_gff3(gff_path)
-    return gff_df
-
+    return gffpd.read_gff3(gff_path)
+    
 
 def parse_fasta(fasta_path: str) -> dict:
     '''
