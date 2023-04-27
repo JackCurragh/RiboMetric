@@ -30,7 +30,7 @@ RibosomeProfiler
 Features
 --------
 
-* TODO
+* TODO...
 
 Credits
 -------
