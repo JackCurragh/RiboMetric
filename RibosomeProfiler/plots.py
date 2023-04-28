@@ -4,7 +4,6 @@ This script contains the code for generating the plots for RibosomeProfiler repo
 '''
 
 import plotly
-import pandas as pd
 
 
 def plot_read_length_distribution(read_length_dict: dict, config: dict) -> plotly.graph_objects.Figure:
@@ -22,7 +21,10 @@ def plot_read_length_distribution(read_length_dict: dict, config: dict) -> plotl
     fig.add_trace(plotly.graph_objects.Bar(
         x=list(read_length_dict.keys()),
         y=list(read_length_dict.values()),
-        name='Read Length Distribution'
+        name='',
+        hovertemplate =
+        '<b>Read length</b>: %{x}'+
+        '<br><b>Count</b>: %{y}',
     ))
     fig.update_layout(
         title='Read Length Distribution',
@@ -32,6 +34,6 @@ def plot_read_length_distribution(read_length_dict: dict, config: dict) -> plotl
             family='Courier New, monospace',
             size=18,
             color='#7f7f7f'
-        )
-    )
+        ))
     return fig
+
