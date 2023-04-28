@@ -37,3 +37,23 @@ def plot_read_length_distribution(read_length_dict: dict, config: dict) -> plotl
         ))
     return fig
 
+def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> plotly.graph_objects.Figure:
+    fig = plotly.graph_objects.Figure()
+    fig.add_trace(plotly.graph_objects.Bar(
+            x=list(ligation_bias_dict.keys()),
+            y=list(ligation_bias_dict.values()),
+            name='',
+            hovertemplate =
+            '<b>Nucleotides</b>: %{x}'+
+            '<br><b>Proportion</b>: %{y}',
+        ))
+    fig.update_layout(
+            title='Read Start Distribution',
+            xaxis_title='Read Start',
+            yaxis_title='Proportion',
+            font=dict(
+                family='Courier New, monospace',
+                size=18,
+                color='#7f7f7f'
+            ))
+    return fig
