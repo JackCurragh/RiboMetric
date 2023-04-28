@@ -6,7 +6,7 @@ This script contains the functions required to run individual modules of the Rib
 import pandas as pd
 import numpy as np
 
-def read_length_distribution(read_df: pd.DataFrame, config: dict) -> pd.DataFrame:
+def read_length_distribution(read_df: pd.DataFrame, config: dict) -> dict:
     '''
     Calculate the read length distribution for the full dataset
 
@@ -15,7 +15,7 @@ def read_length_distribution(read_df: pd.DataFrame, config: dict) -> pd.DataFram
         config: Dictionary containing the configuration information
 
     Outputs:
-        read_length_df: Dataframe containing the read length distribution
+        dict: Dictionary containing the read length distribution
     '''
     read_lengths, read_counts = np.unique(read_df['read_length'], return_counts=True)
     return dict(zip(read_lengths, read_counts))
