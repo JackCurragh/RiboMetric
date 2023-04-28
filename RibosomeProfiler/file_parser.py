@@ -65,6 +65,7 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
 
     Inputs:
         bam_file: Path to the bam file
+        Num_reads: Number of reads to parse
 
     Outputs:
         read_dict: Dictionary containing the read information (keys are the read names)
