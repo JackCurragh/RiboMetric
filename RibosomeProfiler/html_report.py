@@ -11,7 +11,7 @@ from file_parser import parse_bam
 from modules import *
 from plots import *
 
-out = "/home/lukas/projects/RibosomeProfiler/test_files/RibosomeProfiler-report.html" #temp
+out = "RibosomeProfiler-report.html" #temp
 
 def create_html_report(read_df: pd.DataFrame): #add variables such as outdir, filename?
     """
