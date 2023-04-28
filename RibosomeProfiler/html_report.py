@@ -11,6 +11,8 @@ from file_parser import parse_bam
 from modules import *
 from plots import *
 
+out = "/home/lukas/projects/RibosomeProfiler/test_files/RibosomeProfiler-report.html" #temp
+
 def create_html_report(read_df: pd.DataFrame): #add variables such as outdir, filename?
     """
     create a html report of RibosomeProfiler containing QC plots and more
@@ -52,5 +54,5 @@ def create_html_report(read_df: pd.DataFrame): #add variables such as outdir, fi
     html_page += body
     
     # save HTML page to file
-    with open("RibosomeProfiler-report.html", "w") as f: # temp outdir
+    with open(out, "w") as f: # temp outdir
         f.write(str(html_page))
