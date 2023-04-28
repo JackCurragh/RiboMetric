@@ -31,7 +31,7 @@ def plot_read_length_distribution(read_length_dict: dict, config: dict) -> plotl
         xaxis_title='Read Length',
         yaxis_title='Read Count',
         font=dict(
-            family='Courier New, monospace',
+            family='Helvetica Neue,Helvetica,Arial,sans-serif',
             size=18,
             color='#7f7f7f'
         ))
@@ -48,11 +48,11 @@ def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> p
             '<br><b>Proportion</b>: %{y}',
         ))
     fig.update_layout(
-            title='Read Start Distribution',
+            title='Ligation Bias Distribution',
             xaxis_title='Read Start',
             yaxis_title='Proportion',
             font=dict(
-                family='Courier New, monospace',
+                family='Helvetica Neue,Helvetica,Arial,sans-serif',
                 size=18,
                 color='#7f7f7f'
             ))
