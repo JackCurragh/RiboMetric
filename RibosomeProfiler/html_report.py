@@ -4,55 +4,37 @@ Code in this script is used to generate the HTML output report
 The functions are called by the main script RibosomeProfiler.py if the user specifies the --html flag
 '''
 
-import os
-import pandas as pd
-import plotly
 from file_parser import parse_bam
 from modules import *
 from plots import *
+import plotly.io as pio
+from jinja2 import Environment, PackageLoader
+env = Environment(
+    loader=PackageLoader("RibosomeProfiler"),
+    autoescape=False)
+out = "RibosomeProfiler_report.html"
+bam_file = input("Please provide the path to the bam file.\n")
 
-out = "RibosomeProfiler-report.html" #temp
+read_df = parse_bam(bam_file, 10000)
+read_length_dict = read_length_distribution(read_df)
+read_length_fig = plot_read_length_distribution(read_length_dict,dict())
+ligation_bias_dict = ligation_bias_distribution(read_df)
+ligation_bias_fig = plot_ligation_bias_distribution(ligation_bias_dict,dict())
 
-def create_html_report(read_df: pd.DataFrame): #add variables such as outdir, filename?
-    """
-    create a html report of RibosomeProfiler containing QC plots and more
+plots = [
+    {"name":"Read Length Distribution",
+     "description":"A plot showcasing the read length distribution of the reads",
+     "fig":pio.to_html(read_length_fig, full_html=False)},
+     {"name":"Ligation Bias Distribution",
+     "description":"A plot showcasing the ligation bias distribution of the reads",
+     "fig":pio.to_html(ligation_bias_fig, full_html=False)}
+     ]
 
-    Inputs:
-        read_df: Dataframe containing the read information
-        out: Path where the html file should be stored (Default = .)
+template = env.get_template("base.html")
+context = {
+    "plots":plots
+    }
+with open(out, mode="w", encoding="utf-8") as f:
+    f.write(template.render(context))
 
-    Outputs:
-        html: A html page containing the QC report from RibosomeProfiler
-    """
-    # create HTML page
-    html_page = str()
-    head = "<header>"
-    head += "<h1>Ribosome Profiler Report</h1>"
-    head += "</header>"
-    html_page += head
-
-    # Read Length Distribution
-    body = "<body>"
-    body += "<h2>Read Length Distribution</h2>"
-    body += "<p>This shows how the read lengths are distributed.</p>"
-    
-    # create plot
-    read_length_dict = read_length_distribution(read_df)
-    read_length_plot = plot_read_length_distribution(read_length_dict, dict())
-    body += plotly.io.to_html(read_length_plot, full_html=False)
-
-    # Ligation Bias
-    body += "<h2>Ligation Bias</h2>"
-    body += "<p>This shows the distribution of the first two nucleotides in the reads to check for ligation bias.</p>"
-    
-    # create plot
-    ligation_bias_dict = ligation_bias_distribution(read_df)
-    ligation_bias_plot = plot_ligation_bias_distribution(ligation_bias_dict, dict())
-    body += plotly.io.to_html(ligation_bias_plot, full_html=False)
-
-    body += "</body>"
-    html_page += body
-    
-    # save HTML page to file
-    with open(out, "w") as f: # temp outdir
-        f.write(str(html_page))
+print(f"Done! Your report can be found in {out}")
