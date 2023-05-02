@@ -61,3 +61,26 @@ def ligation_bias_distribution(
         {k: v for k, v in two_sequence_dict.items() if "N" in k}
         )
     return ligation_bias_dict
+
+
+def nucleotide_composition(read_df: pd.DataFrame) -> dict:
+    """
+    Calculate the nucleotide composition
+
+    Inputs:
+        read_df: Dataframe containing the read information
+
+    Outputs:
+        dict: Dictionary containing the nucleotide distribution for every read position.
+    """
+    readlen = read_df.sequence.str.len().max()
+    nucleotide_composition_dict = {"A": list(), "C": list(), "G": list(), "T": list()}
+    for i in range(readlen):
+        nucleotide_counts = read_df.sequence.str.slice(i, i + 1).value_counts()
+        nucleotide_counts.drop("", errors="ignore", inplace=True)
+        nucleotide_sum = nucleotide_counts.sum()
+        nucleotide_composition_dict["A"].append(nucleotide_counts["A"] / nucleotide_sum)
+        nucleotide_composition_dict["C"].append(nucleotide_counts["C"] / nucleotide_sum)
+        nucleotide_composition_dict["G"].append(nucleotide_counts["G"] / nucleotide_sum)
+        nucleotide_composition_dict["T"].append(nucleotide_counts["T"] / nucleotide_sum)
+    return nucleotide_composition_dict
