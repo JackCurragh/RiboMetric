@@ -10,7 +10,7 @@ Three main modes:
 """
 
 import pandas as pd
-from .modules import read_length_distribution
+from modules import read_length_distribution
 
 
 def annotation_free_mode(read_df: pd.DataFrame, config: str) -> dict:
@@ -27,7 +27,7 @@ def annotation_free_mode(read_df: pd.DataFrame, config: str) -> dict:
     """
     results_dict = {}
 
-    results_dict['read_len_dist'] = read_length_distribution(read_df, config)
+    results_dict['read_len_dist'] = read_length_distribution(read_df)
     return results_dict
 
 
@@ -50,7 +50,7 @@ def annotation_mode(
         results_dict: Dictionary containing the results of the qc analysis
     """
     results_dict = {}
-    read_len_dist = read_length_distribution(read_df, config)
+    read_len_dist = read_length_distribution(read_df)
     print(read_len_dist)
 
     return results_dict
