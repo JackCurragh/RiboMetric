@@ -2,6 +2,8 @@
 
 language: python
 python:
+  - 3.10
+  - 3.9
   - 3.8
   - 3.7
   - 3.6
@@ -26,3 +28,16 @@ deploy:
     tags: true
     repo: JackCurragh/RibosomeProfiler
     python: 3.8
+
+before_install:
+  - export PATH="/home/travis/.pyenv/bin:$PATH"
+  - eval "$(pyenv init -)"
+  - eval "$(pyenv virtualenv-init -)"
+  - pyenv install 3.6.15
+  - pyenv install 3.7.12
+  - pyenv install 3.8.12
+  - pyenv install 3.9.7
+  - pyenv install 3.10.0
+  - pyenv global 3.10.0 3.9.7 3.8.12 3.7.12 3.6.15
+
+  
