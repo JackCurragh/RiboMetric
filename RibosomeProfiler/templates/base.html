@@ -1,0 +1,68 @@
+{# The base template for the RibosomeProfiler report #}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>RibosomeProfiler results</title>
+  <style>
+    /* temp https://www.w3schools.com/howto/howto_css_fixed_sidebar.asp */
+    /* The sidebar menu */
+    .sidenav {
+        height: 100%; /* Full-height: remove this if you want "auto" height */
+        width: 15%; /* Set the width of the sidebar */
+        position: fixed; /* Fixed Sidebar (stay in place on scroll) */
+        z-index: 1; /* Stay on top */
+        top: 0; /* Stay at the top */
+        left: 0;
+        background-color: #111; /* Black */
+        overflow-x: hidden; /* Disable horizontal scroll */
+        padding-top: 20px;
+    }
+    
+    /* The navigation menu links */
+    .sidenav a {
+        padding: 6px 8px 6px 10px;
+        text-decoration: none;
+        font-size: 16px;
+        color: #818181;
+        display: block;
+    }
+    
+    /* When you mouse over the navigation links, change their color */
+    .sidenav a:hover {
+        color: #f1f1f1;
+    }
+
+    /* Style page content */
+    .main {
+        margin-left: 15%; /* Same as the width of the sidebar */
+        padding: 0px 10px;
+    }
+    
+    /* On smaller screens, where height is less than 450px, change the style of the sidebar (less padding and a smaller font size) */
+    @media screen and (max-height: 450px) {
+        .sidenav {padding-top: 15px;}
+        .sidenav a {font-size: 18px;}
+    }
+  </style>
+</head>
+<body>
+    <div class="sidenav">
+        <a href="#"><h4>RibosomeProfiler</h4></a>
+        {% for plot in plots %}
+        <a href="#{{plot.name}}">{{plot.name}}</a>
+        {% endfor %}
+    </div>
+    <div class="main">
+        <h1>RibosomeProfiler Report</h1>
+        <h5>Results from your RibosomeProfiler analysis on...</h5> <!-- add python variables for datetime of analysis completion? -->
+        {% for plot in plots %}
+            <hr>
+            <h2 id="{{plot.name}}">{{plot.name}}</h2>
+            <p>{{plot.description}}</p>
+            {{plot.fig}}
+        {% endfor %}
+    </div>
+</body>
+</html>
