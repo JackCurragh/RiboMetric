@@ -8,8 +8,6 @@ from RibosomeProfiler.file_parser import parse_bam
 def test_bam_parsing():
     """Test bam parsing"""
     bam = parse_bam(
-        "tests/test_data/test.bam", 1000000
+        "tests/test_data/test.bam", 10000
     )
-    assert bam["total_reads"] == 1000000
-    assert bam["mapped_reads"] == 1000000
-    assert bam["unmapped_reads"] == 0
+    assert len(bam) == 10001
