@@ -7,7 +7,7 @@ from plotly import graph_objects as go
 
 def plot_read_length_distribution(
     read_length_dict: dict, config: dict
-) -> plotly.graph_objects.Figure:
+) -> go.Figure:
     """
     Generate a plot of the read length distribution for the full dataset
 
@@ -19,9 +19,9 @@ def plot_read_length_distribution(
         fig: Plotly figure containing the read length distribution
     """
     hovertemplate = "<b>Read length</b>: %{x}" + "<br><b>Count</b>: %{y}"
-    fig = plotly.graph_objects.Figure()
+    fig = go.Figure()
     fig.add_trace(
-        plotly.graph_objects.Bar(
+        go.Bar(
             x=list(read_length_dict.keys()),
             y=list(read_length_dict.values()),
             name="",
