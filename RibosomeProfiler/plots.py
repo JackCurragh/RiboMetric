@@ -38,7 +38,12 @@ def plot_read_length_distribution(
             color="#7f7f7f"
         ),
     )
-    return fig
+    plot_read_length_dict = {
+        "name": "Read Length Distribution",
+        "description": "A plot showcasing the read length distribution of the reads",
+        "fig": fig
+    }
+    return plot_read_length_dict
 
 
 def plot_ligation_bias_distribution(
@@ -71,7 +76,12 @@ def plot_ligation_bias_distribution(
             family="Helvetica Neue,Helvetica,Arial,sans-serif", size=18, color="#7f7f7f"
         ),
     )
-    return fig
+    plot_ligation_bias_dict = {
+        "name": "Ligation Bias Distribution",
+        "description": "A plot showcasing the ligation bias distribution of the reads",
+        "fig": fig
+    }
+    return plot_ligation_bias_dict
 
 
 def plot_nucleotide_composition(
@@ -106,4 +116,9 @@ def plot_nucleotide_composition(
             family="Helvetica Neue,Helvetica,Arial,sans-serif", size=18, color="#7f7f7f"
         ),
     )
-    return fig
+    plot_nucleotide_composition_dict = {
+        "name": "Nucleotide Composition",
+        "description": "A plot showcasing the nucleotide composition of the reads",
+        "fig": fig
+    }
+    return plot_nucleotide_composition_dict
