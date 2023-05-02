@@ -1,17 +1,15 @@
 """Console script for RibosomeProfiler."""
-import argparse
 import sys
+
+from .RibosomeProfiler import argument_parser as p, main as m
 
 
 def main():
     """Console script for RibosomeProfiler."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument('_', nargs='*')
+    parser = p()
     args = parser.parse_args()
 
-    print("Arguments: " + str(args._))
-    print("Replace this message by putting your code into "
-          "RibosomeProfiler.cli.main")
+    m(args)
     return 0
 
 
