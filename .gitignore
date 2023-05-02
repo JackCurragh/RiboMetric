@@ -110,6 +110,7 @@ data/
 # Lukasdev
 *.ipynb
 test_files/
+RibosomeProfiler_report.html
 
 *.gtf
 *.gff
