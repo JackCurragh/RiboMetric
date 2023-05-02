@@ -106,4 +106,7 @@ ENV/
 .idea/
 
 data/
+
+# Lukasdev
 *.ipynb
+test_files/
