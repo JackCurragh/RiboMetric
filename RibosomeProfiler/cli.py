@@ -1,7 +1,7 @@
 """Console script for RibosomeProfiler."""
 import sys
 
-from RibosomeProfiler import argumnet_parser as p, main as m
+from .RibosomeProfiler import argument_parser as p, main as m
 
 
 def main():

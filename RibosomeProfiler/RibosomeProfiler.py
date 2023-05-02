@@ -49,14 +49,14 @@ from rich.text import Text
 from rich.table import Table
 from rich.emoji import Emoji
 
-from file_parser import (
+from .file_parser import (
     parse_bam,
     get_top_transcripts,
     subset_gff,
     parse_fasta,
     parse_gff,
 )
-from qc import annotation_free_mode, annotation_mode, sequence_mode
+from .qc import annotation_free_mode, annotation_mode, sequence_mode
 
 
 def print_logo(console):
@@ -118,7 +118,7 @@ def print_table(args, console, mode):
     console.print(Inputs, Configs, Output, justify="inline", style="bold")
 
 
-def argumnet_parser():
+def argument_parser():
     """
     Parse the command line arguments and return the parser object
 
@@ -284,7 +284,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argumnet_parser()
+    parser = argument_parser()
     args = parser.parse_args()
 
     main(args)

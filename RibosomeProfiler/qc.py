@@ -10,7 +10,7 @@ Three main modes:
 """
 
 import pandas as pd
-from modules import read_length_distribution
+from .modules import read_length_distribution
 
 
 def annotation_free_mode(read_df: pd.DataFrame, config: str) -> dict:
