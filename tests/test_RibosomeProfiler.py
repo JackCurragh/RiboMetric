@@ -2,23 +2,18 @@
 
 """Tests for `RibosomeProfiler` package."""
 
-import pytest
+from RibosomeProfiler.file_parser import parse_bam
+from RibosomeProfiler.modules import *
 
+def test_bam_parsing():
+    """Test bam parsing"""
+    bam = parse_bam(
+        "tests/test_data/test.bam", 10000
+    )
+    assert len(bam) == 10001
 
-from RibosomeProfiler import RibosomeProfiler
-
-
-@pytest.fixture
-def response():
-    """Sample pytest fixture.
-
-    See more at: http://doc.pytest.org/en/latest/fixture.html
-    """
-    # import requests
-    # return requests.get('https://github.com/audreyr/cookiecutter-pypackage')
-
-
-def test_content(response):
-    """Sample pytest test function with the pytest fixture as an argument."""
-    # from bs4 import BeautifulSoup
-    # assert 'GitHub' in BeautifulSoup(response.content).title.string
+def test_read_length_distribution():
+    """Test read length distribution calculation"""
+    read_df = pd.read_csv("tests/test_data/parsed_test.csv")
+    read_length_dict = read_length_distribution(read_df)
+    assert read_length_dict[16] == 41

@@ -64,11 +64,13 @@ def nucleotide_composition(read_df: pd.DataFrame) -> dict:
     Outputs:
         dict: Dictionary containing the nucleotide distribution for every read position.
     """
-    readlen = read_df.sequence.str.len().max()
+    readlen = read_df['sequence'].str.len().max()
     nucleotide_composition_dict = {"A": list(), "C": list(), "G": list(), "T": list()}
+    base_nts = pd.Series([0,0,0,0], index =['A','C','G','T'])
     for i in range(readlen):
         nucleotide_counts = read_df.sequence.str.slice(i, i + 1).value_counts()
         nucleotide_counts.drop("", errors="ignore", inplace=True)
+        nucleotide_counts = base_nts.add(nucleotide_counts,fill_value=0)
         nucleotide_sum = nucleotide_counts.sum()
         nucleotide_composition_dict["A"].append(nucleotide_counts["A"] / nucleotide_sum)
         nucleotide_composition_dict["C"].append(nucleotide_counts["C"] / nucleotide_sum)
