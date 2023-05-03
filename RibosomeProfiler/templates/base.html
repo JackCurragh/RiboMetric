@@ -67,7 +67,7 @@
             <p>{{plot.description}}</p>
             {% if export_mode == "html" %}
             {{plot.fig_html}}
-            {% else %}
+            {% elif export_mode == "pdf" %}
             <img src="data:image/png;base64,{{plot.fig_image}}">
             {% endif %}
         {% endfor %}

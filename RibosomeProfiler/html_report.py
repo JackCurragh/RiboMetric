@@ -32,19 +32,22 @@ def generate_report(plots: dict, export_mode: str = 'html', name: str = "Ribosom
         output = outdir + "/" + name
     
     if export_mode == 'both':
-        filetype = ['html','pdf']
+        export_mode = ['html','pdf']
     else:
-        filetype = [export_mode]
+        export_mode = [export_mode]
     
     template = env.get_template("base.html")
-    context = {"plots": plots, "export_mode": filetype, "datetime": completion_time}
-    jinja_render = template.render(context)
+    
     for filetype in export_mode:
-        if export_mode == 'html':
+        if filetype == 'html':
+            context = {"plots": plots, "export_mode": filetype, "datetime": completion_time}
+            jinja_render = template.render(context)
             out = output + ".html"
             with open(out, mode="w", encoding="utf-8") as f:
                 f.write(jinja_render)
         else:
+            context = {"plots": plots, "export_mode": filetype, "datetime": completion_time}
+            jinja_render = template.render(context)
             out = output + ".pdf"
             convert_html_to_pdf(jinja_render, out)
 
