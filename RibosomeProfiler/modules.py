@@ -7,6 +7,18 @@ of the RibosomeProfiler pipeline
 import pandas as pd
 import numpy as np
 
+def a_site_calculation(read_df:pd.DataFrame) -> pd.DataFrame:
+    """
+    Adds a column to the read_df containing the A-site for the reads
+
+    Inputs:
+        read_df: Dataframe containing the read information
+    
+    Outputs:
+        asite_df: Dataframe containing the read information with an added column for the A-site
+    """
+    a_site_df = read_df.assign(a_site= read_df.reference_start.add(15))
+    return a_site_df
 
 def read_length_distribution(read_df: pd.DataFrame) -> dict:
     """
@@ -86,3 +98,10 @@ def nucleotide_composition(read_df: pd.DataFrame) -> dict:
         nucleotide_composition_dict["G"].append(nucleotide_counts["G"] / nucleotide_sum)
         nucleotide_composition_dict["T"].append(nucleotide_counts["T"] / nucleotide_sum)
     return nucleotide_composition_dict
+
+def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
+    """
+    Calculate the distribution of the reading frame over the di
+    
+    """
+    
