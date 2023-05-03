@@ -8,6 +8,35 @@ import pandas as pd
 import numpy as np
 
 
+def read_df_to_cds_read_df(
+        a_site_df: pd.DataFrame,
+        cds_df: pd.DataFrame
+        ) -> pd.DataFrame:
+    """
+    Convert the a_site_df to a cds_read_df by removing reads that do not
+    map to the CDS
+
+    Inputs:
+        a_site_df: Dataframe containing the read information
+        cds_df: Dataframe containing the coordinates of the CDS per tx
+
+    Outputs:
+        cds_read_df: Dataframe containing the read information for reads
+                    that map to the CDS
+    """
+    cds_read_df = pd.DataFrame()
+    for tx in cds_df['transcript_id']:
+        tx_df = a_site_df[a_site_df["reference_name"].str.contains(str(tx))]
+        idx = cds_df[cds_df["transcript_id"] == tx].index[0]
+        tx_df = tx_df[tx_df["a_site"].between(
+            cds_df.loc[idx, "cds_start"],
+            cds_df.loc[idx, "cds_end"]
+            )]
+        cds_read_df = pd.concat([cds_read_df, tx_df])
+
+    return cds_read_df
+
+
 def a_site_calculation(read_df: pd.DataFrame, offset=15) -> pd.DataFrame:
     """
     Adds a column to the read_df containing the A-site for the reads
