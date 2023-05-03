@@ -34,6 +34,11 @@ jobs:
     - name: Build Package
       run: |
         python setup.py sdist bdist_wheel
+
+    - name: Install Samtools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y samtools
     
     - name: Run tests
       run: pytest 
