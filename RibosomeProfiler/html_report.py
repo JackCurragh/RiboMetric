@@ -8,43 +8,30 @@ NOTE: This is a draft with the goal of creating the html report through this scr
 from file_parser import parse_bam
 from modules import *
 from plots import *
-import plotly.io as pio
 from jinja2 import Environment, FileSystemLoader
+from datetime import datetime
 
 env = Environment(loader=FileSystemLoader("RibosomeProfiler/templates"),autoescape=False)
 out = "RibosomeProfiler_report.html"
 bam_file = input("Please provide the path to the bam file.\n")
 
-read_df = parse_bam(bam_file, 10000)
+read_df_pre = parse_bam(bam_file, 10000)
+read_df = read_df_pre.loc[read_df_pre.index.repeat(read_df_pre['count'])].reset_index(drop=True)
 read_length_dict = read_length_distribution(read_df)
-read_length_fig = plot_read_length_distribution(read_length_dict, dict())
+plot_read_length_dict = plot_read_length_distribution(read_length_dict, dict())
 ligation_bias_dict = ligation_bias_distribution(read_df)
-ligation_bias_fig = plot_ligation_bias_distribution(ligation_bias_dict, dict())
+plot_ligation_bias_dict = plot_ligation_bias_distribution(ligation_bias_dict, dict())
 nucleotide_composition_dict = nucleotide_composition(read_df)
-nucleotide_composition_fig = plot_nucleotide_composition(
+plot_nucleotide_composition_dict = plot_nucleotide_composition(
     nucleotide_composition_dict, dict()
 )
+plots = [plot_read_length_dict, plot_ligation_bias_dict, plot_nucleotide_composition_dict]
 
-plots = [
-    {
-        "name": "Read Length Distribution",
-        "description": "A plot showcasing the read length distribution of the reads",
-        "fig": pio.to_html(read_length_fig, full_html=False),
-    },
-    {
-        "name": "Ligation Bias Distribution",
-        "description": "A plot showcasing the ligation bias distribution of the reads",
-        "fig": pio.to_html(ligation_bias_fig, full_html=False),
-    },
-    {
-        "name": "Nucleotide Composition",
-        "description": "A plot showcasing the nucleotide composition of the reads",
-        "fig": pio.to_html(nucleotide_composition_fig, full_html=False),
-    },
-]
+completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
+#completion_time = "test"
 
 template = env.get_template("base.html")
-context = {"plots": plots}
+context = {"plots": plots, "datetime": completion_time}
 with open(out, mode="w", encoding="utf-8") as f:
     f.write(template.render(context))
 
