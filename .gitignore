@@ -110,8 +110,11 @@ data/
 # Lukasdev
 *.ipynb
 test_files/
-RibosomeProfiler_report.html
+RibosomeProfiler_report.*
+RibosomeProfiler/test_report.*
 
 *.gtf
 *.gff
 bak*
+
+.gitignore
