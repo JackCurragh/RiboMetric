@@ -252,6 +252,7 @@ def main(args):
         print_table(args, console, "Sequence Mode")
 
     read_df_pre = parse_bam(args.bam, args.subsample)
+    # Expand the dataframe to have one row per read
     read_df = read_df_pre.loc[read_df_pre.index.repeat(read_df_pre['count'])].reset_index(drop=True)
     if args.gff is None:
         results_dict = annotation_free_mode(read_df, args.config)
