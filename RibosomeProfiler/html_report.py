@@ -1,15 +1,17 @@
 """
 Code in this script is used to generate the HTML output report
 The functions are called by the main script RibosomeProfiler.py if the user specifies the --html flag
+
+NOTE: This is a draft with the goal of creating the html report through this script.
 """
 
 from file_parser import parse_bam
 from modules import *
 from plots import *
 import plotly.io as pio
-from jinja2 import Environment, PackageLoader
+from jinja2 import Environment, FileSystemLoader
 
-env = Environment(loader=PackageLoader("RibosomeProfiler"), autoescape=False)
+env = Environment(loader=FileSystemLoader("RibosomeProfiler/templates"),autoescape=False)
 out = "RibosomeProfiler_report.html"
 bam_file = input("Please provide the path to the bam file.\n")
 
