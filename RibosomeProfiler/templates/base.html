@@ -56,7 +56,7 @@
     </div>
     <div class="main">
         <h1>RibosomeProfiler Report</h1>
-        <h5>Results from your RibosomeProfiler analysis on...</h5> <!-- add python variables for datetime of analysis completion? -->
+        <h5>Results from your RibosomeProfiler analysis, completed at {{datetime}}</h5>
         {% for plot in plots %}
             <hr>
             <h2 id="{{plot.name}}">{{plot.name}}</h2>
