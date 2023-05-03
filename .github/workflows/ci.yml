@@ -27,7 +27,7 @@ jobs:
         run: |
           python setup.py sdist bdist_wheel
       - name: Upload to PyPI
-        uses: pypa/gh-action-pypi-publish@27e72c47ad2d12fcb4ef4e714a4a2ff2f54af6a9
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
