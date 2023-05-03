@@ -10,7 +10,12 @@ Three main modes:
 """
 
 import pandas as pd
-from .modules import read_length_distribution
+from .modules import (
+    read_length_distribution,
+    a_site_calculation,
+    read_df_to_cds_read_df,
+)
+from .file_parser import gff_df_to_cds_df
 
 
 def annotation_free_mode(read_df: pd.DataFrame, config: str) -> dict:
@@ -33,7 +38,7 @@ def annotation_free_mode(read_df: pd.DataFrame, config: str) -> dict:
 
 def annotation_mode(
     read_df: pd.DataFrame,
-    gffdf: pd.DataFrame,
+    gff_df: pd.DataFrame,
     transcript_list: list,
     config: str
 ) -> dict:
@@ -49,9 +54,15 @@ def annotation_mode(
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
+    print("Extracting CDS information from gff file")
+    cds_df = gff_df_to_cds_df(gff_df, transcript_list)
+    print("Calculating A site information")
+    a_site_df = a_site_calculation(read_df)
+    print("Subsetting to CDS reads")
+    cds_read_df = read_df_to_cds_read_df(a_site_df, cds_df)
+    read_length_distribution(cds_read_df)
     results_dict = {}
-    read_len_dist = read_length_distribution(read_df)
-    print(read_len_dist)
+    results_dict['read_len_dist'] = read_length_distribution(a_site_df)
 
     return results_dict
 
