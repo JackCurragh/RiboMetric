@@ -4,10 +4,11 @@ RibosomeProfiler reports
 """
 
 from plotly import graph_objects as go
+import plotly.io as pio
 
 def plot_read_length_distribution(
     read_length_dict: dict, config: dict
-) -> go.Figure:
+) -> dict:
     """
     Generate a plot of the read length distribution for the full dataset
 
@@ -16,7 +17,7 @@ def plot_read_length_distribution(
         config: Dictionary containing the configuration information
 
     Outputs:
-        fig: Plotly figure containing the read length distribution
+        plot_read_length_dict: Dictionary containing the plot name, description and plotly figure in html for the read length distribution
     """
     hovertemplate = "<b>Read length</b>: %{x}" + "<br><b>Count</b>: %{y}"
     fig = go.Figure()
@@ -41,14 +42,14 @@ def plot_read_length_distribution(
     plot_read_length_dict = {
         "name": "Read Length Distribution",
         "description": "A plot showcasing the read length distribution of the reads",
-        "fig": fig
+        "fig": pio.to_html(fig, full_html=False)
     }
     return plot_read_length_dict
 
 
 def plot_ligation_bias_distribution(
     ligation_bias_dict: dict, config: dict
-) -> go.Figure:
+) -> dict:
     """
     Generate a plot of ligation bias distribution for the full dataset
 
@@ -57,7 +58,7 @@ def plot_ligation_bias_distribution(
         config: Dictionary containing the configuration information
 
     Outputs:
-        fig: Plotly figure containing the ligation bias distribution
+        plot_ligation_bias_dict: Dictionary containing the plot name, description and plotly figure in html for the ligation bias distribution
     """
     fig = go.Figure()
     fig.add_trace(
@@ -79,14 +80,14 @@ def plot_ligation_bias_distribution(
     plot_ligation_bias_dict = {
         "name": "Ligation Bias Distribution",
         "description": "A plot showcasing the ligation bias distribution of the reads",
-        "fig": fig
+        "fig": pio.to_html(fig, full_html=False)
     }
     return plot_ligation_bias_dict
 
 
 def plot_nucleotide_composition(
     nucleotide_composition_dict: dict, config: dict
-) -> go.Figure:
+) -> dict:
     """
     Generate a plot of the nucleotide composition for the full dataset
 
@@ -95,18 +96,14 @@ def plot_nucleotide_composition(
         config: Dictionary containing the configuration information
 
     Outputs:
-        fig: Plotly figure containing the nucleotide composition
+        plot_nucleotide_composition_dict: Dictionary containing the plot name, description and plotly figure in html for the nucleotide composition
     """
     colors = {"A": "#c93434", "C": "#2e85db", "G": "#f0de1f", "T": "#1fc24d"}
     fig = go.Figure()
-    # Iterate through each line in the data dictionary
     for nucleotide, distribution in nucleotide_composition_dict.items():
-        # Add the line to the figure
         fig.add_trace(
             go.Scatter(y=distribution, name=nucleotide, line_color=colors[nucleotide])
         )
-
-    # Set the title and axis labels
     fig.update_layout(
         title="Nucleotide Distribution",
         xaxis_title="Position (nucleotides)",
@@ -119,6 +116,6 @@ def plot_nucleotide_composition(
     plot_nucleotide_composition_dict = {
         "name": "Nucleotide Composition",
         "description": "A plot showcasing the nucleotide composition of the reads",
-        "fig": fig
+        "fig": pio.to_html(fig, full_html=False)
     }
     return plot_nucleotide_composition_dict
