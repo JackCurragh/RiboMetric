@@ -11,7 +11,7 @@ import subprocess
 import gffpandas.gffpandas as gffpd
 
 
-def parse_gff(gff_path: str) -> pd.DataFrame:
+def parse_gff(gff_path: str) -> gffpd.Gff3DataFrame:
     """
     Read in the gff file at the provided path and return a dataframe
 
@@ -143,24 +143,70 @@ def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
     return count_sorted_df.index[:num_transcripts].tolist()
 
 
-def subset_gff(gff_path: str, transcript_list: list, output_dir: str) -> str:
+def subset_gff(gff_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Subset the GFF file to only include the transcripts in the provided list
+    Subset the gff dataframe to only include the CDS features
 
     Inputs:
-        gff_path: Path to the annotation file
-        transcript_list: List of transcripts to include in the
-        subsetted GFF file
+        gff_df: Dataframe containing the gff information
 
     Outputs:
-        filtered_gff_path: GFF file containing only the
-        transcripts in the provided list
+        gff_df: Dataframe containing the gff information
     """
-    # read in with pandas
-    gff = pd.read_csv(gff_path, sep="\t", header=None, comment="#")
-    subsetted_gff = gff[gff[8].str.contains("|".join(transcript_list))]
-    subsetted_gff.to_csv(
-        f"{output_dir}/subsetted.gff", sep="\t", header=None, index=False
-    )
+    return gff_df[gff_df["feature"] == "CDS"]
 
-    return f"{output_dir}/subsetted.gff"
+
+def gff_df_to_cds_df(
+        gff_df: pd.DataFrame,
+        transcript_list: list
+        ) -> pd.DataFrame:
+    """
+    Subset the gff dataframe to only include the CDS features 
+    with tx coordinates for a specific list of transcripts.
+
+    Inputs:
+        gff_df: Dataframe containing the gff information
+        transcript_list: List of transcripts to subset
+
+    Outputs:
+        cds_df: Dataframe containing the CDS information
+                columns: transcript_id, cds_start, cds_end
+    """
+    # Extract transcript ID from "attributes" column using regular expression
+    transcript_id_regex = r"transcript_id=([^;]+)"
+    gff_df.loc[:, "transcript_id"] = gff_df["attributes"].str.extract(
+        transcript_id_regex
+        )
+    rows = {"transcript_id": [], "cds_start": [], "cds_end": []}
+
+    # Sort GFF DataFrame by transcript ID
+    gff_df = gff_df.sort_values("transcript_id")
+
+    # subset GFF DataFrame to only include transcripts in the transcript_list
+    gff_df = gff_df[gff_df["transcript_id"].isin(transcript_list)]
+
+    counter = 0
+    for group_name, group_df in gff_df.groupby("transcript_id"):
+        counter += 1
+        if counter % 100 == 0:
+            prop = counter/len(transcript_list)
+            print(f"Processing transcript ({prop*100}%)", end="\r")
+        if group_name in transcript_list:
+            transcript_start = group_df["start"].min()
+
+            cds_df_tx = group_df[group_df["type"] == "CDS"]
+            cds_start_end_tuple_list = sorted(zip(
+                cds_df_tx["start"],
+                cds_df_tx["end"]
+                ))
+            cds_tx_start = cds_start_end_tuple_list[0][0] - transcript_start
+            cds_tx_end = cds_start_end_tuple_list[-1][1] - transcript_start
+            for cds in cds_start_end_tuple_list:
+                cds_length = cds[1] - cds[0]
+                cds_tx_end += cds_length
+
+            rows["transcript_id"].append(group_name)
+            rows["cds_start"].append(cds_tx_start)
+            rows["cds_end"].append(cds_tx_end)
+
+    return pd.DataFrame(rows)

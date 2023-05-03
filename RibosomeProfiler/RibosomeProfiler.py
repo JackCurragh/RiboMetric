@@ -51,8 +51,6 @@ from rich.emoji import Emoji
 
 from .file_parser import (
     parse_bam,
-    get_top_transcripts,
-    subset_gff,
     parse_fasta,
     parse_gff,
 )
@@ -252,37 +250,44 @@ def main(args):
         print_table(args, console, "Sequence Mode")
 
     read_df_pre = parse_bam(args.bam, args.subsample)
+    print("Reads parsed")
     # Expand the dataframe to have one row per read
-    read_df = read_df_pre.loc[read_df_pre.index.repeat(read_df_pre['count'])].reset_index(drop=True)
+    print("Expanding dataframe")
+    read_df = read_df_pre.loc[read_df_pre.index.repeat(
+        read_df_pre['count']
+        )].reset_index(drop=True)
+    print("Dataframe expanded")
     if args.gff is None:
         results_dict = annotation_free_mode(read_df, args.config)
 
-    elif args.fasta is None:
-        top_transcripts = get_top_transcripts(read_df, args.transcripts)
-        gff_path = subset_gff(args.gff, top_transcripts)
-        gffdf = parse_gff(gff_path)
-        results_dict = annotation_mode(read_df,
-                                       gffdf.df,
-                                       top_transcripts,
-                                       args.config)
-
     else:
-        fasta_dict = parse_fasta(args.fasta)
+        print("Parsing gff")
+        full_gffdf = parse_gff(args.gff)
+        gffdf = full_gffdf.df[full_gffdf.df["type"].isin(
+            ["transcript", "CDS"]
+            )]
 
-        top_transcripts = get_top_transcripts(read_df, args.transcripts)
-        gff_path = subset_gff(args.gff, top_transcripts, args.output)
-        gffdf = parse_gff(gff_path)
-        print(gffdf.df)
+        cds_df = gffdf[gffdf["type"] == "CDS"]
 
+        coding_tx_ids = cds_df.attributes.str.extractall(
+            r"transcript_id=([^;]+)"
+            ).reset_index(drop=True)[0].unique()[:args.transcripts]
+
+        print("Running annotation mode")
         results_dict = annotation_mode(read_df,
-                                       gffdf.df,
-                                       top_transcripts,
-                                       args.config)
+                                       gffdf,
+                                       transcript_list=coding_tx_ids,
+                                       config=args.config)
 
-        results_dict = sequence_mode(results_dict,
-                                     read_df,
-                                     fasta_dict,
-                                     args.config)
+        if args.fasta is not None:
+            fasta_dict = parse_fasta(args.fasta)
+
+            results_dict = sequence_mode(
+                results_dict,
+                read_df,
+                fasta_dict,
+                args.config
+                )
 
 
 if __name__ == "__main__":
