@@ -44,6 +44,7 @@ def a_site_calculation(read_df: pd.DataFrame, offset=15) -> pd.DataFrame:
     Inputs:
         read_df: Dataframe containing the read information
         offset: Offset from the start of the read to the A-site (Default = 15)
+        
     Outputs:
         asite_df: Dataframe containing the read information with an added
                     column for the A-site
@@ -62,8 +63,7 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     Outputs:
         dict: Dictionary containing the read length distribution
     """
-    read_lengths, read_counts = np.unique(read_df["read_length"],
-                                          return_counts=True)
+    read_lengths, read_counts = np.unique(read_df["read_length"], return_counts=True)
     return dict(zip(read_lengths, read_counts))
 
 
@@ -98,12 +98,8 @@ def ligation_bias_distribution(
             .value_counts(normalize=True)
             .sort_index()
         )
-    ligation_bias_dict = {
-        k: v for k, v in two_sequence_dict.items() if "N" not in k
-        }
-    ligation_bias_dict.update(
-        {k: v for k, v in two_sequence_dict.items() if "N" in k}
-        )
+    ligation_bias_dict = {k: v for k, v in two_sequence_dict.items() if "N" not in k}
+    ligation_bias_dict.update({k: v for k, v in two_sequence_dict.items() if "N" in k})
     return ligation_bias_dict
 
 
@@ -132,5 +128,49 @@ def nucleotide_composition(
         for nt in nucleotides:
             nt_proportion = nucleotide_counts[nt] / nucleotide_sum
             nucleotide_composition_dict[nt].append(nt_proportion)
-
     return nucleotide_composition_dict
+
+
+def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
+    """
+    Calculate the distribution of the reading frame over the di
+
+    Inputs:
+        a_site_df: Dataframe containing the read information with a-site location
+
+    Outputs:
+        read_frame_dict: Nested dictionary containing counts for every reading frame at the different read lengths
+    """
+    frame_df = (
+        a_site_df.assign(read_frame=a_site_df.a_site.mod(3))
+        .groupby(["read_length", "read_frame"])
+        .size()
+    )
+    read_frame_dict = {}
+    for index, value in frame_df.items():
+        read_length, read_frame = index
+        if read_length not in read_frame_dict:
+            read_frame_dict[read_length] = {}
+        read_frame_dict[read_length][read_frame] = value
+    return read_frame_dict
+
+
+## possibly temp (from plotly.com):
+from xhtml2pdf import pisa  # import python module
+
+
+# Utility function
+def convert_html_to_pdf(source_html, output_filename):
+    # open output file for writing (truncated binary)
+    result_file = open(output_filename, "w+b")
+
+    # convert HTML to PDF
+    pisa_status = pisa.CreatePDF(
+        source_html, dest=result_file  # the HTML to convert
+    )  # file handle to recieve result
+
+    # close output file
+    result_file.close()  # close output file
+
+    # return True on success and False on errors
+    return pisa_status.err
