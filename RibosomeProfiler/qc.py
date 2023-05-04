@@ -15,7 +15,6 @@ from .modules import (
     a_site_calculation,
     read_df_to_cds_read_df,
 )
-from .file_parser import gff_df_to_cds_df
 
 
 def annotation_free_mode(read_df: pd.DataFrame, config: str) -> dict:
@@ -38,8 +37,7 @@ def annotation_free_mode(read_df: pd.DataFrame, config: str) -> dict:
 
 def annotation_mode(
     read_df: pd.DataFrame,
-    gff_df: pd.DataFrame,
-    transcript_list: list,
+    annotation_df: pd.DataFrame,
     config: str
 ) -> dict:
     """
@@ -48,22 +46,20 @@ def annotation_mode(
     Inputs:
         read_df: Dataframe containing the read information
                 (keys are the read names)
-        gffdf: Dataframe containing the gff information
+        annotation_df: Dataframe containing the annotation information
         transcript_list: List of the top N transcripts
 
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
-    print("Extracting CDS information from gff file")
-    cds_df = gff_df_to_cds_df(gff_df, transcript_list)
     print("Calculating A site information")
     a_site_df = a_site_calculation(read_df)
     print("Subsetting to CDS reads")
-    cds_read_df = read_df_to_cds_read_df(a_site_df, cds_df)
+    cds_read_df = read_df_to_cds_read_df(a_site_df, annotation_df)
+    print("Running modules")
     read_length_distribution(cds_read_df)
     results_dict = {}
     results_dict['read_len_dist'] = read_length_distribution(a_site_df)
-
     return results_dict
 
 
