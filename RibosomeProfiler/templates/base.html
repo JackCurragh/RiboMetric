@@ -5,6 +5,7 @@
 <head>
   <meta charset="utf-8">
   <title>RibosomeProfiler results</title>
+  {% if export_mode == "html" %}
   <style>
     /* temp https://www.w3schools.com/howto/howto_css_fixed_sidebar.asp */
     /* The sidebar menu */
@@ -46,14 +47,17 @@
         .sidenav a {font-size: 18px;}
     }
   </style>
+  {% endif %}
 </head>
 <body>
+    {% if export_mode == "html" %}
     <div class="sidenav">
         <a href="#"><h4>RibosomeProfiler</h4></a>
         {% for plot in plots %}
         <a href="#{{plot.name}}">{{plot.name}}</a>
         {% endfor %}
     </div>
+    {% endif %}
     <div class="main">
         <h1>RibosomeProfiler Report</h1>
         <h5>Results from your RibosomeProfiler analysis, completed at {{datetime}}</h5>
@@ -61,7 +65,11 @@
             <hr>
             <h2 id="{{plot.name}}">{{plot.name}}</h2>
             <p>{{plot.description}}</p>
-            {{plot.fig}}
+            {% if export_mode == "html" %}
+            {{plot.fig_html}}
+            {% elif export_mode == "pdf" %}
+            <img src="data:image/png;base64,{{plot.fig_image}}">
+            {% endif %}
         {% endfor %}
     </div>
 </body>
