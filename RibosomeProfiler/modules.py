@@ -10,7 +10,7 @@ from xhtml2pdf import pisa
 
 def read_df_to_cds_read_df(
         a_site_df: pd.DataFrame,
-        cds_df: pd.DataFrame
+        annotation_df: pd.DataFrame
         ) -> pd.DataFrame:
     """
     Convert the a_site_df to a cds_read_df by removing reads that do not
@@ -25,12 +25,12 @@ def read_df_to_cds_read_df(
                     that map to the CDS
     """
     cds_read_df = pd.DataFrame()
-    for tx in cds_df['transcript_id']:
+    for tx in annotation_df['transcript_id']:
         tx_df = a_site_df[a_site_df["reference_name"].str.contains(str(tx))]
-        idx = cds_df[cds_df["transcript_id"] == tx].index[0]
+        idx = annotation_df[annotation_df["transcript_id"] == tx].index[0]
         tx_df = tx_df[tx_df["a_site"].between(
-            cds_df.loc[idx, "cds_start"],
-            cds_df.loc[idx, "cds_end"]
+            annotation_df.loc[idx, "cds_start"],
+            annotation_df.loc[idx, "cds_end"]
             )]
         cds_read_df = pd.concat([cds_read_df, tx_df])
 
