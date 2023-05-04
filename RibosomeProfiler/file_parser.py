@@ -9,6 +9,7 @@ import pysam
 import pandas as pd
 import subprocess
 import gffpandas.gffpandas as gffpd
+import os
 
 
 def parse_gff(gff_path: str) -> gffpd.Gff3DataFrame:
@@ -22,6 +23,33 @@ def parse_gff(gff_path: str) -> gffpd.Gff3DataFrame:
         gff_df: Dataframe containing the gff information
     """
     return gffpd.read_gff3(gff_path)
+
+
+def parse_annotation(annotation_path: str) -> pd.DataFrame:
+    """
+    Read in the annotation file at the provided path and return a dataframe
+
+    Inputs:
+        annotation_path: Path to the annotation file with columns:
+                                    "transcript_id","cds_start",
+                                    "cds_end","transcript_length",
+                                    "genomic_cds_starts","genomic_cds_ends"
+
+    Outputs:
+        annotation_df: Dataframe containing the annotation information
+    """
+    return pd.read_csv(
+        annotation_path,
+        sep="\t",
+        dtype={
+            'transcript_id': str,
+            'cds_start': int,
+            'cds_end': int,
+            'transcript_length': int,
+            'genomic_cds_starts': str,
+            'genomic_cds_ends': str
+        }
+    )
 
 
 def parse_fasta(fasta_path: str) -> dict:
@@ -173,11 +201,14 @@ def gff_df_to_cds_df(
                 columns: transcript_id, cds_start, cds_end
     """
     # Extract transcript ID from "attributes" column using regular expression
-    transcript_id_regex = r"transcript_id=([^;]+)"
-    gff_df.loc[:, "transcript_id"] = gff_df["attributes"].str.extract(
-        transcript_id_regex
-        )
-    rows = {"transcript_id": [], "cds_start": [], "cds_end": []}
+    rows = {
+        "transcript_id": [],
+        "cds_start": [],
+        "cds_end": [],
+        "transcript_length": [],
+        "genomic_cds_starts": [],
+        "genomic_cds_ends": [],
+        }
 
     # Sort GFF DataFrame by transcript ID
     gff_df = gff_df.sort_values("transcript_id")
@@ -205,8 +236,59 @@ def gff_df_to_cds_df(
                 cds_length = cds[1] - cds[0]
                 cds_tx_end += cds_length
 
+            genomic_cds_starts = ','.join(
+                [str(x[0]) for x in cds_start_end_tuple_list]
+                )
+
+            genomic_cds_ends = ','.join(
+                [str(x[1]) for x in cds_start_end_tuple_list]
+                )
+
             rows["transcript_id"].append(group_name)
             rows["cds_start"].append(cds_tx_start)
             rows["cds_end"].append(cds_tx_end)
+            rows["transcript_length"].append(cds_tx_end - cds_tx_start)  # Placeholder
+            rows["genomic_cds_starts"].append(genomic_cds_starts)
+            rows["genomic_cds_ends"].append(genomic_cds_ends)
 
     return pd.DataFrame(rows)
+
+
+def prepare_annotation(gff_path: str,
+                       outdir: str,
+                       num_transcripts: int,
+                       config: str
+                       ) -> pd.DataFrame:
+    """
+    Given a path to a gff file, produce a tsv file containing the
+    transcript_id, tx_cds_start, tx_cds_end, tx_length,
+    genomic_cds_starts, genomic_cds_ends for each transcript
+
+    Inputs:
+        gff_path: Path to the gff file
+        outdir: Path to the output directory
+        num_transcripts: Number of transcripts to include in the annotation
+        config: Path to the config file
+
+    Outputs:
+        annotation_df: Dataframe containing the annotation information
+    """
+    print("Parsing gff")
+    gffdf = parse_gff(gff_path).df
+
+    transcript_id_regex = r"transcript_id=([^;]+)"
+    gffdf.loc[:, "transcript_id"] = gffdf["attributes"].str.extract(
+        transcript_id_regex
+        )
+    cds_df = gffdf[gffdf["type"] == "CDS"]
+    coding_tx_ids = cds_df['transcript_id'].unique()[:num_transcripts]
+    print(coding_tx_ids)
+
+    annotation_df = gff_df_to_cds_df(gffdf, coding_tx_ids)
+    output_name = f"{os.path.basename(gff_path).split('.')[0]}_RibosomeProfiler.tsv"
+    annotation_df.to_csv(
+        os.path.join(outdir, output_name),
+        sep="\t",
+        index=False
+        )
+    return annotation_df

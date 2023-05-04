@@ -52,7 +52,8 @@ from rich.emoji import Emoji
 from .file_parser import (
     parse_bam,
     parse_fasta,
-    parse_gff,
+    parse_annotation,
+    prepare_annotation,
 )
 from .qc import annotation_free_mode, annotation_mode, sequence_mode
 
@@ -86,7 +87,7 @@ def print_logo(console):
     console.print(logo)
 
 
-def print_table(args, console, mode):
+def print_table_run(args, console, mode):
     console = Console()
 
     Inputs = Table(show_header=True, header_style="bold magenta")
@@ -116,6 +117,25 @@ def print_table(args, console, mode):
     console.print(Inputs, Configs, Output, justify="inline", style="bold")
 
 
+def print_table_prepare(args, console, mode):
+    console = Console()
+
+    Inputs = Table(show_header=True, header_style="bold magenta")
+    Inputs.add_column("Parameters", style="dim", width=20)
+    Inputs.add_column("Values")
+    Inputs.add_row("Gff File:", args.gff)
+
+    Configs = Table(show_header=True, header_style="bold yellow")
+    Configs.add_column("Options", style="dim", width=20)
+    Configs.add_column("Values")
+    Configs.add_row("Mode:", mode)
+    Configs.add_row("# of transcripts:", str(args.transcripts))
+    Configs.add_row("Config file:", args.config)
+
+    # Print tables side by side
+    console.print(Inputs, Configs, justify="inline", style="bold")
+
+
 def argument_parser():
     """
     Parse the command line arguments and return the parser object
@@ -127,98 +147,141 @@ def argument_parser():
         parser: ArgumentParser object containing the parsed arguments
     """
     parser = argparse.ArgumentParser(
-        description="""A python command-line utility for the generation of
-                    comprehensive reports on the quality of ribosome profiling
-                    (Ribo-Seq) datasets""",
-        epilog=f"""
+            description="""A python command-line utility for the generation
+                        of comprehensive reports on the quality of ribosome
+                        profiling (Ribo-Seq) datasets""",
+            epilog=f"""
 
-        Made with {Emoji('heart')} in LAPTI lab at University College Cork.
-        For more information, please visit:
-        https://ribosomeprofiler.readthedocs.io/en/latest/
-        """,
-    )
-    parser.add_argument(
-        "-b", "--bam", type=str, required=True, help="Path to the bam file"
-    )
-    parser.add_argument(
-        "-g", "--gff", type=str, required=False, help="Path to the gff file"
-    )
-    parser.add_argument(
-        "-f",
-        "--fasta",
-        type=str,
-        required=False,
-        help="Path to the transcriptome fasta file",
-    )
+            Made with {Emoji('heart')} in LAPTI lab at University College Cork.
+            For more information, please visit:
+            https://ribosomeprofiler.readthedocs.io/en/latest/
+            """,
+        )
 
-    parser.add_argument(
-        "-n",
-        "--name",
-        type=str,
-        required=False,
-        help="""Name of the sample being analysed
-        (default: filename of bam file)""",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        required=False,
-        default=".",
-        help="""Path to the output directory
-        (default: current directory)""",
-    )
-    parser.add_argument(
-        "-S",
-        "--subsample",
-        type=int,
-        required=False,
-        default=1000000,
-        help="""Number of reads to subsample from the bam file
-        (default: 10000000)""",
-    )
-    parser.add_argument(
-        "-T",
-        "--transcripts",
-        type=int,
-        required=False,
-        default=100000,
-        help="Number of transcripts to consider (default: 100000)",
-    )
-    parser.add_argument(
-        "-c",
-        "--config",
-        type=str,
-        required=False,
-        default="config.yaml",
-        help="Path to the config file (default: config.yaml)",
-    )
+    subparsers = parser.add_subparsers(dest='command', title='subcommands')
 
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        default=False,
-        help="Output the results as a json file",
-    )
-    parser.add_argument(
-        "--html",
-        action="store_true",
-        default=True,
-        help="Output the results as an html file (default)",
-    )
-    parser.add_argument(
-        "--csv",
-        action="store_true",
-        default=False,
-        help="Output the results as a csv file",
-    )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        default=False,
-        help="Output the results as all of the above",
-    )
+    # create the parser for the "run" command
+    run_parser = subparsers.add_parser(
+        'run',
+        help='run RibosomeProfiler in normal mode'
+        )
+    run_parser.add_argument(
+            "-b", "--bam", type=str, required=True, help="Path to bam file"
+        )
+    run_parser.add_argument(
+            "-a", "--annotation",
+            type=str,
+            required=False,
+            help="Path to RibosomeProfiler annotation file",
+        )
+    run_parser.add_argument(
+            "-g", "--gff", type=str, required=False, help="Path to gff file"
+        )
+    run_parser.add_argument(
+            "-f",
+            "--fasta",
+            type=str,
+            required=False,
+            help="Path to the transcriptome fasta file",
+        )
+    run_parser.add_argument(
+            "-n",
+            "--name",
+            type=str,
+            required=False,
+            help="""Name of the sample being analysed
+            (default: filename of bam file)""",
+        )
+    run_parser.add_argument(
+            "-o",
+            "--output",
+            type=str,
+            required=False,
+            default=".",
+            help="""Path to the output directory
+            (default: current directory)""",
+        )
+    run_parser.add_argument(
+            "-S",
+            "--subsample",
+            type=int,
+            required=False,
+            default=1000000,
+            help="""Number of reads to subsample from the bam file
+            (default: 10000000)""",
+        )
+    run_parser.add_argument(
+            "-T",
+            "--transcripts",
+            type=int,
+            required=False,
+            default=100000,
+            help="Number of transcripts to consider (default: 100000)",
+        )
+    run_parser.add_argument(
+            "-c",
+            "--config",
+            type=str,
+            required=False,
+            default="config.yaml",
+            help="Path to the config file (default: config.yaml)",
+        )
+    run_parser.add_argument(
+            "--json",
+            action="store_true",
+            default=False,
+            help="Output the results as a json file",
+        )
+    run_parser.add_argument(
+            "--html",
+            action="store_true",
+            default=True,
+            help="Output the results as an html file (default)",
+        )
+    run_parser.add_argument(
+            "--csv",
+            action="store_true",
+            default=False,
+            help="Output the results as a csv file",
+        )
+    run_parser.add_argument(
+            "--all",
+            action="store_true",
+            default=False,
+            help="Output the results as all of the above",
+        )
 
+    # create the parser for the "prepare" command
+    prepare_parser = subparsers.add_parser(
+        'prepare',
+        help='run RibosomeProfiler in preparation mode'
+        )
+    prepare_parser.add_argument(
+            "-g", "--gff", type=str, required=True, help="Path to gff file"
+        )
+    prepare_parser.add_argument(
+            "-T",
+            "--transcripts",
+            type=int,
+            required=False,
+            default=10000000000,
+            help="Number of transcripts to consider (default: 100000)",
+        )
+    prepare_parser.add_argument(
+            "-o",
+            "--output",
+            type=str,
+            required=False,
+            default=".",
+            help="""Path to the output directory
+            (default: current directory)""",
+        )
+    prepare_parser.add_argument(
+            "-c",
+            "--config",
+            type=str,
+            required=False,
+    )
     return parser
 
 
@@ -227,68 +290,75 @@ def main(args):
     Main function for the RibosomeProfiler command line interface
 
     Inputs:
-        args: ArgumentParser object containing the parsed arguments
+        args: Namespace object containing the parsed arguments
 
     Outputs:
         None
     """
-
     console = Console()
     print_logo(console)
-    if args.all:
-        args.json = True
-        args.html = True
-        args.csv = True
 
-    if args.gff is None:
-        print_table(args, console, "Annotation Free Mode")
-
-    elif args.fasta is None:
-        print_table(args, console, "Annotation Mode")
+    if args.command == 'prepare':
+        print_table_prepare(args, console, "Prepare Mode")
+        prepare_annotation(
+            args.gff,
+            args.output,
+            args.transcripts,
+            args.config
+            )
 
     else:
-        print_table(args, console, "Sequence Mode")
+        if args.all:
+            args.json = True
+            args.html = True
+            args.csv = True
+        print_table_run(args, console, "Run Mode")
 
-    read_df_pre = parse_bam(args.bam, args.subsample)
-    print("Reads parsed")
-    # Expand the dataframe to have one row per read
-    print("Expanding dataframe")
-    read_df = read_df_pre.loc[read_df_pre.index.repeat(
-        read_df_pre['count']
+        read_df_pre = parse_bam(args.bam, args.subsample)
+        print("Reads parsed")
+
+        # Expand the dataframe to have one row per read
+        print("Expanding dataframe")
+        read_df = read_df_pre.loc[read_df_pre.index.repeat(
+            read_df_pre['count']
         )].reset_index(drop=True)
-    print("Dataframe expanded")
-    if args.gff is None:
-        results_dict = annotation_free_mode(read_df, args.config)
+        print("Dataframe expanded")
 
-    else:
-        print("Parsing gff")
-        full_gffdf = parse_gff(args.gff)
-        gffdf = full_gffdf.df[full_gffdf.df["type"].isin(
-            ["transcript", "CDS"]
-            )]
+        if args.gff is None and args.annotation is None:
+            results_dict = annotation_free_mode(read_df, args.config)
 
-        cds_df = gffdf[gffdf["type"] == "CDS"]
-
-        coding_tx_ids = cds_df.attributes.str.extractall(
-            r"transcript_id=([^;]+)"
-            ).reset_index(drop=True)[0].unique()[:args.transcripts]
-
-        print("Running annotation mode")
-        results_dict = annotation_mode(read_df,
-                                       gffdf,
-                                       transcript_list=coding_tx_ids,
-                                       config=args.config)
-
-        if args.fasta is not None:
-            fasta_dict = parse_fasta(args.fasta)
-
-            results_dict = sequence_mode(
-                results_dict,
-                read_df,
-                fasta_dict,
-                args.config
+        else:
+            if args.annotation is not None and args.gff is not None:
+                print("Both annotation and gff provided, using annotation")
+                annotation_df = parse_annotation(args.annotation)
+            elif args.annotation is None and args.gff is not None:
+                print("Gff provided, preparing annotation")
+                annotation_df = prepare_annotation(
+                    args.gff,
+                    args.output,
+                    args.transcripts,
+                    args.config
                 )
+                print("Annotation prepared")
+            elif args.annotation is not None and args.gff is None:
+                print("Annotation provided, parsing")
+                annotation_df = parse_annotation(args.annotation)
+                print("Annotation parsed")
 
+            print("Running annotation mode")
+            results_dict = annotation_mode(read_df,
+                                           annotation_df,
+                                           config=args.config)
+
+            if args.fasta is not None:
+                fasta_dict = parse_fasta(args.fasta)
+
+                results_dict = sequence_mode(
+                    results_dict,
+                    read_df,
+                    fasta_dict,
+                    args.config
+                )
 
 if __name__ == "__main__":
     parser = argument_parser()
