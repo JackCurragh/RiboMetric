@@ -6,7 +6,7 @@ if the user specifies the --html flag
 
 from jinja2 import Environment, FileSystemLoader
 from datetime import datetime
-from modules import convert_html_to_pdf
+from .modules import convert_html_to_pdf
 
 
 def generate_report(plots: dict,
@@ -32,7 +32,7 @@ def generate_report(plots: dict,
         loader=FileSystemLoader("templates"),
         autoescape=False
         )
-
+        
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
     if outdir == '':
