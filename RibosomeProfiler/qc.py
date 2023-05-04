@@ -14,6 +14,9 @@ from .modules import (
     read_length_distribution,
     a_site_calculation,
     read_df_to_cds_read_df,
+    ligation_bias_distribution,
+    nucleotide_composition,
+    read_frame_distribution,
 )
 
 
@@ -29,9 +32,12 @@ def annotation_free_mode(read_df: pd.DataFrame, config: str) -> dict:
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
-    results_dict = {}
-
-    results_dict['read_len_dist'] = read_length_distribution(read_df)
+    results_dict = {
+        "read_length_distribution": read_length_distribution(read_df),
+        "ligation_bias_distribution": ligation_bias_distribution(read_df),
+        "nucleotide_composition": nucleotide_composition(read_df),
+        "read_frame_distribution": read_frame_distribution(a_site_calculation(read_df)),
+    }
     return results_dict
 
 
@@ -60,8 +66,14 @@ def annotation_mode(
     read_length_distribution(cds_read_df)
     results_dict = {}
     results_dict['read_len_dist'] = read_length_distribution(a_site_df)
+    results_dict = {
+        "read_length_distribution": read_length_distribution(read_df),
+        "ligation_bias_distribution": ligation_bias_distribution(read_df),
+        "nucleotide_composition": nucleotide_composition(read_df),
+        "read_frame_distribution": read_frame_distribution(a_site_df),
+    }
     return results_dict
-
+    
 
 def sequence_mode(
     read_df: pd.DataFrame,
@@ -82,6 +94,11 @@ def sequence_mode(
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
-    results_dict = {}
+    results_dict = {
+        "read_length_distribution": read_length_distribution(read_df),
+        "ligation_bias_distribution": ligation_bias_distribution(read_df),
+        "nucleotide_composition": nucleotide_composition(read_df),
+        "read_frame_distribution": read_frame_distribution(a_site_calculation(read_df)),
+    }
 
     return results_dict
