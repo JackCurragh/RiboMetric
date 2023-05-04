@@ -360,6 +360,7 @@ def main(args):
                     args.config
                 )
 
+
 if __name__ == "__main__":
     parser = argument_parser()
     args = parser.parse_args()
