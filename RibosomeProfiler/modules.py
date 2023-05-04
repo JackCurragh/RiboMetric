@@ -85,21 +85,21 @@ def ligation_bias_distribution(
         first two nucleotides in the reads
     """
     if five_prime:
-        two_sequence_dict = dict(
+        sequence_dict = dict(
             read_df["sequence"]
             .str.slice(stop=num_bases)
             .value_counts(normalize=True)
             .sort_index()
         )
     else:
-        two_sequence_dict = dict(
+        sequence_dict = dict(
             read_df["sequence"]
             .str.slice(start=-num_bases)
             .value_counts(normalize=True)
             .sort_index()
         )
-    ligation_bias_dict = {k: v for k, v in two_sequence_dict.items() if "N" not in k}
-    ligation_bias_dict.update({k: v for k, v in two_sequence_dict.items() if "N" in k})
+    ligation_bias_dict = {k: v for k, v in sequence_dict.items() if "N" not in k}
+    ligation_bias_dict.update({k: v for k, v in sequence_dict.items() if "N" in k})
     return ligation_bias_dict
 
 

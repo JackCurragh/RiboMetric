@@ -49,6 +49,8 @@ from rich.text import Text
 from rich.table import Table
 from rich.emoji import Emoji
 
+import yaml
+
 from .file_parser import (
     parse_bam,
     parse_fasta,
@@ -300,6 +302,9 @@ def main(args):
     console = Console()
     print_logo(console)
 
+    with open("config.yml", "r") as ymlfile:
+        config = yaml.load(ymlfile, Loader=yaml.Loader)
+
     if args.command == 'prepare':
         print_table_prepare(args, console, "Prepare Mode")
         prepare_annotation(
@@ -328,7 +333,7 @@ def main(args):
 
         if args.gff is None and args.annotation is None:
             results_dict = annotation_free_mode(read_df, args.config)
-            plots_list = generate_plots(results_dict, dict())
+            plots_list = generate_plots(results_dict, config)
             generate_report(plots_list)
 
         else:
@@ -353,7 +358,7 @@ def main(args):
             results_dict = annotation_mode(read_df,
                                            annotation_df,
                                            config=args.config)
-            plots_list = generate_plots(results_dict, dict())
+            plots_list = generate_plots(results_dict, config)
             generate_report(plots_list)
 
             if args.fasta is not None:
@@ -365,7 +370,7 @@ def main(args):
                     fasta_dict,
                     args.config
                 )
-                plots_list = generate_plots(results_dict, dict())
+                plots_list = generate_plots(results_dict, config)
                 generate_report(plots_list)
 
 if __name__ == "__main__":
