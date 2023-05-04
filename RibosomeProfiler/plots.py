@@ -3,12 +3,15 @@ This script contains the code for generating the plots for
 RibosomeProfiler reports
 """
 
-import kaleido
 from plotly import graph_objects as go
 import plotly.io as pio
 import base64
 
-def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
+
+def plot_read_length_distribution(
+        read_length_dict: dict,
+        config: dict
+        ) -> dict:
     """
     Generate a plot of the read length distribution for the full dataset
 
@@ -17,7 +20,8 @@ def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
         config: Dictionary containing the configuration information
 
     Outputs:
-        plot_read_length_dict: Dictionary containing the plot name, description and plotly figure for html and pdf export
+        plot_read_length_dict: Dictionary containing the plot name,
+        description and plotly figure for html and pdf export
     """
     hovertemplate = "<b>Read length</b>: %{x}" + "<br><b>Count</b>: %{y}"
     fig = go.Figure()
@@ -34,19 +38,26 @@ def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
         xaxis_title="Read Length",
         yaxis_title="Read Count",
         font=dict(
-            family="Helvetica Neue,Helvetica,Arial,sans-serif", size=18, color="#7f7f7f"
+            family="Helvetica Neue,Helvetica,Arial,sans-serif",
+            size=18,
+            color="#7f7f7f"
         ),
     )
     plot_read_length_dict = {
         "name": "Read Length Distribution",
-        "description": "A plot showcasing the read length distribution of the reads",
+        "description": "Distribution of read lengths for the full dataset",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")).decode('ascii')
+        "fig_image": base64.b64encode(
+            pio.to_image(fig, format="jpg")
+        ).decode('ascii')
     }
     return plot_read_length_dict
 
 
-def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> dict:
+def plot_ligation_bias_distribution(
+        ligation_bias_dict: dict,
+        config: dict
+        ) -> dict:
     """
     Generate a plot of ligation bias distribution for the full dataset
 
@@ -55,7 +66,8 @@ def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> d
         config: Dictionary containing the configuration information
 
     Outputs:
-        plot_ligation_bias_dict: Dictionary containing the plot name, description and plotly figure for html and pdf export
+        plot_ligation_bias_dict: Dictionary containing the plot name,
+        description and plotly figure for html and pdf export
     """
     fig = go.Figure()
     fig.add_trace(
@@ -63,7 +75,7 @@ def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> d
             x=list(ligation_bias_dict.keys()),
             y=list(ligation_bias_dict.values()),
             name="",
-            hovertemplate="<b>Nucleotides</b>: %{x}" + "<br><b>Proportion</b>: %{y}",
+            hovertemplate="<b>Nucleotides</b>:%{x}<br><b>Proportion</b>:%{y}",
         )
     )
     fig.update_layout(
@@ -71,14 +83,18 @@ def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> d
         xaxis_title="Read Start",
         yaxis_title="Proportion",
         font=dict(
-            family="Helvetica Neue,Helvetica,Arial,sans-serif", size=18, color="#7f7f7f"
+            family="Helvetica Neue,Helvetica,Arial,sans-serif",
+            size=18,
+            color="#7f7f7f",
         ),
     )
     plot_ligation_bias_dict = {
         "name": "Ligation Bias Distribution",
-        "description": "A plot showcasing the ligation bias distribution of the reads",
+        "description": "Distribution of end bases for the full dataset",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")).decode('ascii')
+        "fig_image": base64.b64encode(
+            pio.to_image(fig, format="jpg")
+        ).decode('ascii')
     }
     return plot_ligation_bias_dict
 
@@ -94,13 +110,18 @@ def plot_nucleotide_composition(
         config: Dictionary containing the configuration information
 
     Outputs:
-        plot_nucleotide_composition_dict: Dictionary containing the plot name, description and plotly figure for html and pdf export
+        plot_nucleotide_composition_dict: Dictionary containing the plot name,
+        description and plotly figure for html and pdf export
     """
     colors = {"A": "#c93434", "C": "#2e85db", "G": "#f0de1f", "T": "#1fc24d"}
     fig = go.Figure()
     for nucleotide, distribution in nucleotide_composition_dict.items():
         fig.add_trace(
-            go.Scatter(y=distribution, name=nucleotide, line_color=colors[nucleotide])
+            go.Scatter(
+                y=distribution,
+                name=nucleotide,
+                line_color=colors[nucleotide]
+            )
         )
     fig.update_layout(
         title="Nucleotide Distribution",
@@ -108,14 +129,18 @@ def plot_nucleotide_composition(
         yaxis_title="Proportion",
         yaxis_range=[0, 1],
         font=dict(
-            family="Helvetica Neue,Helvetica,Arial,sans-serif", size=18, color="#7f7f7f"
+            family="Helvetica Neue,Helvetica,Arial,sans-serif",
+            size=18,
+            color="#7f7f7f",
         ),
     )
     plot_nucleotide_composition_dict = {
         "name": "Nucleotide Composition",
-        "description": "A plot showcasing the nucleotide composition of the reads",
+        "description": "Nucleotide composition of the reads",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")).decode('ascii')
+        "fig_image": base64.b64encode(
+            pio.to_image(fig, format="jpg")
+        ).decode('ascii')
     }
     return plot_nucleotide_composition_dict
 
@@ -129,10 +154,11 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         config: Dictionary containing the configuration information
 
     Outputs:
-        plot_read_frame_dict: Dictionary containing the plot name, description and plotly figure for html and pdf export
+        plot_read_frame_dict: Dictionary containing the plot name, description
+        and plotly figure for html and pdf export
     """
     plot_data = []
-    for i in range (0,3):
+    for i in range(0, 3):
         plot_data.append(go.Bar(
             name="Frame " + str(i + 1),
             x=list(read_frame_dict.keys()),
@@ -143,15 +169,17 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
                 if y == i
             ])
         )
-    cutoff = 40
-    
+    # cutoff = 40
+
     fig = go.Figure(data=plot_data)
     fig.update_layout(barmode="group")
 
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
-        "description": "A plot showcasing the distribution of the reading frames per read length",
+        "description": "Frame distribution per read length",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")).decode('ascii')
+        "fig_image": base64.b64encode(
+            pio.to_image(fig, format="jpg")
+        ).decode('ascii')
     }
     return plot_read_frame_dict

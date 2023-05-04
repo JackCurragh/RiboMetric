@@ -247,7 +247,7 @@ def gff_df_to_cds_df(
             rows["transcript_id"].append(group_name)
             rows["cds_start"].append(cds_tx_start)
             rows["cds_end"].append(cds_tx_end)
-            rows["transcript_length"].append(cds_tx_end - cds_tx_start)  # Placeholder
+            rows["transcript_length"].append(cds_tx_end - cds_tx_start)
             rows["genomic_cds_starts"].append(genomic_cds_starts)
             rows["genomic_cds_ends"].append(genomic_cds_ends)
 
@@ -285,7 +285,8 @@ def prepare_annotation(gff_path: str,
     print(coding_tx_ids)
 
     annotation_df = gff_df_to_cds_df(gffdf, coding_tx_ids)
-    output_name = f"{os.path.basename(gff_path).split('.')[0]}_RibosomeProfiler.tsv"
+    basename = os.path.basename(gff_path).split('.')[0]
+    output_name = f"{basename}_RibosomeProfiler.tsv"
     annotation_df.to_csv(
         os.path.join(outdir, output_name),
         sep="\t",
