@@ -6,9 +6,6 @@ RibosomeProfiler
 .. image:: https://img.shields.io/pypi/v/RibosomeProfiler.svg
         :target: https://pypi.python.org/pypi/RibosomeProfiler
 
-.. image:: https://img.shields.io/travis/JackCurragh/RibosomeProfiler.svg
-        :target: https://travis-ci.com/JackCurragh/RibosomeProfiler
-
 .. image:: https://readthedocs.org/projects/RibosomeProfiler/badge/?version=latest
         :target: https://RibosomeProfiler.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
@@ -30,7 +27,10 @@ RibosomeProfiler
 Features
 --------
 
-* TODO
+There are a number of limitations to running RibosomeProfiler at the moment. These include:
+
+  * Transciptomic alignments are required in BAM format 
+  * GFF annotations from Ensembl are also requried
 
 Credits
 -------
