@@ -56,6 +56,8 @@ from .file_parser import (
     prepare_annotation,
 )
 from .qc import annotation_free_mode, annotation_mode, sequence_mode
+from .plots import generate_plots
+from .html_report import generate_report
 
 
 def print_logo(console):
@@ -326,6 +328,8 @@ def main(args):
 
         if args.gff is None and args.annotation is None:
             results_dict = annotation_free_mode(read_df, args.config)
+            plots_list = generate_plots(results_dict, dict())
+            generate_report(plots_list)
 
         else:
             if args.annotation is not None and args.gff is not None:
@@ -349,6 +353,8 @@ def main(args):
             results_dict = annotation_mode(read_df,
                                            annotation_df,
                                            config=args.config)
+            plots_list = generate_plots(results_dict, dict())
+            generate_report(plots_list)
 
             if args.fasta is not None:
                 fasta_dict = parse_fasta(args.fasta)
@@ -359,6 +365,8 @@ def main(args):
                     fasta_dict,
                     args.config
                 )
+                plots_list = generate_plots(results_dict, dict())
+                generate_report(plots_list)
 
 if __name__ == "__main__":
     parser = argument_parser()

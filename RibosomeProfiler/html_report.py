@@ -5,9 +5,9 @@ The functions are called by the main script RibosomeProfiler.py if the user spec
 
 from jinja2 import Environment, FileSystemLoader
 from datetime import datetime
-from modules import convert_html_to_pdf
+from .modules import convert_html_to_pdf
 
-def generate_report(plots: dict, export_mode: str = 'html', name: str = "RibosomeProfiler_report", outdir: str = ''):
+def generate_report(plots_dict: dict, export_mode: str = 'html', name: str = "RibosomeProfiler_report", outdir: str = ''):
     """
     Generates a report of the RibosomeProfiler results with plots
 
@@ -20,7 +20,7 @@ def generate_report(plots: dict, export_mode: str = 'html', name: str = "Ribosom
     Outputs:
         No variables will be output
     """
-    env = Environment(loader=FileSystemLoader("templates"),autoescape=False)
+    env = Environment(loader=FileSystemLoader(["templates","RibosomeProfiler/templates"]),autoescape=False)
     
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
@@ -40,13 +40,13 @@ def generate_report(plots: dict, export_mode: str = 'html', name: str = "Ribosom
     
     for filetype in export_mode:
         if filetype == 'html':
-            context = {"plots": plots, "export_mode": filetype, "datetime": completion_time}
+            context = {"plots": plots_dict, "export_mode": filetype, "datetime": completion_time}
             jinja_render = template.render(context)
             out = output + ".html"
             with open(out, mode="w", encoding="utf-8") as f:
                 f.write(jinja_render)
         else:
-            context = {"plots": plots, "export_mode": filetype, "datetime": completion_time}
+            context = {"plots": plots_dict, "export_mode": filetype, "datetime": completion_time}
             jinja_render = template.render(context)
             out = output + ".pdf"
             convert_html_to_pdf(jinja_render, out)

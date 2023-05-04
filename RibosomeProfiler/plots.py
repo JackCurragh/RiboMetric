@@ -8,6 +8,26 @@ from plotly import graph_objects as go
 import plotly.io as pio
 import base64
 
+def generate_plots(results_dict: dict, config: dict) -> list:
+    """
+    Wrapper function generating plots based on the results_dict from qc.py
+
+    Input:
+        results_dict: Dictionary containing result from modules after running through qc.py
+        config: Dictionary containing the configuration information
+    
+    Output:
+
+    """
+    plots_list = [
+        plot_read_length_distribution(results_dict["read_length_distribution"], config),
+        plot_ligation_bias_distribution(results_dict["ligation_bias_distribution"], config),
+        plot_nucleotide_composition(results_dict["nucleotide_composition"], config),
+        plot_read_frame_distribution(results_dict["read_frame_distribution"], config),
+        ]
+    return plots_list
+
+
 def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
     """
     Generate a plot of the read length distribution for the full dataset
@@ -144,10 +164,17 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             ])
         )
     cutoff = 40
-    
+
     fig = go.Figure(data=plot_data)
     fig.update_layout(barmode="group")
-
+    fig.update_layout(
+        title="Read Frame Distribution",
+        xaxis_title="Read Length",
+        yaxis_title="Read Count",
+        font=dict(
+            family="Helvetica Neue,Helvetica,Arial,sans-serif", size=18, color="#7f7f7f"
+        ),
+    )
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
         "description": "A plot showcasing the distribution of the reading frames per read length",
