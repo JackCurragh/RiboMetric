@@ -6,6 +6,7 @@ RibosomeProfiler reports
 import kaleido
 from plotly import graph_objects as go
 import plotly.io as pio
+import base64
 
 def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
     """
@@ -39,7 +40,8 @@ def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
     plot_read_length_dict = {
         "name": "Read Length Distribution",
         "description": "A plot showcasing the read length distribution of the reads",
-        "fig": fig,
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")).decode('ascii')
     }
     return plot_read_length_dict
 
@@ -75,7 +77,8 @@ def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> d
     plot_ligation_bias_dict = {
         "name": "Ligation Bias Distribution",
         "description": "A plot showcasing the ligation bias distribution of the reads",
-        "fig": fig,
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")).decode('ascii')
     }
     return plot_ligation_bias_dict
 
@@ -111,7 +114,8 @@ def plot_nucleotide_composition(
     plot_nucleotide_composition_dict = {
         "name": "Nucleotide Composition",
         "description": "A plot showcasing the nucleotide composition of the reads",
-        "fig": fig,
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")).decode('ascii')
     }
     return plot_nucleotide_composition_dict
 
@@ -165,7 +169,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
         "description": "A plot showcasing the distribution of the reading frames per read length",
-        "fig-html": pio.to_html(fig, full_html=False),
-        "fig-image": pio.to_image(fig, format="jpg")
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")).decode('ascii')
     }
     return plot_read_frame_dict
