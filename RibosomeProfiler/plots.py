@@ -58,9 +58,9 @@ def plot_read_length_distribution(
         xaxis_title="Read Length",
         yaxis_title="Read Count",
         font=dict(
-            family="Helvetica Neue,Helvetica,Arial,sans-serif",
+            family=config["plots"]["font_family"],
             size=18,
-            color="#7f7f7f"
+            color=config["plots"]["base_color"]
         ),
     )
     plot_read_length_dict = {
@@ -89,6 +89,8 @@ def plot_ligation_bias_distribution(
         plot_ligation_bias_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
+    if config["plots"]["ligation_bias_distribution"]["include_N"] == False:
+        ligation_bias_dict = {k: v for k, v in ligation_bias_dict.items() if "N" not in k}
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
@@ -103,9 +105,9 @@ def plot_ligation_bias_distribution(
         xaxis_title="Read Start",
         yaxis_title="Proportion",
         font=dict(
-            family="Helvetica Neue,Helvetica,Arial,sans-serif",
+            family=config["plots"]["font_family"],
             size=18,
-            color="#7f7f7f",
+            color=config["plots"]["base_color"]
         ),
     )
     plot_ligation_bias_dict = {
@@ -133,7 +135,7 @@ def plot_nucleotide_composition(
         plot_nucleotide_composition_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
-    colors = {"A": "#c93434", "C": "#2e85db", "G": "#f0de1f", "T": "#1fc24d"}
+    colors = config["plots"]["nucleotide_colors"]
     fig = go.Figure()
     for nucleotide, distribution in nucleotide_composition_dict.items():
         fig.add_trace(
@@ -149,9 +151,9 @@ def plot_nucleotide_composition(
         yaxis_title="Proportion",
         yaxis_range=[0, 1],
         font=dict(
-            family="Helvetica Neue,Helvetica,Arial,sans-serif",
+            family=config["plots"]["font_family"],
             size=18,
-            color="#7f7f7f",
+            color=config["plots"]["base_color"]
         ),
     )
     plot_nucleotide_composition_dict = {
@@ -177,6 +179,10 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         plot_read_frame_dict: Dictionary containing the plot name, description
         and plotly figure for html and pdf export
     """
+    cull_list = list(read_frame_dict.keys())
+    for k in cull_list:
+        if k > config["plots"]["read_frame_distribution"]["upper_limit"] or k < config["plots"]["read_frame_distribution"]["lower_limit"]:
+            del read_frame_dict[k]
     plot_data = []
     for i in range(0, 3):
         plot_data.append(go.Bar(
@@ -189,8 +195,6 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
                 if y == i
             ])
         )
-    # cutoff = 40
-
     fig = go.Figure(data=plot_data)
     fig.update_layout(barmode="group")
     fig.update_layout(
@@ -198,7 +202,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         xaxis_title="Read Length",
         yaxis_title="Read Count",
         font=dict(
-            family="Helvetica Neue,Helvetica,Arial,sans-serif", size=18, color="#7f7f7f"
+            family=config["plots"]["font_family"], size=18, color=config["plots"]["base_color"]
         ),
     )
     plot_read_frame_dict = {
