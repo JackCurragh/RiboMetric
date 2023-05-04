@@ -6,7 +6,7 @@ of the RibosomeProfiler pipeline
 
 import pandas as pd
 import numpy as np
-
+from xhtml2pdf import pisa
 
 def read_df_to_cds_read_df(
         a_site_df: pd.DataFrame,
@@ -155,22 +155,11 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     return read_frame_dict
 
 
-## possibly temp (from plotly.com):
-from xhtml2pdf import pisa  # import python module
-
-
-# Utility function
 def convert_html_to_pdf(source_html, output_filename):
-    # open output file for writing (truncated binary)
     result_file = open(output_filename, "w+b")
 
-    # convert HTML to PDF
     pisa_status = pisa.CreatePDF(
-        source_html, dest=result_file  # the HTML to convert
-    )  # file handle to recieve result
-
-    # close output file
-    result_file.close()  # close output file
-
-    # return True on success and False on errors
+        source_html, dest=result_file  
+    )
+    result_file.close()
     return pisa_status.err
