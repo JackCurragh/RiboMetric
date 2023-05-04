@@ -368,6 +368,7 @@ def main(args):
                 plots_list = generate_plots(results_dict, dict())
                 generate_report(plots_list)
 
+
 if __name__ == "__main__":
     parser = argument_parser()
     args = parser.parse_args()
