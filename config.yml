@@ -5,7 +5,7 @@ plots:
   nucleotide_colors: {"A": "#c93434", "C": "#2e85db", "G": "#f0de1f", "T": "#1fc24d"}
   read_frame_distribution:
     upper_limit: 40
-    lower_limit: 10
+    lower_limit: 15
   ligation_bias_distribution:
     include_N: True
 qc:
