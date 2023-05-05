@@ -228,8 +228,8 @@ def argument_parser():
             "--config",
             type=str,
             required=False,
-            default="config.yaml",
-            help="Path to the config file (default: config.yaml)",
+            default="config.yml",
+            help="Path to the config file (default: config.yml)",
         )
     run_parser.add_argument(
             "--json",
@@ -286,6 +286,8 @@ def argument_parser():
             "--config",
             type=str,
             required=False,
+            default="config.yml",
+            help="Path to the config file (default: config.yml)",
     )
     return parser
 
@@ -303,7 +305,7 @@ def main(args):
     console = Console()
     print_logo(console)
     # change to config argument (path)
-    with open("config.yml", "r") as ymlfile:
+    with open(args.config, "r") as ymlfile:
         config = yaml.load(ymlfile, Loader=yaml.Loader)
 
     if args.command == 'prepare':
