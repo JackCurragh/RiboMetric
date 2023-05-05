@@ -137,11 +137,11 @@ def nucleotide_composition(
 
 def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     """
-    Calculate the distribution of the reading frame over the di
+    Calculate the distribution of the reading frame over the dataset
 
     Inputs:
-        a_site_df: Dataframe containing the read information with a-site
-        location
+        a_site_df: Dataframe ontaining the read information with an added 
+        column for the a-site location
 
     Outputs:
         read_frame_dict: Nested dictionary containing counts for every reading
@@ -159,6 +159,51 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
             read_frame_dict[read_length] = {0:0,1:0,2:0}
         read_frame_dict[read_length][read_frame] = value
     return read_frame_dict
+
+def read_frame_cull(read_frame_dict: dict, config: dict) -> dict:
+    """
+    Culls the read_frame_dict according to config so only read lengths of interest are kept
+    
+    Inputs:
+    read_frame_dict: 
+    config: 
+    
+    Outputs:
+    culled_read_frame_dict
+    """
+    culled_read_frame_dict = read_frame_dict
+    cull_list = list(culled_read_frame_dict.keys())
+    for k in cull_list:
+        if (
+            k > config["plots"]["read_frame_distribution"]["upper_limit"]
+            or k < config["plots"]["read_frame_distribution"]["lower_limit"]
+        ):
+            del culled_read_frame_dict[k]
+    
+    return culled_read_frame_dict
+
+def read_frame_score(read_frame_dict:dict) -> dict:
+    """
+    Generates scores for each read_length seperately as well as a global score
+    Can be used after read_frame_cull to calculate the global score of the region of interest
+    The calculation for this score is: 1 - sum(2nd highest peak count)/sum(highest peak count)
+    A score close to 1 has good periodicity, while a score closer to 0 has a random spread
+    
+    Inputs:
+    read_frame_dict: dictionary containing the distribution of the reading frames over the different read lengths
+    
+    Outputs:
+    scored_read_frame_dict: dictionary containing read frame distribution scores for each read length and a global score
+    """
+    scored_read_frame_dict = {}
+    highest_peak_sum, second_peak_sum = 0, 0
+    for k, inner_dict in read_frame_dict.items():
+        top_two_values = sorted(inner_dict.values(), reverse=True)[:2]
+        highest_peak_sum += top_two_values[0]
+        second_peak_sum += top_two_values[1]
+        scored_read_frame_dict[k] = 1-top_two_values[1]/top_two_values[0]
+    scored_read_frame_dict["global"] = (1-second_peak_sum/highest_peak_sum)
+    return scored_read_frame_dict
 
 
 def convert_html_to_pdf(source_html, output_filename):
