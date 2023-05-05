@@ -304,7 +304,7 @@ def main(args):
     """
     console = Console()
     print_logo(console)
-    # change to config argument (path)
+    
     with open(args.config, "r") as ymlfile:
         config = yaml.load(ymlfile, Loader=yaml.Loader)
 
