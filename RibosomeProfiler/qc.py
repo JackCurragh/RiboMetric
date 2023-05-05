@@ -102,8 +102,8 @@ def sequence_mode(
         "ligation_bias_distribution": ligation_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
     }
-    results_dict["read_frame_distribution"] = read_frame_distribution(cds_read_df)\
-        if config["qc"]["use_cds_subset"]["read_frame_distribution"]\
-        else read_frame_distribution(read_df)
+    # results_dict["read_frame_distribution"] = read_frame_distribution(cds_read_df)\
+    #     if config["qc"]["use_cds_subset"]["read_frame_distribution"]\
+    #     else read_frame_distribution(read_df)
 
     return results_dict
