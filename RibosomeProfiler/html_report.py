@@ -7,6 +7,7 @@ if the user specifies the --html flag
 from jinja2 import Environment, FileSystemLoader
 from datetime import datetime
 from .modules import convert_html_to_pdf
+import base64
 
 
 def generate_report(
@@ -35,6 +36,9 @@ def generate_report(
 
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
+    binary_logo = open("RibosomeProfiler_logo.png", 'rb').read()
+    base64_logo = base64.b64encode(binary_logo).decode('utf-8')
+
     if outdir == "":
         output = name
     else:
@@ -48,24 +52,21 @@ def generate_report(
         export_mode = [export_mode]
 
     template = env.get_template("base.html")
+    context = {
+                "plots": plots,
+                "completion_time": completion_time,
+                "logo": base64_logo
+            }
 
     for filetype in export_mode:
         if filetype == "html":
-            context = {
-                "plots": plots,
-                "export_mode": filetype,
-                "datetime": completion_time,
-            }
+            context["filetype"] = filetype
             jinja_render = template.render(context)
             out = output + ".html"
             with open(out, mode="w", encoding="utf-8") as f:
                 f.write(jinja_render)
-        else:
-            context = {
-                "plots": plots,
-                "export_mode": filetype,
-                "datetime": completion_time,
-            }
+        else:        
+            context["filetype"] = filetype
             jinja_render = template.render(context)
             out = output + ".pdf"
             convert_html_to_pdf(jinja_render, out)

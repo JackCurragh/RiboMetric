@@ -177,6 +177,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         plot_read_frame_dict: Dictionary containing the plot name, description
         and plotly figure for html and pdf export
     """
+    
     cull_list = list(read_frame_dict.keys())
     for k in cull_list:
         if (
@@ -184,6 +185,16 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             or k < config["plots"]["read_frame_distribution"]["lower_limit"]
         ):
             del read_frame_dict[k]
+
+    highest_peak_sum = 0
+    second_peak_sum = 0
+    for k, inner_dict in read_frame_dict.items():
+        top_two_values = sorted(inner_dict.values(), reverse=True)[:2]
+        highest_peak_sum += top_two_values[0]
+        second_peak_sum += top_two_values[1]
+    #    test_dict[k] = f'Top 2 values in {k}: {top_two_values}'
+    periodicity_score = (1-second_peak_sum/highest_peak_sum)
+    
     plot_data = []
     for i in range(0, 3):
         plot_data.append(
@@ -210,6 +221,14 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             color=config["plots"]["base_color"],
         ),
     )
+    fig.add_annotation(text=f'Score: {round(periodicity_score,2)}', 
+                       align='left',
+                       showarrow=False,
+                       xref='paper',
+                       yref='paper',
+                       y=0.64,
+                       x=1.03,
+                       xanchor="left",)
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
         "description": "Frame distribution per read length",
