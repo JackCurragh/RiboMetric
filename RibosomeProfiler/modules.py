@@ -156,7 +156,7 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     for index, value in frame_df.items():
         read_length, read_frame = index
         if read_length not in read_frame_dict:
-            read_frame_dict[read_length] = {}
+            read_frame_dict[read_length] = {0:0,1:0,2:0}
         read_frame_dict[read_length][read_frame] = value
     return read_frame_dict
 
