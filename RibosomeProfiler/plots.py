@@ -13,25 +13,29 @@ def generate_plots(results_dict: dict, config: dict) -> list:
     Wrapper function generating plots based on the results_dict from qc.py
 
     Input:
-        results_dict: Dictionary containing result from modules after running through qc.py
+        results_dict: Dictionary containing result from modules after running
+        through qc.py
         config: Dictionary containing the configuration information
-    
+
     Output:
 
     """
     plots_list = [
-        plot_read_length_distribution(results_dict["read_length_distribution"], config),
-        plot_ligation_bias_distribution(results_dict["ligation_bias_distribution"], config),
-        plot_nucleotide_composition(results_dict["nucleotide_composition"], config),
-        plot_read_frame_distribution(results_dict["read_frame_distribution"], config),
-        ]
+        plot_read_length_distribution(results_dict["read_length_distribution"],
+                                      config),
+        plot_ligation_bias_distribution(
+            results_dict["ligation_bias_distribution"], config
+        ),
+        plot_nucleotide_composition(results_dict["nucleotide_composition"],
+                                    config),
+        plot_read_frame_distribution(results_dict["read_frame_distribution"],
+                                     config),
+    ]
     return plots_list
 
 
-def plot_read_length_distribution(
-        read_length_dict: dict,
-        config: dict
-        ) -> dict:
+def plot_read_length_distribution(read_length_dict: dict, config: dict
+                                  ) -> dict:
     """
     Generate a plot of the read length distribution for the full dataset
 
@@ -60,24 +64,21 @@ def plot_read_length_distribution(
         font=dict(
             family=config["plots"]["font_family"],
             size=18,
-            color=config["plots"]["base_color"]
+            color=config["plots"]["base_color"],
         ),
     )
     plot_read_length_dict = {
         "name": "Read Length Distribution",
         "description": "Distribution of read lengths for the full dataset",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(
-            pio.to_image(fig, format="jpg")
-        ).decode('ascii')
+        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
+                                      ).decode("ascii"),
     }
     return plot_read_length_dict
 
 
-def plot_ligation_bias_distribution(
-        ligation_bias_dict: dict,
-        config: dict
-        ) -> dict:
+def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict
+                                    ) -> dict:
     """
     Generate a plot of ligation bias distribution for the full dataset
 
@@ -89,8 +90,10 @@ def plot_ligation_bias_distribution(
         plot_ligation_bias_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
-    if config["plots"]["ligation_bias_distribution"]["include_N"] == False:
-        ligation_bias_dict = {k: v for k, v in ligation_bias_dict.items() if "N" not in k}
+    if config["plots"]["ligation_bias_distribution"]["include_N"] is False:
+        ligation_bias_dict = {
+            k: v for k, v in ligation_bias_dict.items() if "N" not in k
+        }
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
@@ -107,16 +110,15 @@ def plot_ligation_bias_distribution(
         font=dict(
             family=config["plots"]["font_family"],
             size=18,
-            color=config["plots"]["base_color"]
+            color=config["plots"]["base_color"],
         ),
     )
     plot_ligation_bias_dict = {
         "name": "Ligation Bias Distribution",
         "description": "Distribution of end bases for the full dataset",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(
-            pio.to_image(fig, format="jpg")
-        ).decode('ascii')
+        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
+                                      ).decode("ascii"),
     }
     return plot_ligation_bias_dict
 
@@ -139,11 +141,8 @@ def plot_nucleotide_composition(
     fig = go.Figure()
     for nucleotide, distribution in nucleotide_composition_dict.items():
         fig.add_trace(
-            go.Scatter(
-                y=distribution,
-                name=nucleotide,
-                line_color=colors[nucleotide]
-            )
+            go.Scatter(y=distribution, name=nucleotide,
+                       line_color=colors[nucleotide])
         )
     fig.update_layout(
         title="Nucleotide Distribution",
@@ -153,16 +152,15 @@ def plot_nucleotide_composition(
         font=dict(
             family=config["plots"]["font_family"],
             size=18,
-            color=config["plots"]["base_color"]
+            color=config["plots"]["base_color"],
         ),
     )
     plot_nucleotide_composition_dict = {
         "name": "Nucleotide Composition",
         "description": "Nucleotide composition of the reads",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(
-            pio.to_image(fig, format="jpg")
-        ).decode('ascii')
+        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
+                                      ).decode("ascii"),
     }
     return plot_nucleotide_composition_dict
 
@@ -181,19 +179,24 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
     """
     cull_list = list(read_frame_dict.keys())
     for k in cull_list:
-        if k > config["plots"]["read_frame_distribution"]["upper_limit"] or k < config["plots"]["read_frame_distribution"]["lower_limit"]:
+        if (
+            k > config["plots"]["read_frame_distribution"]["upper_limit"]
+            or k < config["plots"]["read_frame_distribution"]["lower_limit"]
+        ):
             del read_frame_dict[k]
     plot_data = []
     for i in range(0, 3):
-        plot_data.append(go.Bar(
-            name="Frame " + str(i + 1),
-            x=list(read_frame_dict.keys()),
-            y=[
-                read_frame_dict[x][y]
-                for x in read_frame_dict
-                for y in read_frame_dict[x]
-                if y == i
-            ])
+        plot_data.append(
+            go.Bar(
+                name="Frame " + str(i + 1),
+                x=list(read_frame_dict.keys()),
+                y=[
+                    read_frame_dict[x][y]
+                    for x in read_frame_dict
+                    for y in read_frame_dict[x]
+                    if y == i
+                ],
+            )
         )
     fig = go.Figure(data=plot_data)
     fig.update_layout(barmode="group")
@@ -202,15 +205,16 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         xaxis_title="Read Length",
         yaxis_title="Read Count",
         font=dict(
-            family=config["plots"]["font_family"], size=18, color=config["plots"]["base_color"]
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
         ),
     )
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
         "description": "Frame distribution per read length",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(
-            pio.to_image(fig, format="jpg")
-        ).decode('ascii')
+        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
+                                      ).decode("ascii"),
     }
     return plot_read_frame_dict
