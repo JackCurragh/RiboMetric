@@ -8,10 +8,10 @@ import pandas as pd
 import numpy as np
 from xhtml2pdf import pisa
 
+
 def read_df_to_cds_read_df(
-        a_site_df: pd.DataFrame,
-        annotation_df: pd.DataFrame
-        ) -> pd.DataFrame:
+    a_site_df: pd.DataFrame, annotation_df: pd.DataFrame
+) -> pd.DataFrame:
     """
     Convert the a_site_df to a cds_read_df by removing reads that do not
     map to the CDS
@@ -25,13 +25,15 @@ def read_df_to_cds_read_df(
                     that map to the CDS
     """
     cds_read_df = pd.DataFrame()
-    for tx in annotation_df['transcript_id']:
+    for tx in annotation_df["transcript_id"]:
         tx_df = a_site_df[a_site_df["reference_name"].str.contains(str(tx))]
         idx = annotation_df[annotation_df["transcript_id"] == tx].index[0]
-        tx_df = tx_df[tx_df["a_site"].between(
-            annotation_df.loc[idx, "cds_start"],
-            annotation_df.loc[idx, "cds_end"]
-            )]
+        tx_df = tx_df[
+            tx_df["a_site"].between(
+                annotation_df.loc[idx, "cds_start"],
+                annotation_df.loc[idx, "cds_end"]
+            )
+        ]
         cds_read_df = pd.concat([cds_read_df, tx_df])
 
     return cds_read_df
@@ -44,7 +46,7 @@ def a_site_calculation(read_df: pd.DataFrame, offset=15) -> pd.DataFrame:
     Inputs:
         read_df: Dataframe containing the read information
         offset: Offset from the start of the read to the A-site (Default = 15)
-        
+
     Outputs:
         asite_df: Dataframe containing the read information with an added
                     column for the A-site
@@ -63,7 +65,8 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     Outputs:
         dict: Dictionary containing the read length distribution
     """
-    read_lengths, read_counts = np.unique(read_df["read_length"], return_counts=True)
+    read_lengths, read_counts = np.unique(read_df["read_length"],
+                                          return_counts=True)
     return dict(zip(read_lengths, read_counts))
 
 
@@ -98,15 +101,16 @@ def ligation_bias_distribution(
             .value_counts(normalize=True)
             .sort_index()
         )
-    ligation_bias_dict = {k: v for k, v in sequence_dict.items() if "N" not in k}
-    ligation_bias_dict.update({k: v for k, v in sequence_dict.items() if "N" in k})
+    ligation_bias_dict = {k: v for k, v in sequence_dict.items()
+                          if "N" not in k}
+    ligation_bias_dict.update({k: v for k, v in sequence_dict.items()
+                               if "N" in k})
     return ligation_bias_dict
 
 
 def nucleotide_composition(
-        read_df: pd.DataFrame,
-        nucleotides=['A', 'C', 'G', 'T']
-        ) -> dict:
+    read_df: pd.DataFrame, nucleotides=["A", "C", "G", "T"]
+) -> dict:
     """
     Calculate the nucleotide composition
 
@@ -114,10 +118,10 @@ def nucleotide_composition(
         read_df: Dataframe containing the read information
 
     Outputs:
-        dict: Dictionary containing the nucleotide distribution for every 
+        dict: Dictionary containing the nucleotide distribution for every
             read position.
     """
-    readlen = read_df['sequence'].str.len().max()
+    readlen = read_df["sequence"].str.len().max()
     nucleotide_composition_dict = {nt: [] for nt in nucleotides}
     base_nts = pd.Series([0, 0, 0, 0], index=nucleotides)
     for i in range(readlen):
@@ -136,10 +140,12 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     Calculate the distribution of the reading frame over the di
 
     Inputs:
-        a_site_df: Dataframe containing the read information with a-site location
+        a_site_df: Dataframe containing the read information with a-site
+        location
 
     Outputs:
-        read_frame_dict: Nested dictionary containing counts for every reading frame at the different read lengths
+        read_frame_dict: Nested dictionary containing counts for every reading
+        frame at the different read lengths
     """
     frame_df = (
         a_site_df.assign(read_frame=a_site_df.a_site.mod(3))
@@ -158,8 +164,6 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
 def convert_html_to_pdf(source_html, output_filename):
     result_file = open(output_filename, "w+b")
 
-    pisa_status = pisa.CreatePDF(
-        source_html, dest=result_file  
-    )
+    pisa_status = pisa.CreatePDF(source_html, dest=result_file)
     result_file.close()
     return pisa_status.err
