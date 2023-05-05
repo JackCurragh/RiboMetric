@@ -29,7 +29,9 @@ def generate_report(
     Outputs:
         No variables will be output
     """
-    env = Environment(loader=FileSystemLoader("templates"), autoescape=False)
+    env = Environment(loader=FileSystemLoader(["templates",
+                                               "RibosomeProfiler/templates"]),
+                      autoescape=False)
 
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
