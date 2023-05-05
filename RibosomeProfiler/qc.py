@@ -12,7 +12,6 @@ Three main modes:
 import pandas as pd
 from .modules import (
     read_length_distribution,
-    a_site_calculation,
     read_df_to_cds_read_df,
     ligation_bias_distribution,
     nucleotide_composition,
@@ -20,31 +19,34 @@ from .modules import (
 )
 
 
-def annotation_free_mode(read_df: pd.DataFrame, config: str) -> dict:
+def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
     """
     Run the annotation free mode of the qc analysis
 
     Inputs:
         read_df: dataframe containing the read information
                 (keys are the read names)
-        config: Path to the config file
+        config:  Dictionary containing the configuration information
 
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
+    
+    print("Running modules")
     results_dict = {
         "read_length_distribution": read_length_distribution(read_df),
         "ligation_bias_distribution": ligation_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
-        "read_frame_distribution": read_frame_distribution(a_site_calculation(read_df)),
+        "read_frame_distribution": read_frame_distribution(read_df),
     }
+    
     return results_dict
 
 
 def annotation_mode(
     read_df: pd.DataFrame,
     annotation_df: pd.DataFrame,
-    config: str
+    config: dict
 ) -> dict:
     """
     Run the annotation mode of the qc analysis
@@ -54,24 +56,23 @@ def annotation_mode(
                 (keys are the read names)
         annotation_df: Dataframe containing the annotation information
         transcript_list: List of the top N transcripts
+        config: Dictionary containing the configuration information
 
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
-    print("Calculating A site information")
-    a_site_df = a_site_calculation(read_df)
     print("Subsetting to CDS reads")
-    cds_read_df = read_df_to_cds_read_df(a_site_df, annotation_df)
+    cds_read_df = read_df_to_cds_read_df(read_df, annotation_df)
     print("Running modules")
-    read_length_distribution(cds_read_df)
-    results_dict = {}
-    results_dict['read_len_dist'] = read_length_distribution(a_site_df)
     results_dict = {
         "read_length_distribution": read_length_distribution(read_df),
         "ligation_bias_distribution": ligation_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
-        "read_frame_distribution": read_frame_distribution(a_site_df),
     }
+    results_dict["read_frame_distribution"] = read_frame_distribution(cds_read_df)\
+        if config["qc"]["use_cds_subset"]["read_frame_distribution"]\
+        else read_frame_distribution(read_df)
+
     return results_dict
     
 
@@ -79,7 +80,8 @@ def sequence_mode(
     read_df: pd.DataFrame,
     gff_path: str,
     transcript_list: list,
-    fasta_path: str
+    fasta_path: str,
+    config: dict
 ) -> dict:
     """
     Run the sequence mode of the qc analysis
@@ -90,6 +92,7 @@ def sequence_mode(
         gff_path: Path to the gff file
         transcript_list: List of the top N transcripts
         fasta_path: Path to the transcriptome fasta file
+        config: Dictionary containing the configuration information
 
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
@@ -98,7 +101,9 @@ def sequence_mode(
         "read_length_distribution": read_length_distribution(read_df),
         "ligation_bias_distribution": ligation_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
-        "read_frame_distribution": read_frame_distribution(a_site_calculation(read_df)),
     }
+    results_dict["read_frame_distribution"] = read_frame_distribution(cds_read_df)\
+        if config["qc"]["use_cds_subset"]["read_frame_distribution"]\
+        else read_frame_distribution(read_df)
 
     return results_dict
