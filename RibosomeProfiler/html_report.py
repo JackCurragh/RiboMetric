@@ -9,11 +9,12 @@ from datetime import datetime
 from .modules import convert_html_to_pdf
 
 
-def generate_report(plots: dict,
-                    export_mode: str = 'html',
-                    name: str = "RibosomeProfiler_report",
-                    outdir: str = ''
-                    ):
+def generate_report(
+    plots: dict,
+    export_mode: str = "html",
+    name: str = "RibosomeProfiler_report",
+    outdir: str = "",
+):
     """
     Generates a report of the RibosomeProfiler results with plots
 
@@ -28,34 +29,31 @@ def generate_report(plots: dict,
     Outputs:
         No variables will be output
     """
-    env = Environment(
-        loader=FileSystemLoader("templates"),
-        autoescape=False
-        )
-        
+    env = Environment(loader=FileSystemLoader("templates"), autoescape=False)
+
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
-    if outdir == '':
+    if outdir == "":
         output = name
     else:
-        if outdir.endswith('/') and outdir != '':
+        if outdir.endswith("/") and outdir != "":
             outdir = outdir[:-1]
         output = outdir + "/" + name
 
-    if export_mode == 'both':
-        export_mode = ['html', 'pdf']
+    if export_mode == "both":
+        export_mode = ["html", "pdf"]
     else:
         export_mode = [export_mode]
 
     template = env.get_template("base.html")
 
     for filetype in export_mode:
-        if filetype == 'html':
+        if filetype == "html":
             context = {
                 "plots": plots,
                 "export_mode": filetype,
-                "datetime": completion_time
-                }
+                "datetime": completion_time,
+            }
             jinja_render = template.render(context)
             out = output + ".html"
             with open(out, mode="w", encoding="utf-8") as f:
@@ -64,8 +62,8 @@ def generate_report(plots: dict,
             context = {
                 "plots": plots,
                 "export_mode": filetype,
-                "datetime": completion_time
-                }
+                "datetime": completion_time,
+            }
             jinja_render = template.render(context)
             out = output + ".pdf"
             convert_html_to_pdf(jinja_render, out)
