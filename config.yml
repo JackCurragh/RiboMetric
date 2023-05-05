@@ -1,4 +1,5 @@
 plots:
+  # Controls general plot theming and specific plot options
   font_family: Helvetica Neue,Helvetica,Arial,sans-serif
   base_color: '#7f7f7f'
   nucleotide_colors: {"A": "#c93434", "C": "#2e85db", "G": "#f0de1f", "T": "#1fc24d"}
@@ -7,3 +8,8 @@ plots:
     lower_limit: 10
   ligation_bias_distribution:
     include_N: True
+qc:
+  use_cds_subset:
+  # Defines which modules use only reads that are on cds
+  # If False, uses all reads
+    read_frame_distribution: True

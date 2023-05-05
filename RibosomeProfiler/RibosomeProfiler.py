@@ -59,6 +59,7 @@ from .file_parser import (
 )
 from .qc import annotation_free_mode, annotation_mode, sequence_mode
 from .plots import generate_plots
+from .modules import a_site_calculation
 from .html_report import generate_report
 
 
@@ -301,7 +302,7 @@ def main(args):
     """
     console = Console()
     print_logo(console)
-
+    # change to config argument (path)
     with open("config.yml", "r") as ymlfile:
         config = yaml.load(ymlfile, Loader=yaml.Loader)
 
@@ -330,6 +331,8 @@ def main(args):
             read_df_pre['count']
         )].reset_index(drop=True)
         print("Dataframe expanded")
+        print("Calculating A site information")
+        read_df = a_site_calculation(read_df)
 
         if args.gff is None and args.annotation is None:
             results_dict = annotation_free_mode(read_df, args.config)
@@ -357,7 +360,7 @@ def main(args):
             print("Running annotation mode")
             results_dict = annotation_mode(read_df,
                                            annotation_df,
-                                           config=args.config)
+                                           config)
             plots_list = generate_plots(results_dict, config)
             generate_report(plots_list)
 
@@ -368,7 +371,7 @@ def main(args):
                     results_dict,
                     read_df,
                     fasta_dict,
-                    args.config
+                    config
                 )
                 plots_list = generate_plots(results_dict, config)
                 generate_report(plots_list)
