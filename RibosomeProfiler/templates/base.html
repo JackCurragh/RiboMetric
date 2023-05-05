@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8">
   <title>RibosomeProfiler results</title>
-  {% if export_mode == "html" %}
+  {% if filetype == "html" %}
   <style>
     /* temp https://www.w3schools.com/howto/howto_css_fixed_sidebar.asp */
     /* The sidebar menu */
@@ -16,7 +16,7 @@
         z-index: 1; /* Stay on top */
         top: 0; /* Stay at the top */
         left: 0;
-        background-color: #111; /* Black */
+        background-color: #1E1E1E; /* Black */
         overflow-x: hidden; /* Disable horizontal scroll */
         padding-top: 20px;
     }
@@ -50,9 +50,9 @@
   {% endif %}
 </head>
 <body>
-    {% if export_mode == "html" %}
+    {% if filetype == "html" %}
     <div class="sidenav">
-        <a href="#"><h4>RibosomeProfiler</h4></a>
+        <a href="#"><h4> <img src="data:image/png;base64,{{logo}}" alt="RibosomeProfiler" width="240" height="110"> </h4></a>
         {% for plot in plots %}
         <a href="#{{plot.name}}">{{plot.name}}</a>
         {% endfor %}
@@ -60,14 +60,14 @@
     {% endif %}
     <div class="main">
         <h1>RibosomeProfiler Report</h1>
-        <h5>Results from your RibosomeProfiler analysis, completed at {{datetime}}</h5>
+        <h5>Results from your RibosomeProfiler analysis, completed at {{completion_time}}</h5>
         {% for plot in plots %}
             <hr>
             <h2 id="{{plot.name}}">{{plot.name}}</h2>
             <p>{{plot.description}}</p>
-            {% if export_mode == "html" %}
+            {% if filetype == "html" %}
             {{plot.fig_html}}
-            {% elif export_mode == "pdf" %}
+            {% elif filetype == "pdf" %}
             <img src="data:image/png;base64,{{plot.fig_image}}">
             {% endif %}
         {% endfor %}
