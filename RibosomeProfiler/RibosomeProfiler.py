@@ -304,7 +304,7 @@ def main(args):
     """
     console = Console()
     print_logo(console)
-    
+
     with open(args.config, "r") as ymlfile:
         config = yaml.load(ymlfile, Loader=yaml.Loader)
 
@@ -314,7 +314,7 @@ def main(args):
             args.gff,
             args.output,
             args.transcripts,
-            args.config
+            config
             )
 
     else:
@@ -337,7 +337,7 @@ def main(args):
         read_df = a_site_calculation(read_df)
 
         if args.gff is None and args.annotation is None:
-            results_dict = annotation_free_mode(read_df, args.config)
+            results_dict = annotation_free_mode(read_df, config)
             plots_list = generate_plots(results_dict, config)
             generate_report(plots_list)
 
@@ -351,7 +351,7 @@ def main(args):
                     args.gff,
                     args.output,
                     args.transcripts,
-                    args.config
+                    config
                 )
                 print("Annotation prepared")
             elif args.annotation is not None and args.gff is None:
