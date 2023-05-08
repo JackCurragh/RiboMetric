@@ -140,7 +140,7 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     Calculate the distribution of the reading frame over the dataset
 
     Inputs:
-        a_site_df: Dataframe ontaining the read information with an added 
+        a_site_df: Dataframe containing the read information with an added 
         column for the a-site location
 
     Outputs:
