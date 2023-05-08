@@ -171,7 +171,7 @@ def read_frame_cull(read_frame_dict: dict, config: dict) -> dict:
     Outputs:
     culled_read_frame_dict
     """
-    culled_read_frame_dict = read_frame_dict
+    culled_read_frame_dict = read_frame_dict.copy()
     cull_list = list(culled_read_frame_dict.keys())
     for k in cull_list:
         if (
