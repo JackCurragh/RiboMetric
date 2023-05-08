@@ -113,9 +113,12 @@ test_files/
 RibosomeProfiler_report.*
 RibosomeProfiler/test_report.*
 1000_entry_RibosomeProfiler.tsv
+Saccharomyces_cerevisiae_RibosomeProfiler.tsv
+gencode_RibosomeProfiler.tsv
 
 *.gtf
 *.gff
 bak*
 
 .gitignore
+
