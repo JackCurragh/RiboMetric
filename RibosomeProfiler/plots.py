@@ -179,19 +179,27 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         and plotly figure for html and pdf export
     """
     culled_read_frame_dict = read_frame_cull(read_frame_dict, config)
-    scored_read_frame_dict = read_frame_score(culled_read_frame_dict)
+    scored_read_frame_dict = read_frame_score(culled_read_frame_dict) \
+        if config["plots"]["read_frame_distribution"]["show_scores"] != "none" \
+        else None
     
+    # Set minimum and maximum font sizes
+    min_font_size, max_font_size = 5, 30
+
+    # Calculate font size based on number of data points
+    num_data_points = len(culled_read_frame_dict)
+    font_size = max_font_size - (max_font_size - min_font_size) * (num_data_points / 50)
+
     plot_data = []
     for i in range(0, 3):
         plot_data.append(
             go.Bar(
                 name="Frame " + str(i + 1),
                 x=list(culled_read_frame_dict.keys()),
-                y=[
-                    culled_read_frame_dict[x][y]
-                    for x in culled_read_frame_dict
-                    for y in culled_read_frame_dict[x]
-                    if y == i
+                y=[culled_read_frame_dict[x][y]
+                for x in culled_read_frame_dict
+                for y in culled_read_frame_dict[x]
+                if y == i
                 ],
             )
         )
@@ -207,26 +215,32 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             color=config["plots"]["base_color"],
         ),
     )
-    for idx in enumerate(culled_read_frame_dict):
-        if idx[1] != "global":
-            y_buffer = max(fig.data[0].y+
-                        fig.data[1].y+
-                        fig.data[2].y)*0.05
-            ymax = max(fig.data[0].y[idx[0]],
-                        fig.data[1].y[idx[0]],
-                        fig.data[2].y[idx[0]])
-            fig.add_annotation(
-                x=idx[1],
-                y=ymax+y_buffer,
-                text=round(scored_read_frame_dict[idx[1]],2), showarrow=False, xanchor='center'
-            )
-    fig.add_annotation(text=f'Score: {round(scored_read_frame_dict["global"],2)}', 
-                    showarrow=False,
-                    xref='paper',
-                    yref='paper',
-                    y=0.64,
-                    x=1.03,
-                    xanchor="left")
+    if scored_read_frame_dict != None:
+        if config["plots"]["read_frame_distribution"]["show_scores"] == "all":
+            for idx in enumerate(culled_read_frame_dict):
+                if idx[1] != "global":
+                    y_buffer = max(fig.data[0].y+
+                                fig.data[1].y+
+                                fig.data[2].y)*0.05
+                    ymax = max(fig.data[0].y[idx[0]],
+                                fig.data[1].y[idx[0]],
+                                fig.data[2].y[idx[0]])
+                    fig.add_annotation(
+                        x=idx[1],
+                        y=ymax+y_buffer,
+                        text=round(scored_read_frame_dict[idx[1]],2),
+                        showarrow=False,
+                        xanchor='center',
+                        font={"size":font_size}
+                    )
+        fig.update_layout()
+        fig.add_annotation(text=f'Score: {round(scored_read_frame_dict["global"],2)}', 
+                        showarrow=False,
+                        xref='paper',
+                        yref='paper',
+                        y=0.64,
+                        x=1.03,
+                        xanchor="left")
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
         "description": "Frame distribution per read length",
