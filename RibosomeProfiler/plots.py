@@ -4,6 +4,7 @@ RibosomeProfiler reports
 """
 
 from plotly import graph_objects as go
+from .modules import read_frame_cull, read_frame_score
 import plotly.io as pio
 import base64
 
@@ -167,7 +168,7 @@ def plot_nucleotide_composition(
 
 def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
     """
-    Generate a plot of the read frame distribution for the full dataset
+    Generate a plot of the read frame distribution
 
     Inputs:
         read_frame_dict: Dataframe containing the read frame distribution
@@ -177,35 +178,28 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         plot_read_frame_dict: Dictionary containing the plot name, description
         and plotly figure for html and pdf export
     """
+    culled_read_frame_dict = read_frame_cull(read_frame_dict, config)
+    scored_read_frame_dict = read_frame_score(culled_read_frame_dict) \
+        if config["plots"]["read_frame_distribution"]["show_scores"] != "none" \
+        else None
     
-    cull_list = list(read_frame_dict.keys())
-    for k in cull_list:
-        if (
-            k > config["plots"]["read_frame_distribution"]["upper_limit"]
-            or k < config["plots"]["read_frame_distribution"]["lower_limit"]
-        ):
-            del read_frame_dict[k]
+    # Set minimum and maximum font sizes
+    min_font_size, max_font_size = 5, 30
 
-    highest_peak_sum = 0
-    second_peak_sum = 0
-    for k, inner_dict in read_frame_dict.items():
-        top_two_values = sorted(inner_dict.values(), reverse=True)[:2]
-        highest_peak_sum += top_two_values[0]
-        second_peak_sum += top_two_values[1]
-    #    test_dict[k] = f'Top 2 values in {k}: {top_two_values}'
-    periodicity_score = (1-second_peak_sum/highest_peak_sum)
-    
+    # Calculate font size based on number of data points
+    num_data_points = len(culled_read_frame_dict)
+    font_size = max_font_size - (max_font_size - min_font_size) * (num_data_points / 50)
+
     plot_data = []
     for i in range(0, 3):
         plot_data.append(
             go.Bar(
                 name="Frame " + str(i + 1),
-                x=list(read_frame_dict.keys()),
-                y=[
-                    read_frame_dict[x][y]
-                    for x in read_frame_dict
-                    for y in read_frame_dict[x]
-                    if y == i
+                x=list(culled_read_frame_dict.keys()),
+                y=[culled_read_frame_dict[x][y]
+                for x in culled_read_frame_dict
+                for y in culled_read_frame_dict[x]
+                if y == i
                 ],
             )
         )
@@ -221,14 +215,32 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             color=config["plots"]["base_color"],
         ),
     )
-    fig.add_annotation(text=f'Score: {round(periodicity_score,2)}', 
-                       align='left',
-                       showarrow=False,
-                       xref='paper',
-                       yref='paper',
-                       y=0.64,
-                       x=1.03,
-                       xanchor="left",)
+    if scored_read_frame_dict != None:
+        if config["plots"]["read_frame_distribution"]["show_scores"] == "all":
+            for idx in enumerate(culled_read_frame_dict):
+                if idx[1] != "global":
+                    y_buffer = max(fig.data[0].y+
+                                fig.data[1].y+
+                                fig.data[2].y)*0.05
+                    ymax = max(fig.data[0].y[idx[0]],
+                                fig.data[1].y[idx[0]],
+                                fig.data[2].y[idx[0]])
+                    fig.add_annotation(
+                        x=idx[1],
+                        y=ymax+y_buffer,
+                        text=round(scored_read_frame_dict[idx[1]],2),
+                        showarrow=False,
+                        xanchor='center',
+                        font={"size":font_size}
+                    )
+        fig.update_layout()
+        fig.add_annotation(text=f'Score: {round(scored_read_frame_dict["global"],2)}', 
+                        showarrow=False,
+                        xref='paper',
+                        yref='paper',
+                        y=0.64,
+                        x=1.03,
+                        xanchor="left")
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
         "description": "Frame distribution per read length",
@@ -237,3 +249,18 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
                                       ).decode("ascii"),
     }
     return plot_read_frame_dict
+
+def plot_frame_score_distribution(read_frame_dict: dict, config: dict) -> dict:
+    """
+    Generate a plot of the read frame score distribution
+
+    Inputs:
+        read_frame_dict: Dataframe containing the read frame distribution
+        config: Dictionary containing the configuration information
+
+    Outputs:
+        plot_frame_score_dict: Dictionary containing the plot name, description
+        and plotly figure for html and pdf export
+    """
+    culled_read_frame_dict = read_frame_cull(read_frame_dict, config)
+    scored_read_frame_dict = read_frame_score(culled_read_frame_dict)
