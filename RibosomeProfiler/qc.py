@@ -16,6 +16,8 @@ from .modules import (
     ligation_bias_distribution,
     nucleotide_composition,
     read_frame_distribution,
+    mRNA_distribution,
+    annotate_reads,
 )
 
 
@@ -34,6 +36,7 @@ def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
     
     print("Running modules")
     results_dict = {
+        "mode": "annotation_free_mode",
         "read_length_distribution": read_length_distribution(read_df),
         "ligation_bias_distribution": ligation_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
@@ -62,9 +65,13 @@ def annotation_mode(
         results_dict: Dictionary containing the results of the qc analysis
     """
     print("Subsetting to CDS reads")
+    annotation_df["transcript_id"] = annotation_df["transcript_id"].replace("\"", "", regex=True)
     cds_read_df = read_df_to_cds_read_df(read_df, annotation_df)
+    print("Merging annotation and reads")
+    annotated_read_df = annotate_reads(read_df, annotation_df)
     print("Running modules")
     results_dict = {
+        "mode": "annotation_mode",
         "read_length_distribution": read_length_distribution(read_df),
         "ligation_bias_distribution": ligation_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
@@ -72,6 +79,7 @@ def annotation_mode(
     results_dict["read_frame_distribution"] = read_frame_distribution(cds_read_df)\
         if config["qc"]["use_cds_subset"]["read_frame_distribution"]\
         else read_frame_distribution(read_df)
+    results_dict["mRNA_distribution"] = mRNA_distribution(annotated_read_df)
 
     return results_dict
     
@@ -98,6 +106,7 @@ def sequence_mode(
         results_dict: Dictionary containing the results of the qc analysis
     """
     results_dict = {
+        "mode": "sequence_mode",
         "read_length_distribution": read_length_distribution(read_df),
         "ligation_bias_distribution": ligation_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
