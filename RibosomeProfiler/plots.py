@@ -240,14 +240,18 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
                     ymax = max(fig.data[0].y[idx[0]],
                                 fig.data[1].y[idx[0]],
                                 fig.data[2].y[idx[0]])
-                    fig.add_annotation(
-                        x=idx[1],
-                        y=ymax+y_buffer,
-                        text=round(scored_read_frame_dict[idx[1]],2),
-                        showarrow=False,
-                        xanchor='center',
-                        font={"size":font_size}
-                    )
+                    if fig.data[0].y[idx[0]]\
+                          + fig.data[0].y[idx[0]]\
+                          + fig.data[0].y[idx[0]]\
+                              > y_buffer:
+                        fig.add_annotation(
+                            x=idx[1],
+                            y=ymax+y_buffer,
+                            text=round(scored_read_frame_dict[idx[1]],2),
+                            showarrow=False,
+                            xanchor='center',
+                            font={"size":font_size}
+                        )
         fig.update_layout()
         fig.add_annotation(text=f'Score: {round(scored_read_frame_dict["global"],2)}', 
                         showarrow=False,
