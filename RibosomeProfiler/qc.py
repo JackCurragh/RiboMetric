@@ -65,6 +65,7 @@ def annotation_mode(
         results_dict: Dictionary containing the results of the qc analysis
     """
     print("Subsetting to CDS reads")
+    annotation_df["transcript_id"] = annotation_df["transcript_id"].replace("\"", "", regex=True)
     cds_read_df = read_df_to_cds_read_df(read_df, annotation_df)
     print("Merging annotation and reads")
     annotated_read_df = annotate_reads(read_df, annotation_df)
