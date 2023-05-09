@@ -215,7 +215,7 @@ def annotate_reads(a_site_df: pd.DataFrame, annotation_df: pd.DataFrame) -> pd.D
     Inputs:
         a_site_df: Dataframe containing the read information with an added 
         column for the a-site location
-        annotation_df: Dataframe containing the cds start/stop
+        annotation_df: Dataframe containing the CDS start/stop
         and transcript id from a gff file.
 
     Outputs:
@@ -241,14 +241,14 @@ def assign_mRNA_category(row) -> str:
 
     Outputs:
         mRNA category: string with the category for the read
-        ["five_leader", "start_codon", "cds", "stop_codon", "three_trailer"]
+        ["five_leader", "start_codon", "CDS", "stop_codon", "three_trailer"]
     """
     if row['a_site'] < row['cds_start']:
         return 'five_leader'
     elif row['a_site'] == row['cds_start']:
         return 'start_codon'
     elif row['cds_start'] < row['a_site'] < row['cds_end']:
-        return 'cds'
+        return 'CDS'
     elif row['a_site'] == row['cds_end']:
         return 'stop_codon'
     elif row['a_site'] > row['cds_end']:
@@ -271,7 +271,7 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         category at the different read lengths
     """
     # Creating MultiIndex for reindexing
-    categories = ['five_leader', 'start_codon', 'cds', 'stop_codon', 'three_trailer']
+    categories = ['five_leader', 'start_codon', 'CDS', 'stop_codon', 'three_trailer']
     classes = annotated_read_df['read_length'].unique()
     idx = pd.MultiIndex.from_product([classes, categories], names=['class', 'category'])
     # Adding mRNA category to annotated_read_df with assign_mRNA_category
@@ -293,7 +293,9 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         if read_length not in mRNA_distribution_dict:
             mRNA_distribution_dict[read_length] = {}
         mRNA_distribution_dict[read_length][mRNA_category] = value
-
+    #Setting order of categories 5' to 3'
+    for i in mRNA_distribution_dict:
+        mRNA_distribution_dict[i] = {k: mRNA_distribution_dict[i][k] for k in categories if k in mRNA_distribution_dict[i]}
     return mRNA_distribution_dict
 
 

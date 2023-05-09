@@ -4,7 +4,7 @@ RibosomeProfiler reports
 """
 
 from plotly import graph_objects as go
-from .modules import read_frame_cull, read_frame_score
+from .modules import read_frame_cull, read_frame_score, sum_mRNA_distribution
 import plotly.io as pio
 import base64
 
@@ -21,17 +21,27 @@ def generate_plots(results_dict: dict, config: dict) -> list:
     Output:
 
     """
-    plots_list = [
-        plot_read_length_distribution(results_dict["read_length_distribution"],
-                                      config),
+    print("Generating plots")
+    plots_list = []
+    plots_list.extend([
+        plot_read_length_distribution(
+            results_dict["read_length_distribution"],
+            config),
         plot_ligation_bias_distribution(
-            results_dict["ligation_bias_distribution"], config
-        ),
-        plot_nucleotide_composition(results_dict["nucleotide_composition"],
-                                    config),
-        plot_read_frame_distribution(results_dict["read_frame_distribution"],
-                                     config),
-    ]
+            results_dict["ligation_bias_distribution"],
+        config),
+        plot_nucleotide_composition(
+            results_dict["nucleotide_composition"],
+            config),
+        plot_read_frame_distribution(
+            results_dict["read_frame_distribution"],
+            config)
+    ])
+    if results_dict["mode"] == "annotation_mode":
+        plots_list.extend([plot_mRNA_distribution(
+            results_dict["mRNA_distribution"],
+            config),
+        ])
     return plots_list
 
 
@@ -268,7 +278,41 @@ def plot_frame_score_distribution(read_frame_dict: dict, config: dict) -> dict:
 
 
 def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
+    
+    sum_mRNA_dict = sum_mRNA_distribution(mRNA_distribution_dict, config)
+    plot_data = []
+    for k,v in sum_mRNA_dict.items():
+        plot_data.append(
+            go.Bar(
+                name=k.replace("_"," ").title(),
+                x=[v],
+                y=[""],
+                width=[0.3],
+                hovertemplate = "Proportion: %{x:.2%}",
+                orientation='h'
+                )
+            )
 
+    fig = go.Figure(plot_data)
+    fig.update_layout(
+        barmode='stack',
+        title="mRNA Reads Breakdown",
+        xaxis_title="Proportion",
+        yaxis_title="",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
+            ),
+        )
+    plot_mRNA_distribution_dict = {
+        "name": "mRNA Reads Breakdown",
+        "description": "Shows the proportion of the different transcript \
+regions represented in the reads",
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
+                                      ).decode("ascii"),
+    }
     return plot_mRNA_distribution_dict
 
 #WIP
