@@ -10,6 +10,7 @@ import pandas as pd
 import subprocess
 import gffpandas.gffpandas as gffpd
 import os
+import numpy as np
 
 
 def parse_gff(gff_path: str) -> gffpd.Gff3DataFrame:
@@ -280,9 +281,29 @@ def prepare_annotation(gff_path: str,
     gffdf.loc[:, "transcript_id"] = gffdf["attributes"].str.extract(
         transcript_id_regex
         )
+
+    def extract_transcript_id(attr_str):
+        for attr in attr_str.split(";"):
+            # Ensembl GFF3 support
+            if attr.startswith("Parent=transcript:") \
+                or attr.startswith("ID=transcript:"):
+                return attr.split(":")[1]
+            # Gencode GFF3 support
+            elif attr.startswith("transcript_id="):
+                return attr.split("=")[1]
+            # Ensembl GTF support
+            elif attr.startswith(" transcript_id "):
+                return attr.split(" ")[2]
+        return np.nan
+
+    gffdf.loc[:, "transcript_id"] = gffdf["attributes"].apply(
+        extract_transcript_id
+        )
+
     cds_df = gffdf[gffdf["type"] == "CDS"]
+    print(cds_df.head())
+
     coding_tx_ids = cds_df['transcript_id'].unique()[:num_transcripts]
-    print(coding_tx_ids)
 
     annotation_df = gff_df_to_cds_df(gffdf, coding_tx_ids)
     basename = os.path.basename(gff_path).split('.')[0]
