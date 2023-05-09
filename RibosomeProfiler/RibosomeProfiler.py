@@ -49,6 +49,8 @@ from rich.text import Text
 from rich.table import Table
 from rich.emoji import Emoji
 
+import yaml
+
 from .file_parser import (
     parse_bam,
     parse_fasta,
@@ -56,6 +58,9 @@ from .file_parser import (
     prepare_annotation,
 )
 from .qc import annotation_free_mode, annotation_mode, sequence_mode
+from .plots import generate_plots
+from .modules import a_site_calculation
+from .html_report import generate_report
 
 
 def print_logo(console):
@@ -223,8 +228,8 @@ def argument_parser():
             "--config",
             type=str,
             required=False,
-            default="config.yaml",
-            help="Path to the config file (default: config.yaml)",
+            default="config.yml",
+            help="Path to the config file (default: config.yml)",
         )
     run_parser.add_argument(
             "--json",
@@ -281,6 +286,8 @@ def argument_parser():
             "--config",
             type=str,
             required=False,
+            default="config.yml",
+            help="Path to the config file (default: config.yml)",
     )
     return parser
 
@@ -298,13 +305,16 @@ def main(args):
     console = Console()
     print_logo(console)
 
+    with open(args.config, "r") as ymlfile:
+        config = yaml.load(ymlfile, Loader=yaml.Loader)
+
     if args.command == 'prepare':
         print_table_prepare(args, console, "Prepare Mode")
         prepare_annotation(
             args.gff,
             args.output,
             args.transcripts,
-            args.config
+            config
             )
 
     else:
@@ -323,9 +333,13 @@ def main(args):
             read_df_pre['count']
         )].reset_index(drop=True)
         print("Dataframe expanded")
+        print("Calculating A site information")
+        read_df = a_site_calculation(read_df)
 
         if args.gff is None and args.annotation is None:
-            results_dict = annotation_free_mode(read_df, args.config)
+            results_dict = annotation_free_mode(read_df, config)
+            plots_list = generate_plots(results_dict, config)
+            generate_report(plots_list)
 
         else:
             if args.annotation is not None and args.gff is not None:
@@ -337,7 +351,7 @@ def main(args):
                     args.gff,
                     args.output,
                     args.transcripts,
-                    args.config
+                    config
                 )
                 print("Annotation prepared")
             elif args.annotation is not None and args.gff is None:
@@ -348,7 +362,9 @@ def main(args):
             print("Running annotation mode")
             results_dict = annotation_mode(read_df,
                                            annotation_df,
-                                           config=args.config)
+                                           config)
+            plots_list = generate_plots(results_dict, config)
+            generate_report(plots_list)
 
             if args.fasta is not None:
                 fasta_dict = parse_fasta(args.fasta)
@@ -357,8 +373,10 @@ def main(args):
                     results_dict,
                     read_df,
                     fasta_dict,
-                    args.config
+                    config
                 )
+                plots_list = generate_plots(results_dict, config)
+                generate_report(plots_list)
 
 
 if __name__ == "__main__":
