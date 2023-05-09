@@ -250,6 +250,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
     }
     return plot_read_frame_dict
 
+#WIP
 def plot_frame_score_distribution(read_frame_dict: dict, config: dict) -> dict:
     """
     Generate a plot of the read frame score distribution
@@ -264,3 +265,13 @@ def plot_frame_score_distribution(read_frame_dict: dict, config: dict) -> dict:
     """
     culled_read_frame_dict = read_frame_cull(read_frame_dict, config)
     scored_read_frame_dict = read_frame_score(culled_read_frame_dict)
+
+
+def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
+
+    return plot_mRNA_distribution_dict
+
+#WIP
+def plot_mRNA_read_length(mRNA_distribution_dict: dict, config: dict) -> dict:
+
+    return plot_mRNA_read_length_dict
