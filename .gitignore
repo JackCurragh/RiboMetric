@@ -118,6 +118,7 @@ gencode_RibosomeProfiler.tsv
 
 *.gtf
 *.gff
+!1000_entry.gff
 bak*
 
 .gitignore

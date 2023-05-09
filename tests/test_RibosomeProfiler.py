@@ -17,7 +17,7 @@ def test_main_prepare():
                      gff=f'{file_path}/1000_entry.gff',
                      transcripts=1000,
                      output=f'{file_path}',
-                     config='test_config.txt')
+                     config=f'{file_path}/test_config.txt')
 
     # Redirect stdout to a StringIO object to capture output
     sys.stdout = StringIO()
@@ -38,7 +38,7 @@ def test_main_run():
                      annotation=f'{file_path}/1000_entry_RibosomeProfiler.tsv',
                      bam=f'{file_path}/test.bam',
                      output=f'{file_path}',
-                     config='test_config.txt',
+                     config=f'{file_path}/test_config.txt',
                      all=False,
                      gff=None,
                      fasta=None,
