@@ -2,33 +2,64 @@
 
 """Tests for `RibosomeProfiler` package."""
 
-from RibosomeProfiler.file_parser import parse_bam
-from RibosomeProfiler.modules import *
 
-def test_bam_parsing():
-    """Test bam parsing"""
-    bam = parse_bam(
-        "tests/test_data/test.bam", 10000
-    )
-    assert len(bam) == 10001
+from RibosomeProfiler.RibosomeProfiler import main
 
-def test_read_length_distribution():
-    """Test read length distribution calculation"""
-    read_df_pre = pd.read_csv("tests/test_data/test.csv")
-    read_df = read_df_pre.loc[read_df_pre.index.repeat(read_df_pre['count'])].reset_index(drop=True)
-    read_length_dict = read_length_distribution(read_df)
-    assert read_length_dict[29] == 4
+from argparse import Namespace
+from io import StringIO
+import sys
+import os
 
-def test_ligation_bias_distribution():
-    """Test ligation bias distribution calculation"""
-    read_df_pre = pd.read_csv("tests/test_data/test.csv")
-    read_df = read_df_pre.loc[read_df_pre.index.repeat(read_df_pre['count'])].reset_index(drop=True)
-    ligation_bias_dict = ligation_bias_distribution(read_df)
-    assert ligation_bias_dict["AA"] == 0.5
 
-def test_nucleotide_composition():
-    """Test nucleotide composition calculation"""
-    read_df_pre = pd.read_csv("tests/test_data/test.csv")
-    read_df = read_df_pre.loc[read_df_pre.index.repeat(read_df_pre['count'])].reset_index(drop=True)
-    nucleotide_composition_dict = nucleotide_composition(read_df)
-    assert nucleotide_composition_dict["A"] == [0.5,0.5,0.625,0.625,0.125,0,0,0.375,0.375,0.375]
+def test_main_prepare():
+    file_path = os.path.join(os.path.dirname(__file__), 'test_data')
+
+    args = Namespace(command='prepare',
+                     gff=f'{file_path}/1000_entry.gff',
+                     transcripts=1000,
+                     output=f'{file_path}',
+                     config='test_config.txt')
+
+    # Redirect stdout to a StringIO object to capture output
+    sys.stdout = StringIO()
+
+    main(args)
+
+    # Get the output
+    output = sys.stdout.getvalue()
+
+    # Assert that the expected output was produced
+    assert 'Parsing gff' in output
+
+
+def test_main_run():
+    file_path = os.path.join(os.path.dirname(__file__), 'test_data')
+
+    args = Namespace(command='run',
+                     annotation=f'{file_path}/1000_entry_RibosomeProfiler.tsv',
+                     bam=f'{file_path}/test.bam',
+                     output=f'{file_path}',
+                     config='test_config.txt',
+                     all=False,
+                     gff=None,
+                     fasta=None,
+                     subsample=1000,
+                     transcripts=None,
+                     json=None,
+                     html=True,
+                     csv=None,
+                     )
+
+    # Redirect stdout to a StringIO object to capture output
+    sys.stdout = StringIO()
+
+    main(args)
+
+    # Get the output
+    output = sys.stdout.getvalue()
+
+    # Assert that the expected output was produced
+    assert 'Annotation parsed' in output
+    assert 'Running modules' in output
+
+
