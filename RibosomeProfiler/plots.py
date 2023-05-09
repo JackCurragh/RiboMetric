@@ -38,9 +38,14 @@ def generate_plots(results_dict: dict, config: dict) -> list:
             config)
     ])
     if results_dict["mode"] == "annotation_mode":
-        plots_list.extend([plot_mRNA_distribution(
-            results_dict["mRNA_distribution"],
-            config),
+        plots_list.extend([
+            plot_mRNA_distribution(
+                results_dict["mRNA_distribution"],
+                config),
+            plot_mRNA_read_breakdown(
+                results_dict["mRNA_distribution"],
+                config),
+
         ])
     return plots_list
 
@@ -331,7 +336,7 @@ regions represented in the reads",
     return plot_mRNA_distribution_dict
 
 
-def mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict:
+def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict:
     """
     Generate a line plot of the mRNA distribution over the read lenghts
 
