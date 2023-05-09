@@ -2,7 +2,6 @@
 
 """Tests for `RibosomeProfiler` package."""
 
-
 from RibosomeProfiler.RibosomeProfiler import main
 
 from argparse import Namespace
