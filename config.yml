@@ -12,7 +12,11 @@ plots:
   mRNA_distribution:
     upper_limit: 50
     lower_limit: 10
-    absolute_counts: False 
+    absolute_counts: False
+  mRNA_read_breakdown:
+    upper_limit: 50
+    lower_limit: 10
+    absolute_counts: False
 qc:
   use_cds_subset:
   # Defines which modules use only reads that are on cds

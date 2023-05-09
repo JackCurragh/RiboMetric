@@ -223,7 +223,6 @@ def annotate_reads(a_site_df: pd.DataFrame, annotation_df: pd.DataFrame) -> pd.D
         with an added column for the a-site location along
         with the columns from the gff file
     """
-    annotation_df["transcript_id"] = annotation_df["transcript_id"].replace("\"", "", regex=True)
     annotated_read_df = a_site_df.assign(
         transcript_id=a_site_df.reference_name.str.split('|').str[0]
         ).merge(annotation_df, on="transcript_id")
