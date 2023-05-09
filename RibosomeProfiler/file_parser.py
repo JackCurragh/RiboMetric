@@ -255,6 +255,21 @@ def gff_df_to_cds_df(
     return pd.DataFrame(rows)
 
 
+def extract_transcript_id(attr_str):
+    for attr in attr_str.split(";"):
+        # Ensembl GFF3 support
+        if attr.startswith("Parent=transcript:") \
+                or attr.startswith("ID=transcript:"):
+            return attr.split(":")[1]
+        # Gencode GFF3 support
+        elif attr.startswith("transcript_id="):
+            return attr.split("=")[1]
+        # Ensembl GTF support
+        elif attr.startswith(" transcript_id "):
+            return attr.split(" ")[2]
+    return np.nan
+    
+
 def prepare_annotation(gff_path: str,
                        outdir: str,
                        num_transcripts: int,
@@ -282,26 +297,11 @@ def prepare_annotation(gff_path: str,
         transcript_id_regex
         )
 
-    def extract_transcript_id(attr_str):
-        for attr in attr_str.split(";"):
-            # Ensembl GFF3 support
-            if attr.startswith("Parent=transcript:") \
-                or attr.startswith("ID=transcript:"):
-                return attr.split(":")[1]
-            # Gencode GFF3 support
-            elif attr.startswith("transcript_id="):
-                return attr.split("=")[1]
-            # Ensembl GTF support
-            elif attr.startswith(" transcript_id "):
-                return attr.split(" ")[2]
-        return np.nan
-
     gffdf.loc[:, "transcript_id"] = gffdf["attributes"].apply(
         extract_transcript_id
         )
 
     cds_df = gffdf[gffdf["type"] == "CDS"]
-    print(cds_df.head())
 
     coding_tx_ids = cds_df['transcript_id'].unique()[:num_transcripts]
 
