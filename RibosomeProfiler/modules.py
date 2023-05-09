@@ -208,7 +208,7 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     return read_frame_dict
 
 
-def annotated_read_df(a_site_df: pd.DataFrame, annotation_df: pd.DataFrame) -> pd.DataFrame:
+def annotate_reads(a_site_df: pd.DataFrame, annotation_df: pd.DataFrame) -> pd.DataFrame:
     """
     Merges the annotation dataframe with the read dataframe
 
@@ -224,7 +224,7 @@ def annotated_read_df(a_site_df: pd.DataFrame, annotation_df: pd.DataFrame) -> p
         with the columns from the gff file
     """
     annotated_read_df = a_site_df.assign(
-        transcript_id=read_df.reference_name.str.split('|').str[0]
+        transcript_id=a_site_df.reference_name.str.split('|').str[0]
         ).merge(annotation_df, on="transcript_id")
     return annotated_read_df
 
@@ -259,7 +259,47 @@ def assign_mRNA_category(row) -> str:
 
 def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
     """
-    Calculate the distribution of the reading frame over the dataset
+    Calculate the distribution of the mRNA categories over the read length
+
+    Inputs:
+        annotated_read_df: Dataframe containing the read information
+        with an added column for the a-site location along
+        with the columns from the gff file
+
+    Outputs:
+        mRNA_distribution_dict: Nested dictionary containing counts for every mRNA
+        category at the different read lengths
+    """
+    # Creating MultiIndex for reindexing
+    categories = ['five_leader', 'start_codon', 'cds', 'stop_codon', 'three_trailer']
+    classes = annotated_read_df['read_length'].unique()
+    idx = pd.MultiIndex.from_product([classes, categories], names=['class', 'category'])
+    # Adding mRNA category to annotated_read_df with assign_mRNA_category
+    annotated_read_df['mRNA_category'] = (
+        annotated_read_df
+        .apply(assign_mRNA_category, axis=1)
+        )
+    annotated_read_df = (
+        annotated_read_df
+        .groupby(['read_length', "mRNA_category"])
+        .size()
+        .reindex(idx, fill_value=0)
+        .sort_index()
+        )
+    # Creating mRNA_distribution_dict from annotated_read_df
+    mRNA_distribution_dict = {}
+    for index, value in annotated_read_df.items():
+        read_length, mRNA_category = index
+        if read_length not in mRNA_distribution_dict:
+            mRNA_distribution_dict[read_length] = {}
+        mRNA_distribution_dict[read_length][mRNA_category] = value
+
+    return mRNA_distribution_dict
+
+
+def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
+    """
+    Calculate the sum of mRNA categories 
 
     Inputs:
         annotated_read_dict: Dataframe containing the read information
@@ -270,28 +310,17 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         read_frame_dict: Nested dictionary containing counts for every reading
         frame at the different read lengths
     """
-    # Creating MultiIndex for reindexing
-    categories = ['five_leader', 'start_codon', 'cds', 'stop_codon', 'three_trailer']
-    classes = read_df['read_length'].unique()
-    idx = pd.MultiIndex.from_product([classes, categories], names=['class', 'category'])
-    # Adding mRNA category to annotated_read_df with assign_mRNA_category
-    annotated_read_df['mRNA_category'] = (
-        annotated_read_df
-        .apply(assign_mRNA_category, axis=1)
-        .groupby(["read_length", "mRNA_category"])
-        .size()
-        .reindex(idx, fill_value=0)
-        .sort_index()
-    )
-    # Creating mRNA_distribution_dict from annotated_read_df
-    mRNA_distribution_dict = {}
-    for index, value in annotated_read_df.items():
-        read_length, mRNA_category = index
-        if read_length not in mRNA_distribution_dict:
-            mRNA_distribution_dict[read_length] = {}
-        mRNA_distribution_dict[read_length][mRNA_category] = value
+    sum_mRNA_dict = {}
+    for inner_dict in mRNA_distribution_dict.values():
+        for k, v in inner_dict.items():
+            if k in sum_mRNA_dict:
+                sum_mRNA_dict[k] += v
+            else:
+                sum_mRNA_dict[k] = v
+    if not config["plots"]["mRNA_distribution"]["absolute_counts"]:
+        sum_mRNA_dict = {k: (v/sum(sum_mRNA_dict.values())) for k, v in sum_mRNA_dict.items()}
 
-    return mRNA_distribution_dict
+    return sum_mRNA_dict
 
 def convert_html_to_pdf(source_html, output_filename):
     result_file = open(output_filename, "w+b")
