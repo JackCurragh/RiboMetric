@@ -34,6 +34,7 @@ def test_a_site_calculation():
     a_site_df = a_site_calculation(read_df)
     assert a_site_df.a_site[0] == 366
 
+
 def test_read_frame_distribution():
     read_df_pre = pd.read_csv("tests/test_data/test.csv")
     read_df = read_df_pre.loc[read_df_pre.index.repeat(read_df_pre['count'])].reset_index(drop=True)
