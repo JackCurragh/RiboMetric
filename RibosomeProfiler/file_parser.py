@@ -266,7 +266,7 @@ def extract_transcript_id(attr_str):
             return attr.split("=")[1]
         # Ensembl GTF support
         elif attr.startswith(" transcript_id "):
-            return attr.split(" ")[2]
+            return attr.split(" ")[2].replace("\"", "")
     return np.nan
     
 
