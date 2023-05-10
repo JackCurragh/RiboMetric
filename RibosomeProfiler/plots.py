@@ -5,7 +5,7 @@ RibosomeProfiler reports
 
 from plotly import graph_objects as go
 from .modules import read_frame_cull, read_frame_score, sum_mRNA_distribution
-import pandas       #logoplot
+import pandas as pd #logoplot
 import subprocess   #logoplot
 import plotly.io as pio
 import base64
