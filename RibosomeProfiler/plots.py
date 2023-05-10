@@ -328,6 +328,7 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
             size=18,
             color=config["plots"]["base_color"],
             ),
+            legend={'traceorder':'normal'},
         )
     plot_mRNA_distribution_dict = {
         "name": "mRNA Reads Breakdown",
@@ -385,6 +386,7 @@ def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict
                 size=18,
                 color=config["plots"]["base_color"],
             ),
+            legend={'traceorder':'normal'},
         )
     plot_mRNA_read_breakdown_dict = {
         "name": "mRNA Reads Breakdown over Read Length",
