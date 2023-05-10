@@ -45,7 +45,9 @@ def generate_plots(results_dict: dict, config: dict) -> list:
             plot_mRNA_read_breakdown(
                 results_dict["mRNA_distribution"],
                 config),
-
+            plot_metagene_profile(
+                results_dict["metagene_profile"],
+                config),
         ])
     return plots_list
 
@@ -269,7 +271,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
     }
     return plot_read_frame_dict
 
-#WIP
+#WIP - scrapped? I think the function for this plot has been incorporated in plot_read_frame_distribution
 def plot_frame_score_distribution(read_frame_dict: dict, config: dict) -> dict:
     """
     Generate a plot of the read frame score distribution
@@ -291,7 +293,7 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
     Generate a bar plot of the mRNA distribution
 
     Inputs:
-        mRNA_distribution_dict: Dataframe containing the mRNA distribution
+        mRNA_distribution_dict: Dictionary containing the mRNA distribution
         over the read lengths
         config: Dictionary containing the configuration information
 
@@ -328,6 +330,7 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
             size=18,
             color=config["plots"]["base_color"],
             ),
+            legend={'traceorder':'normal'},
         )
     plot_mRNA_distribution_dict = {
         "name": "mRNA Reads Breakdown",
@@ -345,7 +348,7 @@ def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict
     Generate a line plot of the mRNA distribution over the read lenghts
 
     Inputs:
-        mRNA_distribution_dict: Dataframe containing the mRNA distribution
+        mRNA_distribution_dict: Dictionary containing the mRNA distribution
         over the read lengths
         config: Dictionary containing the configuration information
 
@@ -379,12 +382,12 @@ def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict
             yaxis_title="Proportion"
             if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
             else "Counts",
-            #yaxis_range=[0, 1],
             font=dict(
                 family=config["plots"]["font_family"],
                 size=18,
                 color=config["plots"]["base_color"],
             ),
+            legend={'traceorder':'normal'},
         )
     plot_mRNA_read_breakdown_dict = {
         "name": "mRNA Reads Breakdown over Read Length",
@@ -395,3 +398,44 @@ regions represented in the reads over the different read lengths.",
                                       ).decode("ascii"),
     }
     return plot_mRNA_read_breakdown_dict
+
+
+def plot_metagene_profile(metagene_dict: dict, config: dict) -> dict:
+    """
+    Generate a plot of the distribution of reads depending on their distance
+    to a target (default: start codon)
+
+    Inputs:
+        metagene_dict: Dictionary containing the counts as values and distance
+        from target as keys
+        config: Dictionary containing the configuration information
+
+    Outputs:
+        plot_mRNA_read_breakdown_dict: Dictionary containing the plot name,
+        description and plotly figure for html and pdf export
+    """
+    fig = go.Figure([go.Bar(x=list(metagene_dict.keys()), y=list(metagene_dict.values()))])
+    fig.update_layout(
+        title="Metagene Profile",
+        xaxis_title="Read Length",
+        yaxis_title="Read Count",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
+        ),
+        bargap=0
+    )
+    fig.update_xaxes(
+        range=config["plots"]["metagene_profile"]["distance_range"]
+        )
+    plot_mRNA_read_breakdown_dict = {
+        "name": "Metagene profile",
+        "description": "Metagene profile showing the distance count of reads per \
+distance away from a target (default: start codon).",
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
+                                      ).decode("ascii"),
+    }
+    return plot_mRNA_read_breakdown_dict
+    

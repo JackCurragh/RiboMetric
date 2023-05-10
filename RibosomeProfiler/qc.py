@@ -18,6 +18,7 @@ from .modules import (
     read_frame_distribution,
     mRNA_distribution,
     annotate_reads,
+    metagene_profile,
 )
 
 
@@ -64,11 +65,10 @@ def annotation_mode(
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
-    print("Subsetting to CDS reads")
-    annotation_df["transcript_id"] = annotation_df["transcript_id"].replace("\"", "", regex=True)
-    cds_read_df = read_df_to_cds_read_df(read_df, annotation_df)
     print("Merging annotation and reads")
     annotated_read_df = annotate_reads(read_df, annotation_df)
+    print("Subsetting to CDS reads")
+    cds_read_df = read_df_to_cds_read_df(annotated_read_df)
     print("Running modules")
     results_dict = {
         "mode": "annotation_mode",
@@ -80,6 +80,7 @@ def annotation_mode(
         if config["qc"]["use_cds_subset"]["read_frame_distribution"]\
         else read_frame_distribution(read_df)
     results_dict["mRNA_distribution"] = mRNA_distribution(annotated_read_df)
+    results_dict["metagene_profile"] = metagene_profile(annotated_read_df, config["plots"]["metagene_profile"]["distance_target"])
 
     return results_dict
     
