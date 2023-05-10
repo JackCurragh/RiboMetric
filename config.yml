@@ -4,6 +4,7 @@ plots:
   base_color: '#7f7f7f'
   nucleotide_colors: {"A": "#c93434", "C": "#2e85db", "G": "#f0de1f", "T": "#1fc24d"}
   ligation_bias_distribution:
+    nucleotide_count: 2
     include_N: True
   read_frame_distribution:
     upper_limit: 40
@@ -20,6 +21,9 @@ plots:
   metagene_profile:
     distance_target: "start" #Options: ["start", "stop"]
     distance_range: [-100,100]
+  nucleotide_proportion:
+    nucleotide_start: 0
+    nucleotide_count: 15
 qc:
   use_cds_subset:
   # Defines which modules use only reads that are on cds
