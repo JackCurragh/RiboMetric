@@ -17,8 +17,11 @@ plots:
     upper_limit: 50
     lower_limit: 10
     absolute_counts: False
+  metagene_profile:
+    distance_target: "start" #Options: ["start", "stop"]
+    distance_range: [-100,100]
 qc:
   use_cds_subset:
   # Defines which modules use only reads that are on cds
   # If False, uses all reads
-    read_frame_distribution: True
+    read_frame_distribution: False
