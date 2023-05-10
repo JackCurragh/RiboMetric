@@ -18,6 +18,7 @@ from .modules import (
     read_frame_distribution,
     mRNA_distribution,
     annotate_reads,
+    metagene_profile,
 )
 
 
@@ -79,6 +80,7 @@ def annotation_mode(
         if config["qc"]["use_cds_subset"]["read_frame_distribution"]\
         else read_frame_distribution(read_df)
     results_dict["mRNA_distribution"] = mRNA_distribution(annotated_read_df)
+    results_dict["metagene_profile"] = metagene_profile(annotated_read_df, config["plots"]["metagene_profile"]["distance_target"])
 
     return results_dict
     

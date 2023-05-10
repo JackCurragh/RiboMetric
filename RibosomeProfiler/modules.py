@@ -313,6 +313,15 @@ def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
 
     return sum_mRNA_dict
 
+
+def metagene_profile(annotated_read_df: pd.DataFrame, target: str) -> dict:
+    if target == "start":
+        return (annotated_read_df["a_site"] - annotated_read_df["cds_start"]).value_counts().to_dict()
+    else:
+        return (annotated_read_df["a_site"] - annotated_read_df["cds_end"]).value_counts().to_dict()
+
+
+
 def convert_html_to_pdf(source_html, output_filename):
     result_file = open(output_filename, "w+b")
 
