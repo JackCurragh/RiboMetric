@@ -19,7 +19,8 @@ from .modules import (
     mRNA_distribution,
     annotate_reads,
     metagene_profile,
-    sequence_slice
+    sequence_slice,
+    metagene_heatmap
 )
 
 
@@ -98,7 +99,11 @@ def annotation_mode(
     results_dict["mRNA_distribution"] = mRNA_distribution(annotated_read_df)
     print("> metagene_profile")
     results_dict["metagene_profile"] = metagene_profile(annotated_read_df,
-        config["plots"]["metagene_profile"]["distance_target"])
+        config["plots"]["metagene_profile"]["distance_target"]).value_counts().to_dict()
+    print("> metagene_heatmap")
+    results_dict["metagene_heatmap"] = metagene_heatmap(annotated_read_df,
+        config["plots"]["metagene_profile"]["distance_target"],
+        config["plots"]["metagene_profile"]["distance_range"])
     print("> summary_metrics")
     results_dict["summary_metrics"] = {}
     return results_dict
