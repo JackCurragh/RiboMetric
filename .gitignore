@@ -123,3 +123,4 @@ bak*
 
 .gitignore
 
+RibosomeProfiler/parse_to_csv.py

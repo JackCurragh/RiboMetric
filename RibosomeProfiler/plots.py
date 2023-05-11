@@ -56,6 +56,9 @@ def generate_plots(results_dict: dict, config: dict) -> list:
             plot_metagene_profile(
                 results_dict["metagene_profile"],
                 config),
+            plot_metagene_heatmap(
+                results_dict["metagene_heatmap"],
+                config),
         ])
     return plots_list
 
@@ -412,7 +415,7 @@ def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict
                 ))
     fig.update_layout(
             title="Nucleotide Distribution",
-            xaxis_title="Position (nucleotides)",
+            xaxis_title="Read length",
             yaxis_title="Proportion"
             if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
             else "Counts",
@@ -445,13 +448,13 @@ def plot_metagene_profile(metagene_dict: dict, config: dict) -> dict:
         config: Dictionary containing the configuration information
 
     Outputs:
-        plot_mRNA_read_breakdown_dict: Dictionary containing the plot name,
+        plot_metagene_profile_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
     fig = go.Figure([go.Bar(x=list(metagene_dict.keys()), y=list(metagene_dict.values()))])
     fig.update_layout(
         title="Metagene Profile",
-        xaxis_title="Read Length",
+        xaxis_title="Relative position",
         yaxis_title="Read Count",
         font=dict(
             family=config["plots"]["font_family"],
@@ -463,15 +466,61 @@ def plot_metagene_profile(metagene_dict: dict, config: dict) -> dict:
     fig.update_xaxes(
         range=config["plots"]["metagene_profile"]["distance_range"]
         )
-    plot_mRNA_read_breakdown_dict = {
-        "name": "Metagene profile",
+    plot_metagene_profile_dict = {
+        "name": "Metagene Profile",
         "description": "Metagene profile showing the distance count of reads per \
 distance away from a target (default: start codon).",
         "fig_html": pio.to_html(fig, full_html=False),
         "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
                                       ).decode("ascii"),
     }
-    return plot_mRNA_read_breakdown_dict
+    return plot_metagene_profile_dict
+
+
+def plot_metagene_heatmap(metagene_heatmap_dict: dict,config: dict) -> dict:
+    """
+    Generate a heatmap of the reads depending on their distance
+    to a target, read length and count
+
+    Inputs:
+        metagene_heatmap_dict: Dictionary containing the counts as values and distance
+        from target as keys
+        config: Dictionary containing the configuration information
+
+    Outputs:
+        plot_metagene_heatmap: Dictionary containing the plot name,
+        description and plotly figure for html and pdf export
+    """
+    fig = go.Figure(
+    data=go.Heatmap(
+        x = [x[1] for x in list(metagene_heatmap_dict.keys())],
+        y = [x[0] for x in list(metagene_heatmap_dict.keys())],
+        z = list(metagene_heatmap_dict.values()),
+    colorscale='electric',
+    zmin = 0,
+    zmax = config["plots"]["metagene_heatmap"]["max_colorscale"]
+    ))
+    fig.update_xaxes(range=config["plots"]["metagene_heatmap"]["distance_range"])
+    fig.update_layout(
+            title="Metagene Heatmap",
+            xaxis_title="Read length",
+            yaxis_title="Relative position",
+            font=dict(
+                family=config["plots"]["font_family"],
+                size=18,
+                color=config["plots"]["base_color"],
+            ),
+            legend={'traceorder':'normal'},
+    )
+    plot_metagene_heatmap = {
+        "name": "Metagene Heatmap",
+        "description": "Metagene heatmap showing the distance between the A-site and \
+a target per read length and the counts in colorscale.",
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
+                                      ).decode("ascii"),
+    }
+    return plot_metagene_heatmap
 
 
 def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
