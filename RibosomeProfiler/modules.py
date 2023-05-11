@@ -321,6 +321,10 @@ def metagene_profile(annotated_read_df: pd.DataFrame, target: str) -> dict:
         return (annotated_read_df["a_site"] - annotated_read_df["cds_end"]).value_counts().to_dict()
 
 
+def sequence_slice(read_df: pd.DataFrame, nt_start: int = 0, nt_count: int = 15) -> dict:
+    sequence_slice_dict = {k: v[nt_start:nt_start+nt_count] for k,v in read_df["sequence"].to_dict().items()}
+    return sequence_slice_dict
+
 
 def convert_html_to_pdf(source_html, output_filename):
     result_file = open(output_filename, "w+b")

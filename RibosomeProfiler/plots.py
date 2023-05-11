@@ -5,7 +5,7 @@ RibosomeProfiler reports
 
 from plotly import graph_objects as go
 from .modules import read_frame_cull, read_frame_score, sum_mRNA_distribution
-import pandas as pd #logoplot
+import tempfile     #logoplot
 import subprocess   #logoplot
 import plotly.io as pio
 import base64
@@ -31,7 +31,7 @@ def generate_plots(results_dict: dict, config: dict) -> list:
             config),
         plot_ligation_bias_distribution(
             results_dict["ligation_bias_distribution"],
-        config),
+            config),
         plot_nucleotide_composition(
             results_dict["nucleotide_composition"],
             config),
@@ -40,6 +40,9 @@ def generate_plots(results_dict: dict, config: dict) -> list:
             config),
         plot_nucleotide_distribution(
             results_dict["nucleotide_composition"],
+            config),
+        plot_logoplot(
+            results_dict["sequence_slice"],
             config),
     ])
     if results_dict["mode"] == "annotation_mode":
@@ -485,28 +488,29 @@ def plot_nucleotide_distribution(
     }
     return plot_nucleotide_distribution_dict
 
-#WIP, different form than usual plot functions
-def plot_logoplot(read_df: pd.DataFrame, config: dict) -> dict:
+
+def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
     nt_start, nt_count = config["plots"]["nucleotide_proportion"]["nucleotide_start"],config["plots"]["nucleotide_proportion"]["nucleotide_count"]
     with tempfile.TemporaryDirectory() as tempdir:
         with open(f"{tempdir}/temp_fasta.fasta","w+") as fasta:
             count = 0
-            for n in read_df["sequence"].str[nt_start:nt_start+nt_count]:
+            for n in sequence_slice_dict.values():
                 count += 1
                 fasta.write(f">{count}\n{n}\n")
             with open(f"{tempdir}/temp_plot.png", "w+b") as plot:
-                weblogo_prompt = ["weblogo"]
-                weblogo_prompt.append(f"-f{fasta.name}")
-                weblogo_prompt.append(f"-Dfasta")
-                weblogo_prompt.append(f"-o{plot.name}")
-                weblogo_prompt.append(f"-Fpng_print")
+                weblogo_prompt = ["weblogo",
+                    f"-f{fasta.name}",
+                    f"-Dfasta",
+                    f"-o{plot.name}",
+                    f"-Fpng_print",
+                ]
                 subprocess.run(weblogo_prompt)
                 plot.seek(0)
                 fig_image = base64.b64encode(plot.read()).decode('utf-8')
     plot_logoplot_dict = {
         "name": "Logoplot",
         "description": "Logoplot created with weblogo ver 3.7.12",
-        "fig_html": None, #no html version -> png for both versions
+        "fig_html": f'<img src="data:image/png;base64,{fig_image}">', #png for both versions
         "fig_image": fig_image
     }
     return plot_logoplot_dict
