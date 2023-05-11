@@ -268,7 +268,7 @@ def extract_transcript_id(attr_str):
         elif attr.startswith(" transcript_id "):
             return attr.split(" ")[2]
     return np.nan
-    
+
 
 def prepare_annotation(gff_path: str,
                        outdir: str,

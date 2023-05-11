@@ -60,5 +60,3 @@ def test_main_run():
     # Assert that the expected output was produced
     assert 'Annotation parsed' in output
     assert 'Running modules' in output
-
-
