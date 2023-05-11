@@ -19,6 +19,7 @@ from .modules import (
     mRNA_distribution,
     annotate_reads,
     metagene_profile,
+    sequence_slice
 )
 
 
@@ -42,6 +43,9 @@ def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
         "ligation_bias_distribution": ligation_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
         "read_frame_distribution": read_frame_distribution(read_df),
+        "sequence_slice" : sequence_slice(read_df,
+                nt_start=config["plots"]["nucleotide_proportion"]["nucleotide_start"],
+                nt_count=config["plots"]["nucleotide_proportion"]["nucleotide_count"]),
     }
     
     return results_dict
@@ -75,12 +79,14 @@ def annotation_mode(
         "read_length_distribution": read_length_distribution(read_df),
         "ligation_bias_distribution": ligation_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
+        "sequence_slice" : sequence_slice(read_df),
     }
     results_dict["read_frame_distribution"] = read_frame_distribution(cds_read_df)\
         if config["qc"]["use_cds_subset"]["read_frame_distribution"]\
         else read_frame_distribution(read_df)
     results_dict["mRNA_distribution"] = mRNA_distribution(annotated_read_df)
-    results_dict["metagene_profile"] = metagene_profile(annotated_read_df, config["plots"]["metagene_profile"]["distance_target"])
+    results_dict["metagene_profile"] = metagene_profile(annotated_read_df,
+                config["plots"]["metagene_profile"]["distance_target"])
 
     return results_dict
     

@@ -13,14 +13,14 @@ plots:
   mRNA_distribution:
     upper_limit: 50
     lower_limit: 10
-    absolute_counts: False
+    absolute_counts: False #Options for both?
   mRNA_read_breakdown:
     upper_limit: 50
     lower_limit: 10
     absolute_counts: False
   metagene_profile:
-    distance_target: "start" #Options: ["start", "stop"]
-    distance_range: [-100,100]
+    distance_target: "start" #Options: ["start", "stop"] # Add both? grid plot
+    distance_range: [-30,30]
   nucleotide_proportion:
     nucleotide_start: 0
     nucleotide_count: 15
