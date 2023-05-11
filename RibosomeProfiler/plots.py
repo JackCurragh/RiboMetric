@@ -35,11 +35,11 @@ def generate_plots(results_dict: dict, config: dict) -> list:
         plot_nucleotide_composition(
             results_dict["nucleotide_composition"],
             config),
-        plot_read_frame_distribution(
-            results_dict["read_frame_distribution"],
-            config),
         plot_nucleotide_distribution(
             results_dict["nucleotide_composition"],
+            config),
+        plot_read_frame_distribution(
+            results_dict["read_frame_distribution"],
             config),
         plot_logoplot(
             results_dict["sequence_slice"],
@@ -191,6 +191,48 @@ def plot_nucleotide_composition(
     return plot_nucleotide_composition_dict
 
 
+def plot_nucleotide_distribution(
+    nucleotide_composition_dict: dict, config: dict
+) -> dict:
+    plot_data = []
+    nt_start, nt_count = config["plots"]["nucleotide_proportion"]["nucleotide_start"],config["plots"]["nucleotide_proportion"]["nucleotide_count"]
+    for nt in reversed(nucleotide_composition_dict):
+        # temp_dict[nt][config["plots"]["nucleotide_proportion"]["nucleotide_start"]:config["plots"]["nucleotide_proportion"]["nucleotide_count"]]
+        plot_data.append(
+                go.Bar(
+                    name=nt,
+                    x=[*range(nt_start+1,nt_start+nt_count+1)],
+                    y=nucleotide_composition_dict[nt][nt_start:nt_start+nt_count],
+                    marker=dict(color=config["plots"]["nucleotide_colors"][nt]),
+                    hovertemplate = "Proportion: %{y:.2%}"
+                    if not config["plots"]["mRNA_distribution"]["absolute_counts"]
+                    else "Count: %{x}"
+                    )
+                )
+    fig = go.Figure(plot_data)
+    fig.update_layout(
+        barmode='stack',
+        title="Nucleotide Proportion",
+        xaxis_title="",
+        yaxis_title="Proportion",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
+            ),
+            legend={'traceorder':'reversed'},
+        )
+    plot_nucleotide_distribution_dict = {
+        "name": "Nucleotide Distribution",
+        "description": "Nucleotide distribution across specified reads \
+(default: first 15 read)",
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
+                                      ).decode("ascii"),
+    }
+    return plot_nucleotide_distribution_dict
+
+
 def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
     """
     Generate a plot of the read frame distribution
@@ -278,22 +320,6 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
                                       ).decode("ascii"),
     }
     return plot_read_frame_dict
-
-#WIP - scrapped? I think the function for this plot has been incorporated in plot_read_frame_distribution
-def plot_frame_score_distribution(read_frame_dict: dict, config: dict) -> dict:
-    """
-    Generate a plot of the read frame score distribution
-
-    Inputs:
-        read_frame_dict: Dataframe containing the read frame distribution
-        config: Dictionary containing the configuration information
-
-    Outputs:
-        plot_frame_score_dict: Dictionary containing the plot name, description
-        and plotly figure for html and pdf export
-    """
-    culled_read_frame_dict = read_frame_cull(read_frame_dict, config)
-    scored_read_frame_dict = read_frame_score(culled_read_frame_dict)
 
 
 def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
@@ -447,47 +473,6 @@ distance away from a target (default: start codon).",
     }
     return plot_mRNA_read_breakdown_dict
 
-def plot_nucleotide_distribution(
-    nucleotide_composition_dict: dict, config: dict
-) -> dict:
-    plot_data = []
-    nt_start, nt_count = config["plots"]["nucleotide_proportion"]["nucleotide_start"],config["plots"]["nucleotide_proportion"]["nucleotide_count"]
-    for nt in reversed(nucleotide_composition_dict):
-        # temp_dict[nt][config["plots"]["nucleotide_proportion"]["nucleotide_start"]:config["plots"]["nucleotide_proportion"]["nucleotide_count"]]
-        plot_data.append(
-                go.Bar(
-                    name=nt,
-                    x=[*range(nt_start+1,nt_start+nt_count+1)],
-                    y=nucleotide_composition_dict[nt][nt_start:nt_start+nt_count],
-                    marker=dict(color=config["plots"]["nucleotide_colors"][nt]),
-                    hovertemplate = "Proportion: %{y:.2%}"
-                    if not config["plots"]["mRNA_distribution"]["absolute_counts"]
-                    else "Count: %{x}"
-                    )
-                )
-    fig = go.Figure(plot_data)
-    fig.update_layout(
-        barmode='stack',
-        title="Nucleotide Proportion",
-        xaxis_title="",
-        yaxis_title="Proportion",
-        font=dict(
-            family=config["plots"]["font_family"],
-            size=18,
-            color=config["plots"]["base_color"],
-            ),
-            legend={'traceorder':'reversed'},
-        )
-    plot_nucleotide_distribution_dict = {
-        "name": "Nucleotide Distribution",
-        "description": "Nucleotide distribution across specified reads \
-(default: first 15 read)",
-        "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
-                                      ).decode("ascii"),
-    }
-    return plot_nucleotide_distribution_dict
-
 
 def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
     nt_start, nt_count = config["plots"]["nucleotide_proportion"]["nucleotide_start"],config["plots"]["nucleotide_proportion"]["nucleotide_count"]
@@ -509,9 +494,13 @@ def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
                 fig_image = base64.b64encode(plot.read()).decode('utf-8')
     plot_logoplot_dict = {
         "name": "Logoplot",
-        "description": "Logoplot created with weblogo ver 3.7.12",
-        "fig_html": f'<img src="data:image/png;base64,{fig_image}">', #png for both versions
+        "description": "Logoplot created with WebLogo ver 3.7.12",
+        "fig_html": f'<img src="data:image/png;base64,{fig_image}" alt="Logoplot created with WebLogo" width="100%" height="auto"">', #png for both versions
         "fig_image": fig_image
     }
     return plot_logoplot_dict
     
+
+def plot_summary_scoring() -> dict:
+    plot_summary_dict ={}
+    return plot_summary_dict
