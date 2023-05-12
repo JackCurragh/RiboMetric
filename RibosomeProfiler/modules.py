@@ -56,7 +56,7 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     """
     read_lengths, read_counts = np.unique(read_df["read_length"],
                                           return_counts=True)
-    return dict(zip(read_lengths, read_counts))
+    return dict(zip(read_lengths.tolist(), read_counts.tolist()))
 
 
 def ligation_bias_distribution(
@@ -353,25 +353,31 @@ def metagene_heatmap(annotated_read_df: pd.DataFrame, target: str = "start", dis
         as values
     """
     annotated_read_df["metagene_info"] = metagene_profile(annotated_read_df, target)
-    metagene_heatmap_dict = annotated_read_df[
+    pre_heatmap_dict = annotated_read_df[
     (annotated_read_df["metagene_info"] > distance_range[0]-1) &
     (annotated_read_df["metagene_info"] < distance_range[1]+1)
     ].groupby(["read_length","metagene_info"]).size().to_dict()
-    if metagene_heatmap_dict == {}:
+    if pre_heatmap_dict == {}:
         print("ERR - Metagene Heatmap: No reads found in specified range, \
 removing boundaries...")
-        metagene_heatmap_dict = annotated_read_df.groupby(
+        pre_heatmap_dict = annotated_read_df.groupby(
             ["read_length","metagene_info"]).size().to_dict()
-    min_length = min([x[0] for x in list(metagene_heatmap_dict.keys())])
-    max_length = max([x[0] for x in list(metagene_heatmap_dict.keys())])
+    min_length = min([x[0] for x in list(pre_heatmap_dict.keys())])
+    max_length = max([x[0] for x in list(pre_heatmap_dict.keys())])
     for y in range(min_length, max_length):
-        if y not in [x[0] for x in list(metagene_heatmap_dict.keys())]:
-            metagene_heatmap_dict[(y,0)] = None
-    min_distance = min([x[1] for x in list(metagene_heatmap_dict.keys())])
-    max_distance = max([x[1] for x in list(metagene_heatmap_dict.keys())])
+        if y not in [x[0] for x in list(pre_heatmap_dict.keys())]:
+            pre_heatmap_dict[(y,0)] = None
+    min_distance = min([x[1] for x in list(pre_heatmap_dict.keys())])
+    max_distance = max([x[1] for x in list(pre_heatmap_dict.keys())])
     for z in range(min_distance, max_distance):
-        if z not in [x[1] for x in list(metagene_heatmap_dict.keys())]:
-            metagene_heatmap_dict[(min_length,z)] = None
+        if z not in [x[1] for x in list(pre_heatmap_dict.keys())]:
+            pre_heatmap_dict[(min_length,z)] = None
+    metagene_heatmap_dict = {}
+    # PROBLEM: tuple key is not useable for json keys, nested dictionary as solution
+    for key, value in pre_heatmap_dict.items():
+        if key[0] not in metagene_heatmap_dict:
+            metagene_heatmap_dict[key[0]] = {}
+        metagene_heatmap_dict[key[0]][key[1]] = value
     return metagene_heatmap_dict
 
 

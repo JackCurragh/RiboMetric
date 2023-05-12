@@ -115,6 +115,8 @@ RibosomeProfiler/test_report.*
 1000_entry_RibosomeProfiler.tsv
 Saccharomyces_cerevisiae_RibosomeProfiler.tsv
 gencode_RibosomeProfiler.tsv
+RibosomeProfiler/parse_to_csv.py
+RibosomeProfiler_data.json
 
 *.gtf
 *.gff
@@ -123,4 +125,3 @@ bak*
 
 .gitignore
 
-RibosomeProfiler/parse_to_csv.py
