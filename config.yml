@@ -3,6 +3,7 @@ plots:
   font_family: Helvetica Neue,Helvetica,Arial,sans-serif
   base_color: '#7f7f7f'
   nucleotide_colors: {"A": "#c93434", "C": "#2e85db", "G": "#f0de1f", "T": "#1fc24d"}
+  image_size: [720, 360]      # [Width, Height] in pixels, used for pdf images
   ligation_bias_distribution:
     nucleotide_count: 2
     include_N: False
