@@ -63,6 +63,15 @@ def generate_plots(results_dict: dict, config: dict) -> list:
     return plots_list
 
 
+def plotly_to_image(fig: go.Figure, config: dict) -> str:
+    base_64_plot = base64.b64encode(pio.to_image(fig,
+            format="jpg",
+            width=config["plots"]["image_size"][0],
+            height=config["plots"]["image_size"][1])
+        ).decode("ascii")
+    return base_64_plot
+
+
 def plot_read_length_distribution(read_length_dict: dict, config: dict
                                   ) -> dict:
     """
@@ -100,8 +109,7 @@ def plot_read_length_distribution(read_length_dict: dict, config: dict
         "name": "Read Length Distribution",
         "description": "Distribution of read lengths for the full dataset",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
-                                      ).decode("ascii"),
+        "fig_image": plotly_to_image(fig, config),
     }
     return plot_read_length_dict
 
@@ -146,8 +154,7 @@ def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict
         "name": "Ligation Bias Distribution",
         "description": "Distribution of end bases for the full dataset",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
-                                      ).decode("ascii"),
+        "fig_image": plotly_to_image(fig, config),
     }
     return plot_ligation_bias_dict
 
@@ -174,7 +181,7 @@ def plot_nucleotide_composition(
                        line_color=colors[nucleotide])
         )
     fig.update_layout(
-        title="Nucleotide Distribution",
+        title="Nucleotide Composition",
         xaxis_title="Position (nucleotides)",
         yaxis_title="Proportion",
         yaxis_range=[0, 1],
@@ -188,8 +195,7 @@ def plot_nucleotide_composition(
         "name": "Nucleotide Composition",
         "description": "Nucleotide composition of the reads",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
-                                      ).decode("ascii"),
+        "fig_image": plotly_to_image(fig, config),
     }
     return plot_nucleotide_composition_dict
 
@@ -230,8 +236,7 @@ def plot_nucleotide_distribution(
         "description": "Nucleotide distribution across specified reads \
 (default: first 15 read)",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
-                                      ).decode("ascii"),
+        "fig_image": plotly_to_image(fig, config),
     }
     return plot_nucleotide_distribution_dict
 
@@ -319,8 +324,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         "name": "Read Frame Distribution",
         "description": "Frame distribution per read length",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
-                                      ).decode("ascii"),
+        "fig_image": plotly_to_image(fig, config),
     }
     return plot_read_frame_dict
 
@@ -374,8 +378,7 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
         "description": "Shows the proportion of the different transcript \
 regions represented in the reads",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
-                                      ).decode("ascii"),
+        "fig_image": plotly_to_image(fig, config),
     }
     return plot_mRNA_distribution_dict
 
@@ -431,8 +434,7 @@ def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict
         "description": "Shows the proportion of the different transcript \
 regions represented in the reads over the different read lengths.",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
-                                      ).decode("ascii"),
+        "fig_image": plotly_to_image(fig, config),
     }
     return plot_mRNA_read_breakdown_dict
 
@@ -474,8 +476,7 @@ def plot_metagene_profile(metagene_dict: dict, config: dict) -> dict:
         "description": "Metagene profile showing the distance count of reads per \
 distance away from a target (default: start codon).",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
-                                      ).decode("ascii"),
+        "fig_image": plotly_to_image(fig, config),
     }
     return plot_metagene_profile_dict
 
@@ -520,8 +521,7 @@ def plot_metagene_heatmap(metagene_heatmap_dict: dict,config: dict) -> dict:
         "description": "Metagene heatmap showing the distance between the A-site and \
 a target per read length and the counts in colorscale.",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": base64.b64encode(pio.to_image(fig, format="jpg")
-                                      ).decode("ascii"),
+        "fig_image": plotly_to_image(fig, config)
     }
     return plot_metagene_heatmap
 
