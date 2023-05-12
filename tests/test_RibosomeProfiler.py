@@ -46,6 +46,7 @@ def test_main_run():
                      transcripts=None,
                      json=None,
                      html=True,
+                     pdf=None,
                      csv=None,
                      )
 
