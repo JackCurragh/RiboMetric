@@ -451,6 +451,9 @@ def plot_metagene_profile(metagene_dict: dict, config: dict) -> dict:
         plot_metagene_profile_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
+    metagene_dict = {k: v for k,v in metagene_dict.items()
+        if k > config["plots"]["metagene_profile"]["distance_range"][0]-1
+        and k < config["plots"]["metagene_profile"]["distance_range"][1]+1}
     fig = go.Figure([go.Bar(x=list(metagene_dict.keys()), y=list(metagene_dict.values()))])
     fig.update_layout(
         title="Metagene Profile",
