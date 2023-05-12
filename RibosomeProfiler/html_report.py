@@ -11,7 +11,8 @@ import base64
 
 
 def generate_report(
-    plots: dict,
+    plots: list,
+    config: dict,
     export_mode: str = "html",
     name: str = "RibosomeProfiler_report",
     outdir: str = "",

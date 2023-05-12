@@ -62,6 +62,7 @@ from .qc import annotation_free_mode, annotation_mode, sequence_mode
 from .plots import generate_plots
 from .modules import a_site_calculation
 from .html_report import generate_report
+from .json_output import generate_json
 
 
 def print_logo(console):
@@ -355,7 +356,6 @@ def main(args):
 
         if args.gff is None and args.annotation is None:
             results_dict = annotation_free_mode(read_df, config)
-            plots_list = generate_plots(results_dict, config)
 
         else:
             if args.annotation is not None and args.gff is not None:
@@ -379,8 +379,6 @@ def main(args):
                 results_dict = annotation_mode(read_df,
                                             annotation_df,
                                             config)
-                plots_list = generate_plots(results_dict, config)
-            
 
             if args.fasta is not None:
                 fasta_dict = parse_fasta(args.fasta)
@@ -391,8 +389,11 @@ def main(args):
                     fasta_dict,
                     config
                 )
-                plots_list = generate_plots(results_dict, config)
-        generate_report(plots_list, report_export)
+        if args.html or args.pdf:
+            plots_list = generate_plots(results_dict, config)
+            generate_report(plots_list, config, report_export)
+        if args.json:
+            generate_json(results_dict, config)
 
 
 if __name__ == "__main__":
