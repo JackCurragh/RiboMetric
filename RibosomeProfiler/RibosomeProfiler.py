@@ -39,6 +39,7 @@ Optional Arguments:
 Output:
     --json : Output the results as a json file
     --html : Output the results as an html file (default)
+    --pdf : Output the results as a pdf file (default)
     --csv : Output the results as a csv file
     --all : Output the results as all of the above
 """
@@ -115,6 +116,7 @@ def print_table_run(args, console, mode):
     Output.add_column("Values")
     Output.add_row("JSON:", str(args.json))
     Output.add_row("HTML:", str(args.html))
+    Output.add_row("PDF:", str(args.pdf))
     Output.add_row("CSV:", str(args.csv))
     Output.add_row("All:", str(args.all))
 
@@ -244,6 +246,12 @@ def argument_parser():
             help="Output the results as an html file (default)",
         )
     run_parser.add_argument(
+            "--pdf",
+            action="store_true",
+            default=False,
+            help="Output the results as a pdf file (default)",
+        )
+    run_parser.add_argument(
             "--csv",
             action="store_true",
             default=False,
@@ -321,8 +329,17 @@ def main(args):
         if args.all:
             args.json = True
             args.html = True
+            args.pdf = True
             args.csv = True
         print_table_run(args, console, "Run Mode")
+
+        if args.html:
+            if args.pdf:
+                report_export = "both"
+            else:
+                report_export = "html"
+        elif args.pdf:
+            report_export = "pdf"
 
         read_df_pre = parse_bam(args.bam, args.subsample)
         print("Reads parsed")
@@ -339,7 +356,6 @@ def main(args):
         if args.gff is None and args.annotation is None:
             results_dict = annotation_free_mode(read_df, config)
             plots_list = generate_plots(results_dict, config)
-            generate_report(plots_list)
 
         else:
             if args.annotation is not None and args.gff is not None:
@@ -359,12 +375,12 @@ def main(args):
                 annotation_df = parse_annotation(args.annotation)
                 print("Annotation parsed")
 
-            print("Running annotation mode")
-            results_dict = annotation_mode(read_df,
-                                           annotation_df,
-                                           config)
-            plots_list = generate_plots(results_dict, config)
-            generate_report(plots_list)
+                print("Running annotation mode")
+                results_dict = annotation_mode(read_df,
+                                            annotation_df,
+                                            config)
+                plots_list = generate_plots(results_dict, config)
+            
 
             if args.fasta is not None:
                 fasta_dict = parse_fasta(args.fasta)
@@ -376,7 +392,7 @@ def main(args):
                     config
                 )
                 plots_list = generate_plots(results_dict, config)
-                generate_report(plots_list)
+        generate_report(plots_list, report_export)
 
 
 if __name__ == "__main__":
