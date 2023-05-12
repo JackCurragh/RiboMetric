@@ -371,7 +371,7 @@ removing boundaries...")
     max_distance = max([x[1] for x in list(metagene_heatmap_dict.keys())])
     for z in range(min_distance, max_distance):
         if z not in [x[1] for x in list(metagene_heatmap_dict.keys())]:
-            metagene_heatmap_dict[(y,z)] = None
+            metagene_heatmap_dict[(min_length,z)] = None
     return metagene_heatmap_dict
 
 
