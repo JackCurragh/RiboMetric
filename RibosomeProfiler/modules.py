@@ -354,8 +354,8 @@ def metagene_heatmap(annotated_read_df: pd.DataFrame, target: str = "start", max
     """
     annotated_read_df["metagene_info"] = metagene_profile(annotated_read_df, target)
     metagene_heatmap_dict = annotated_read_df[
-    (annotated_read_df["metagene_info"] > max_distance[0]) &
-    (annotated_read_df["metagene_info"] < max_distance[1])
+    (annotated_read_df["metagene_info"] > max_distance[0]-1) &
+    (annotated_read_df["metagene_info"] < max_distance[1]+1)
     ].groupby(["read_length","metagene_info"]).size().to_dict()
     if metagene_heatmap_dict == {}:
         print("ERR - Metagene Heatmap: No reads found in specified range, \
@@ -367,6 +367,11 @@ removing boundaries...")
     for y in range(min_length, max_length):
         if y not in [x[0] for x in list(metagene_heatmap_dict.keys())]:
             metagene_heatmap_dict[(y,0)] = None
+    min_distance = min([x[1] for x in list(metagene_heatmap_dict.keys())])
+    min_distance = max([x[1] for x in list(metagene_heatmap_dict.keys())])
+    for z in range(min_distance, max_distance):
+        if z not in [x[1] for x in list(metagene_heatmap_dict.keys())]:
+            metagene_heatmap_dict[(y,z)] = None
     return metagene_heatmap_dict
 
 
