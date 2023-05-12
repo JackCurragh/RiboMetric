@@ -495,14 +495,23 @@ def plot_metagene_heatmap(metagene_heatmap_dict: dict,config: dict) -> dict:
         plot_metagene_heatmap: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
+    x_data = []
+    y_data = []
+    z_data = []
+    for k1, v1 in metagene_heatmap_dict.items():
+        for k2, v2 in v1.items():
+            x_data.append(k2)
+            y_data.append(k1)
+            z_data.append(v2)
+
     fig = go.Figure(
-    data=go.Heatmap(
-        x = [x[1] for x in list(metagene_heatmap_dict.keys())],
-        y = [x[0] for x in list(metagene_heatmap_dict.keys())],
-        z = list(metagene_heatmap_dict.values()),
-    colorscale='electric',
-    zmin = 0,
-    zmax = config["plots"]["metagene_heatmap"]["max_colorscale"]
+        data=go.Heatmap(
+            x = x_data,
+            y = y_data,
+            z = z_data,
+        colorscale='electric',
+        zmin = 0,
+        zmax = config["plots"]["metagene_heatmap"]["max_colorscale"]
     ))
     fig.update_xaxes(range=config["plots"]["metagene_heatmap"]["distance_range"])
     fig.update_layout(
