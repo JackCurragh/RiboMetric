@@ -5,8 +5,8 @@ RibosomeProfiler reports
 
 from plotly import graph_objects as go
 from .modules import read_frame_cull, read_frame_score, sum_mRNA_distribution
-import tempfile     #logoplot
-import subprocess   #logoplot
+import tempfile  # logoplot
+import subprocess  # logoplot
 import plotly.io as pio
 import base64
 
@@ -25,55 +25,49 @@ def generate_plots(results_dict: dict, config: dict) -> list:
     """
     print("Generating plots")
     plots_list = []
-    plots_list.extend([
-        plot_read_length_distribution(
-            results_dict["read_length_distribution"],
-            config),
-        plot_ligation_bias_distribution(
-            results_dict["ligation_bias_distribution"],
-            config),
-        plot_nucleotide_composition(
-            results_dict["nucleotide_composition"],
-            config),
-        plot_nucleotide_distribution(
-            results_dict["nucleotide_composition"],
-            config),
-        plot_read_frame_distribution(
-            results_dict["read_frame_distribution"],
-            config),
-        plot_logoplot(
-            results_dict["sequence_slice"],
-            config),
-    ])
+    plots_list.extend(
+        [
+            plot_read_length_distribution(
+                results_dict["read_length_distribution"], config
+            ),
+            plot_ligation_bias_distribution(
+                results_dict["ligation_bias_distribution"], config
+            ),
+            plot_nucleotide_composition(results_dict["nucleotide_composition"], config),
+            plot_nucleotide_distribution(
+                results_dict["nucleotide_composition"], config
+            ),
+            plot_read_frame_distribution(
+                results_dict["read_frame_distribution"], config
+            ),
+            plot_logoplot(results_dict["sequence_slice"], config),
+        ]
+    )
     if results_dict["mode"] == "annotation_mode":
-        plots_list.extend([
-            plot_mRNA_distribution(
-                results_dict["mRNA_distribution"],
-                config),
-            plot_mRNA_read_breakdown(
-                results_dict["mRNA_distribution"],
-                config),
-            plot_metagene_profile(
-                results_dict["metagene_profile"],
-                config),
-            plot_metagene_heatmap(
-                results_dict["metagene_heatmap"],
-                config),
-        ])
+        plots_list.extend(
+            [
+                plot_mRNA_distribution(results_dict["mRNA_distribution"], config),
+                plot_mRNA_read_breakdown(results_dict["mRNA_distribution"], config),
+                plot_metagene_profile(results_dict["metagene_profile"], config),
+                plot_metagene_heatmap(results_dict["metagene_heatmap"], config),
+            ]
+        )
     return plots_list
 
 
 def plotly_to_image(fig: go.Figure, config: dict) -> str:
-    base_64_plot = base64.b64encode(pio.to_image(fig,
+    base_64_plot = base64.b64encode(
+        pio.to_image(
+            fig,
             format="jpg",
             width=config["plots"]["image_size"][0],
-            height=config["plots"]["image_size"][1])
-        ).decode("ascii")
+            height=config["plots"]["image_size"][1],
+        )
+    ).decode("ascii")
     return base_64_plot
 
 
-def plot_read_length_distribution(read_length_dict: dict, config: dict
-                                  ) -> dict:
+def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
     """
     Generate a plot of the read length distribution for the full dataset
 
@@ -114,8 +108,7 @@ def plot_read_length_distribution(read_length_dict: dict, config: dict
     return plot_read_length_dict
 
 
-def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict
-                                    ) -> dict:
+def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> dict:
     """
     Generate a plot of ligation bias distribution for the full dataset
 
@@ -177,8 +170,7 @@ def plot_nucleotide_composition(
     fig = go.Figure()
     for nucleotide, distribution in nucleotide_composition_dict.items():
         fig.add_trace(
-            go.Scatter(y=distribution, name=nucleotide,
-                       line_color=colors[nucleotide])
+            go.Scatter(y=distribution, name=nucleotide, line_color=colors[nucleotide])
         )
     fig.update_layout(
         title="Nucleotide Composition",
@@ -204,23 +196,26 @@ def plot_nucleotide_distribution(
     nucleotide_composition_dict: dict, config: dict
 ) -> dict:
     plot_data = []
-    nt_start, nt_count = config["plots"]["nucleotide_proportion"]["nucleotide_start"],config["plots"]["nucleotide_proportion"]["nucleotide_count"]
+    nt_start, nt_count = (
+        config["plots"]["nucleotide_proportion"]["nucleotide_start"],
+        config["plots"]["nucleotide_proportion"]["nucleotide_count"],
+    )
     for nt in reversed(nucleotide_composition_dict):
         # temp_dict[nt][config["plots"]["nucleotide_proportion"]["nucleotide_start"]:config["plots"]["nucleotide_proportion"]["nucleotide_count"]]
         plot_data.append(
-                go.Bar(
-                    name=nt,
-                    x=[*range(nt_start+1,nt_start+nt_count+1)],
-                    y=nucleotide_composition_dict[nt][nt_start:nt_start+nt_count],
-                    marker=dict(color=config["plots"]["nucleotide_colors"][nt]),
-                    hovertemplate = "Proportion: %{y:.2%}"
-                    if not config["plots"]["mRNA_distribution"]["absolute_counts"]
-                    else "Count: %{x}"
-                    )
-                )
+            go.Bar(
+                name=nt,
+                x=[*range(nt_start + 1, nt_start + nt_count + 1)],
+                y=nucleotide_composition_dict[nt][nt_start : nt_start + nt_count],
+                marker=dict(color=config["plots"]["nucleotide_colors"][nt]),
+                hovertemplate="Proportion: %{y:.2%}"
+                if not config["plots"]["mRNA_distribution"]["absolute_counts"]
+                else "Count: %{x}",
+            )
+        )
     fig = go.Figure(plot_data)
     fig.update_layout(
-        barmode='stack',
+        barmode="stack",
         title="Nucleotide Proportion",
         xaxis_title="",
         yaxis_title="Proportion",
@@ -228,9 +223,9 @@ def plot_nucleotide_distribution(
             family=config["plots"]["font_family"],
             size=18,
             color=config["plots"]["base_color"],
-            ),
-            legend={'traceorder':'reversed'},
-        )
+        ),
+        legend={"traceorder": "reversed"},
+    )
     plot_nucleotide_distribution_dict = {
         "name": "Nucleotide Distribution",
         "description": "Nucleotide distribution across specified reads \
@@ -254,10 +249,12 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         and plotly figure for html and pdf export
     """
     culled_read_frame_dict = read_frame_cull(read_frame_dict, config)
-    scored_read_frame_dict = read_frame_score(culled_read_frame_dict) \
-        if config["plots"]["read_frame_distribution"]["show_scores"] != "none" \
+    scored_read_frame_dict = (
+        read_frame_score(culled_read_frame_dict)
+        if config["plots"]["read_frame_distribution"]["show_scores"] != "none"
         else None
-    
+    )
+
     # Set minimum and maximum font sizes
     min_font_size, max_font_size = 5, 30
 
@@ -271,10 +268,11 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             go.Bar(
                 name="Frame " + str(i + 1),
                 x=list(culled_read_frame_dict.keys()),
-                y=[culled_read_frame_dict[x][y]
-                for x in culled_read_frame_dict
-                for y in culled_read_frame_dict[x]
-                if y == i
+                y=[
+                    culled_read_frame_dict[x][y]
+                    for x in culled_read_frame_dict
+                    for y in culled_read_frame_dict[x]
+                    if y == i
                 ],
             )
         )
@@ -294,32 +292,36 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         if config["plots"]["read_frame_distribution"]["show_scores"] == "all":
             for idx in enumerate(culled_read_frame_dict):
                 if idx[1] != "global":
-                    y_buffer = max(fig.data[0].y+
-                                fig.data[1].y+
-                                fig.data[2].y)*0.05
-                    ymax = max(fig.data[0].y[idx[0]],
-                                fig.data[1].y[idx[0]],
-                                fig.data[2].y[idx[0]])
-                    if fig.data[0].y[idx[0]]\
-                          + fig.data[0].y[idx[0]]\
-                          + fig.data[0].y[idx[0]]\
-                              > y_buffer:
+                    y_buffer = max(fig.data[0].y + fig.data[1].y + fig.data[2].y) * 0.05
+                    ymax = max(
+                        fig.data[0].y[idx[0]],
+                        fig.data[1].y[idx[0]],
+                        fig.data[2].y[idx[0]],
+                    )
+                    if (
+                        fig.data[0].y[idx[0]]
+                        + fig.data[0].y[idx[0]]
+                        + fig.data[0].y[idx[0]]
+                        > y_buffer
+                    ):
                         fig.add_annotation(
                             x=idx[1],
-                            y=ymax+y_buffer,
-                            text=round(scored_read_frame_dict[idx[1]],2),
+                            y=ymax + y_buffer,
+                            text=round(scored_read_frame_dict[idx[1]], 2),
                             showarrow=False,
-                            xanchor='center',
-                            font={"size":font_size}
+                            xanchor="center",
+                            font={"size": font_size},
                         )
         fig.update_layout()
-        fig.add_annotation(text=f'Score: {round(scored_read_frame_dict["global"],2)}', 
-                        showarrow=False,
-                        xref='paper',
-                        yref='paper',
-                        y=0.64,
-                        x=1.03,
-                        xanchor="left")
+        fig.add_annotation(
+            text=f'Score: {round(scored_read_frame_dict["global"],2)}',
+            showarrow=False,
+            xref="paper",
+            yref="paper",
+            y=0.64,
+            x=1.03,
+            xanchor="left",
+        )
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
         "description": "Frame distribution per read length",
@@ -344,23 +346,23 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
     """
     sum_mRNA_dict = sum_mRNA_distribution(mRNA_distribution_dict, config)
     plot_data = []
-    for k,v in sum_mRNA_dict.items():
+    for k, v in sum_mRNA_dict.items():
         plot_data.append(
             go.Bar(
-                name=k.replace("_"," ").title(),
+                name=k.replace("_", " ").title(),
                 x=[v],
                 y=[""],
                 width=[0.3],
-                hovertemplate = "Proportion: %{x:.2%}"
+                hovertemplate="Proportion: %{x:.2%}"
                 if not config["plots"]["mRNA_distribution"]["absolute_counts"]
                 else "Count: %{x}",
-                orientation='h'
-                )
+                orientation="h",
             )
+        )
 
     fig = go.Figure(plot_data)
     fig.update_layout(
-        barmode='stack',
+        barmode="stack",
         title="mRNA Reads Breakdown",
         xaxis_title="Proportion"
         if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
@@ -370,9 +372,9 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
             family=config["plots"]["font_family"],
             size=18,
             color=config["plots"]["base_color"],
-            ),
-            legend={'traceorder':'normal'},
-        )
+        ),
+        legend={"traceorder": "normal"},
+    )
     plot_mRNA_distribution_dict = {
         "name": "mRNA Reads Breakdown",
         "description": "Shows the proportion of the different transcript \
@@ -403,32 +405,35 @@ def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict
                 plot_data[category] = []
             plot_data[category].append(count)
     if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]:
-            sum_data = {k: sum(v) for k, v in plot_data.items()}
-            plot_data = {k: [x/sum(sum_data.values()) for x in v] for k, v in plot_data.items()}
+        sum_data = {k: sum(v) for k, v in plot_data.items()}
+        plot_data = {
+            k: [x / sum(sum_data.values()) for x in v] for k, v in plot_data.items()
+        }
     fig = go.Figure()
-    for k,v in plot_data.items(): 
+    for k, v in plot_data.items():
         fig.add_trace(
-                go.Scatter(
-                    name = k,
-                    x=list(mRNA_distribution_dict.keys()),
-                    y=v,
-                    hovertemplate = "Proportion: %{y:.2%}"
-                    if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
-                    else "Count: %{x}",
-                ))
-    fig.update_layout(
-            title="Nucleotide Distribution",
-            xaxis_title="Read length",
-            yaxis_title="Proportion"
-            if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
-            else "Counts",
-            font=dict(
-                family=config["plots"]["font_family"],
-                size=18,
-                color=config["plots"]["base_color"],
-            ),
-            legend={'traceorder':'normal'},
+            go.Scatter(
+                name=k,
+                x=list(mRNA_distribution_dict.keys()),
+                y=v,
+                hovertemplate="Proportion: %{y:.2%}"
+                if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
+                else "Count: %{x}",
+            )
         )
+    fig.update_layout(
+        title="Nucleotide Distribution",
+        xaxis_title="Read length",
+        yaxis_title="Proportion"
+        if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
+        else "Counts",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
+        ),
+        legend={"traceorder": "normal"},
+    )
     plot_mRNA_read_breakdown_dict = {
         "name": "mRNA Reads Breakdown over Read Length",
         "description": "Shows the proportion of the different transcript \
@@ -453,10 +458,15 @@ def plot_metagene_profile(metagene_dict: dict, config: dict) -> dict:
         plot_metagene_profile_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
-    metagene_dict = {k: v for k,v in metagene_dict.items()
-        if k > config["plots"]["metagene_profile"]["distance_range"][0]-1
-        and k < config["plots"]["metagene_profile"]["distance_range"][1]+1}
-    fig = go.Figure([go.Bar(x=list(metagene_dict.keys()), y=list(metagene_dict.values()))])
+    metagene_dict = {
+        k: v
+        for k, v in metagene_dict.items()
+        if k > config["plots"]["metagene_profile"]["distance_range"][0] - 1
+        and k < config["plots"]["metagene_profile"]["distance_range"][1] + 1
+    }
+    fig = go.Figure(
+        [go.Bar(x=list(metagene_dict.keys()), y=list(metagene_dict.values()))]
+    )
     fig.update_layout(
         title="Metagene Profile",
         xaxis_title="Relative position",
@@ -466,11 +476,9 @@ def plot_metagene_profile(metagene_dict: dict, config: dict) -> dict:
             size=18,
             color=config["plots"]["base_color"],
         ),
-        bargap=0
+        bargap=0,
     )
-    fig.update_xaxes(
-        range=config["plots"]["metagene_profile"]["distance_range"]
-        )
+    fig.update_xaxes(range=config["plots"]["metagene_profile"]["distance_range"])
     plot_metagene_profile_dict = {
         "name": "Metagene Profile",
         "description": "Metagene profile showing the distance count of reads per \
@@ -481,7 +489,7 @@ distance away from a target (default: start codon).",
     return plot_metagene_profile_dict
 
 
-def plot_metagene_heatmap(metagene_heatmap_dict: dict,config: dict) -> dict:
+def plot_metagene_heatmap(metagene_heatmap_dict: dict, config: dict) -> dict:
     """
     Generate a heatmap of the reads depending on their distance
     to a target, read length and count
@@ -506,45 +514,50 @@ def plot_metagene_heatmap(metagene_heatmap_dict: dict,config: dict) -> dict:
 
     fig = go.Figure(
         data=go.Heatmap(
-            x = x_data,
-            y = y_data,
-            z = z_data,
-        colorscale='electric',
-        zmin = 0,
-        zmax = config["plots"]["metagene_heatmap"]["max_colorscale"]
-    ))
+            x=x_data,
+            y=y_data,
+            z=z_data,
+            colorscale="electric",
+            zmin=0,
+            zmax=config["plots"]["metagene_heatmap"]["max_colorscale"],
+        )
+    )
     fig.update_xaxes(range=config["plots"]["metagene_heatmap"]["distance_range"])
     fig.update_layout(
-            title="Metagene Heatmap",
-            xaxis_title="Read length",
-            yaxis_title="Relative position",
-            font=dict(
-                family=config["plots"]["font_family"],
-                size=18,
-                color=config["plots"]["base_color"],
-            ),
-            legend={'traceorder':'normal'},
+        title="Metagene Heatmap",
+        xaxis_title="Read length",
+        yaxis_title="Relative position",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
+        ),
+        legend={"traceorder": "normal"},
     )
     plot_metagene_heatmap = {
         "name": "Metagene Heatmap",
         "description": "Metagene heatmap showing the distance between the A-site and \
 a target per read length and the counts in colorscale.",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig, config)
+        "fig_image": plotly_to_image(fig, config),
     }
     return plot_metagene_heatmap
 
 
 def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
-    nt_start, nt_count = config["plots"]["nucleotide_proportion"]["nucleotide_start"],config["plots"]["nucleotide_proportion"]["nucleotide_count"]
+    nt_start, nt_count = (
+        config["plots"]["nucleotide_proportion"]["nucleotide_start"],
+        config["plots"]["nucleotide_proportion"]["nucleotide_count"],
+    )
     with tempfile.TemporaryDirectory() as tempdir:
-        with open(f"{tempdir}/temp_fasta.fasta","w+") as fasta:
+        with open(f"{tempdir}/temp_fasta.fasta", "w+") as fasta:
             count = 0
             for n in sequence_slice_dict.values():
                 count += 1
                 fasta.write(f">{count}\n{n}\n")
             with open(f"{tempdir}/temp_plot.png", "w+b") as plot:
-                weblogo_prompt = ["weblogo",
+                weblogo_prompt = [
+                    "weblogo",
                     f"-f{fasta.name}",
                     f"-Dfasta",
                     f"-o{plot.name}",
@@ -552,16 +565,16 @@ def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
                 ]
                 subprocess.run(weblogo_prompt)
                 plot.seek(0)
-                fig_image = base64.b64encode(plot.read()).decode('utf-8')
+                fig_image = base64.b64encode(plot.read()).decode("utf-8")
     plot_logoplot_dict = {
         "name": "Logoplot",
         "description": "Logoplot created with WebLogo ver 3.7.12",
-        "fig_html": f'<img src="data:image/png;base64,{fig_image}" alt="Logoplot created with WebLogo" width="100%" height="auto"">', #png for both versions
-        "fig_image": fig_image
+        "fig_html": f'<img src="data:image/png;base64,{fig_image}" alt="Logoplot created with WebLogo" width="100%" height="auto"">',  # png for both versions
+        "fig_image": fig_image,
     }
     return plot_logoplot_dict
-    
+
 
 def plot_summary_scoring() -> dict:
-    plot_summary_dict ={}
+    plot_summary_dict = {}
     return plot_summary_dict
