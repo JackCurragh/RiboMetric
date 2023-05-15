@@ -155,148 +155,147 @@ def argument_parser():
         parser: ArgumentParser object containing the parsed arguments
     """
     parser = argparse.ArgumentParser(
-            description="""A python command-line utility for the generation
+        description="""A python command-line utility for the generation
                         of comprehensive reports on the quality of ribosome
                         profiling (Ribo-Seq) datasets""",
-            epilog=f"""
+        epilog=f"""
 
             Made with {Emoji('heart')} in LAPTI lab at University College Cork.
             For more information, please visit:
             https://ribosomeprofiler.readthedocs.io/en/latest/
             """,
-        )
+    )
 
-    subparsers = parser.add_subparsers(dest='command', title='subcommands')
+    subparsers = parser.add_subparsers(dest="command", title="subcommands")
 
     # create the parser for the "run" command
     run_parser = subparsers.add_parser(
-        'run',
-        help='run RibosomeProfiler in normal mode'
-        )
+        "run", help="run RibosomeProfiler in normal mode"
+    )
     run_parser.add_argument(
-            "-b", "--bam", type=str, required=True, help="Path to bam file"
-        )
+        "-b", "--bam", type=str, required=True, help="Path to bam file"
+    )
     run_parser.add_argument(
-            "-a", "--annotation",
-            type=str,
-            required=False,
-            help="Path to RibosomeProfiler annotation file",
-        )
+        "-a",
+        "--annotation",
+        type=str,
+        required=False,
+        help="Path to RibosomeProfiler annotation file",
+    )
     run_parser.add_argument(
-            "-g", "--gff", type=str, required=False, help="Path to gff file"
-        )
+        "-g", "--gff", type=str, required=False, help="Path to gff file"
+    )
     run_parser.add_argument(
-            "-f",
-            "--fasta",
-            type=str,
-            required=False,
-            help="Path to the transcriptome fasta file",
-        )
+        "-f",
+        "--fasta",
+        type=str,
+        required=False,
+        help="Path to the transcriptome fasta file",
+    )
     run_parser.add_argument(
-            "-n",
-            "--name",
-            type=str,
-            required=False,
-            help="""Name of the sample being analysed
+        "-n",
+        "--name",
+        type=str,
+        required=False,
+        help="""Name of the sample being analysed
             (default: filename of bam file)""",
-        )
+    )
     run_parser.add_argument(
-            "-o",
-            "--output",
-            type=str,
-            required=False,
-            default=".",
-            help="""Path to the output directory
+        "-o",
+        "--output",
+        type=str,
+        required=False,
+        default=".",
+        help="""Path to the output directory
             (default: current directory)""",
-        )
+    )
     run_parser.add_argument(
-            "-S",
-            "--subsample",
-            type=int,
-            required=False,
-            default=1000000,
-            help="""Number of reads to subsample from the bam file
+        "-S",
+        "--subsample",
+        type=int,
+        required=False,
+        default=1000000,
+        help="""Number of reads to subsample from the bam file
             (default: 10000000)""",
-        )
+    )
     run_parser.add_argument(
-            "-T",
-            "--transcripts",
-            type=int,
-            required=False,
-            default=100000,
-            help="Number of transcripts to consider (default: 100000)",
-        )
+        "-T",
+        "--transcripts",
+        type=int,
+        required=False,
+        default=100000,
+        help="Number of transcripts to consider (default: 100000)",
+    )
     run_parser.add_argument(
-            "-c",
-            "--config",
-            type=str,
-            required=False,
-            default="config.yml",
-            help="Path to the config file (default: config.yml)",
-        )
+        "-c",
+        "--config",
+        type=str,
+        required=False,
+        default="config.yml",
+        help="Path to the config file (default: config.yml)",
+    )
     run_parser.add_argument(
-            "--json",
-            action="store_true",
-            default=False,
-            help="Output the results as a json file",
-        )
+        "--json",
+        action="store_true",
+        default=False,
+        help="Output the results as a json file",
+    )
     run_parser.add_argument(
-            "--html",
-            action="store_true",
-            default=True,
-            help="Output the results as an html file (default)",
-        )
+        "--html",
+        action="store_true",
+        default=True,
+        help="Output the results as an html file (default)",
+    )
     run_parser.add_argument(
-            "--pdf",
-            action="store_true",
-            default=False,
-            help="Output the results as a pdf file (default)",
-        )
+        "--pdf",
+        action="store_true",
+        default=False,
+        help="Output the results as a pdf file (default)",
+    )
     run_parser.add_argument(
-            "--csv",
-            action="store_true",
-            default=False,
-            help="Output the results as a csv file",
-        )
+        "--csv",
+        action="store_true",
+        default=False,
+        help="Output the results as a csv file",
+    )
     run_parser.add_argument(
-            "--all",
-            action="store_true",
-            default=False,
-            help="Output the results as all of the above",
-        )
+        "--all",
+        action="store_true",
+        default=False,
+        help="Output the results as all of the above",
+    )
 
     # create the parser for the "prepare" command
     prepare_parser = subparsers.add_parser(
-        'prepare',
-        help='run RibosomeProfiler in preparation mode'
-        )
+        "prepare", help="run RibosomeProfiler in preparation mode"
+    )
     prepare_parser.add_argument(
-            "-g", "--gff", type=str, required=True, help="Path to gff file"
-        )
+        "-g", "--gff", type=str, required=True, help="Path to gff file"
+    )
     prepare_parser.add_argument(
-            "-T",
-            "--transcripts",
-            type=int,
-            required=False,
-            default=10000000000,
-            help="Number of transcripts to consider (default: 100000)",
-        )
+        "-T",
+        "--transcripts",
+        type=int,
+        required=False,
+        default=10000000000,
+        help="Number of transcripts to consider (default: 100000)",
+    )
     prepare_parser.add_argument(
-            "-o",
-            "--output",
-            type=str,
-            required=False,
-            default=".",
-            help="""Path to the output directory
+        "-o",
+        "--output",
+        type=str,
+        required=False,
+        default=".",
+        help="""Path to the output directory
             (default: current directory)""",
-        )
+    )
     prepare_parser.add_argument(
-            "-c",
-            "--config",
-            type=str,
-            required=False,
-            default="config.yml",
-            help="Path to the config file (default: config.yml)",
+        "-c",
+        "--config",
+        type=str,
+        required=False,
+        default="config.yml",
+        help="Path to the config file (default: config.yml)",
     )
     return parser
 
@@ -317,14 +316,9 @@ def main(args):
     with open(args.config, "r") as ymlfile:
         config = yaml.load(ymlfile, Loader=yaml.Loader)
 
-    if args.command == 'prepare':
+    if args.command == "prepare":
         print_table_prepare(args, console, "Prepare Mode")
-        prepare_annotation(
-            args.gff,
-            args.output,
-            args.transcripts,
-            config
-            )
+        prepare_annotation(args.gff, args.output, args.transcripts, config)
 
     else:
         if args.all:
@@ -347,9 +341,9 @@ def main(args):
 
         # Expand the dataframe to have one row per read
         print("Expanding dataframe")
-        read_df = read_df_pre.loc[read_df_pre.index.repeat(
-            read_df_pre['count']
-        )].reset_index(drop=True)
+        read_df = read_df_pre.loc[
+            read_df_pre.index.repeat(read_df_pre["count"])
+        ].reset_index(drop=True)
         print("Dataframe expanded")
         print("Calculating A site information")
         read_df = a_site_calculation(read_df)
@@ -364,10 +358,7 @@ def main(args):
             elif args.annotation is None and args.gff is not None:
                 print("Gff provided, preparing annotation")
                 annotation_df = prepare_annotation(
-                    args.gff,
-                    args.output,
-                    args.transcripts,
-                    config
+                    args.gff, args.output, args.transcripts, config
                 )
                 print("Annotation prepared")
             elif args.annotation is not None and args.gff is None:
@@ -376,19 +367,12 @@ def main(args):
                 print("Annotation parsed")
 
                 print("Running annotation mode")
-                results_dict = annotation_mode(read_df,
-                                            annotation_df,
-                                            config)
+                results_dict = annotation_mode(read_df, annotation_df, config)
 
             if args.fasta is not None:
                 fasta_dict = parse_fasta(args.fasta)
 
-                results_dict = sequence_mode(
-                    results_dict,
-                    read_df,
-                    fasta_dict,
-                    config
-                )
+                results_dict = sequence_mode(results_dict, read_df, fasta_dict, config)
         if args.html or args.pdf:
             plots_list = generate_plots(results_dict, config)
             generate_report(plots_list, config, report_export)

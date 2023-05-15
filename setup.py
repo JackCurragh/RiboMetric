@@ -42,8 +42,12 @@ setup(
     include_package_data=True,
     keywords="RibosomeProfiler",
     name="RibosomeProfiler",
-    packages=find_packages(include=["RibosomeProfiler", "RibosomeProfiler.*"],
-                           exclude=["sample_data/*", ]),
+    packages=find_packages(
+        include=["RibosomeProfiler", "RibosomeProfiler.*"],
+        exclude=[
+            "sample_data/*",
+        ],
+    ),
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/JackCurragh/RibosomeProfiler",
