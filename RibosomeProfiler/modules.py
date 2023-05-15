@@ -74,7 +74,7 @@ def ligation_bias_distribution(
     read_df: pd.DataFrame, num_bases: int = 2, five_prime: bool = True
 ) -> dict:
     """
-    Calculate the proportion of the occurence in the first or last n
+    Calculate the proportion of the occurrence in the first or last n
     nucleotides of the reads to check for ligation bias
 
     Inputs:
@@ -137,12 +137,13 @@ def nucleotide_composition(
 
 def read_frame_cull(read_frame_dict: dict, config: dict) -> dict:
     """
-    Culls the read_frame_dict according to config so only read lengths of interest are kept
-    
+    Culls the read_frame_dict according to config so only read lengths of
+    interest are kept
+
     Inputs:
-    read_frame_dict: 
-    config: 
-    
+    read_frame_dict:
+    config:
+
     Outputs:
     culled_read_frame_dict
     """
@@ -154,22 +155,25 @@ def read_frame_cull(read_frame_dict: dict, config: dict) -> dict:
             or k < config["plots"]["read_frame_distribution"]["lower_limit"]
         ):
             del culled_read_frame_dict[k]
-    
+
     return culled_read_frame_dict
 
 
-def read_frame_score(read_frame_dict:dict) -> dict:
+def read_frame_score(read_frame_dict: dict) -> dict:
     """
-    Generates scores for each read_length seperately as well as a global score
-    Can be used after read_frame_cull to calculate the global score of the region of interest
-    The calculation for this score is: 1 - sum(2nd highest peak count)/sum(highest peak count)
-    A score close to 1 has good periodicity, while a score closer to 0 has a random spread
-    
+    Generates scores for each read_length separately as well as a global score
+    Can be used after read_frame_cull to calculate the global score of the
+    region of interest. The calculation for this score is: 1 - sum(2nd highest
+    peak count)/sum(highest peak count). A score close to 1 has good
+    periodicity, while a score closer to 0 has a random spread
+
     Inputs:
-    read_frame_dict: dictionary containing the distribution of the reading frames over the different read lengths
-    
+    read_frame_dict: dictionary containing the distribution of the reading
+                    frames over the different read lengths
+
     Outputs:
-    scored_read_frame_dict: dictionary containing read frame distribution scores for each read length and a global score
+    scored_read_frame_dict: dictionary containing read frame distribution
+                            scores for each read length and a global score
     """
     scored_read_frame_dict = {}
     highest_peak_sum, second_peak_sum = 0, 0
@@ -187,7 +191,7 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     Calculate the distribution of the reading frame over the dataset
 
     Inputs:
-        a_site_df: Dataframe containing the read information with an added 
+        a_site_df: Dataframe containing the read information with an added
         column for the a-site location
 
     Outputs:
@@ -203,17 +207,20 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     for index, value in frame_df.items():
         read_length, read_frame = index
         if read_length not in read_frame_dict:
-            read_frame_dict[read_length] = {0:0,1:0,2:0}
+            read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
         read_frame_dict[read_length][read_frame] = value
     return read_frame_dict
 
 
-def annotate_reads(a_site_df: pd.DataFrame, annotation_df: pd.DataFrame) -> pd.DataFrame:
+def annotate_reads(
+        a_site_df: pd.DataFrame,
+        annotation_df: pd.DataFrame
+        ) -> pd.DataFrame:
     """
     Merges the annotation dataframe with the read dataframe
 
     Inputs:
-        a_site_df: Dataframe containing the read information with an added 
+        a_site_df: Dataframe containing the read information with an added
         column for the a-site location
         annotation_df: Dataframe containing the CDS start/stop
         and transcript id from a gff file.
@@ -255,7 +262,7 @@ def assign_mRNA_category(row) -> str:
         return 'three_trailer'
     else:
         return 'unknown'
-    
+
 
 def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
     """
@@ -263,17 +270,23 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
 
     Inputs:
         annotated_read_df: Dataframe containing the read information
-        with an added column for the a-site location along
-        with the columns from the gff file
+                           with an added column for the a-site location along
+                           with the columns from the gff file
 
     Outputs:
-        mRNA_distribution_dict: Nested dictionary containing counts for every mRNA
-        category at the different read lengths
+        mRNA_distribution_dict: Nested dictionary containing counts for every
+                                mRNA category at the different read lengths
     """
     # Creating MultiIndex for reindexing
-    categories = ['five_leader', 'start_codon', 'CDS', 'stop_codon', 'three_trailer']
+    categories = [
+        'five_leader', 'start_codon', 'CDS', 'stop_codon', 'three_trailer'
+        ]
     classes = annotated_read_df['read_length'].unique()
-    idx = pd.MultiIndex.from_product([classes, categories], names=['class', 'category'])
+    idx = pd.MultiIndex.from_product(
+        [classes, categories],
+        names=['class', 'category']
+        )
+
     # Adding mRNA category to annotated_read_df with assign_mRNA_category
     annotated_read_df['mRNA_category'] = (
         annotated_read_df
@@ -286,6 +299,7 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         .reindex(idx, fill_value=0)
         .sort_index()
         )
+
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict = {}
     for index, value in annotated_read_df.items():
@@ -293,15 +307,19 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         if read_length not in mRNA_distribution_dict:
             mRNA_distribution_dict[read_length] = {}
         mRNA_distribution_dict[read_length][mRNA_category] = value
-    #Setting order of categories 5' to 3'
+
+    # Setting order of categories 5' to 3'
     for i in mRNA_distribution_dict:
-        mRNA_distribution_dict[i] = {k: mRNA_distribution_dict[i][k] for k in categories if k in mRNA_distribution_dict[i]}
+        mRNA_distribution_dict[i] = {
+            k: mRNA_distribution_dict[i][k]
+            for k in categories if k in mRNA_distribution_dict[i]
+            }
     return mRNA_distribution_dict
 
 
 def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
     """
-    Calculate the sum of mRNA categories 
+    Calculate the sum of mRNA categories
 
     Inputs:
         annotated_read_dict: Dataframe containing the read information
@@ -320,9 +338,13 @@ def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
             else:
                 sum_mRNA_dict[k] = v
     if not config["plots"]["mRNA_distribution"]["absolute_counts"]:
-        sum_mRNA_dict = {k: (v/sum(sum_mRNA_dict.values())) for k, v in sum_mRNA_dict.items()}
+        sum_mRNA_dict = {
+            k: (v/sum(sum_mRNA_dict.values()))
+            for k, v in sum_mRNA_dict.items()
+            }
 
     return sum_mRNA_dict
+
 
 def convert_html_to_pdf(source_html, output_filename):
     result_file = open(output_filename, "w+b")
