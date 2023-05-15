@@ -4,7 +4,7 @@ RiboMetric reports
 """
 
 from plotly import graph_objects as go
-from .modules import read_frame_cull, read_frame_score, sum_mRNA_distribution
+#from .modules import read_frame_cull, read_frame_score, sum_mRNA_distribution
 import tempfile  # logoplot
 import subprocess  # logoplot
 import plotly.io as pio
@@ -55,7 +55,7 @@ def generate_plots(results_dict: dict, config: dict) -> list:
                     config,
                     ),
                 plot_metagene_heatmap(
-                    results_dict["metagene_heatmap"],
+                    results_dict["metagene_profile"],
                     config
                     ),
             ]
@@ -219,7 +219,6 @@ def plot_nucleotide_distribution(
         config["plots"]["nucleotide_proportion"]["nucleotide_count"],
     )
     for nt in reversed(nucleotide_composition_dict):
-        # temp_dict[nt][config["plots"]["nucleotide_proportion"]["nucleotide_start"]:config["plots"]["nucleotide_proportion"]["nucleotide_count"]]
         plot_data.append(
             go.Bar(
                 name=nt,
@@ -228,6 +227,7 @@ def plot_nucleotide_distribution(
                     nt_start: nt_start + nt_count
                     ],
                 marker=dict(color=config["plots"]["nucleotide_colors"][nt]),
+                # Set the text in the hovertemplate to proportion or count depending on config
                 hovertemplate="Proportion: %{y:.2%}"
                 if not config["plots"]["mRNA_distribution"]["absolute_counts"]
                 else "Count: %{x}",
@@ -485,7 +485,7 @@ regions represented in the reads over the different read lengths.",
     return plot_mRNA_read_breakdown_dict
 
 
-def plot_metagene_profile(metagene_dict: dict, config: dict) -> dict:
+def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
     """
     Generate a plot of the distribution of reads depending on their distance
     to a target (default: start codon)
@@ -499,12 +499,13 @@ def plot_metagene_profile(metagene_dict: dict, config: dict) -> dict:
         plot_metagene_profile_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
-    metagene_dict = {
-        k: v
-        for k, v in metagene_dict.items()
-        if k > config["plots"]["metagene_profile"]["distance_range"][0] - 1
-        and k < config["plots"]["metagene_profile"]["distance_range"][1] + 1
-    }
+    metagene_dict = {}
+    for inner_dict in metagene_profile_dict.values():
+        for inner_key, inner_value in inner_dict.items():
+            if inner_key in metagene_dict and metagene_dict[inner_key] != None:
+                metagene_dict[inner_key] += inner_value if inner_value is not None else 0
+            else:
+                metagene_dict[inner_key] = inner_value if inner_value is not None else 0
     fig = go.Figure(
         [go.Bar(x=list(metagene_dict.keys()), y=list(metagene_dict.values()))]
     )
@@ -532,7 +533,7 @@ def plot_metagene_profile(metagene_dict: dict, config: dict) -> dict:
     return plot_metagene_profile_dict
 
 
-def plot_metagene_heatmap(metagene_heatmap_dict: dict, config: dict) -> dict:
+def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
     """
     Generate a heatmap of the reads depending on their distance
     to a target, read length and count
@@ -549,7 +550,7 @@ def plot_metagene_heatmap(metagene_heatmap_dict: dict, config: dict) -> dict:
     x_data = []
     y_data = []
     z_data = []
-    for k1, v1 in metagene_heatmap_dict.items():
+    for k1, v1 in metagene_profile_dict.items():
         for k2, v2 in v1.items():
             x_data.append(k2)
             y_data.append(k1)
@@ -562,11 +563,11 @@ def plot_metagene_heatmap(metagene_heatmap_dict: dict, config: dict) -> dict:
             z=z_data,
             colorscale="electric",
             zmin=0,
-            zmax=config["plots"]["metagene_heatmap"]["max_colorscale"],
+            zmax=config["plots"]["metagene_profile"]["max_colorscale"],
         )
     )
     fig.update_xaxes(
-        range=config["plots"]["metagene_heatmap"]["distance_range"]
+        range=config["plots"]["metagene_profile"]["distance_range"]
         )
     fig.update_layout(
         title="Metagene Heatmap",
