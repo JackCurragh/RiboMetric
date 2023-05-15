@@ -3,7 +3,8 @@ This script generates a machine readable format of the output in a json file.
 This output can later be used to generate reports without needing to run the
 parsing and modules again. 
 """
-# Maybe json and csv in one script? Add option for keeping or leaving config? Option to then use config in json (if exists) or local config
+# Maybe json and csv in one script? Add option for keeping or leaving config? 
+# Option to then use config in json (if exists) or local config
 import json
 
 
