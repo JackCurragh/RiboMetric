@@ -65,7 +65,7 @@ def generate_report(
             out = output + ".html"
             with open(out, mode="w", encoding="utf-8") as f:
                 f.write(jinja_render)
-        else:        
+        else:
             context["filetype"] = filetype
             jinja_render = template.render(context)
             out = output + ".pdf"
