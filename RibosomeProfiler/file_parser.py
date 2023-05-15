@@ -190,7 +190,7 @@ def gff_df_to_cds_df(
         transcript_list: list
         ) -> pd.DataFrame:
     """
-    Subset the gff dataframe to only include the CDS features 
+    Subset the gff dataframe to only include the CDS features
     with tx coordinates for a specific list of transcripts.
 
     Inputs:
