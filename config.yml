@@ -7,29 +7,27 @@ plots:
   ligation_bias_distribution:
     nucleotide_count: 2
     include_N: False
+  nucleotide_proportion:
+    nucleotide_start: 0
+    nucleotide_count: 15
   read_frame_distribution:
     upper_limit: 40
     lower_limit: 15
-    show_scores: "all"        #Options: ["all", "global", "none"]
+    show_scores: "all"        # Options: ["all", "global", "none"]
   mRNA_distribution:
     upper_limit: 50
     lower_limit: 10
-    absolute_counts: False    #Options for both?
+    absolute_counts: False    # Options for both?
   mRNA_read_breakdown:
     upper_limit: 50
     lower_limit: 10
     absolute_counts: False
   metagene_profile:
-    distance_target: "start"  #Options: ["start", "stop"] # Add both? grid plot
+    distance_target: "both"   # Options: ["start", "stop", "both"]
+    shared_yaxis: False       # For the metagene profile barplot, controls whether the start and stop distance share a y-axis or not
     distance_range: [-30,30]
-  metagene_heatmap:
-    distance_target: "start"  #Options: ["start", "stop"] # Add both? grid plot
-    distance_range: [-30,30]
-    colorscale: "electric"    #See https://plotly.com/python/builtin-colorscales/
-    max_colorscale: 350       #set to 'None' (without quotes!) for automatic maximum
-  nucleotide_proportion:
-    nucleotide_start: 0
-    nucleotide_count: 15
+    colorscale: "electric"    # Heatmap colorscale, see https://plotly.com/python/builtin-colorscales/
+    max_colorscale: 350       # set to 'None' (without quotes!) for automatic maximum
 qc:
   use_cds_subset:
   # Defines which modules use only reads that are on cds
