@@ -31,16 +31,17 @@ def generate_report(
     Outputs:
         No variables will be output
     """
-    env = Environment(loader=FileSystemLoader(["templates",
-                                               "RibosomeProfiler/templates"]),
-                      autoescape=False)
+    env = Environment(
+        loader=FileSystemLoader(["templates", "RibosomeProfiler/templates"]),
+        autoescape=False,
+    )
 
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
-    binary_logo = open("RibosomeProfiler_logo.png", 'rb').read()
-    base64_logo = base64.b64encode(binary_logo).decode('utf-8')
-    binary_icon = open("favicon.png", 'rb').read()
-    base64_icon = base64.b64encode(binary_icon).decode('utf-8')
+    binary_logo = open("RibosomeProfiler_logo.png", "rb").read()
+    base64_logo = base64.b64encode(binary_logo).decode("utf-8")
+    binary_icon = open("favicon.png", "rb").read()
+    base64_icon = base64.b64encode(binary_icon).decode("utf-8")
 
     if outdir == "":
         output = name
@@ -56,11 +57,11 @@ def generate_report(
 
     template = env.get_template("base.html")
     context = {
-                "plots": plots,
-                "completion_time": completion_time,
-                "logo": base64_logo,
-                "favicon": base64_icon,
-            }
+        "plots": plots,
+        "completion_time": completion_time,
+        "logo": base64_logo,
+        "favicon": base64_icon,
+    }
 
     for filetype in export_mode:
         if filetype == "html":
@@ -69,7 +70,7 @@ def generate_report(
             out = output + ".html"
             with open(out, mode="w", encoding="utf-8") as f:
                 f.write(jinja_render)
-        else:        
+        else:
             context["filetype"] = filetype
             jinja_render = template.render(context)
             out = output + ".pdf"

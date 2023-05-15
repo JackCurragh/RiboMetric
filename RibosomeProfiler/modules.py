@@ -9,22 +9,19 @@ import numpy as np
 from xhtml2pdf import pisa
 
 
-def read_df_to_cds_read_df(
-    df: pd.DataFrame
-) -> pd.DataFrame:
+def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     Convert the a_site_df to a cds_read_df by removing reads that do not
     map to the CDS
 
     Inputs:
         df: Dataframe containing the read information and annotation
-        
+
     Outputs:
         cds_read_df: Dataframe containing the read information for reads
                     that map to the CDS
     """
-    cds_read_df = df[(df['cds_start'] < df['a_site']) &
-                      (df['a_site'] < df['cds_end'])]
+    cds_read_df = df[(df["cds_start"] < df["a_site"]) & (df["a_site"] < df["cds_end"])]
     return cds_read_df
 
 
@@ -54,8 +51,7 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     Outputs:
         dict: Dictionary containing the read length distribution
     """
-    read_lengths, read_counts = np.unique(read_df["read_length"],
-                                          return_counts=True)
+    read_lengths, read_counts = np.unique(read_df["read_length"], return_counts=True)
     return dict(zip(read_lengths.tolist(), read_counts.tolist()))
 
 
@@ -63,7 +59,7 @@ def ligation_bias_distribution(
     read_df: pd.DataFrame, num_bases: int = 2, five_prime: bool = True
 ) -> dict:
     """
-    Calculate the proportion of the occurence in the first or last n
+    Calculate the proportion of the occurrence in the first or last n
     nucleotides of the reads to check for ligation bias
 
     Inputs:
@@ -90,11 +86,10 @@ def ligation_bias_distribution(
             .value_counts(normalize=True)
             .sort_index()
         )
-    ligation_bias_dict = {k: v for k, v in sequence_dict.items()
-                          if "N" not in k}
-    ligation_bias_dict.update({k: v for k, v in sequence_dict.items()
-                               if "N" in k})
+    ligation_bias_dict = {k: v for k, v in sequence_dict.items() if "N" not in k}
+    ligation_bias_dict.update({k: v for k, v in sequence_dict.items() if "N" in k})
     return ligation_bias_dict
+
 
 # Slow, needs improving
 def nucleotide_composition(
@@ -126,12 +121,13 @@ def nucleotide_composition(
 
 def read_frame_cull(read_frame_dict: dict, config: dict) -> dict:
     """
-    Culls the read_frame_dict according to config so only read lengths of interest are kept
-    
+    Culls the read_frame_dict according to config so only read lengths of
+    interest are kept
+
     Inputs:
-    read_frame_dict: 
-    config: 
-    
+    read_frame_dict:
+    config:
+
     Outputs:
     culled_read_frame_dict
     """
@@ -143,8 +139,35 @@ def read_frame_cull(read_frame_dict: dict, config: dict) -> dict:
             or k < config["plots"]["read_frame_distribution"]["lower_limit"]
         ):
             del culled_read_frame_dict[k]
-    
+
     return culled_read_frame_dict
+
+
+def read_frame_score(read_frame_dict: dict) -> dict:
+    """
+    Generates scores for each read_length separately as well as a global score
+    Can be used after read_frame_cull to calculate the global score of the
+    region of interest. The calculation for this score is: 1 - sum(2nd highest
+    peak count)/sum(highest peak count). A score close to 1 has good
+    periodicity, while a score closer to 0 has a random spread
+
+    Inputs:
+    read_frame_dict: dictionary containing the distribution of the reading
+                    frames over the different read lengths
+
+    Outputs:
+    scored_read_frame_dict: dictionary containing read frame distribution
+                            scores for each read length and a global score
+    """
+    scored_read_frame_dict = {}
+    highest_peak_sum, second_peak_sum = 0, 0
+    for k, inner_dict in read_frame_dict.items():
+        top_two_values = sorted(inner_dict.values(), reverse=True)[:2]
+        highest_peak_sum += top_two_values[0]
+        second_peak_sum += top_two_values[1]
+        scored_read_frame_dict[k] = 1-top_two_values[1]/top_two_values[0]
+    scored_read_frame_dict["global"] = (1-second_peak_sum/highest_peak_sum)
+    return scored_read_frame_dict
 
 
 def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
@@ -152,7 +175,7 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     Calculate the distribution of the reading frame over the dataset
 
     Inputs:
-        a_site_df: Dataframe containing the read information with an added 
+        a_site_df: Dataframe containing the read information with an added
         column for the a-site location
 
     Outputs:
@@ -168,41 +191,20 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     for index, value in frame_df.items():
         read_length, read_frame = index
         if read_length not in read_frame_dict:
-            read_frame_dict[read_length] = {0:0,1:0,2:0}
+            read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
         read_frame_dict[read_length][read_frame] = value
     return read_frame_dict
 
 
-def read_frame_score(read_frame_dict:dict) -> dict:
-    """
-    Generates scores for each read_length seperately as well as a global score
-    Can be used after read_frame_cull to calculate the global score of the region of interest
-    The calculation for this score is: 1 - sum(2nd highest peak count)/sum(highest peak count)
-    A score close to 1 has good periodicity, while a score closer to 0 has a random spread
-    
-    Inputs:
-    read_frame_dict: dictionary containing the distribution of the reading frames over the different read lengths
-    
-    Outputs:
-    scored_read_frame_dict: dictionary containing read frame distribution scores for each read length and a global score
-    """
-    scored_read_frame_dict = {}
-    highest_peak_sum, second_peak_sum = 0, 0
-    for k, inner_dict in read_frame_dict.items():
-        top_two_values = sorted(inner_dict.values(), reverse=True)[:2]
-        highest_peak_sum += top_two_values[0]
-        second_peak_sum += top_two_values[1]
-        scored_read_frame_dict[k] = 1-top_two_values[1]/top_two_values[0]
-    scored_read_frame_dict["global"] = (1-second_peak_sum/highest_peak_sum)
-    return scored_read_frame_dict
-
-
-def annotate_reads(a_site_df: pd.DataFrame, annotation_df: pd.DataFrame) -> pd.DataFrame:
+def annotate_reads(
+        a_site_df: pd.DataFrame,
+        annotation_df: pd.DataFrame
+        ) -> pd.DataFrame:
     """
     Merges the annotation dataframe with the read dataframe
 
     Inputs:
-        a_site_df: Dataframe containing the read information with an added 
+        a_site_df: Dataframe containing the read information with an added
         column for the a-site location
         annotation_df: Dataframe containing the CDS start/stop
         and transcript id from a gff file.
@@ -213,8 +215,8 @@ def annotate_reads(a_site_df: pd.DataFrame, annotation_df: pd.DataFrame) -> pd.D
         with the columns from the gff file
     """
     annotated_read_df = a_site_df.assign(
-        transcript_id=a_site_df.reference_name.str.split('|').str[0]
-        ).merge(annotation_df, on="transcript_id")
+        transcript_id=a_site_df.reference_name.str.split("|").str[0]
+    ).merge(annotation_df, on="transcript_id")
     return annotated_read_df
 
 
@@ -232,19 +234,21 @@ def assign_mRNA_category(row) -> str:
         mRNA category: string with the category for the read
         ["five_leader", "start_codon", "CDS", "stop_codon", "three_trailer"]
     """
-    if row['a_site'] < row['cds_start']:
-        return 'five_leader'
-    elif row['a_site'] == row['cds_start']:
-        return 'start_codon'
-    elif row['cds_start'] < row['a_site'] < row['cds_end']:
-        return 'CDS'
-    elif row['a_site'] == row['cds_end']:
-        return 'stop_codon'
-    elif row['a_site'] > row['cds_end']:
-        return 'three_trailer'
+    if row["a_site"] < row["cds_start"]:
+        return "five_leader"
+    elif row["a_site"] == row["cds_start"]:
+        return "start_codon"
+    elif row["cds_start"] < row["a_site"] < row["cds_end"]:
+        return "CDS"
+    elif row["a_site"] == row["cds_end"]:
+        return "stop_codon"
+    elif row["a_site"] > row["cds_end"]:
+        return "three_trailer"
     else:
         return 'unknown'
-    
+
+
+
 # Slow, needs improving
 def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
     """
@@ -252,30 +256,32 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
 
     Inputs:
         annotated_read_df: Dataframe containing the read information
-        with an added column for the a-site location along with data from
-        the annotation file
-        with the columns from the gff file
-
+                           with an added column for the a-site location along
+                           with the columns from the gff file
     Outputs:
-        mRNA_distribution_dict: Nested dictionary containing counts for every mRNA
-        category at the different read lengths
+        mRNA_distribution_dict: Nested dictionary containing counts for every
+                                mRNA category at the different read lengths
     """
     # Creating MultiIndex for reindexing
-    categories = ['five_leader', 'start_codon', 'CDS', 'stop_codon', 'three_trailer']
+    categories = [
+        'five_leader', 'start_codon', 'CDS', 'stop_codon', 'three_trailer'
+        ]
     classes = annotated_read_df['read_length'].unique()
-    idx = pd.MultiIndex.from_product([classes, categories], names=['class', 'category'])
-    # Adding mRNA category to annotated_read_df with assign_mRNA_category
-    annotated_read_df['mRNA_category'] = (
-        annotated_read_df
-        .apply(assign_mRNA_category, axis=1)
+    idx = pd.MultiIndex.from_product(
+        [classes, categories],
+        names=['class', 'category']
         )
+    # Adding mRNA category to annotated_read_df with assign_mRNA_category
+    annotated_read_df["mRNA_category"] = annotated_read_df.apply(
+        assign_mRNA_category, axis=1
+    )
     annotated_read_df = (
-        annotated_read_df
-        .groupby(['read_length', "mRNA_category"])
+        annotated_read_df.groupby(["read_length", "mRNA_category"])
         .size()
         .reindex(idx, fill_value=0)
         .sort_index()
         )
+
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict = {}
     for index, value in annotated_read_df.items():
@@ -283,15 +289,20 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         if read_length not in mRNA_distribution_dict:
             mRNA_distribution_dict[read_length] = {}
         mRNA_distribution_dict[read_length][mRNA_category] = value
-    #Setting order of categories 5' to 3'
+        
+    # Setting order of categories 5' to 3'
     for i in mRNA_distribution_dict:
-        mRNA_distribution_dict[i] = {k: mRNA_distribution_dict[i][k] for k in categories if k in mRNA_distribution_dict[i]}
+        mRNA_distribution_dict[i] = {
+            k: mRNA_distribution_dict[i][k]
+            for k in categories if k in mRNA_distribution_dict[i]
+            }
+
     return mRNA_distribution_dict
 
 
 def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
     """
-    Calculate the sum of mRNA categories 
+    Calculate the sum of mRNA categories
 
     Inputs:
         annotated_read_dict: Dataframe containing the read information
@@ -310,12 +321,17 @@ def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
             else:
                 sum_mRNA_dict[k] = v
     if not config["plots"]["mRNA_distribution"]["absolute_counts"]:
-        sum_mRNA_dict = {k: (v/sum(sum_mRNA_dict.values())) for k, v in sum_mRNA_dict.items()}
+        sum_mRNA_dict = {
+            k: (v/sum(sum_mRNA_dict.values()))
+            for k, v in sum_mRNA_dict.items()
+            }
 
     return sum_mRNA_dict
 
-
-def metagene_profile(annotated_read_df: pd.DataFrame, target: str = "start") -> pd.Series:
+  
+def metagene_profile(
+    annotated_read_df: pd.DataFrame, target: str = "start"
+) -> pd.Series:
     """
     Calculate distance from A-site to start or stop codon
 
@@ -328,12 +344,16 @@ def metagene_profile(annotated_read_df: pd.DataFrame, target: str = "start") -> 
     Outputs:
     """
     if target == "start":
-        return (annotated_read_df["a_site"] - annotated_read_df["cds_start"])
+        return annotated_read_df["a_site"] - annotated_read_df["cds_start"]
     elif target == "stop":
-        return (annotated_read_df["a_site"] - annotated_read_df["cds_end"])
+        return annotated_read_df["a_site"] - annotated_read_df["cds_end"]
 
 
-def metagene_heatmap(annotated_read_df: pd.DataFrame, target: str = "start", distance_range: list = [-50,50]) -> dict:
+def metagene_heatmap(
+    annotated_read_df: pd.DataFrame,
+    target: str = "start",
+    distance_range: list = [-50, 50],
+) -> dict:
     """
     Create a dictionary with a tuple key containing the read_length of the
     read and distance to the target and the counts as values, used in the
@@ -353,25 +373,33 @@ def metagene_heatmap(annotated_read_df: pd.DataFrame, target: str = "start", dis
         as values
     """
     annotated_read_df["metagene_info"] = metagene_profile(annotated_read_df, target)
-    pre_heatmap_dict = annotated_read_df[
-    (annotated_read_df["metagene_info"] > distance_range[0]-1) &
-    (annotated_read_df["metagene_info"] < distance_range[1]+1)
-    ].groupby(["read_length","metagene_info"]).size().to_dict()
+    pre_heatmap_dict = (
+        annotated_read_df[
+            (annotated_read_df["metagene_info"] > distance_range[0] - 1)
+            & (annotated_read_df["metagene_info"] < distance_range[1] + 1)
+        ]
+        .groupby(["read_length", "metagene_info"])
+        .size()
+        .to_dict()
+    )
     if pre_heatmap_dict == {}:
-        print("ERR - Metagene Heatmap: No reads found in specified range, \
-removing boundaries...")
-        pre_heatmap_dict = annotated_read_df.groupby(
-            ["read_length","metagene_info"]).size().to_dict()
+        print(
+            "ERR - Metagene Heatmap: No reads found in specified range, \
+removing boundaries..."
+        )
+        pre_heatmap_dict = (
+            annotated_read_df.groupby(["read_length", "metagene_info"]).size().to_dict()
+        )
     min_length = min([x[0] for x in list(pre_heatmap_dict.keys())])
     max_length = max([x[0] for x in list(pre_heatmap_dict.keys())])
     for y in range(min_length, max_length):
         if y not in [x[0] for x in list(pre_heatmap_dict.keys())]:
-            pre_heatmap_dict[(y,0)] = None
+            pre_heatmap_dict[(y, 0)] = None
     min_distance = min([x[1] for x in list(pre_heatmap_dict.keys())])
     max_distance = max([x[1] for x in list(pre_heatmap_dict.keys())])
     for z in range(min_distance, max_distance):
         if z not in [x[1] for x in list(pre_heatmap_dict.keys())]:
-            pre_heatmap_dict[(min_length,z)] = None
+            pre_heatmap_dict[(min_length, z)] = None
     metagene_heatmap_dict = {}
     # PROBLEM: tuple key is not useable for json keys, nested dictionary as solution
     for key, value in pre_heatmap_dict.items():
@@ -381,8 +409,13 @@ removing boundaries...")
     return metagene_heatmap_dict
 
 
-def sequence_slice(read_df: pd.DataFrame, nt_start: int = 0, nt_count: int = 15) -> dict:
-    sequence_slice_dict = {k: v[nt_start:nt_start+nt_count] for k,v in read_df["sequence"].to_dict().items()}
+def sequence_slice(
+    read_df: pd.DataFrame, nt_start: int = 0, nt_count: int = 15
+) -> dict:
+    sequence_slice_dict = {
+        k: v[nt_start : nt_start + nt_count]
+        for k, v in read_df["sequence"].to_dict().items()
+    }
     return sequence_slice_dict
 
 
