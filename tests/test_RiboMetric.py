@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Tests for `RibosomeProfiler` package."""
+"""Tests for `RiboMetric` package."""
 
 from RiboMetric.RiboMetric import main
 
@@ -38,7 +38,7 @@ def test_main_run():
 
     args = Namespace(
         command="run",
-        annotation=f"{file_path}/1000_entry_RibosomeProfiler.tsv",
+        annotation=f"{file_path}/1000_entry_RiboMetric.tsv",
         bam=f"{file_path}/test.bam",
         output=f"{file_path}",
         config=f"{file_path}/../../config.yml",

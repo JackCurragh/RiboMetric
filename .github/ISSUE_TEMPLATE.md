@@ -1,4 +1,4 @@
-* RibosomeProfiler version:
+* RiboMetric version:
 * Python version:
 * Operating System:
 

@@ -1,6 +1,6 @@
 """
 This script contains the code for generating the plots for
-RibosomeProfiler reports
+RiboMetric reports
 """
 
 from plotly import graph_objects as go

@@ -1,5 +1,5 @@
 """
-Main module for RibosomeProfiler
+Main module for RiboMetric
 Handles the command line interface and calls the appropriate functions
 
 Many different input combinations are possible.
@@ -162,7 +162,7 @@ def argument_parser():
 
             Made with {Emoji('heart')} in LAPTI lab at University College Cork.
             For more information, please visit:
-            https://ribosomeprofiler.readthedocs.io/en/latest/
+            https://RiboMetric.readthedocs.io/en/latest/
             """,
     )
 
@@ -170,7 +170,7 @@ def argument_parser():
 
     # create the parser for the "run" command
     run_parser = subparsers.add_parser(
-        "run", help="run RibosomeProfiler in normal mode"
+        "run", help="run RiboMetric in normal mode"
     )
     run_parser.add_argument(
         "-b", "--bam", type=str, required=True, help="Path to bam file"
@@ -180,7 +180,7 @@ def argument_parser():
         "--annotation",
         type=str,
         required=False,
-        help="Path to RibosomeProfiler annotation file",
+        help="Path to RiboMetric annotation file",
     )
     run_parser.add_argument(
         "-g", "--gff", type=str, required=False, help="Path to gff file"
@@ -267,7 +267,7 @@ def argument_parser():
 
     # create the parser for the "prepare" command
     prepare_parser = subparsers.add_parser(
-        "prepare", help="run RibosomeProfiler in preparation mode"
+        "prepare", help="run RiboMetric in preparation mode"
     )
     prepare_parser.add_argument(
         "-g", "--gff", type=str, required=True, help="Path to gff file"
@@ -302,7 +302,7 @@ def argument_parser():
 
 def main(args):
     """
-    Main function for the RibosomeProfiler command line interface
+    Main function for the RiboMetric command line interface
 
     Inputs:
         args: Namespace object containing the parsed arguments

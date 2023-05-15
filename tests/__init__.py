@@ -1,1 +1,1 @@
-"""Unit test package for RibosomeProfiler."""
+"""Unit test package for RiboMetric."""
