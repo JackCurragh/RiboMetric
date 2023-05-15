@@ -33,24 +33,24 @@ setup(
     description="A python command-line utility for the generation of comprehensive reports on the quality of ribosome profiling (Ribo-Seq) datasets",
     entry_points={
         "console_scripts": [
-            "RibosomeProfiler=RibosomeProfiler.cli:main",
+            "RiboMetric=RiboMetric.cli:main",
         ],
     },
     install_requires=requirements,
     license="MIT license",
     # long_description=readme + "\n\n" + history,
     include_package_data=True,
-    keywords="RibosomeProfiler",
-    name="RibosomeProfiler",
+    keywords="RiboMetric",
+    name="RiboMetric",
     packages=find_packages(
-        include=["RibosomeProfiler", "RibosomeProfiler.*"],
+        include=["RiboMetric", "RiboMetric.*"],
         exclude=[
             "sample_data/*",
         ],
     ),
     test_suite="tests",
     tests_require=test_requirements,
-    url="https://github.com/JackCurragh/RibosomeProfiler",
+    url="https://github.com/JackCurragh/RiboMetric",
     version="0.1.2",
     zip_safe=False,
 )
