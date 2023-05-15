@@ -29,7 +29,7 @@ def generate_plots(results_dict: dict, config: dict) -> list:
             config),
         plot_ligation_bias_distribution(
             results_dict["ligation_bias_distribution"],
-        config),
+            config),
         plot_nucleotide_composition(
             results_dict["nucleotide_composition"],
             config),
@@ -195,15 +195,16 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
     """
     culled_read_frame_dict = read_frame_cull(read_frame_dict, config)
     scored_read_frame_dict = read_frame_score(culled_read_frame_dict) \
-        if config["plots"]["read_frame_distribution"]["show_scores"] != "none" \
+        if config["plots"]["read_frame_distribution"]["show_scores"] != "none"\
         else None
-    
+
     # Set minimum and maximum font sizes
     min_font_size, max_font_size = 5, 30
 
     # Calculate font size based on number of data points
     num_data_points = len(culled_read_frame_dict)
-    font_size = max_font_size - (max_font_size - min_font_size) * (num_data_points / 50)
+    font_size = max_font_size \
+        - (max_font_size - min_font_size) * (num_data_points / 50)
 
     plot_data = []
     for i in range(0, 3):
@@ -212,12 +213,12 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
                 name="Frame " + str(i + 1),
                 x=list(culled_read_frame_dict.keys()),
                 y=[culled_read_frame_dict[x][y]
-                for x in culled_read_frame_dict
-                for y in culled_read_frame_dict[x]
-                if y == i
-                ],
+                    for x in culled_read_frame_dict
+                    for y in culled_read_frame_dict[x]
+                    if y == i
+                   ],
+                )
             )
-        )
     fig = go.Figure(data=plot_data)
     fig.update_layout(barmode="group")
     fig.update_layout(
@@ -230,36 +231,42 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             color=config["plots"]["base_color"],
         ),
     )
-    if scored_read_frame_dict != None:
+    if scored_read_frame_dict is not None:
         if config["plots"]["read_frame_distribution"]["show_scores"] == "all":
             for idx in enumerate(culled_read_frame_dict):
                 if idx[1] != "global":
-                    y_buffer = max(fig.data[0].y+
-                                fig.data[1].y+
-                                fig.data[2].y)*0.05
+                    y_buffer = max(fig.data[0].y +
+                                   fig.data[1].y +
+                                   fig.data[2].y) * 0.05
+
                     ymax = max(fig.data[0].y[idx[0]],
-                                fig.data[1].y[idx[0]],
-                                fig.data[2].y[idx[0]])
+                               fig.data[1].y[idx[0]],
+                               fig.data[2].y[idx[0]])
+
                     if fig.data[0].y[idx[0]]\
-                          + fig.data[0].y[idx[0]]\
-                          + fig.data[0].y[idx[0]]\
-                              > y_buffer:
+                        + fig.data[0].y[idx[0]]\
+                        + fig.data[0].y[idx[0]]\
+                            > y_buffer:
+
                         fig.add_annotation(
-                            x=idx[1],
-                            y=ymax+y_buffer,
-                            text=round(scored_read_frame_dict[idx[1]],2),
-                            showarrow=False,
-                            xanchor='center',
-                            font={"size":font_size}
-                        )
+                                x=idx[1],
+                                y=ymax+y_buffer,
+                                text=round(scored_read_frame_dict[idx[1]], 2),
+                                showarrow=False,
+                                xanchor='center',
+                                font={"size": font_size}
+                            )
         fig.update_layout()
-        fig.add_annotation(text=f'Score: {round(scored_read_frame_dict["global"],2)}', 
-                        showarrow=False,
-                        xref='paper',
-                        yref='paper',
-                        y=0.64,
-                        x=1.03,
-                        xanchor="left")
+        fig.add_annotation(
+            text=f'Score: {round(scored_read_frame_dict["global"], 2)}',
+            showarrow=False,
+            xref='paper',
+            yref='paper',
+            y=0.64,
+            x=1.03,
+            xanchor="left"
+            )
+
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
         "description": "Frame distribution per read length",
@@ -269,7 +276,8 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
     }
     return plot_read_frame_dict
 
-#WIP
+
+# WIP
 def plot_frame_score_distribution(read_frame_dict: dict, config: dict) -> dict:
     """
     Generate a plot of the read frame score distribution
@@ -301,14 +309,14 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
     """
     sum_mRNA_dict = sum_mRNA_distribution(mRNA_distribution_dict, config)
     plot_data = []
-    for k,v in sum_mRNA_dict.items():
+    for k, v in sum_mRNA_dict.items():
         plot_data.append(
             go.Bar(
-                name=k.replace("_"," ").title(),
+                name=k.replace("_", " ").title(),
                 x=[v],
                 y=[""],
                 width=[0.3],
-                hovertemplate = "Proportion: %{x:.2%}"
+                hovertemplate="Proportion: %{x:.2%}"
                 if not config["plots"]["mRNA_distribution"]["absolute_counts"]
                 else "Count: %{x}",
                 orientation='h'
@@ -340,9 +348,12 @@ regions represented in the reads",
     return plot_mRNA_distribution_dict
 
 
-def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict:
+def plot_mRNA_read_breakdown(
+        mRNA_distribution_dict: dict,
+        config: dict
+        ) -> dict:
     """
-    Generate a line plot of the mRNA distribution over the read lenghts
+    Generate a line plot of the mRNA distribution over the read lengths
 
     Inputs:
         mRNA_distribution_dict: Dataframe containing the mRNA distribution
@@ -360,26 +371,32 @@ def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict
                 plot_data[category] = []
             plot_data[category].append(count)
     if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]:
-            sum_data = {k: sum(v) for k, v in plot_data.items()}
-            plot_data = {k: [x/sum(sum_data.values()) for x in v] for k, v in plot_data.items()}
+        sum_data = {k: sum(v) for k, v in plot_data.items()}
+        plot_data = {
+                k: [x/sum(sum_data.values()) for x in v]
+                for k, v in plot_data.items()
+            }
+
     fig = go.Figure()
-    for k,v in plot_data.items(): 
+    for k, v in plot_data.items():
         fig.add_trace(
                 go.Scatter(
-                    name = k,
+                    name=k,
                     x=list(mRNA_distribution_dict.keys()),
                     y=v,
-                    hovertemplate = "Proportion: %{y:.2%}"
-                    if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
-                    else "Count: %{x}",
-                ))
+                    hovertemplate="Proportion: %{y:.2%}"
+                    if not config["plots"]
+                    ["mRNA_read_breakdown"]
+                    ["absolute_counts"] else "Count: %{x}",
+                )
+            )
+
     fig.update_layout(
             title="Nucleotide Distribution",
             xaxis_title="Position (nucleotides)",
             yaxis_title="Proportion"
             if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
             else "Counts",
-            #yaxis_range=[0, 1],
             font=dict(
                 family=config["plots"]["font_family"],
                 size=18,
