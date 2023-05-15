@@ -273,7 +273,6 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         if config["plots"]["read_frame_distribution"]["show_scores"] != "none"\
         else None
 
-
     # Set minimum and maximum font sizes
     min_font_size, max_font_size = 5, 30
 
@@ -590,10 +589,22 @@ def plot_metagene_heatmap(metagene_heatmap_dict: dict, config: dict) -> dict:
 
 
 def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
-    nt_start, nt_count = (
-        config["plots"]["nucleotide_proportion"]["nucleotide_start"],
-        config["plots"]["nucleotide_proportion"]["nucleotide_count"],
-    )
+    """
+    Generate a logoplot of the nucleotide distribution of the reads
+
+    Inputs:
+        sequence_slice_dict: Dictionary containing the sequences as values
+            and read length as keys
+        config: Dictionary containing the configuration information
+
+    Outputs:
+        plot_logoplot_dict: Dictionary containing the plot name,
+        description and plotly figure for html and pdf export
+    """
+    # nt_start, nt_count = (
+    #     config["plots"]["nucleotide_proportion"]["nucleotide_start"],
+    #     config["plots"]["nucleotide_proportion"]["nucleotide_count"],
+    # )
     with tempfile.TemporaryDirectory() as tempdir:
         with open(f"{tempdir}/temp_fasta.fasta", "w+") as fasta:
             count = 0
@@ -611,10 +622,12 @@ def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
                 subprocess.run(weblogo_prompt)
                 plot.seek(0)
                 fig_image = base64.b64encode(plot.read()).decode("utf-8")
+
     plot_logoplot_dict = {
         "name": "Logoplot",
         "description": "Logoplot created with WebLogo ver 3.7.12",
-        "fig_html": f'<img src="data:image/png;base64,{fig_image}" alt="Logoplot created with WebLogo" width="100%" height="auto"">',  # png for both versions
+        "fig_html": f'<img src="data:image/png;base64,{fig_image}" \
+            alt="Logoplot created with WebLogo" width="100%" height="auto"">',
         "fig_image": fig_image,
     }
     return plot_logoplot_dict
