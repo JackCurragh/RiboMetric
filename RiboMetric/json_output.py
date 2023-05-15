@@ -11,11 +11,11 @@ import json
 def generate_json(
     results_dict: dict,
     config: dict,
-    name: str = "RiboMetric_data.json",
+    name: str = "RibosomeProfiler_data.json",
     outdir: str = "",
 ):
     """
-    Generate a machine readable format of the RiboMetric results
+    Generate a machine readable format of the RibosomeProfiler results
 
     Input:
         results_dict:
@@ -26,6 +26,9 @@ def generate_json(
     Output:
         Writes to a json file
     """
+    if "sequence_slice" in results_dict:
+        del results_dict["sequence_slice"]
+    
     if outdir == "":
         output = name
     else:

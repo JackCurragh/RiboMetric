@@ -1,6 +1,6 @@
 """
 This script contains the functions required to run individual modules
-of the RiboMetric pipeline
+of the RibosomeProfiler pipeline
 
 """
 
@@ -21,9 +21,7 @@ def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
         cds_read_df: Dataframe containing the read information for reads
                     that map to the CDS
     """
-    cds_read_df = df[
-        (df["cds_start"] < df["a_site"]) & (df["a_site"] < df["cds_end"])
-        ]
+    cds_read_df = df[(df["cds_start"] < df["a_site"]) & (df["a_site"] < df["cds_end"])]
     return cds_read_df
 
 
@@ -53,10 +51,7 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     Outputs:
         dict: Dictionary containing the read length distribution
     """
-    read_lengths, read_counts = np.unique(
-        read_df["read_length"],
-        return_counts=True
-    )
+    read_lengths, read_counts = np.unique(read_df["read_length"], return_counts=True)
     return dict(zip(read_lengths.tolist(), read_counts.tolist()))
 
 
@@ -91,12 +86,8 @@ def ligation_bias_distribution(
             .value_counts(normalize=True)
             .sort_index()
         )
-    ligation_bias_dict = {
-        k: v for k, v in sequence_dict.items() if "N" not in k
-        }
-    ligation_bias_dict.update(
-        {k: v for k, v in sequence_dict.items() if "N" in k}
-        )
+    ligation_bias_dict = {k: v for k, v in sequence_dict.items() if "N" not in k}
+    ligation_bias_dict.update({k: v for k, v in sequence_dict.items() if "N" in k})
     return ligation_bias_dict
 
 
@@ -174,8 +165,8 @@ def read_frame_score(read_frame_dict: dict) -> dict:
         top_two_values = sorted(inner_dict.values(), reverse=True)[:2]
         highest_peak_sum += top_two_values[0]
         second_peak_sum += top_two_values[1]
-        scored_read_frame_dict[k] = 1-top_two_values[1]/top_two_values[0]
-    scored_read_frame_dict["global"] = (1-second_peak_sum/highest_peak_sum)
+        scored_read_frame_dict[k] = 1 - top_two_values[1] / top_two_values[0]
+    scored_read_frame_dict["global"] = 1 - second_peak_sum / highest_peak_sum
     return scored_read_frame_dict
 
 
@@ -206,9 +197,8 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
 
 
 def annotate_reads(
-        a_site_df: pd.DataFrame,
-        annotation_df: pd.DataFrame
-        ) -> pd.DataFrame:
+    a_site_df: pd.DataFrame, annotation_df: pd.DataFrame
+) -> pd.DataFrame:
     """
     Merges the annotation dataframe with the read dataframe
 
@@ -254,7 +244,7 @@ def assign_mRNA_category(row) -> str:
     elif row["a_site"] > row["cds_end"]:
         return "three_trailer"
     else:
-        return 'unknown'
+        return "unknown"
 
 
 # Slow, needs improving
@@ -271,14 +261,9 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
                                 mRNA category at the different read lengths
     """
     # Creating MultiIndex for reindexing
-    categories = [
-        'five_leader', 'start_codon', 'CDS', 'stop_codon', 'three_trailer'
-        ]
-    classes = annotated_read_df['read_length'].unique()
-    idx = pd.MultiIndex.from_product(
-        [classes, categories],
-        names=['class', 'category']
-        )
+    categories = ["five_leader", "start_codon", "CDS", "stop_codon", "three_trailer"]
+    classes = annotated_read_df["read_length"].unique()
+    idx = pd.MultiIndex.from_product([classes, categories], names=["class", "category"])
     # Adding mRNA category to annotated_read_df with assign_mRNA_category
     annotated_read_df["mRNA_category"] = annotated_read_df.apply(
         assign_mRNA_category, axis=1
@@ -288,7 +273,7 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         .size()
         .reindex(idx, fill_value=0)
         .sort_index()
-        )
+    )
 
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict = {}
@@ -302,8 +287,9 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
     for i in mRNA_distribution_dict:
         mRNA_distribution_dict[i] = {
             k: mRNA_distribution_dict[i][k]
-            for k in categories if k in mRNA_distribution_dict[i]
-            }
+            for k in categories
+            if k in mRNA_distribution_dict[i]
+        }
 
     return mRNA_distribution_dict
 
@@ -330,14 +316,13 @@ def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
                 sum_mRNA_dict[k] = v
     if not config["plots"]["mRNA_distribution"]["absolute_counts"]:
         sum_mRNA_dict = {
-            k: (v/sum(sum_mRNA_dict.values()))
-            for k, v in sum_mRNA_dict.items()
-            }
+            k: (v / sum(sum_mRNA_dict.values())) for k, v in sum_mRNA_dict.items()
+        }
 
     return sum_mRNA_dict
 
 
-def metagene_profile(
+def metagene_distance(
     annotated_read_df: pd.DataFrame, target: str = "start"
 ) -> pd.Series:
     """
@@ -350,6 +335,7 @@ def metagene_profile(
         target: Target from which the distance is calculated
 
     Outputs:
+    pd.Series
     """
     if target == "start":
         return annotated_read_df["a_site"] - annotated_read_df["cds_start"]
@@ -357,76 +343,74 @@ def metagene_profile(
         return annotated_read_df["a_site"] - annotated_read_df["cds_end"]
 
 
-def metagene_heatmap(
+def metagene_profile(
     annotated_read_df: pd.DataFrame,
-    target: str = "start",
+    target: str = "both",
     distance_range: list = [-50, 50],
 ) -> dict:
     """
-    Create a dictionary with a tuple key containing the read_length of the
-    read and distance to the target and the counts as values, used in the
-    generation of the heatmap
+    Groups the reads by read_length and distance to a target and counts them
 
     Inputs:
         annotated_read_df: Dataframe containing the read information
         with an added column for the a-site location along with data from
         the annotation file
         target: Target from which the distance is calculated
-        max_neg_distance: The maximum negative distance for reads
-        max_pos_distance: The maximum positive distance for reads
+        distance_range: The range of the plot
 
     Outputs:
-        metagene_heatmap_dict: dictionary with a tuple key containing the
+        metagene_profile_dict: dictionary with a tuple key containing the
         read_length of the read and distance to the target and the counts
         as values
     """
-    annotated_read_df["metagene_info"] = metagene_profile(
-        annotated_read_df, target
+    target_loop = [target] if target != "both" else ["start", "stop"]
+    metagene_profile_dict = {"start": {}, "stop": {}}
+    for current_target in target_loop:
+        annotated_read_df["metagene_info"] = metagene_distance(
+            annotated_read_df, current_target
         )
-    pre_heatmap_dict = (
-        annotated_read_df[
-            (annotated_read_df["metagene_info"] > distance_range[0] - 1)
-            & (annotated_read_df["metagene_info"] < distance_range[1] + 1)
-        ]
-        .groupby(["read_length", "metagene_info"])
-        .size()
-        .to_dict()
-    )
-    if pre_heatmap_dict == {}:
-        print(
-            "ERR - Metagene Heatmap: No reads found in specified range, \
-removing boundaries..."
+        pre_metaprofile_dict = (
+            annotated_read_df[
+                (annotated_read_df["metagene_info"] > distance_range[0] - 1)
+                & (annotated_read_df["metagene_info"] < distance_range[1] + 1)
+            ]
+            .groupby(["read_length", "metagene_info"])
+            .size()
+            .to_dict()
         )
-        pre_heatmap_dict = (
-            annotated_read_df.groupby(
-                ["read_length", "metagene_info"]
-            ).size().to_dict()
-        )
-    min_length = min([x[0] for x in list(pre_heatmap_dict.keys())])
-    max_length = max([x[0] for x in list(pre_heatmap_dict.keys())])
-    for y in range(min_length, max_length):
-        if y not in [x[0] for x in list(pre_heatmap_dict.keys())]:
-            pre_heatmap_dict[(y, 0)] = None
-    min_distance = min([x[1] for x in list(pre_heatmap_dict.keys())])
-    max_distance = max([x[1] for x in list(pre_heatmap_dict.keys())])
-    for z in range(min_distance, max_distance):
-        if z not in [x[1] for x in list(pre_heatmap_dict.keys())]:
-            pre_heatmap_dict[(min_length, z)] = None
-    metagene_heatmap_dict = {}
-    # PROBLEM: tuple key is not useable for json keys,
-    # nested dictionary as solution
-    for key, value in pre_heatmap_dict.items():
-        if key[0] not in metagene_heatmap_dict:
-            metagene_heatmap_dict[key[0]] = {}
-        metagene_heatmap_dict[key[0]][key[1]] = value
-    return metagene_heatmap_dict
+        if pre_metaprofile_dict == {}:
+            print(
+                "ERR - Metagene Profile: No reads found in specified range, \
+        removing boundaries..."
+            )
+            pre_metaprofile_dict = (
+                annotated_read_df.groupby(["read_length", "metagene_info"])
+                .size()
+                .to_dict()
+            )
+        # Fill empty read length and distance keys with None
+        min_length = min([x[0] for x in list(pre_metaprofile_dict.keys())])
+        max_length = max([x[0] for x in list(pre_metaprofile_dict.keys())])
+        for y in range(min_length, max_length):
+            if y not in [x[0] for x in list(pre_metaprofile_dict.keys())]:
+                pre_metaprofile_dict[(y, 0)] = None
+        min_distance = min([x[1] for x in list(pre_metaprofile_dict.keys())])
+        max_distance = max([x[1] for x in list(pre_metaprofile_dict.keys())])
+        for z in range(min_distance, max_distance):
+            if z not in [x[1] for x in list(pre_metaprofile_dict.keys())]:
+                pre_metaprofile_dict[(min_length, z)] = None
+        for key, value in pre_metaprofile_dict.items():
+            if key[0] not in metagene_profile_dict[current_target]:
+                metagene_profile_dict[current_target][key[0]] = {}
+            metagene_profile_dict[current_target][key[0]][key[1]] = value
+    return metagene_profile_dict
 
 
 def sequence_slice(
     read_df: pd.DataFrame, nt_start: int = 0, nt_count: int = 15
 ) -> dict:
     sequence_slice_dict = {
-        k: v[nt_start: nt_start + nt_count]
+        k: v[nt_start : nt_start + nt_count]
         for k, v in read_df["sequence"].to_dict().items()
     }
     return sequence_slice_dict
