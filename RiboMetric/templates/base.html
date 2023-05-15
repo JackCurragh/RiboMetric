@@ -1,10 +1,10 @@
-{# The base template for the RibosomeProfiler report #}
+{# The base template for the RiboMetric report #}
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>RibosomeProfiler results</title>
+  <title>RiboMetric results</title>
   {% if filetype == "html" %}
   <link rel="icon" href="data:image/png;base64,{{favicon}}">
   <style>
@@ -53,15 +53,15 @@
 <body>
     {% if filetype == "html" %}
     <div class="sidenav">
-        <a href="#"><h4> <img src="data:image/png;base64,{{logo}}" alt="RibosomeProfiler" width="100%" height="auto"> </h4></a>
+        <a href="#"><h4> <img src="data:image/png;base64,{{logo}}" alt="RiboMetric" width="100%" height="auto"> </h4></a>
         {% for plot in plots %}
         <a href="#{{plot.name}}">{{plot.name}}</a>
         {% endfor %}
     </div>
     {% endif %}
     <div class="main">
-        <h1>RibosomeProfiler Report</h1>
-        <h5>Results from your RibosomeProfiler analysis, completed at {{completion_time}}</h5>
+        <h1>RiboMetric Report</h1>
+        <h5>Results from your RiboMetric analysis, completed at {{completion_time}}</h5>
         <h2>Summary Report</h2>
         Table and radar plot here
 

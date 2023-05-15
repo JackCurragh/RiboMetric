@@ -1,6 +1,6 @@
 """
 This script contains the functions required to run individual modules
-of the RibosomeProfiler pipeline
+of the RiboMetric pipeline
 
 """
 

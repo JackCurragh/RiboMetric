@@ -1,4 +1,4 @@
-"""Top-level package for RibosomeProfiler."""
+"""Top-level package for RiboMetric."""
 
 __author__ = """Jack Tierney"""
 __email__ = "jackcurragh@gmail.com"

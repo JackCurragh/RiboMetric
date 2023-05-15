@@ -1,8 +1,8 @@
 """
 This script contains the functions used to load the required files
-in the RibosomeProfiler pipeline
+in the RiboMetric pipeline
 
-The functions are called by the main script RibosomeProfiler.py
+The functions are called by the main script RiboMetric.py
 """
 from Bio import SeqIO
 import pysam
@@ -305,7 +305,7 @@ def prepare_annotation(
 
     annotation_df = gff_df_to_cds_df(gffdf, coding_tx_ids)
     basename = os.path.basename(gff_path).split(".")[0]
-    output_name = f"{basename}_RibosomeProfiler.tsv"
+    output_name = f"{basename}_RiboMetric.tsv"
     annotation_df.to_csv(
         os.path.join(outdir, output_name),
         sep="\t",

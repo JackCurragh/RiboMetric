@@ -1,6 +1,6 @@
 """
 Code in this script is used to generate the HTML and pdf output report
-The functions are called by the main script RibosomeProfiler.py
+The functions are called by the main script RiboMetric.py
 if the user specifies the --html flag
 """
 
@@ -14,18 +14,18 @@ def generate_report(
     plots: list,
     config: dict,
     export_mode: str = "html",
-    name: str = "RibosomeProfiler_report",
+    name: str = "RiboMetric_report",
     outdir: str = "",
 ):
     """
-    Generates a report of the RibosomeProfiler results with plots
+    Generates a report of the RiboMetric results with plots
 
     Inputs:
         results: A dictionary containing the results of
-                    the RibosomeProfiler analysis
+                    the RiboMetric analysis
         export_mode: A string defining the mode of
                     export: 'html','pdf' or 'both' (Default: 'html')
-        name: A string for the file name (Default: 'RibosomeProfiler_report')
+        name: A string for the file name (Default: 'RiboMetric_report')
         outdir: A string for the output directory (Default: '')
 
     Outputs:
@@ -38,7 +38,7 @@ def generate_report(
 
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
-    binary_logo = open("RibosomeProfiler_logo.png", "rb").read()
+    binary_logo = open("RiboMetric_logo.png", "rb").read()
     base64_logo = base64.b64encode(binary_logo).decode("utf-8")
     binary_icon = open("favicon.png", "rb").read()
     base64_icon = base64.b64encode(binary_icon).decode("utf-8")

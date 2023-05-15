@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# RibosomeProfiler documentation build configuration file, created by
+# RiboMetric documentation build configuration file, created by
 # sphinx-quickstart on Fri Jun  9 13:47:02 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -47,7 +47,7 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = "RibosomeProfiler"
+project = "RiboMetric"
 copyright = "2023, Jack Tierney"
 author = "Jack Tierney"
 
@@ -101,7 +101,7 @@ html_static_path = ["_static"]
 # -- Options for HTMLHelp output ---------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "RibosomeProfilerdoc"
+htmlhelp_basename = "RiboMetricdoc"
 
 
 # -- Options for LaTeX output ------------------------------------------
@@ -127,8 +127,8 @@ latex_elements = {
 latex_documents = [
     (
         master_doc,
-        "RibosomeProfiler.tex",
-        "RibosomeProfiler Documentation",
+        "RiboMetric.tex",
+        "RiboMetric Documentation",
         "Jack Tierney",
         "manual",
     ),
@@ -140,7 +140,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, "RibosomeProfiler", "RibosomeProfiler Documentation", [author], 1)
+    (master_doc, "RiboMetric", "RiboMetric Documentation", [author], 1)
 ]
 
 
@@ -152,10 +152,10 @@ man_pages = [
 texinfo_documents = [
     (
         master_doc,
-        "RibosomeProfiler",
-        "RibosomeProfiler Documentation",
+        "RiboMetric",
+        "RiboMetric Documentation",
         author,
-        "RibosomeProfiler",
+        "RiboMetric",
         "One line description of project.",
         "Miscellaneous",
     ),
