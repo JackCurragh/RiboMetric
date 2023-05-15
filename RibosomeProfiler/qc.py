@@ -2,7 +2,7 @@
 Main script for running qc analysis
 
 Three main modes:
-    annoation free: no gff file provided just use the bam file
+    annotation free: no gff file provided just use the bam file
     annotation based: gff file provided and use the bam file
     sequence based: gff file and transcriptome fasta file
                     provided and use the bam file
@@ -33,7 +33,7 @@ def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
-    
+
     print("Running modules")
     results_dict = {
         "mode": "annotation_free_mode",
@@ -42,7 +42,7 @@ def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
         "nucleotide_composition": nucleotide_composition(read_df),
         "read_frame_distribution": read_frame_distribution(read_df),
     }
-    
+
     return results_dict
 
 
@@ -65,7 +65,10 @@ def annotation_mode(
         results_dict: Dictionary containing the results of the qc analysis
     """
     print("Subsetting to CDS reads")
-    annotation_df["transcript_id"] = annotation_df["transcript_id"].replace("\"", "", regex=True)
+    annotation_df["transcript_id"] = annotation_df["transcript_id"].replace(
+        "\"", "", regex=True
+        )
+
     cds_read_df = read_df_to_cds_read_df(read_df, annotation_df)
     print("Merging annotation and reads")
     annotated_read_df = annotate_reads(read_df, annotation_df)
@@ -76,13 +79,14 @@ def annotation_mode(
         "ligation_bias_distribution": ligation_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
     }
-    results_dict["read_frame_distribution"] = read_frame_distribution(cds_read_df)\
+    results_dict["read_frame_distribution"] = read_frame_distribution(
+                                                    cds_read_df)\
         if config["qc"]["use_cds_subset"]["read_frame_distribution"]\
         else read_frame_distribution(read_df)
     results_dict["mRNA_distribution"] = mRNA_distribution(annotated_read_df)
 
     return results_dict
-    
+
 
 def sequence_mode(
     read_df: pd.DataFrame,
@@ -112,7 +116,8 @@ def sequence_mode(
         "nucleotide_composition": nucleotide_composition(read_df),
         "read_frame_distribution": read_frame_distribution(read_df)
     }
-    # results_dict["read_frame_distribution"] = read_frame_distribution(cds_read_df)\
+    # results_dict["read_frame_distribution"] = read_frame_distribution(
+    #   cds_read_df)\
     #     if config["qc"]["use_cds_subset"]["read_frame_distribution"]\
     #     else read_frame_distribution(read_df)
 
