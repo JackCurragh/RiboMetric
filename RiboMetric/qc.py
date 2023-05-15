@@ -80,7 +80,7 @@ def annotation_mode(
     print("Subsetting to CDS reads")
     cds_read_df = read_df_to_cds_read_df(annotated_read_df)
     print("Running modules")
-    
+
     results_dict = {}
     results_dict["mode"] = "annotation_mode"
     print("> read_length_distribution")
