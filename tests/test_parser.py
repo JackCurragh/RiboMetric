@@ -1,5 +1,5 @@
 
-from RibosomeProfiler.file_parser import parse_bam
+from RiboMetric.file_parser import parse_bam
 
 
 def test_bam_parsing():

@@ -1,4 +1,4 @@
-from RibosomeProfiler.modules import (
+from RiboMetric.modules import (
     read_length_distribution,
     ligation_bias_distribution,
     nucleotide_composition,
