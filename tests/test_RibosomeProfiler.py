@@ -62,5 +62,5 @@ def test_main_run():
     output = sys.stdout.getvalue()
 
     # Assert that the expected output was produced
-    assert "Annotation parsed" in output
-    assert "Running modules" in output
+    assert 'Annotation parsed' in output
+    assert 'Running modules' in output

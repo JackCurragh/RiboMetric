@@ -270,6 +270,7 @@ def extract_transcript_id(attr_str):
     return np.nan
 
 
+
 def prepare_annotation(
     gff_path: str, outdir: str, num_transcripts: int, config: str
 ) -> pd.DataFrame:
