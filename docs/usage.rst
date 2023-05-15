@@ -2,6 +2,6 @@
 Usage
 =====
 
-To use RibosomeProfiler in a project::
+To use RiboMetric in a project::
 
-    import RibosomeProfiler
+    import RiboMetric
