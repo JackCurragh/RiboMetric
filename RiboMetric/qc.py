@@ -21,8 +21,8 @@ from .modules import (
     sequence_slice,
     metagene_profile,
     calculate_expected_dinucleotide_freqs,
-
 )
+
 from .metrics import (
     read_length_distribution_metric as rld_metric,
     ligation_bias_distribution_metric as lbd_metric,
