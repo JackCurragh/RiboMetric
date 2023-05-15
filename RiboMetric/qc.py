@@ -21,9 +21,11 @@ from .modules import (
     metagene_profile,
     sequence_slice,
     metagene_heatmap,
+    calculate_expected_dinucleotide_freqs,
 )
 from .metrics import (
     read_length_distribution_metric as rld_metric,
+    ligation_bias_distribution_metric as lbd_metric,
 )
 
 
@@ -55,6 +57,12 @@ def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
     print("> ligation_bias_distribution")
     results_dict["ligation_bias_distribution"] = ligation_bias_distribution(
         read_df
+        )
+    results_dict["ligation_bias_distribution_metric"] = lbd_metric(
+        results_dict["ligation_bias_distribution"],
+        calculate_expected_dinucleotide_freqs(
+            read_df,
+        ),
         )
 
     print("> nucleotide_composition")
@@ -115,6 +123,12 @@ def annotation_mode(
     print("> ligation_bias_distribution")
     results_dict["ligation_bias_distribution"] = ligation_bias_distribution(
         read_df
+        )
+    results_dict["ligation_bias_distribution_metric"] = lbd_metric(
+        results_dict["ligation_bias_distribution"],
+        calculate_expected_dinucleotide_freqs(
+            read_df,
+        ),
         )
 
     print("> nucleotide_composition")

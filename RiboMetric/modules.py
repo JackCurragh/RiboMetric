@@ -7,7 +7,7 @@ of the RiboMetric pipeline
 import pandas as pd
 import numpy as np
 from xhtml2pdf import pisa
-
+from collections import Counter
 
 def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -438,3 +438,30 @@ def convert_html_to_pdf(source_html, output_filename):
     pisa_status = pisa.CreatePDF(source_html, dest=result_file)
     result_file.close()
     return pisa_status.err
+
+
+def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict():
+    """
+    Calculate the expected dinucleotide frequencies based on the
+    nucleotide frequencies in the aligned reads 
+
+    Inputs:
+        read_df: Dataframe containing the read information
+
+    Outputs:
+        expected_dinucleotide_freqs: Dictionary containing the expected
+        dinucleotide frequencies
+    """
+    dinucleotides = []
+    for read in read_df["sequence"]:
+        for i in range(len(read) - 1):
+            dinucleotides.append(read[i:i+2])
+            
+    observed_freq = Counter(dinucleotides)
+    total_count = sum(observed_freq.values())
+
+    expected_dinucleotide_freqs = {}
+    for dinucleotide, count in observed_freq.items():
+        expected_dinucleotide_freqs[dinucleotide] = count / total_count
+        
+    return expected_dinucleotide_freqs
