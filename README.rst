@@ -1,18 +1,18 @@
 ================
-RibosomeProfiler
+RiboMetric
 ================
 
 
-.. image:: https://img.shields.io/pypi/v/RibosomeProfiler.svg
-        :target: https://pypi.python.org/pypi/RibosomeProfiler
+.. image:: https://img.shields.io/pypi/v/RiboMetric.svg
+        :target: https://pypi.python.org/pypi/RiboMetric
 
-.. image:: https://readthedocs.org/projects/RibosomeProfiler/badge/?version=latest
-        :target: https://RibosomeProfiler.readthedocs.io/en/latest/?version=latest
+.. image:: https://readthedocs.org/projects/RiboMetric/badge/?version=latest
+        :target: https://RiboMetric.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
 
 
-.. image:: https://pyup.io/repos/github/JackCurragh/RibosomeProfiler/shield.svg
-     :target: https://pyup.io/repos/github/JackCurragh/RibosomeProfiler/
+.. image:: https://pyup.io/repos/github/JackCurragh/RiboMetric/shield.svg
+     :target: https://pyup.io/repos/github/JackCurragh/RiboMetric/
      :alt: Updates
 
 
@@ -21,13 +21,13 @@ RibosomeProfiler
 
 
 * Free software: MIT license
-* Documentation: https://RibosomeProfiler.readthedocs.io.
+* Documentation: https://RiboMetric.readthedocs.io.
 
 
 Features
 --------
 
-There are a number of limitations to running RibosomeProfiler at the moment. These include:
+There are a number of limitations to running RiboMetric at the moment. These include:
 
   * Transciptomic alignments are required in BAM format 
   * GFF annotations from Ensembl are also requried

@@ -8,13 +8,13 @@ Installation
 Stable release
 --------------
 
-To install RibosomeProfiler, run this command in your terminal:
+To install RiboMetric, run this command in your terminal:
 
 .. code-block:: console
 
-    $ pip install RibosomeProfiler
+    $ pip install RiboMetric
 
-This is the preferred method to install RibosomeProfiler, as it will always install the most recent stable release.
+This is the preferred method to install RiboMetric, as it will always install the most recent stable release.
 
 If you don't have `pip`_ installed, this `Python installation guide`_ can guide
 you through the process.
@@ -26,19 +26,19 @@ you through the process.
 From sources
 ------------
 
-The sources for RibosomeProfiler can be downloaded from the `Github repo`_.
+The sources for RiboMetric can be downloaded from the `Github repo`_.
 
 You can either clone the public repository:
 
 .. code-block:: console
 
-    $ git clone git://github.com/JackCurragh/RibosomeProfiler
+    $ git clone git://github.com/JackCurragh/RiboMetric
 
 Or download the `tarball`_:
 
 .. code-block:: console
 
-    $ curl -OJL https://github.com/JackCurragh/RibosomeProfiler/tarball/master
+    $ curl -OJL https://github.com/JackCurragh/RiboMetric/tarball/master
 
 Once you have a copy of the source, you can install it with:
 
@@ -47,5 +47,5 @@ Once you have a copy of the source, you can install it with:
     $ python setup.py install
 
 
-.. _Github repo: https://github.com/JackCurragh/RibosomeProfiler
-.. _tarball: https://github.com/JackCurragh/RibosomeProfiler/tarball/master
+.. _Github repo: https://github.com/JackCurragh/RiboMetric
+.. _tarball: https://github.com/JackCurragh/RiboMetric/tarball/master

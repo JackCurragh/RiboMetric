@@ -1,4 +1,4 @@
-Welcome to RibosomeProfiler's documentation!
+Welcome to RiboMetric's documentation!
 ======================================
 
 .. toctree::
