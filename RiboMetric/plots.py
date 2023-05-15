@@ -42,10 +42,22 @@ def generate_plots(results_dict: dict, config: dict) -> list:
     if results_dict["mode"] == "annotation_mode":
         plots_list.extend(
             [
-                plot_mRNA_distribution(results_dict["mRNA_distribution"], config),
-                plot_mRNA_read_breakdown(results_dict["mRNA_distribution"], config),
-                plot_metagene_profile(results_dict["metagene_profile"], config),
-                plot_metagene_heatmap(results_dict["metagene_heatmap"], config),
+                plot_mRNA_distribution(
+                    results_dict["mRNA_distribution"],
+                    config,
+                    ),
+                plot_mRNA_read_breakdown(
+                    results_dict["mRNA_distribution"],
+                    config,
+                    ),
+                plot_metagene_profile(
+                    results_dict["metagene_profile"],
+                    config,
+                    ),
+                plot_metagene_heatmap(
+                    results_dict["metagene_heatmap"],
+                    config
+                    ),
             ]
         )
     return plots_list
@@ -63,7 +75,10 @@ def plotly_to_image(fig: go.Figure, config: dict) -> str:
     return base_64_plot
 
 
-def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
+def plot_read_length_distribution(
+        read_length_dict: dict,
+        config: dict
+        ) -> dict:
     """
     Generate a plot of the read length distribution for the full dataset
 
@@ -104,7 +119,10 @@ def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
     return plot_read_length_dict
 
 
-def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> dict:
+def plot_ligation_bias_distribution(
+        ligation_bias_dict: dict,
+        config: dict
+        ) -> dict:
     """
     Generate a plot of ligation bias distribution for the full dataset
 
@@ -166,7 +184,11 @@ def plot_nucleotide_composition(
     fig = go.Figure()
     for nucleotide, distribution in nucleotide_composition_dict.items():
         fig.add_trace(
-            go.Scatter(y=distribution, name=nucleotide, line_color=colors[nucleotide])
+            go.Scatter(
+                y=distribution,
+                name=nucleotide,
+                line_color=colors[nucleotide]
+            )
         )
     fig.update_layout(
         title="Nucleotide Composition",
@@ -202,7 +224,9 @@ def plot_nucleotide_distribution(
             go.Bar(
                 name=nt,
                 x=[*range(nt_start + 1, nt_start + nt_count + 1)],
-                y=nucleotide_composition_dict[nt][nt_start : nt_start + nt_count],
+                y=nucleotide_composition_dict[nt][
+                    nt_start: nt_start + nt_count
+                    ],
                 marker=dict(color=config["plots"]["nucleotide_colors"][nt]),
                 hovertemplate="Proportion: %{y:.2%}"
                 if not config["plots"]["mRNA_distribution"]["absolute_counts"]
@@ -495,11 +519,13 @@ def plot_metagene_profile(metagene_dict: dict, config: dict) -> dict:
         ),
         bargap=0,
     )
-    fig.update_xaxes(range=config["plots"]["metagene_profile"]["distance_range"])
+    fig.update_xaxes(
+        range=config["plots"]["metagene_profile"]["distance_range"]
+        )
     plot_metagene_profile_dict = {
         "name": "Metagene Profile",
-        "description": "Metagene profile showing the distance count of reads per \
-distance away from a target (default: start codon).",
+        "description": "Metagene profile showing the distance count of \
+        reads per distance away from a target (default: start codon).",
         "fig_html": pio.to_html(fig, full_html=False),
         "fig_image": plotly_to_image(fig, config),
     }
@@ -512,8 +538,8 @@ def plot_metagene_heatmap(metagene_heatmap_dict: dict, config: dict) -> dict:
     to a target, read length and count
 
     Inputs:
-        metagene_heatmap_dict: Dictionary containing the counts as values and distance
-        from target as keys
+        metagene_heatmap_dict: Dictionary containing the counts as values
+            and distance from target as keys
         config: Dictionary containing the configuration information
 
     Outputs:
@@ -539,7 +565,9 @@ def plot_metagene_heatmap(metagene_heatmap_dict: dict, config: dict) -> dict:
             zmax=config["plots"]["metagene_heatmap"]["max_colorscale"],
         )
     )
-    fig.update_xaxes(range=config["plots"]["metagene_heatmap"]["distance_range"])
+    fig.update_xaxes(
+        range=config["plots"]["metagene_heatmap"]["distance_range"]
+        )
     fig.update_layout(
         title="Metagene Heatmap",
         xaxis_title="Read length",
@@ -553,8 +581,8 @@ def plot_metagene_heatmap(metagene_heatmap_dict: dict, config: dict) -> dict:
     )
     plot_metagene_heatmap = {
         "name": "Metagene Heatmap",
-        "description": "Metagene heatmap showing the distance between the A-site and \
-a target per read length and the counts in colorscale.",
+        "description": "Metagene heatmap showing the distance between the \
+            A-site and a target per read length and the counts in colorscale.",
         "fig_html": pio.to_html(fig, full_html=False),
         "fig_image": plotly_to_image(fig, config),
     }
@@ -576,9 +604,9 @@ def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
                 weblogo_prompt = [
                     "weblogo",
                     f"-f{fasta.name}",
-                    f"-Dfasta",
+                    "-Dfasta",
                     f"-o{plot.name}",
-                    f"-Fpng_print",
+                    "-Fpng_print",
                 ]
                 subprocess.run(weblogo_prompt)
                 plot.seek(0)

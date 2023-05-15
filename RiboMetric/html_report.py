@@ -32,7 +32,7 @@ def generate_report(
         No variables will be output
     """
     env = Environment(
-        loader=FileSystemLoader(["templates", "RibosomeProfiler/templates"]),
+        loader=FileSystemLoader(["templates", "RiboMetric/templates"]),
         autoescape=False,
     )
 
