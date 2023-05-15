@@ -40,7 +40,7 @@ def read_length_distribution_metric(
 def ligation_bias_distribution_metric(
         observed_freq: dict,
         expected_freq: dict,
-        ) -> pd.DataFrame:
+        ) -> float:
     """
     Calculate the ligation bias metric from the output of
     the ligation_bias_distribution module.
@@ -68,3 +68,40 @@ def ligation_bias_distribution_metric(
 
     return kl_divergence
 
+
+def read_frame_distribution_metric(
+    read_frame_distribution: dict,
+        ) -> float:
+    """       
+    Calculate the read frame distribution metric from the output of
+    the read_frame_distribution module.
+
+    This metric is the Shannon entropy of the read frame distribution 
+
+    Inputs:
+        read_frame_distribution: Dictionary containing the output of the
+                read_frame_distribution module
+        
+    Outputs:
+        read_frame_distribution_metric: Shannon entropy of the read frame
+                distribution
+    """
+
+    pseudocount = 1e-100  # to avoid log(0)
+
+    entropies = []
+    for read_length in read_frame_distribution:
+        total_count = sum(read_frame_distribution[read_length].values())
+        max_entropy = math.log2(len(read_frame_distribution[read_length]))
+        entropy = 0.0
+        for frame, count in read_frame_distribution[read_length].items():
+            prob = (count + pseudocount) / total_count
+            entropy += max(-(prob * math.log2(prob)), 0.0)
+
+        score = (max_entropy - entropy)/max_entropy
+        entropies.append((score, total_count))
+
+    weighted_sum = 0.0
+    for i in range(len(entropies)):
+        weighted_sum += entropies[i][0] * entropies[i][1]
+    return weighted_sum / sum([x[1] for x in entropies])
