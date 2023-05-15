@@ -564,6 +564,13 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
     fig.update_xaxes(
         range=config["plots"]["metagene_profile"]["distance_range"]
     )
+    plot_metagene_profile_dict = {
+        "name": "Metagene Profile",
+        "description": "Metagene profile showing the distance count of \
+        reads per distance away from a target (default: start codon).",
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": plotly_to_image(fig, config),
+    }
     return plot_metagene_profile_dict
 
 
