@@ -595,7 +595,7 @@ def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
     Inputs:
         sequence_slice_dict: Dictionary containing the sequences as values
             and read length as keys
-        config: Dictionary containing the configuration information 
+        config: Dictionary containing the configuration information
 
     Outputs:
         plot_logoplot_dict: Dictionary containing the plot name,
