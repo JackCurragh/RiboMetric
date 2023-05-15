@@ -348,7 +348,7 @@ def metagene_distance(annotated_read_df: pd.DataFrame, target: str = "start") ->
         return (annotated_read_df["a_site"] - annotated_read_df["cds_end"])
 
 
-def metagene_profile(annotated_read_df: pd.DataFrame, target: str = "start", distance_range: list = [-50,50]) -> dict:
+def metagene_profile(annotated_read_df: pd.DataFrame, target: str = "both", distance_range: list = [-50,50]) -> dict:
     """
     Groups the reads by read_length and distance to a target and counts them
 
@@ -364,40 +364,42 @@ def metagene_profile(annotated_read_df: pd.DataFrame, target: str = "start", dis
         read_length of the read and distance to the target and the counts
         as values
     """
-    annotated_read_df["metagene_info"] = metagene_distance(annotated_read_df, target)
-    pre_metaprofile_dict = (
-        annotated_read_df[
-            (annotated_read_df["metagene_info"] > distance_range[0] - 1)
-            & (annotated_read_df["metagene_info"] < distance_range[1] + 1)
-        ]
-        .groupby(["read_length", "metagene_info"])
-        .size()
-        .to_dict()
-    )
-    if pre_metaprofile_dict == {}:
-        print(
-            "ERR - Metagene Profile: No reads found in specified range, \
-removing boundaries..."
-        )
+    target_loop = [target] if target != "both" else ["start", "stop"]
+    metagene_profile_dict = {"start":{}, "stop":{}}
+    for current_target in target_loop:
+        annotated_read_df["metagene_info"] = metagene_distance(annotated_read_df, current_target)
         pre_metaprofile_dict = (
-            annotated_read_df.groupby(["read_length", "metagene_info"]).size().to_dict()
+            annotated_read_df[
+                (annotated_read_df["metagene_info"] > distance_range[0] - 1)
+                & (annotated_read_df["metagene_info"] < distance_range[1] + 1)
+            ]
+            .groupby(["read_length", "metagene_info"])
+            .size()
+            .to_dict()
         )
-    # Fill empty read length and distance keys with None
-    min_length = min([x[0] for x in list(pre_metaprofile_dict.keys())])
-    max_length = max([x[0] for x in list(pre_metaprofile_dict.keys())])
-    for y in range(min_length, max_length):
-        if y not in [x[0] for x in list(pre_metaprofile_dict.keys())]:
-            pre_metaprofile_dict[(y, 0)] = None
-    min_distance = min([x[1] for x in list(pre_metaprofile_dict.keys())])
-    max_distance = max([x[1] for x in list(pre_metaprofile_dict.keys())])
-    for z in range(min_distance, max_distance):
-        if z not in [x[1] for x in list(pre_metaprofile_dict.keys())]:
-            pre_metaprofile_dict[(min_length, z)] = None
-    metagene_profile_dict = {}
-    for key, value in pre_metaprofile_dict.items():
-        if key[0] not in metagene_profile_dict:
-            metagene_profile_dict[key[0]] = {}
-        metagene_profile_dict[key[0]][key[1]] = value
+        if pre_metaprofile_dict == {}:
+            print(
+                "ERR - Metagene Profile: No reads found in specified range, \
+        removing boundaries..."
+            )
+            pre_metaprofile_dict = (
+                annotated_read_df.groupby(["read_length", "metagene_info"]).size().to_dict()
+            )
+        # Fill empty read length and distance keys with None
+        min_length = min([x[0] for x in list(pre_metaprofile_dict.keys())])
+        max_length = max([x[0] for x in list(pre_metaprofile_dict.keys())])
+        for y in range(min_length, max_length):
+            if y not in [x[0] for x in list(pre_metaprofile_dict.keys())]:
+                pre_metaprofile_dict[(y, 0)] = None
+        min_distance = min([x[1] for x in list(pre_metaprofile_dict.keys())])
+        max_distance = max([x[1] for x in list(pre_metaprofile_dict.keys())])
+        for z in range(min_distance, max_distance):
+            if z not in [x[1] for x in list(pre_metaprofile_dict.keys())]:
+                pre_metaprofile_dict[(min_length, z)] = None
+        for key, value in pre_metaprofile_dict.items():
+            if key[0] not in metagene_profile_dict[current_target]:
+                metagene_profile_dict[current_target][key[0]] = {}
+            metagene_profile_dict[current_target][key[0]][key[1]] = value
     return metagene_profile_dict
 
 

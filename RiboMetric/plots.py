@@ -4,7 +4,8 @@ RiboMetric reports
 """
 
 from plotly import graph_objects as go
-#from .modules import read_frame_cull, read_frame_score, sum_mRNA_distribution
+from plotly.subplots import make_subplots
+from .modules import read_frame_cull, read_frame_score, sum_mRNA_distribution
 import tempfile  # logoplot
 import subprocess  # logoplot
 import plotly.io as pio
@@ -499,16 +500,45 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
         plot_metagene_profile_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
-    metagene_dict = {}
-    for inner_dict in metagene_profile_dict.values():
-        for inner_key, inner_value in inner_dict.items():
-            if inner_key in metagene_dict and metagene_dict[inner_key] != None:
-                metagene_dict[inner_key] += inner_value if inner_value is not None else 0
-            else:
-                metagene_dict[inner_key] = inner_value if inner_value is not None else 0
-    fig = go.Figure(
-        [go.Bar(x=list(metagene_dict.keys()), y=list(metagene_dict.values()))]
-    )
+    count = 0
+    colnums = 1
+    frame_colors = {0:"#636efa", 1:"#ef553b", 2:"#00cc96"}
+    if metagene_profile_dict["start"] != {}:
+        target_loop = ["start"]
+        if metagene_profile_dict["stop"] != {}:
+            target_loop.append("stop")
+            colnums = 2
+    else:
+        target_loop = ["stop"]
+
+
+    fig = make_subplots(rows=1, cols=colnums, shared_yaxes=config["plots"]["metagene_profile"]["shared_yaxis"],
+        subplot_titles=["Distance from 5'","Distance from 3'"] if len(target_loop) > 1 
+        else ["Distance from 5'"] if target_loop == ["start"]
+        else ["Distance from 3'"],
+        )
+    for current_target in target_loop:
+        count += 1
+        metagene_dict = {}
+        for inner_dict in metagene_profile_dict[current_target].values():
+            for inner_key, inner_value in inner_dict.items():
+                if inner_key in metagene_dict and metagene_dict[inner_key] != None:
+                    metagene_dict[inner_key] += inner_value if inner_value is not None else 0
+                else:
+                    metagene_dict[inner_key] = inner_value if inner_value is not None else 0
+        n = 0
+        color = [(x%3) for x in metagene_dict.keys()]
+        for i in color:
+            color[n] = frame_colors[i]
+            n += 1
+            
+        fig.add_trace(
+            go.Bar(x=list(metagene_dict.keys()), y=list(metagene_dict.values()), 
+                name="Distance from 5'" if current_target == "start" else "Distance from 3'",
+                marker=dict(color=color)),
+                row=1, col=count, 
+        )
+
     fig.update_layout(
         title="Metagene Profile",
         xaxis_title="Relative position",
@@ -519,17 +549,21 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
             color=config["plots"]["base_color"],
         ),
         bargap=0,
+        showlegend=False,
     )
+    if colnums > 1:
+        fig.update_layout(
+                xaxis=dict(domain=[0, 0.48], zeroline=False),  # Adjust domain and remove x-axis zeroline for subplot 1
+                xaxis2=dict(domain=[0.52, 1], zeroline=False),  # Adjust domain and remove x-axis zeroline for subplot 2
+        )
+    else:
+        fig.update_layout(
+                xaxis=dict(domain=[0, 1], zeroline=False),
+        )
+
     fig.update_xaxes(
         range=config["plots"]["metagene_profile"]["distance_range"]
-        )
-    plot_metagene_profile_dict = {
-        "name": "Metagene Profile",
-        "description": "Metagene profile showing the distance count of \
-        reads per distance away from a target (default: start codon).",
-        "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig, config),
-    }
+    )
     return plot_metagene_profile_dict
 
 
@@ -547,39 +581,68 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
         plot_metagene_heatmap: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
-    x_data = []
-    y_data = []
-    z_data = []
-    for k1, v1 in metagene_profile_dict.items():
-        for k2, v2 in v1.items():
-            x_data.append(k2)
-            y_data.append(k1)
-            z_data.append(v2)
+    count = 0
+    colnums = 1
+    if metagene_profile_dict["start"] != {}:
+        target_loop = ["start"]
+        if metagene_profile_dict["stop"] != {}:
+            target_loop.append("stop")
+            colnums = 2
+    else:
+        target_loop = ["stop"]
 
-    fig = go.Figure(
-        data=go.Heatmap(
-            x=x_data,
-            y=y_data,
-            z=z_data,
-            colorscale="electric",
-            zmin=0,
-            zmax=config["plots"]["metagene_profile"]["max_colorscale"],
+    fig = make_subplots(rows=1, cols=colnums, shared_yaxes=True,
+        subplot_titles=["Distance from 5'","Distance from 3'"] if len(target_loop) > 1 
+        else ["Distance from 5'"] if target_loop == ["start"]
+        else ["Distance from 3'"],
         )
-    )
+
+    for current_target in target_loop:
+        count += 1
+        x_data = []
+        y_data = []
+        z_data = []
+        for k1, v1 in metagene_profile_dict[current_target].items():
+            for k2, v2 in v1.items():
+                x_data.append(k2)
+                y_data.append(k1)
+                z_data.append(v2)
+
+        fig.add_trace(
+            go.Heatmap(
+                x=x_data,
+                y=y_data,
+                z=z_data,
+                colorscale=config["plots"]["metagene_profile"]["colorscale"],
+                zmin=0,
+                zmax=config["plots"]["metagene_profile"]["max_colorscale"],
+            ),
+            row=1, col=count,
+        )
     fig.update_xaxes(
         range=config["plots"]["metagene_profile"]["distance_range"]
         )
     fig.update_layout(
         title="Metagene Heatmap",
-        xaxis_title="Read length",
-        yaxis_title="Relative position",
+        xaxis_title="Relative position (nt)",
+        yaxis_title="Read length",
         font=dict(
             family=config["plots"]["font_family"],
             size=18,
             color=config["plots"]["base_color"],
         ),
         legend={"traceorder": "normal"},
+        showlegend=False,
     )
+    if colnums > 1:
+        fig.update_layout(
+                xaxis=dict(domain=[0, 0.48], zeroline=False),  # Adjust domain and remove x-axis zeroline for subplot 1
+                xaxis2=dict(domain=[0.52, 1], zeroline=False),  # Adjust domain and remove x-axis zeroline for subplot 2
+        )
+    else:
+        fig.update_layout(
+                xaxis=dict(domain=[0, 1], zeroline=False),
+        )
     plot_metagene_heatmap = {
         "name": "Metagene Heatmap",
         "description": "Metagene heatmap showing the distance between the \
