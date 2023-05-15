@@ -108,7 +108,10 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
     # Convert the BAM file to SAM format and read the output in chunks
     cmd = f"samtools view {bam_file}"
     print(f"Running {cmd}")
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, text=True)
+    process = subprocess.Popen(cmd,
+                               shell=True,
+                               stdout=subprocess.PIPE,
+                               text=True)
     print("Processing reads...")
     read_list = []
     for line in iter(process.stdout.readline, ""):
@@ -160,7 +163,9 @@ def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
         top_transcripts: List of the top N transcripts
     """
     count_sorted_df = (
-        read_df.groupby("reference_name").sum().sort_values("count", ascending=False)
+        read_df.groupby("reference_name")
+               .sum()
+               .sort_values("count", ascending=False)
     )
 
     return count_sorted_df.index[:num_transcripts].tolist()
@@ -179,7 +184,10 @@ def subset_gff(gff_df: pd.DataFrame) -> pd.DataFrame:
     return gff_df[gff_df["feature"] == "CDS"]
 
 
-def gff_df_to_cds_df(gff_df: pd.DataFrame, transcript_list: list) -> pd.DataFrame:
+def gff_df_to_cds_df(
+        gff_df: pd.DataFrame,
+        transcript_list: list
+        ) -> pd.DataFrame:
     """
     Subset the gff dataframe to only include the CDS features
     with tx coordinates for a specific list of transcripts.
@@ -218,16 +226,24 @@ def gff_df_to_cds_df(gff_df: pd.DataFrame, transcript_list: list) -> pd.DataFram
             transcript_start = group_df["start"].min()
 
             cds_df_tx = group_df[group_df["type"] == "CDS"]
-            cds_start_end_tuple_list = sorted(zip(cds_df_tx["start"], cds_df_tx["end"]))
+            cds_start_end_tuple_list = sorted(
+                zip(cds_df_tx["start"], cds_df_tx["end"])
+                )
+            
             cds_tx_start = cds_start_end_tuple_list[0][0] - transcript_start
             cds_tx_end = cds_start_end_tuple_list[-1][1] - transcript_start
+            
             for cds in cds_start_end_tuple_list:
                 cds_length = cds[1] - cds[0]
                 cds_tx_end += cds_length
 
-            genomic_cds_starts = ",".join([str(x[0]) for x in cds_start_end_tuple_list])
+            genomic_cds_starts = ",".join(
+                [str(x[0]) for x in cds_start_end_tuple_list]
+                )
 
-            genomic_cds_ends = ",".join([str(x[1]) for x in cds_start_end_tuple_list])
+            genomic_cds_ends = ",".join(
+                [str(x[1]) for x in cds_start_end_tuple_list]
+                )
 
             rows["transcript_id"].append(group_name)
             rows["cds_start"].append(cds_tx_start)
@@ -242,7 +258,8 @@ def gff_df_to_cds_df(gff_df: pd.DataFrame, transcript_list: list) -> pd.DataFram
 def extract_transcript_id(attr_str):
     for attr in attr_str.split(";"):
         # Ensembl GFF3 support
-        if attr.startswith("Parent=transcript:") or attr.startswith("ID=transcript:"):
+        if attr.startswith("Parent=transcript:") \
+                or attr.startswith("ID=transcript:"):
             return attr.split(":")[1]
         # Gencode GFF3 support
         elif attr.startswith("transcript_id="):
@@ -273,10 +290,14 @@ def prepare_annotation(
     print("Parsing gff")
     gffdf = parse_gff(gff_path).df
 
-    transcript_id_regex = r"transcript_id=([^;]+)"
-    gffdf.loc[:, "transcript_id"] = gffdf["attributes"].str.extract(transcript_id_regex)
+    # transcript_id_regex = r"transcript_id=([^;]+)"
+    # gffdf.loc[:, "transcript_id"] = gffdf["attributes"].str.extract(
+    # transcript_id_regex
+    # )
 
-    gffdf.loc[:, "transcript_id"] = gffdf["attributes"].apply(extract_transcript_id)
+    gffdf.loc[:, "transcript_id"] = gffdf["attributes"].apply(
+        extract_transcript_id
+        )
 
     cds_df = gffdf[gffdf["type"] == "CDS"]
 
@@ -285,5 +306,9 @@ def prepare_annotation(
     annotation_df = gff_df_to_cds_df(gffdf, coding_tx_ids)
     basename = os.path.basename(gff_path).split(".")[0]
     output_name = f"{basename}_RibosomeProfiler.tsv"
-    annotation_df.to_csv(os.path.join(outdir, output_name), sep="\t", index=False)
+    annotation_df.to_csv(
+        os.path.join(outdir, output_name),
+        sep="\t",
+        index=False
+        )
     return annotation_df
