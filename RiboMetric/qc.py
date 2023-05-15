@@ -20,6 +20,13 @@ from .modules import (
     annotate_reads,
     sequence_slice,
     metagene_profile,
+    calculate_expected_dinucleotide_freqs,
+)
+
+from .metrics import (
+    read_length_distribution_metric as rld_metric,
+    ligation_bias_distribution_metric as lbd_metric,
+    read_frame_distribution_metric as rfd_metric,
 )
 
 
@@ -44,10 +51,19 @@ def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
     results_dict["read_length_distribution"] = read_length_distribution(
         read_df
         )
+    results_dict["read_length_distribution_metric"] = rld_metric(
+        results_dict["read_length_distribution"]
+        )
 
     print("> ligation_bias_distribution")
     results_dict["ligation_bias_distribution"] = ligation_bias_distribution(
         read_df
+        )
+    results_dict["ligation_bias_distribution_metric"] = lbd_metric(
+        results_dict["ligation_bias_distribution"],
+        calculate_expected_dinucleotide_freqs(
+            read_df,
+        ),
         )
 
     print("> nucleotide_composition")
@@ -59,6 +75,9 @@ def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
     results_dict["read_frame_distribution"] = read_frame_distribution(
         read_df
         )
+    results_dict["read_frame_distribution_metric"] = rfd_metric(
+        results_dict["read_frame_distribution"]
+    )
 
     print("> sequence_slice")
     results_dict["sequence_slice"] = sequence_slice(
@@ -101,10 +120,19 @@ def annotation_mode(
     results_dict["read_length_distribution"] = read_length_distribution(
         read_df
         )
+    results_dict["read_length_distribution_metric"] = rld_metric(
+        results_dict["read_length_distribution"]
+        )
 
     print("> ligation_bias_distribution")
     results_dict["ligation_bias_distribution"] = ligation_bias_distribution(
         read_df
+        )
+    results_dict["ligation_bias_distribution_metric"] = lbd_metric(
+        results_dict["ligation_bias_distribution"],
+        calculate_expected_dinucleotide_freqs(
+            read_df,
+        ),
         )
 
     print("> nucleotide_composition")
@@ -124,6 +152,9 @@ def annotation_mode(
         read_frame_distribution(cds_read_df)
         if config["qc"]["use_cds_subset"]["read_frame_distribution"]
         else read_frame_distribution(read_df)
+    )
+    results_dict["read_frame_distribution_metric"] = rfd_metric(
+        results_dict["read_frame_distribution"]
     )
 
     print("> mRNA_distribution")
