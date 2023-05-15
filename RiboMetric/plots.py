@@ -26,39 +26,37 @@ def generate_plots(results_dict: dict, config: dict) -> list:
     """
     print("Generating plots")
     plots_list = []
-    plots_list.extend([
-        plot_read_length_distribution(
-            results_dict["read_length_distribution"],
-            config),
-        plot_ligation_bias_distribution(
-            results_dict["ligation_bias_distribution"],
-            config),
-        plot_nucleotide_composition(
-            results_dict["nucleotide_composition"],
-            config),
-        plot_read_frame_distribution(
-            results_dict["read_frame_distribution"],
-            config)
-    ])
+    plots_list.extend(
+        [
+            plot_read_length_distribution(
+                results_dict["read_length_distribution"], config
+            ),
+            plot_ligation_bias_distribution(
+                results_dict["ligation_bias_distribution"], config
+            ),
+            plot_nucleotide_composition(results_dict["nucleotide_composition"], config),
+            plot_read_frame_distribution(
+                results_dict["read_frame_distribution"], config
+            ),
+            plot_logoplot(results_dict["sequence_slice"], config),
+        ]
+    )
     if results_dict["mode"] == "annotation_mode":
         plots_list.extend(
             [
                 plot_mRNA_distribution(
                     results_dict["mRNA_distribution"],
                     config,
-                    ),
+                ),
                 plot_mRNA_read_breakdown(
                     results_dict["mRNA_distribution"],
                     config,
-                    ),
+                ),
                 plot_metagene_profile(
                     results_dict["metagene_profile"],
                     config,
-                    ),
-                plot_metagene_heatmap(
-                    results_dict["metagene_profile"],
-                    config
-                    ),
+                ),
+                plot_metagene_heatmap(results_dict["metagene_profile"], config),
             ]
         )
     return plots_list
@@ -76,10 +74,7 @@ def plotly_to_image(fig: go.Figure, config: dict) -> str:
     return base_64_plot
 
 
-def plot_read_length_distribution(
-        read_length_dict: dict,
-        config: dict
-        ) -> dict:
+def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
     """
     Generate a plot of the read length distribution for the full dataset
 
@@ -120,10 +115,7 @@ def plot_read_length_distribution(
     return plot_read_length_dict
 
 
-def plot_ligation_bias_distribution(
-        ligation_bias_dict: dict,
-        config: dict
-        ) -> dict:
+def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> dict:
     """
     Generate a plot of ligation bias distribution for the full dataset
 
@@ -185,11 +177,7 @@ def plot_nucleotide_composition(
     fig = go.Figure()
     for nucleotide, distribution in nucleotide_composition_dict.items():
         fig.add_trace(
-            go.Scatter(
-                y=distribution,
-                name=nucleotide,
-                line_color=colors[nucleotide]
-            )
+            go.Scatter(y=distribution, name=nucleotide, line_color=colors[nucleotide])
         )
     fig.update_layout(
         title="Nucleotide Composition",
@@ -224,9 +212,7 @@ def plot_nucleotide_distribution(
             go.Bar(
                 name=nt,
                 x=[*range(nt_start + 1, nt_start + nt_count + 1)],
-                y=nucleotide_composition_dict[nt][
-                    nt_start: nt_start + nt_count
-                    ],
+                y=nucleotide_composition_dict[nt][nt_start : nt_start + nt_count],
                 marker=dict(color=config["plots"]["nucleotide_colors"][nt]),
                 # Set the text in the hovertemplate to proportion or count depending on config
                 hovertemplate="Proportion: %{y:.2%}"
@@ -270,18 +256,18 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         and plotly figure for html and pdf export
     """
     culled_read_frame_dict = read_frame_cull(read_frame_dict, config)
-    scored_read_frame_dict = read_frame_score(culled_read_frame_dict) \
-        if config["plots"]["read_frame_distribution"]["show_scores"] != "none"\
+    scored_read_frame_dict = (
+        read_frame_score(culled_read_frame_dict)
+        if config["plots"]["read_frame_distribution"]["show_scores"] != "none"
         else None
-
+    )
 
     # Set minimum and maximum font sizes
     min_font_size, max_font_size = 5, 30
 
     # Calculate font size based on number of data points
     num_data_points = len(culled_read_frame_dict)
-    font_size = max_font_size \
-        - (max_font_size - min_font_size) * (num_data_points / 50)
+    font_size = max_font_size - (max_font_size - min_font_size) * (num_data_points / 50)
 
     plot_data = []
     for i in range(0, 3):
@@ -289,13 +275,14 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             go.Bar(
                 name="Frame " + str(i + 1),
                 x=list(culled_read_frame_dict.keys()),
-                y=[culled_read_frame_dict[x][y]
+                y=[
+                    culled_read_frame_dict[x][y]
                     for x in culled_read_frame_dict
                     for y in culled_read_frame_dict[x]
                     if y == i
-                   ],
-                )
+                ],
             )
+        )
     fig = go.Figure(data=plot_data)
     fig.update_layout(barmode="group")
     fig.update_layout(
@@ -312,37 +299,38 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         if config["plots"]["read_frame_distribution"]["show_scores"] == "all":
             for idx in enumerate(culled_read_frame_dict):
                 if idx[1] != "global":
-                    y_buffer = max(fig.data[0].y +
-                                   fig.data[1].y +
-                                   fig.data[2].y) * 0.05
+                    y_buffer = max(fig.data[0].y + fig.data[1].y + fig.data[2].y) * 0.05
 
-                    ymax = max(fig.data[0].y[idx[0]],
-                               fig.data[1].y[idx[0]],
-                               fig.data[2].y[idx[0]])
+                    ymax = max(
+                        fig.data[0].y[idx[0]],
+                        fig.data[1].y[idx[0]],
+                        fig.data[2].y[idx[0]],
+                    )
 
-                    if fig.data[0].y[idx[0]]\
-                        + fig.data[0].y[idx[0]]\
-                        + fig.data[0].y[idx[0]]\
-                            > y_buffer:
-
+                    if (
+                        fig.data[0].y[idx[0]]
+                        + fig.data[0].y[idx[0]]
+                        + fig.data[0].y[idx[0]]
+                        > y_buffer
+                    ):
                         fig.add_annotation(
-                                x=idx[1],
-                                y=ymax+y_buffer,
-                                text=round(scored_read_frame_dict[idx[1]], 2),
-                                showarrow=False,
-                                xanchor='center',
-                                font={"size": font_size}
-                            )
+                            x=idx[1],
+                            y=ymax + y_buffer,
+                            text=round(scored_read_frame_dict[idx[1]], 2),
+                            showarrow=False,
+                            xanchor="center",
+                            font={"size": font_size},
+                        )
         fig.update_layout()
         fig.add_annotation(
             text=f'Score: {round(scored_read_frame_dict["global"], 2)}',
             showarrow=False,
-            xref='paper',
-            yref='paper',
+            xref="paper",
+            yref="paper",
             y=0.64,
             x=1.03,
-            xanchor="left"
-            )
+            xanchor="left",
+        )
 
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
@@ -407,10 +395,7 @@ regions represented in the reads",
     return plot_mRNA_distribution_dict
 
 
-def plot_mRNA_read_breakdown(
-        mRNA_distribution_dict: dict,
-        config: dict
-        ) -> dict:
+def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict:
     """
     Generate a line plot of the mRNA distribution over the read lengths
 
@@ -432,37 +417,34 @@ def plot_mRNA_read_breakdown(
     if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]:
         sum_data = {k: sum(v) for k, v in plot_data.items()}
         plot_data = {
-                k: [x/sum(sum_data.values()) for x in v]
-                for k, v in plot_data.items()
-            }
+            k: [x / sum(sum_data.values()) for x in v] for k, v in plot_data.items()
+        }
 
     fig = go.Figure()
     for k, v in plot_data.items():
         fig.add_trace(
-                go.Scatter(
-                    name=k,
-                    x=list(mRNA_distribution_dict.keys()),
-                    y=v,
-                    hovertemplate="Proportion: %{y:.2%}"
-                    if not config["plots"]
-                    ["mRNA_read_breakdown"]
-                    ["absolute_counts"] else "Count: %{x}",
-                )
+            go.Scatter(
+                name=k,
+                x=list(mRNA_distribution_dict.keys()),
+                y=v,
+                hovertemplate="Proportion: %{y:.2%}"
+                if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
+                else "Count: %{x}",
             )
+        )
 
     fig.update_layout(
-            title="Nucleotide Distribution",
-            xaxis_title="Position (nucleotides)",
-            yaxis_title="Proportion"
-            if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
-            else "Counts",
-            font=dict(
-                family=config["plots"]["font_family"],
-                size=18,
-                color=config["plots"]["base_color"],
-            ),
-
-        )
+        title="Nucleotide Distribution",
+        xaxis_title="Position (nucleotides)",
+        yaxis_title="Proportion"
+        if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
+        else "Counts",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
+        ),
+    )
     fig.update_layout(
         title="Nucleotide Distribution",
         xaxis_title="Read length",
@@ -502,7 +484,7 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
     """
     count = 0
     colnums = 1
-    frame_colors = {0:"#636efa", 1:"#ef553b", 2:"#00cc96"}
+    frame_colors = {0: "#636efa", 1: "#ef553b", 2: "#00cc96"}
     if metagene_profile_dict["start"] != {}:
         target_loop = ["start"]
         if metagene_profile_dict["stop"] != {}:
@@ -511,32 +493,46 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
     else:
         target_loop = ["stop"]
 
-
-    fig = make_subplots(rows=1, cols=colnums, shared_yaxes=config["plots"]["metagene_profile"]["shared_yaxis"],
-        subplot_titles=["Distance from 5'","Distance from 3'"] if len(target_loop) > 1 
-        else ["Distance from 5'"] if target_loop == ["start"]
+    fig = make_subplots(
+        rows=1,
+        cols=colnums,
+        shared_yaxes=config["plots"]["metagene_profile"]["shared_yaxis"],
+        subplot_titles=["Distance from 5'", "Distance from 3'"]
+        if len(target_loop) > 1
+        else ["Distance from 5'"]
+        if target_loop == ["start"]
         else ["Distance from 3'"],
-        )
+    )
     for current_target in target_loop:
         count += 1
         metagene_dict = {}
         for inner_dict in metagene_profile_dict[current_target].values():
             for inner_key, inner_value in inner_dict.items():
                 if inner_key in metagene_dict and metagene_dict[inner_key] != None:
-                    metagene_dict[inner_key] += inner_value if inner_value is not None else 0
+                    metagene_dict[inner_key] += (
+                        inner_value if inner_value is not None else 0
+                    )
                 else:
-                    metagene_dict[inner_key] = inner_value if inner_value is not None else 0
+                    metagene_dict[inner_key] = (
+                        inner_value if inner_value is not None else 0
+                    )
         n = 0
-        color = [(x%3) for x in metagene_dict.keys()]
+        color = [(x % 3) for x in metagene_dict.keys()]
         for i in color:
             color[n] = frame_colors[i]
             n += 1
-            
+
         fig.add_trace(
-            go.Bar(x=list(metagene_dict.keys()), y=list(metagene_dict.values()), 
-                name="Distance from 5'" if current_target == "start" else "Distance from 3'",
-                marker=dict(color=color)),
-                row=1, col=count, 
+            go.Bar(
+                x=list(metagene_dict.keys()),
+                y=list(metagene_dict.values()),
+                name="Distance from 5'"
+                if current_target == "start"
+                else "Distance from 3'",
+                marker=dict(color=color),
+            ),
+            row=1,
+            col=count,
         )
 
     fig.update_layout(
@@ -553,17 +549,19 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
     )
     if colnums > 1:
         fig.update_layout(
-                xaxis=dict(domain=[0, 0.48], zeroline=False),  # Adjust domain and remove x-axis zeroline for subplot 1
-                xaxis2=dict(domain=[0.52, 1], zeroline=False),  # Adjust domain and remove x-axis zeroline for subplot 2
+            xaxis=dict(
+                domain=[0, 0.48], zeroline=False
+            ),  # Adjust domain and remove x-axis zeroline for subplot 1
+            xaxis2=dict(
+                domain=[0.52, 1], zeroline=False
+            ),  # Adjust domain and remove x-axis zeroline for subplot 2
         )
     else:
         fig.update_layout(
-                xaxis=dict(domain=[0, 1], zeroline=False),
+            xaxis=dict(domain=[0, 1], zeroline=False),
         )
 
-    fig.update_xaxes(
-        range=config["plots"]["metagene_profile"]["distance_range"]
-    )
+    fig.update_xaxes(range=config["plots"]["metagene_profile"]["distance_range"])
     plot_metagene_profile_dict = {
         "name": "Metagene Profile",
         "description": "Metagene profile showing the distance count of \
@@ -598,11 +596,16 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
     else:
         target_loop = ["stop"]
 
-    fig = make_subplots(rows=1, cols=colnums, shared_yaxes=True,
-        subplot_titles=["Distance from 5'","Distance from 3'"] if len(target_loop) > 1 
-        else ["Distance from 5'"] if target_loop == ["start"]
+    fig = make_subplots(
+        rows=1,
+        cols=colnums,
+        shared_yaxes=True,
+        subplot_titles=["Distance from 5'", "Distance from 3'"]
+        if len(target_loop) > 1
+        else ["Distance from 5'"]
+        if target_loop == ["start"]
         else ["Distance from 3'"],
-        )
+    )
 
     for current_target in target_loop:
         count += 1
@@ -624,11 +627,10 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
                 zmin=0,
                 zmax=config["plots"]["metagene_profile"]["max_colorscale"],
             ),
-            row=1, col=count,
+            row=1,
+            col=count,
         )
-    fig.update_xaxes(
-        range=config["plots"]["metagene_profile"]["distance_range"]
-        )
+    fig.update_xaxes(range=config["plots"]["metagene_profile"]["distance_range"])
     fig.update_layout(
         title="Metagene Heatmap",
         xaxis_title="Relative position (nt)",
@@ -643,12 +645,16 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
     )
     if colnums > 1:
         fig.update_layout(
-                xaxis=dict(domain=[0, 0.48], zeroline=False),  # Adjust domain and remove x-axis zeroline for subplot 1
-                xaxis2=dict(domain=[0.52, 1], zeroline=False),  # Adjust domain and remove x-axis zeroline for subplot 2
+            xaxis=dict(
+                domain=[0, 0.48], zeroline=False
+            ),  # Adjust domain and remove x-axis zeroline for subplot 1
+            xaxis2=dict(
+                domain=[0.52, 1], zeroline=False
+            ),  # Adjust domain and remove x-axis zeroline for subplot 2
         )
     else:
         fig.update_layout(
-                xaxis=dict(domain=[0, 1], zeroline=False),
+            xaxis=dict(domain=[0, 1], zeroline=False),
         )
     plot_metagene_heatmap = {
         "name": "Metagene Heatmap",

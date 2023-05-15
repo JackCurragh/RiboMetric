@@ -23,8 +23,8 @@ plots:
     lower_limit: 10
     absolute_counts: False
   metagene_profile:
-    distance_target: "both"  # Options: ["start", "stop", "both"]
-    shared_yaxis: True        # For the metagene profile barplot, controls whether the start and stop distance share a y-axis or not
+    distance_target: "both"   # Options: ["start", "stop", "both"]
+    shared_yaxis: False       # For the metagene profile barplot, controls whether the start and stop distance share a y-axis or not
     distance_range: [-30,30]
     colorscale: "electric"    # Heatmap colorscale, see https://plotly.com/python/builtin-colorscales/
     max_colorscale: 350       # set to 'None' (without quotes!) for automatic maximum

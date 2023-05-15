@@ -165,8 +165,8 @@ def read_frame_score(read_frame_dict: dict) -> dict:
         top_two_values = sorted(inner_dict.values(), reverse=True)[:2]
         highest_peak_sum += top_two_values[0]
         second_peak_sum += top_two_values[1]
-        scored_read_frame_dict[k] = 1-top_two_values[1]/top_two_values[0]
-    scored_read_frame_dict["global"] = (1-second_peak_sum/highest_peak_sum)
+        scored_read_frame_dict[k] = 1 - top_two_values[1] / top_two_values[0]
+    scored_read_frame_dict["global"] = 1 - second_peak_sum / highest_peak_sum
     return scored_read_frame_dict
 
 
@@ -197,9 +197,8 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
 
 
 def annotate_reads(
-        a_site_df: pd.DataFrame,
-        annotation_df: pd.DataFrame
-        ) -> pd.DataFrame:
+    a_site_df: pd.DataFrame, annotation_df: pd.DataFrame
+) -> pd.DataFrame:
     """
     Merges the annotation dataframe with the read dataframe
 
@@ -245,8 +244,7 @@ def assign_mRNA_category(row) -> str:
     elif row["a_site"] > row["cds_end"]:
         return "three_trailer"
     else:
-        return 'unknown'
-
+        return "unknown"
 
 
 # Slow, needs improving
@@ -263,14 +261,9 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
                                 mRNA category at the different read lengths
     """
     # Creating MultiIndex for reindexing
-    categories = [
-        'five_leader', 'start_codon', 'CDS', 'stop_codon', 'three_trailer'
-        ]
-    classes = annotated_read_df['read_length'].unique()
-    idx = pd.MultiIndex.from_product(
-        [classes, categories],
-        names=['class', 'category']
-        )
+    categories = ["five_leader", "start_codon", "CDS", "stop_codon", "three_trailer"]
+    classes = annotated_read_df["read_length"].unique()
+    idx = pd.MultiIndex.from_product([classes, categories], names=["class", "category"])
     # Adding mRNA category to annotated_read_df with assign_mRNA_category
     annotated_read_df["mRNA_category"] = annotated_read_df.apply(
         assign_mRNA_category, axis=1
@@ -280,7 +273,7 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         .size()
         .reindex(idx, fill_value=0)
         .sort_index()
-        )
+    )
 
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict = {}
@@ -289,13 +282,14 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         if read_length not in mRNA_distribution_dict:
             mRNA_distribution_dict[read_length] = {}
         mRNA_distribution_dict[read_length][mRNA_category] = value
-        
+
     # Setting order of categories 5' to 3'
     for i in mRNA_distribution_dict:
         mRNA_distribution_dict[i] = {
             k: mRNA_distribution_dict[i][k]
-            for k in categories if k in mRNA_distribution_dict[i]
-            }
+            for k in categories
+            if k in mRNA_distribution_dict[i]
+        }
 
     return mRNA_distribution_dict
 
@@ -322,14 +316,15 @@ def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
                 sum_mRNA_dict[k] = v
     if not config["plots"]["mRNA_distribution"]["absolute_counts"]:
         sum_mRNA_dict = {
-            k: (v/sum(sum_mRNA_dict.values()))
-            for k, v in sum_mRNA_dict.items()
-            }
+            k: (v / sum(sum_mRNA_dict.values())) for k, v in sum_mRNA_dict.items()
+        }
 
     return sum_mRNA_dict
 
-  
-def metagene_distance(annotated_read_df: pd.DataFrame, target: str = "start") -> pd.Series:
+
+def metagene_distance(
+    annotated_read_df: pd.DataFrame, target: str = "start"
+) -> pd.Series:
     """
     Calculate distance from A-site to start or stop codon
 
@@ -343,12 +338,16 @@ def metagene_distance(annotated_read_df: pd.DataFrame, target: str = "start") ->
     pd.Series
     """
     if target == "start":
-        return (annotated_read_df["a_site"] - annotated_read_df["cds_start"])
+        return annotated_read_df["a_site"] - annotated_read_df["cds_start"]
     elif target == "stop":
-        return (annotated_read_df["a_site"] - annotated_read_df["cds_end"])
+        return annotated_read_df["a_site"] - annotated_read_df["cds_end"]
 
 
-def metagene_profile(annotated_read_df: pd.DataFrame, target: str = "both", distance_range: list = [-50,50]) -> dict:
+def metagene_profile(
+    annotated_read_df: pd.DataFrame,
+    target: str = "both",
+    distance_range: list = [-50, 50],
+) -> dict:
     """
     Groups the reads by read_length and distance to a target and counts them
 
@@ -365,9 +364,11 @@ def metagene_profile(annotated_read_df: pd.DataFrame, target: str = "both", dist
         as values
     """
     target_loop = [target] if target != "both" else ["start", "stop"]
-    metagene_profile_dict = {"start":{}, "stop":{}}
+    metagene_profile_dict = {"start": {}, "stop": {}}
     for current_target in target_loop:
-        annotated_read_df["metagene_info"] = metagene_distance(annotated_read_df, current_target)
+        annotated_read_df["metagene_info"] = metagene_distance(
+            annotated_read_df, current_target
+        )
         pre_metaprofile_dict = (
             annotated_read_df[
                 (annotated_read_df["metagene_info"] > distance_range[0] - 1)
@@ -383,7 +384,9 @@ def metagene_profile(annotated_read_df: pd.DataFrame, target: str = "both", dist
         removing boundaries..."
             )
             pre_metaprofile_dict = (
-                annotated_read_df.groupby(["read_length", "metagene_info"]).size().to_dict()
+                annotated_read_df.groupby(["read_length", "metagene_info"])
+                .size()
+                .to_dict()
             )
         # Fill empty read length and distance keys with None
         min_length = min([x[0] for x in list(pre_metaprofile_dict.keys())])
