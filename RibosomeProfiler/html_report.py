@@ -11,7 +11,8 @@ import base64
 
 
 def generate_report(
-    plots: dict,
+    plots: list,
+    config: dict,
     export_mode: str = "html",
     name: str = "RibosomeProfiler_report",
     outdir: str = "",
@@ -30,14 +31,17 @@ def generate_report(
     Outputs:
         No variables will be output
     """
-    env = Environment(loader=FileSystemLoader(["templates",
-                                               "RibosomeProfiler/templates"]),
-                      autoescape=False)
+    env = Environment(
+        loader=FileSystemLoader(["templates", "RibosomeProfiler/templates"]),
+        autoescape=False,
+    )
 
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
-    binary_logo = open("RibosomeProfiler_logo.png", 'rb').read()
-    base64_logo = base64.b64encode(binary_logo).decode('utf-8')
+    binary_logo = open("RibosomeProfiler_logo.png", "rb").read()
+    base64_logo = base64.b64encode(binary_logo).decode("utf-8")
+    binary_icon = open("favicon.png", "rb").read()
+    base64_icon = base64.b64encode(binary_icon).decode("utf-8")
 
     if outdir == "":
         output = name
@@ -53,10 +57,11 @@ def generate_report(
 
     template = env.get_template("base.html")
     context = {
-                "plots": plots,
-                "completion_time": completion_time,
-                "logo": base64_logo
-            }
+        "plots": plots,
+        "completion_time": completion_time,
+        "logo": base64_logo,
+        "favicon": base64_icon,
+    }
 
     for filetype in export_mode:
         if filetype == "html":

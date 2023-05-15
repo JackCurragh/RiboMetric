@@ -18,6 +18,9 @@ from .modules import (
     read_frame_distribution,
     mRNA_distribution,
     annotate_reads,
+    metagene_profile,
+    sequence_slice,
+    metagene_heatmap,
 )
 
 
@@ -35,21 +38,30 @@ def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
     """
 
     print("Running modules")
-    results_dict = {
-        "mode": "annotation_free_mode",
-        "read_length_distribution": read_length_distribution(read_df),
-        "ligation_bias_distribution": ligation_bias_distribution(read_df),
-        "nucleotide_composition": nucleotide_composition(read_df),
-        "read_frame_distribution": read_frame_distribution(read_df),
-    }
+    results_dict = {}
+    results_dict["mode"] = "annotation_free_mode"
+    print("> read_length_distribution")
+    results_dict["read_length_distribution"] = read_length_distribution(read_df)
+    print("> ligation_bias_distribution")
+    results_dict["ligation_bias_distribution"] = ligation_bias_distribution(read_df)
+    print("> nucleotide_composition")
+    results_dict["nucleotide_composition"] = nucleotide_composition(read_df)
+    print("> read_frame_distribution")
+    results_dict["read_frame_distribution"] = read_frame_distribution(read_df)
+    print("> sequence_slice")
+    results_dict["sequence_slice"] = sequence_slice(
+        read_df,
+        nt_start=config["plots"]["nucleotide_proportion"]["nucleotide_start"],
+        nt_count=config["plots"]["nucleotide_proportion"]["nucleotide_count"],
+    )
+    print("> summary_metrics")
+    results_dict["summary_metrics"] = {}
 
     return results_dict
 
 
 def annotation_mode(
-    read_df: pd.DataFrame,
-    annotation_df: pd.DataFrame,
-    config: dict
+    read_df: pd.DataFrame, annotation_df: pd.DataFrame, config: dict
 ) -> dict:
     """
     Run the annotation mode of the qc analysis
@@ -64,27 +76,50 @@ def annotation_mode(
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
-    print("Subsetting to CDS reads")
-    annotation_df["transcript_id"] = annotation_df["transcript_id"].replace(
-        "\"", "", regex=True
-        )
-
-    cds_read_df = read_df_to_cds_read_df(read_df, annotation_df)
     print("Merging annotation and reads")
     annotated_read_df = annotate_reads(read_df, annotation_df)
+    print("Subsetting to CDS reads")
+    cds_read_df = read_df_to_cds_read_df(annotated_read_df)
     print("Running modules")
-    results_dict = {
-        "mode": "annotation_mode",
-        "read_length_distribution": read_length_distribution(read_df),
-        "ligation_bias_distribution": ligation_bias_distribution(read_df),
-        "nucleotide_composition": nucleotide_composition(read_df),
-    }
-    results_dict["read_frame_distribution"] = read_frame_distribution(
-                                                    cds_read_df)\
-        if config["qc"]["use_cds_subset"]["read_frame_distribution"]\
+    
+    results_dict = {}
+    results_dict["mode"] = "annotation_mode"
+    print("> read_length_distribution")
+    results_dict["read_length_distribution"] = read_length_distribution(read_df)
+    print("> ligation_bias_distribution")
+    results_dict["ligation_bias_distribution"] = ligation_bias_distribution(read_df)
+    print("> nucleotide_composition")
+    results_dict["nucleotide_composition"] = nucleotide_composition(read_df)
+    print("> sequence_slice")
+    results_dict["sequence_slice"] = sequence_slice(
+        read_df,
+        nt_start=config["plots"]["nucleotide_proportion"]["nucleotide_start"],
+        nt_count=config["plots"]["nucleotide_proportion"]["nucleotide_count"],
+    )
+    print("> read_frame_distribution")
+    results_dict["read_frame_distribution"] = (
+        read_frame_distribution(cds_read_df)
+        if config["qc"]["use_cds_subset"]["read_frame_distribution"]
         else read_frame_distribution(read_df)
+    )
+    print("> mRNA_distribution")
     results_dict["mRNA_distribution"] = mRNA_distribution(annotated_read_df)
-
+    print("> metagene_profile")
+    results_dict["metagene_profile"] = (
+        metagene_profile(
+            annotated_read_df, config["plots"]["metagene_profile"]["distance_target"]
+        )
+        .value_counts()
+        .to_dict()
+    )
+    print("> metagene_heatmap")
+    results_dict["metagene_heatmap"] = metagene_heatmap(
+        annotated_read_df,
+        config["plots"]["metagene_profile"]["distance_target"],
+        config["plots"]["metagene_profile"]["distance_range"],
+    )
+    print("> summary_metrics")
+    results_dict["summary_metrics"] = {}
     return results_dict
 
 
@@ -93,7 +128,7 @@ def sequence_mode(
     gff_path: str,
     transcript_list: list,
     fasta_path: str,
-    config: dict
+    config: dict,
 ) -> dict:
     """
     Run the sequence mode of the qc analysis
@@ -114,7 +149,7 @@ def sequence_mode(
         "read_length_distribution": read_length_distribution(read_df),
         "ligation_bias_distribution": ligation_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
-        "read_frame_distribution": read_frame_distribution(read_df)
+        "read_frame_distribution": read_frame_distribution(read_df),
     }
     # results_dict["read_frame_distribution"] = read_frame_distribution(
     #   cds_read_df)\
