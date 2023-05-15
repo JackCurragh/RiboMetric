@@ -2,7 +2,7 @@
 
 """Tests for `RibosomeProfiler` package."""
 
-from RibosomeProfiler.RibosomeProfiler import main
+from RiboMetric.RiboMetric import main
 
 from argparse import Namespace
 from io import StringIO

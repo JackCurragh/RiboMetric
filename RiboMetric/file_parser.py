@@ -229,10 +229,10 @@ def gff_df_to_cds_df(
             cds_start_end_tuple_list = sorted(
                 zip(cds_df_tx["start"], cds_df_tx["end"])
                 )
-            
+
             cds_tx_start = cds_start_end_tuple_list[0][0] - transcript_start
             cds_tx_end = cds_start_end_tuple_list[-1][1] - transcript_start
-            
+
             for cds in cds_start_end_tuple_list:
                 cds_length = cds[1] - cds[0]
                 cds_tx_end += cds_length
@@ -268,7 +268,6 @@ def extract_transcript_id(attr_str):
         elif attr.startswith(" transcript_id "):
             return attr.split(" ")[2].replace('"', "")
     return np.nan
-
 
 
 def prepare_annotation(

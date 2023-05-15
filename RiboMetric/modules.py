@@ -21,7 +21,9 @@ def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
         cds_read_df: Dataframe containing the read information for reads
                     that map to the CDS
     """
-    cds_read_df = df[(df["cds_start"] < df["a_site"]) & (df["a_site"] < df["cds_end"])]
+    cds_read_df = df[
+        (df["cds_start"] < df["a_site"]) & (df["a_site"] < df["cds_end"])
+        ]
     return cds_read_df
 
 
@@ -51,7 +53,10 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     Outputs:
         dict: Dictionary containing the read length distribution
     """
-    read_lengths, read_counts = np.unique(read_df["read_length"], return_counts=True)
+    read_lengths, read_counts = np.unique(
+        read_df["read_length"],
+        return_counts=True
+    )
     return dict(zip(read_lengths.tolist(), read_counts.tolist()))
 
 
@@ -86,8 +91,12 @@ def ligation_bias_distribution(
             .value_counts(normalize=True)
             .sort_index()
         )
-    ligation_bias_dict = {k: v for k, v in sequence_dict.items() if "N" not in k}
-    ligation_bias_dict.update({k: v for k, v in sequence_dict.items() if "N" in k})
+    ligation_bias_dict = {
+        k: v for k, v in sequence_dict.items() if "N" not in k
+        }
+    ligation_bias_dict.update(
+        {k: v for k, v in sequence_dict.items() if "N" in k}
+        )
     return ligation_bias_dict
 
 
@@ -248,7 +257,6 @@ def assign_mRNA_category(row) -> str:
         return 'unknown'
 
 
-
 # Slow, needs improving
 def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
     """
@@ -289,7 +297,7 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         if read_length not in mRNA_distribution_dict:
             mRNA_distribution_dict[read_length] = {}
         mRNA_distribution_dict[read_length][mRNA_category] = value
-        
+
     # Setting order of categories 5' to 3'
     for i in mRNA_distribution_dict:
         mRNA_distribution_dict[i] = {
@@ -328,7 +336,7 @@ def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
 
     return sum_mRNA_dict
 
-  
+
 def metagene_profile(
     annotated_read_df: pd.DataFrame, target: str = "start"
 ) -> pd.Series:
@@ -372,7 +380,9 @@ def metagene_heatmap(
         read_length of the read and distance to the target and the counts
         as values
     """
-    annotated_read_df["metagene_info"] = metagene_profile(annotated_read_df, target)
+    annotated_read_df["metagene_info"] = metagene_profile(
+        annotated_read_df, target
+        )
     pre_heatmap_dict = (
         annotated_read_df[
             (annotated_read_df["metagene_info"] > distance_range[0] - 1)
@@ -388,7 +398,9 @@ def metagene_heatmap(
 removing boundaries..."
         )
         pre_heatmap_dict = (
-            annotated_read_df.groupby(["read_length", "metagene_info"]).size().to_dict()
+            annotated_read_df.groupby(
+                ["read_length", "metagene_info"]
+            ).size().to_dict()
         )
     min_length = min([x[0] for x in list(pre_heatmap_dict.keys())])
     max_length = max([x[0] for x in list(pre_heatmap_dict.keys())])
@@ -401,7 +413,8 @@ removing boundaries..."
         if z not in [x[1] for x in list(pre_heatmap_dict.keys())]:
             pre_heatmap_dict[(min_length, z)] = None
     metagene_heatmap_dict = {}
-    # PROBLEM: tuple key is not useable for json keys, nested dictionary as solution
+    # PROBLEM: tuple key is not useable for json keys,
+    # nested dictionary as solution
     for key, value in pre_heatmap_dict.items():
         if key[0] not in metagene_heatmap_dict:
             metagene_heatmap_dict[key[0]] = {}
@@ -413,7 +426,7 @@ def sequence_slice(
     read_df: pd.DataFrame, nt_start: int = 0, nt_count: int = 15
 ) -> dict:
     sequence_slice_dict = {
-        k: v[nt_start : nt_start + nt_count]
+        k: v[nt_start: nt_start + nt_count]
         for k, v in read_df["sequence"].to_dict().items()
     }
     return sequence_slice_dict

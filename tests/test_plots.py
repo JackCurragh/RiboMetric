@@ -2,8 +2,8 @@
 
 """Tests for `plots` package."""
 
-from RibosomeProfiler.plots import *
-from RibosomeProfiler.modules import *
+from RiboMetric.plots import *
+from RiboMetric.modules import *
 import yaml
 
 
