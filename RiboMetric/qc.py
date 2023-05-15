@@ -22,6 +22,9 @@ from .modules import (
     sequence_slice,
     metagene_heatmap,
 )
+from .metrics import (
+    read_length_distribution_metric as rld_metric,
+)
 
 
 def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
@@ -44,6 +47,9 @@ def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
     print("> read_length_distribution")
     results_dict["read_length_distribution"] = read_length_distribution(
         read_df
+        )
+    results_dict["read_length_distribution_metric"] = rld_metric(
+        results_dict["read_length_distribution"]
         )
 
     print("> ligation_bias_distribution")
@@ -101,6 +107,9 @@ def annotation_mode(
     print("> read_length_distribution")
     results_dict["read_length_distribution"] = read_length_distribution(
         read_df
+        )
+    results_dict["read_length_distribution_metric"] = rld_metric(
+        results_dict["read_length_distribution"]
         )
 
     print("> ligation_bias_distribution")
