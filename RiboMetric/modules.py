@@ -9,6 +9,7 @@ import numpy as np
 from xhtml2pdf import pisa
 from collections import Counter
 
+
 def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     Convert the a_site_df to a cds_read_df by removing reads that do not
@@ -21,7 +22,9 @@ def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
         cds_read_df: Dataframe containing the read information for reads
                     that map to the CDS
     """
-    cds_read_df = df[(df["cds_start"] < df["a_site"]) & (df["a_site"] < df["cds_end"])]
+    cds_read_df = df[
+        (df["cds_start"] < df["a_site"]) & (df["a_site"] < df["cds_end"])
+    ]
     return cds_read_df
 
 
@@ -51,7 +54,9 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     Outputs:
         dict: Dictionary containing the read length distribution
     """
-    read_lengths, read_counts = np.unique(read_df["read_length"], return_counts=True)
+    read_lengths, read_counts = np.unique(
+        read_df["read_length"], return_counts=True
+    )
     return dict(zip(read_lengths.tolist(), read_counts.tolist()))
 
 
@@ -69,7 +74,7 @@ def ligation_bias_distribution(
         (Default = True)
 
     Outputs:
-        read_start_df: Dictionary containing the distribution of the
+        ligation_bias_dict: Dictionary containing the distribution of the
         first two nucleotides in the reads
     """
     if five_prime:
@@ -86,8 +91,12 @@ def ligation_bias_distribution(
             .value_counts(normalize=True)
             .sort_index()
         )
-    ligation_bias_dict = {k: v for k, v in sequence_dict.items() if "N" not in k}
-    ligation_bias_dict.update({k: v for k, v in sequence_dict.items() if "N" in k})
+    ligation_bias_dict = {
+        k: v for k, v in sequence_dict.items() if "N" not in k
+    }
+    ligation_bias_dict.update(
+        {k: v for k, v in sequence_dict.items() if "N" in k}
+    )
     return ligation_bias_dict
 
 
@@ -261,9 +270,17 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
                                 mRNA category at the different read lengths
     """
     # Creating MultiIndex for reindexing
-    categories = ["five_leader", "start_codon", "CDS", "stop_codon", "three_trailer"]
+    categories = [
+        "five_leader",
+        "start_codon",
+        "CDS",
+        "stop_codon",
+        "three_trailer",
+    ]
     classes = annotated_read_df["read_length"].unique()
-    idx = pd.MultiIndex.from_product([classes, categories], names=["class", "category"])
+    idx = pd.MultiIndex.from_product(
+        [classes, categories], names=["class", "category"]
+    )
     # Adding mRNA category to annotated_read_df with assign_mRNA_category
     annotated_read_df["mRNA_category"] = annotated_read_df.apply(
         assign_mRNA_category, axis=1
@@ -316,7 +333,8 @@ def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
                 sum_mRNA_dict[k] = v
     if not config["plots"]["mRNA_distribution"]["absolute_counts"]:
         sum_mRNA_dict = {
-            k: (v / sum(sum_mRNA_dict.values())) for k, v in sum_mRNA_dict.items()
+            k: (v / sum(sum_mRNA_dict.values()))
+            for k, v in sum_mRNA_dict.items()
         }
 
     return sum_mRNA_dict
@@ -410,7 +428,7 @@ def sequence_slice(
     read_df: pd.DataFrame, nt_start: int = 0, nt_count: int = 15
 ) -> dict:
     sequence_slice_dict = {
-        k: v[nt_start : nt_start + nt_count]
+        k: v[nt_start: nt_start + nt_count]
         for k, v in read_df["sequence"].to_dict().items()
     }
     return sequence_slice_dict
@@ -427,7 +445,7 @@ def convert_html_to_pdf(source_html, output_filename):
 def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict():
     """
     Calculate the expected dinucleotide frequencies based on the
-    nucleotide frequencies in the aligned reads 
+    nucleotide frequencies in the aligned reads
 
     Inputs:
         read_df: Dataframe containing the read information
@@ -439,13 +457,13 @@ def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict():
     dinucleotides = []
     for read in read_df["sequence"]:
         for i in range(len(read) - 1):
-            dinucleotides.append(read[i:i+2])
-            
+            dinucleotides.append(read[i: i + 2])
+
     observed_freq = Counter(dinucleotides)
     total_count = sum(observed_freq.values())
 
     expected_dinucleotide_freqs = {}
     for dinucleotide, count in observed_freq.items():
         expected_dinucleotide_freqs[dinucleotide] = count / total_count
-        
+
     return expected_dinucleotide_freqs
