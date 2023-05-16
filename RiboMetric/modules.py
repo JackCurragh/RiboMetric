@@ -91,11 +91,14 @@ def global_nucleotide_proportion(
     # Concatenate all strings in the Series
     concatenated = "".join(series.tolist())
     # Calculate dinucleotide occurrences
-    nucleotide_group_counts = Counter(
+    expected_nucleotide_proportion = Counter(
         concatenated[i: i + num_bases]
         for i in range(0, len(concatenated) - 1, num_bases)
     )
-    return dict(nucleotide_group_counts)
+    sumcounts = sum(expected_nucleotide_proportion.values())
+    for k in expected_nucleotide_proportion:
+        expected_nucleotide_proportion[k] = expected_nucleotide_proportion[k]/sumcounts
+    return dict(expected_nucleotide_proportion)
 
 
 def ligation_bias_distribution(
@@ -139,17 +142,16 @@ def ligation_bias_distribution(
         {k: v for k, v in sequence_dict.items() if "N" in k}
     )
     if background_freq:
-        nucleotide_group_counts = global_nucleotide_proportion(
+        expected_nucleotide_proportion = global_nucleotide_proportion(
             read_df, num_bases, five_prime
         )
         for key in ligation_bias_dict:
-            if key not in nucleotide_group_counts:
-                nucleotide_group_counts[key] = 0
+            if key not in expected_nucleotide_proportion:
+                expected_nucleotide_proportion[key] = 0
         ligation_bias_dict = {
             k: (
                 v
-                - nucleotide_group_counts[k]
-                / sum(nucleotide_group_counts.values())
+                - expected_nucleotide_proportion[k]
             )
             for k, v in ligation_bias_dict.items()
         }
