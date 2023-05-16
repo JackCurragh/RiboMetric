@@ -127,6 +127,7 @@ def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> d
         plot_ligation_bias_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
+    # Remove nucleotide sequences with 'N' if 'Include_N' option on config is False
     if config["plots"]["ligation_bias_distribution"]["include_N"] is False:
         ligation_bias_dict = {
             k: v for k, v in ligation_bias_dict.items() if "N" not in k
@@ -256,6 +257,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         and plotly figure for html and pdf export
     """
     culled_read_frame_dict = read_frame_cull(read_frame_dict, config)
+    # Calculates the read frame scores if 'show_scores' option in config is not 'none'
     scored_read_frame_dict = (
         read_frame_score(culled_read_frame_dict)
         if config["plots"]["read_frame_distribution"]["show_scores"] != "none"
@@ -275,6 +277,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             go.Bar(
                 name="Frame " + str(i + 1),
                 x=list(culled_read_frame_dict.keys()),
+                #
                 y=[
                     culled_read_frame_dict[x][y]
                     for x in culled_read_frame_dict
