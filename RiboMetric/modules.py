@@ -60,8 +60,53 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     return dict(zip(read_lengths.tolist(), read_counts.tolist()))
 
 
-def ligation_bias_distribution(
+def global_nucleotide_proportion(
     read_df: pd.DataFrame, num_bases: int = 2, five_prime: bool = True
+) -> dict:
+    """
+    Calculate the global proportion nucleotide groups in the reads,
+    used as a background for ligation bias distribution
+
+    Inputs:
+        read_df: Dataframe containing the read information
+        num_bases: Number of bases to be read (Default = 2)
+        five_prime: Start at 5' end (True) or 3' end (False) of read
+        (Default = True)
+
+    Outputs:
+        dinucleotide_counts: Dictionary containing the distribution of the
+        nucleotide groups in the reads
+    """
+    # Remove first n characters and last character from sequences
+    # with odd lengths
+    if five_prime:
+        series = read_df["sequence"].apply(
+            lambda x: x[num_bases:-1]
+            if len(x) % num_bases != 0
+            else x[num_bases:]
+        )
+    # If five_prime is false, remove last n characters and first if odd length
+    else:
+        series = read_df["sequence"].apply(
+            lambda x: x[1:-num_bases]
+            if len(x) % num_bases != 0
+            else x[:-num_bases]
+        )
+    # Concatenate all strings in the Series
+    concatenated = "".join(series.unique().tolist())
+    # Calculate dinucleotide occurrences
+    nucleotide_group_counts = Counter(
+        concatenated[i: i + num_bases]
+        for i in range(0, len(concatenated) - 1, num_bases)
+    )
+    return dict(nucleotide_group_counts)
+
+
+def ligation_bias_distribution(
+    read_df: pd.DataFrame,
+    num_bases: int = 2,
+    five_prime: bool = True,
+    representation: bool = True,
 ) -> dict:
     """
     Calculate the proportion of the occurrence in the first or last n
@@ -97,6 +142,18 @@ def ligation_bias_distribution(
     ligation_bias_dict.update(
         {k: v for k, v in sequence_dict.items() if "N" in k}
     )
+    if representation:
+        nucleotide_group_counts = global_nucleotide_proportion(
+            read_df, num_bases, five_prime
+        )
+        ligation_bias_dict = {
+            k: (
+                v
+                - nucleotide_group_counts[k]
+                / sum(nucleotide_group_counts.values())
+            )
+            for k, v in ligation_bias_dict.items()
+        }
     return ligation_bias_dict
 
 
