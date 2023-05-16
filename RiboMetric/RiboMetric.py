@@ -70,7 +70,7 @@ def print_logo(console):
     print the logo to the console
     """
     logo = Text(
-    """
+        """
                    ██████╗  ██╗ ██████╗  ██████╗
                    ██╔══██╗ ██║ ██╔══██╗██╔═══██╗
                    ██████╔╝ ██║ ██████╔╝██║   ██║
@@ -371,8 +371,9 @@ def main(args):
 
             if args.fasta is not None:
                 fasta_dict = parse_fasta(args.fasta)
-
-                results_dict = sequence_mode(results_dict, read_df, fasta_dict, config)
+                results_dict = sequence_mode(
+                    results_dict, read_df, fasta_dict, config
+                )
         if args.html or args.pdf:
             plots_list = generate_plots(results_dict, config)
             generate_report(plots_list, config, report_export)
