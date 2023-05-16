@@ -123,3 +123,4 @@ parse_to_csv.py
 bak*
 
 .gitignore
+RiboMetric_report.html
