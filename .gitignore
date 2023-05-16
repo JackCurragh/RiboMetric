@@ -110,8 +110,7 @@ data/
 # Lukasdev
 *.ipynb
 test_files/
-RibosomeProfiler_report.*
-RibosomeProfiler/test_report.*
+RiboMetric_report.*
 1000_entry_RibosomeProfiler.tsv
 Saccharomyces_cerevisiae_RibosomeProfiler.tsv
 gencode_RibosomeProfiler.tsv
@@ -123,4 +122,3 @@ parse_to_csv.py
 bak*
 
 .gitignore
-RiboMetric_report.html
