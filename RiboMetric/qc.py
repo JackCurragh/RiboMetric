@@ -127,9 +127,9 @@ def annotation_mode(
     print("> ligation_bias_distribution")
     results_dict["ligation_bias_distribution"] = ligation_bias_distribution(
         read_df,
-        num_bases=config["plots"]["ligation_bias"]["nucleotide_count"],
-        five_prime=config["plots"]["ligation_bias"]["five_prime"],
-        representation=config["plots"]["ligation_bias"]["background_freq"],
+        num_bases=config["plots"]["ligation_bias_distribution"]["nucleotide_count"],
+        five_prime=config["plots"]["ligation_bias_distribution"]["five_prime"],
+        background_freq=config["plots"]["ligation_bias_distribution"]["background_freq"],
         )
     results_dict["ligation_bias_distribution_metric"] = lbd_metric(
         results_dict["ligation_bias_distribution"],
