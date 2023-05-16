@@ -106,7 +106,7 @@ def ligation_bias_distribution(
     read_df: pd.DataFrame,
     num_bases: int = 2,
     five_prime: bool = True,
-    representation: bool = True,
+    background_freq: bool = True,
 ) -> dict:
     """
     Calculate the proportion of the occurrence in the first or last n
@@ -142,10 +142,13 @@ def ligation_bias_distribution(
     ligation_bias_dict.update(
         {k: v for k, v in sequence_dict.items() if "N" in k}
     )
-    if representation:
+    if background_freq:
         nucleotide_group_counts = global_nucleotide_proportion(
             read_df, num_bases, five_prime
         )
+        for key in ligation_bias_dict:
+            if key not in nucleotide_group_counts:
+                nucleotide_group_counts[key] = 0
         ligation_bias_dict = {
             k: (
                 v

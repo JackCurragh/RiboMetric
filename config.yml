@@ -8,7 +8,7 @@ plots:
     nucleotide_count: 2       # Size of nucleotide groups to check (default = 2)
     five_prime: True          # If set to false, controls possible bias at 3' instead of 5'
     include_N: False          # Show nucleotide groups with N in plot
-    background_freq: True      # Use background frequency of nucleotide groups in reads to check ligation bias
+    background_freq: True     # Use background frequency of nucleotide groups in reads to check ligation bias
   nucleotide_proportion:
     nucleotide_start: 0
     nucleotide_count: 15
