@@ -80,20 +80,16 @@ def global_nucleotide_proportion(
     # Remove first n characters and last character from sequences
     # with odd lengths
     if five_prime:
-        series = read_df["sequence"].apply(
-            lambda x: x[num_bases:-1]
-            if len(x) % num_bases != 0
-            else x[num_bases:]
+        series = read_df["sequence"].drop_duplicates().apply(
+            lambda x: x[num_bases:-(len(x) % num_bases)]
         )
     # If five_prime is false, remove last n characters and first if odd length
     else:
-        series = read_df["sequence"].apply(
-            lambda x: x[1:-num_bases]
-            if len(x) % num_bases != 0
-            else x[:-num_bases]
+        series = read_df["sequence"].drop_duplicates().apply(
+            lambda x: x[len(x) % num_bases:-num_bases]
         )
     # Concatenate all strings in the Series
-    concatenated = "".join(series.unique().tolist())
+    concatenated = "".join(series.tolist())
     # Calculate dinucleotide occurrences
     nucleotide_group_counts = Counter(
         concatenated[i: i + num_bases]
@@ -124,14 +120,14 @@ def ligation_bias_distribution(
     """
     if five_prime:
         sequence_dict = dict(
-            read_df["sequence"]
+            read_df["sequence"].drop_duplicates()
             .str.slice(stop=num_bases)
             .value_counts(normalize=True)
             .sort_index()
         )
     else:
         sequence_dict = dict(
-            read_df["sequence"]
+            read_df["sequence"].drop_duplicates()
             .str.slice(start=-num_bases)
             .value_counts(normalize=True)
             .sort_index()
@@ -174,11 +170,11 @@ def nucleotide_composition(
         dict: Dictionary containing the nucleotide distribution for every
             read position.
     """
-    readlen = read_df["sequence"].str.len().max()
+    readlen = read_df["sequence"].drop_duplicates().str.len().max()
     nucleotide_composition_dict = {nt: [] for nt in nucleotides}
     base_nts = pd.Series([0, 0, 0, 0], index=nucleotides)
     for i in range(readlen):
-        nucleotide_counts = read_df.sequence.str.slice(i, i + 1).value_counts()
+        nucleotide_counts = read_df["sequence"].drop_duplicates().str.slice(i, i + 1).value_counts()
         nucleotide_counts.drop("", errors="ignore", inplace=True)
         nucleotide_counts = base_nts.add(nucleotide_counts, fill_value=0)
         nucleotide_sum = nucleotide_counts.sum()
