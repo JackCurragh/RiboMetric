@@ -34,7 +34,9 @@ def generate_plots(results_dict: dict, config: dict) -> list:
             plot_ligation_bias_distribution(
                 results_dict["ligation_bias_distribution"], config
             ),
-            plot_nucleotide_composition(results_dict["nucleotide_composition"], config),
+            plot_nucleotide_composition(
+                results_dict["nucleotide_composition"], config
+            ),
             plot_read_frame_distribution(
                 results_dict["read_frame_distribution"], config
             ),
@@ -56,7 +58,9 @@ def generate_plots(results_dict: dict, config: dict) -> list:
                     results_dict["metagene_profile"],
                     config,
                 ),
-                plot_metagene_heatmap(results_dict["metagene_profile"], config),
+                plot_metagene_heatmap(
+                    results_dict["metagene_profile"], config
+                ),
             ]
         )
     return plots_list
@@ -74,7 +78,9 @@ def plotly_to_image(fig: go.Figure, config: dict) -> str:
     return base_64_plot
 
 
-def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
+def plot_read_length_distribution(
+    read_length_dict: dict, config: dict
+) -> dict:
     """
     Generate a plot of the read length distribution for the full dataset
 
@@ -115,7 +121,9 @@ def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
     return plot_read_length_dict
 
 
-def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> dict:
+def plot_ligation_bias_distribution(
+    ligation_bias_dict: dict, config: dict
+) -> dict:
     """
     Generate a plot of ligation bias distribution for the full dataset
 
@@ -127,7 +135,8 @@ def plot_ligation_bias_distribution(ligation_bias_dict: dict, config: dict) -> d
         plot_ligation_bias_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
-    # Remove nucleotide sequences with 'N' if 'Include_N' option on config is False
+    # Remove nucleotide sequences with 'N'
+    # if 'Include_N' option in config is False
     if config["plots"]["ligation_bias_distribution"]["include_N"] is False:
         ligation_bias_dict = {
             k: v for k, v in ligation_bias_dict.items() if "N" not in k
@@ -178,7 +187,9 @@ def plot_nucleotide_composition(
     fig = go.Figure()
     for nucleotide, distribution in nucleotide_composition_dict.items():
         fig.add_trace(
-            go.Scatter(y=distribution, name=nucleotide, line_color=colors[nucleotide])
+            go.Scatter(
+                y=distribution, name=nucleotide, line_color=colors[nucleotide]
+            )
         )
     fig.update_layout(
         title="Nucleotide Composition",
@@ -213,9 +224,12 @@ def plot_nucleotide_distribution(
             go.Bar(
                 name=nt,
                 x=[*range(nt_start + 1, nt_start + nt_count + 1)],
-                y=nucleotide_composition_dict[nt][nt_start : nt_start + nt_count],
+                y=nucleotide_composition_dict[nt][
+                    nt_start: nt_start + nt_count
+                ],
                 marker=dict(color=config["plots"]["nucleotide_colors"][nt]),
-                # Set the text in the hovertemplate to proportion or count depending on config
+                # Set the text in the hovertemplate to proportion or count
+                # depending on config
                 hovertemplate="Proportion: %{y:.2%}"
                 if not config["plots"]["mRNA_distribution"]["absolute_counts"]
                 else "Count: %{x}",
@@ -257,7 +271,8 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         and plotly figure for html and pdf export
     """
     culled_read_frame_dict = read_frame_cull(read_frame_dict, config)
-    # Calculates the read frame scores if 'show_scores' option in config is not 'none'
+    # Calculates the read frame scores if 'show_scores' option
+    # in config is not 'none'
     scored_read_frame_dict = (
         read_frame_score(culled_read_frame_dict)
         if config["plots"]["read_frame_distribution"]["show_scores"] != "none"
@@ -269,7 +284,9 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
 
     # Calculate font size based on number of data points
     num_data_points = len(culled_read_frame_dict)
-    font_size = max_font_size - (max_font_size - min_font_size) * (num_data_points / 50)
+    font_size = max_font_size - (max_font_size - min_font_size) * (
+        num_data_points / 50
+    )
 
     plot_data = []
     for i in range(0, 3):
@@ -302,7 +319,10 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         if config["plots"]["read_frame_distribution"]["show_scores"] == "all":
             for idx in enumerate(culled_read_frame_dict):
                 if idx[1] != "global":
-                    y_buffer = max(fig.data[0].y + fig.data[1].y + fig.data[2].y) * 0.05
+                    y_buffer = (
+                        max(fig.data[0].y + fig.data[1].y + fig.data[2].y)
+                        * 0.05
+                    )
 
                     ymax = max(
                         fig.data[0].y[idx[0]],
@@ -398,7 +418,9 @@ regions represented in the reads",
     return plot_mRNA_distribution_dict
 
 
-def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict:
+def plot_mRNA_read_breakdown(
+    mRNA_distribution_dict: dict, config: dict
+) -> dict:
     """
     Generate a line plot of the mRNA distribution over the read lengths
 
@@ -420,7 +442,8 @@ def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict
     if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]:
         sum_data = {k: sum(v) for k, v in plot_data.items()}
         plot_data = {
-            k: [x / sum(sum_data.values()) for x in v] for k, v in plot_data.items()
+            k: [x / sum(sum_data.values()) for x in v]
+            for k, v in plot_data.items()
         }
 
     fig = go.Figure()
@@ -431,7 +454,9 @@ def plot_mRNA_read_breakdown(mRNA_distribution_dict: dict, config: dict) -> dict
                 x=list(mRNA_distribution_dict.keys()),
                 y=v,
                 hovertemplate="Proportion: %{y:.2%}"
-                if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
+                if not config["plots"]["mRNA_read_breakdown"][
+                    "absolute_counts"
+                ]
                 else "Count: %{x}",
             )
         )
@@ -511,7 +536,10 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
         metagene_dict = {}
         for inner_dict in metagene_profile_dict[current_target].values():
             for inner_key, inner_value in inner_dict.items():
-                if inner_key in metagene_dict and metagene_dict[inner_key] != None:
+                if (
+                    inner_key in metagene_dict
+                    and metagene_dict[inner_key] is not None
+                ):
                     metagene_dict[inner_key] += (
                         inner_value if inner_value is not None else 0
                     )
@@ -564,7 +592,9 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
             xaxis=dict(domain=[0, 1], zeroline=False),
         )
 
-    fig.update_xaxes(range=config["plots"]["metagene_profile"]["distance_range"])
+    fig.update_xaxes(
+        range=config["plots"]["metagene_profile"]["distance_range"]
+    )
     plot_metagene_profile_dict = {
         "name": "Metagene Profile",
         "description": "Metagene profile showing the distance count of \
@@ -633,7 +663,9 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
             row=1,
             col=count,
         )
-    fig.update_xaxes(range=config["plots"]["metagene_profile"]["distance_range"])
+    fig.update_xaxes(
+        range=config["plots"]["metagene_profile"]["distance_range"]
+    )
     fig.update_layout(
         title="Metagene Heatmap",
         xaxis_title="Relative position (nt)",
