@@ -69,7 +69,7 @@ def ligation_bias_distribution(
         (Default = True)
 
     Outputs:
-        read_start_df: Dictionary containing the distribution of the
+        ligation_bias_dict: Dictionary containing the distribution of the
         first two nucleotides in the reads
     """
     if five_prime:
