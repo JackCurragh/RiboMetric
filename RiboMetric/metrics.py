@@ -96,6 +96,7 @@ def calculate_score(probabilities):
 
 def read_frame_distribution_information_content_metric(
     read_frame_distribution: dict,
+    min_count_threshold: float = 0.05,
         ) -> float:
     """
     Calculate the read frame distribution metric from the output of
@@ -112,7 +113,7 @@ def read_frame_distribution_information_content_metric(
                 distribution
     """
     pseudocount = 1e-100
-    scores = {}
+    pre_scores = {}
     for read_length in read_frame_distribution:
         total_count = sum(read_frame_distribution[read_length].values())
 
@@ -123,7 +124,18 @@ def read_frame_distribution_information_content_metric(
 
         score = calculate_score(probabilities)
 
-        scores[read_length] = score
+        pre_scores[read_length] = score, total_count
+
+    global_counts = sum(
+        total_count
+        for read_length, (score, total_count) in pre_scores.items()
+        )
+    scores = {
+        read_length: score
+        for read_length, (score, total_count) in pre_scores.items()
+        if total_count > min_count_threshold * global_counts
+        }
+
     return scores
 
 
@@ -165,7 +177,9 @@ def triplet_periodicity_weighted_score(
         )
     weighted_scores = []
     for read_length, score in information_content_metric.items():
-        weighted_score = score * sum(read_length_distribution[read_length].values())
+        weighted_score = score * sum(
+            read_length_distribution[read_length].values()
+            )
         weighted_scores.append(weighted_score)
 
     return sum(weighted_scores) / total_reads
