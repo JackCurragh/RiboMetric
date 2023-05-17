@@ -80,13 +80,13 @@ def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
         results_dict["read_frame_distribution_metric"],
         results_dict["read_frame_distribution"]
         )
-
-    print("> sequence_slice")
-    results_dict["sequence_slice"] = sequence_slice(
-        read_df,
-        nt_start=config["plots"]["nucleotide_proportion"]["nucleotide_start"],
-        nt_count=config["plots"]["nucleotide_proportion"]["nucleotide_count"],
-    )
+    if config["plots"]["logoplot"]["enable"]:
+        print("> sequence_slice")
+        results_dict["sequence_slice"] = sequence_slice(
+            read_df,
+            nt_start=config["plots"]["nucleotide_proportion"]["nucleotide_start"],
+            nt_count=config["plots"]["nucleotide_proportion"]["nucleotide_count"],
+        )
 
     return results_dict
 
@@ -151,7 +151,7 @@ def annotation_mode(
 
     print("> nucleotide_composition")
     results_dict["nucleotide_composition"] = nucleotide_composition(read_df)
-    
+
     if config["plots"]["logoplot"]["enable"]:
         print("> sequence_slice")
         results_dict["sequence_slice"] = sequence_slice(
