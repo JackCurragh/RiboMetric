@@ -5,11 +5,13 @@ from RiboMetric.modules import (
     read_length_distribution,
     ligation_bias_distribution,
     calculate_expected_dinucleotide_freqs,
+    read_frame_distribution,
 )
 
 from RiboMetric.metrics import (
     read_length_distribution_metric as rld_metric,
     ligation_bias_distribution_metric as lbd_metric,
+    read_frame_distribution_metric as rfd_metric,
 )
 
 
@@ -39,3 +41,16 @@ def test_ligation_bias_distribution_metric():
     ligation_bias_metric = lbd_metric(ligation_bias_dict, expected_freqs)
 
     assert round(ligation_bias_metric, 2) == 1.17
+
+
+def test_read_frame_distribution_metric():
+    """
+    Test the information content metric for read frame distribution
+    """
+    read_df_pre = pd.read_csv("tests/test_data/test.csv")
+    read_df = read_df_pre.loc[
+        read_df_pre.index.repeat(read_df_pre["count"])
+    ].reset_index(drop=True)
+    read_frame_dict = read_frame_distribution(read_df)
+    read_frame_metric = rfd_metric(read_frame_dict)
+    assert read_frame_metric[30] == 0.0
