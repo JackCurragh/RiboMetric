@@ -5,8 +5,6 @@ from RiboMetric.modules import (
     read_length_distribution,
     ligation_bias_distribution,
     calculate_expected_dinucleotide_freqs,
-    read_frame_distribution,
-    a_site_calculation,
 )
 
 from RiboMetric.metrics import (
