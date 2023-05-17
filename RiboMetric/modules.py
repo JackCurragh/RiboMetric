@@ -123,14 +123,14 @@ def ligation_bias_distribution(
     """
     if five_prime:
         sequence_dict = dict(
-            read_df["sequence"].drop_duplicates()
+            read_df["sequence"]
             .str.slice(stop=num_bases)
             .value_counts(normalize=True)
             .sort_index()
         )
     else:
         sequence_dict = dict(
-            read_df["sequence"].drop_duplicates()
+            read_df["sequence"]
             .str.slice(start=-num_bases)
             .value_counts(normalize=True)
             .sort_index()
@@ -176,7 +176,7 @@ def nucleotide_composition(
     nucleotide_composition_dict = {nt: [] for nt in nucleotides}
     base_nts = pd.Series([0, 0, 0, 0], index=nucleotides)
     for i in range(readlen):
-        nucleotide_counts = read_df["sequence"].drop_duplicates().str.slice(i, i + 1).value_counts()
+        nucleotide_counts = read_df["sequence"].str.slice(i, i + 1).value_counts()
         nucleotide_counts.drop("", errors="ignore", inplace=True)
         nucleotide_counts = base_nts.add(nucleotide_counts, fill_value=0)
         nucleotide_sum = nucleotide_counts.sum()
@@ -513,7 +513,7 @@ def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict():
         dinucleotide frequencies
     """
     dinucleotides = []
-    for read in read_df["sequence"]:
+    for read in read_df["sequence"].drop_duplicates():
         for i in range(len(read) - 1):
             dinucleotides.append(read[i: i + 2])
 
