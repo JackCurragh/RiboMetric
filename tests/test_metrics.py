@@ -38,4 +38,4 @@ def test_ligation_bias_distribution_metric():
     expected_freqs = calculate_expected_dinucleotide_freqs(read_df)
     ligation_bias_metric = lbd_metric(ligation_bias_dict, expected_freqs)
 
-    assert round(ligation_bias_metric, 2) == 1.26
+    assert round(ligation_bias_metric, 2) == 1.17
