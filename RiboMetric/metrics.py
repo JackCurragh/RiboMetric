@@ -88,14 +88,13 @@ def calculate_score(probabilities):
     maximum_entropy = math.log2(3)
     entropy = 0
     for probability in probabilities:
-        print(probability)
         entropy += -(probability * math.log2(probability))
 
     result = math.sqrt((maximum_entropy - entropy) / maximum_entropy)
     return result
 
 
-def read_frame_distribution_metric(
+def read_frame_distribution_information_content_metric(
     read_frame_distribution: dict,
         ) -> float:
     """
@@ -124,5 +123,49 @@ def read_frame_distribution_metric(
 
         score = calculate_score(probabilities)
 
-        scores[read_length] = (score, total_count, probabilities)
+        scores[read_length] = score
     return scores
+
+
+def triplet_periodicity_best_read_length_score(information_content_metric):
+    '''
+    Produce a single metric for the triplet periodicity by taking the maximum
+    score across all read lengths.
+
+    Inputs:
+        information_content_metric (dict): The information content metric
+            for each read length.
+
+    Returns:
+        result (float): The triplet periodicity score.
+    '''
+    return max(information_content_metric.values())
+
+
+def triplet_periodicity_weighted_score(
+    information_content_metric,
+    read_length_distribution,
+        ):
+    '''
+    Produce a single metric for the triplet periodicity by taking the weighted
+    average of the scores for each read length.
+
+    Inputs:
+        information_content_metric (dict): The information content metric
+            for each read length.
+        read_length_distribution_metric (float): The read length distribution.
+
+    Returns:
+        result (float): The triplet periodicity score.
+    '''
+    total_reads = sum(
+        read_length_distribution[key][nested_key]
+        for key in read_length_distribution
+        for nested_key in read_length_distribution[key]
+        )
+    weighted_scores = []
+    for read_length, score in information_content_metric.items():
+        weighted_score = score * sum(read_length_distribution[read_length].values())
+        weighted_scores.append(weighted_score)
+
+    return sum(weighted_scores) / total_reads
