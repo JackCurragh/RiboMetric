@@ -58,4 +58,4 @@ def test_plots():
             ),
             config)["fig_html"]):
         errors.append("Read frame distribution plot html output error")
-    assert not errors, "errors occured:\n{}".format("\n".join(errors))
+    assert not errors, "errors occurred:\n{}".format("\n".join(errors))
