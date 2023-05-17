@@ -43,9 +43,7 @@ def test_plots():
     if (
         "<div>" not in plot_read_length_distribution(
             read_length_distribution(read_df),
-            config)[
-                "fig_html"
-            ]
+            config)["fig_html"]
     ):
         errors.append("Read length distribution plot html output error")
     if ("<div>" not in plot_ligation_bias_distribution(
@@ -57,7 +55,7 @@ def test_plots():
     if ("<div>" not in plot_read_frame_distribution(
             read_frame_distribution(
                 a_site_calculation(read_df)
-                ),
+            ),
             config)["fig_html"]):
         errors.append("Read frame distribution plot html output error")
     assert not errors, "errors occured:\n{}".format("\n".join(errors))
