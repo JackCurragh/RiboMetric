@@ -150,6 +150,7 @@ def plot_ligation_bias_distribution(
             hovertemplate="<b>Nucleotides</b>:%{x}<br><b>Proportion</b>:%{y}",
         )
     )
+    fig.add_hline(y=0)
     fig.update_layout(
         title="Ligation Bias Distribution",
         xaxis_title="Read Start",
