@@ -5,8 +5,6 @@ from RiboMetric.modules import (
     read_length_distribution,
     ligation_bias_distribution,
     calculate_expected_dinucleotide_freqs,
-    read_frame_distribution,
-    a_site_calculation,
 )
 
 from RiboMetric.metrics import (
@@ -15,6 +13,7 @@ from RiboMetric.metrics import (
     read_frame_distribution_information_content_metric as rfd_metric,
     triplet_periodicity_weighted_score,
     triplet_periodicity_best_read_length_score as tpbrl_metric,
+    information_metric_cutoff,
 )
 
 
@@ -58,7 +57,8 @@ def test_read_frame_distribution_metric():
         31: {0: 100, 1: 50, 2: 500},
         32: {0: 1000, 1: 5000, 2: 5000},
     }
-    read_frame_metric = rfd_metric(read_frame_dict)
+    pre_scores = rfd_metric(read_frame_dict)
+    read_frame_metric = information_metric_cutoff(pre_scores)
     assert round(read_frame_metric[30], 2) == 0.23
 
 
@@ -75,7 +75,8 @@ def test_read_frame_distribution_metric_best_read_length():
         31: {0: 100, 1: 50, 2: 500},
         32: {0: 1000, 1: 5000, 2: 5000},
     }
-    read_frame_metric = rfd_metric(read_frame_dict)
+    pre_scores = rfd_metric(read_frame_dict)
+    read_frame_metric = information_metric_cutoff(pre_scores)
     read_frame_metric_best_read_length = tpbrl_metric(
         read_frame_metric
     )
@@ -94,10 +95,9 @@ def test_triplet_periodicity_weighted_score():
         31: {0: 100, 1: 50, 2: 500},
         32: {0: 1000, 1: 5000, 2: 5000},
     }
-    read_frame_metric = rfd_metric(read_frame_dict)
+    pre_scores = rfd_metric(read_frame_dict)
 
     weighted_score = triplet_periodicity_weighted_score(
-        read_frame_metric,
-        read_frame_dict,
+        pre_scores,
     )
-    assert round(weighted_score, 2) == 0.36
+    assert round(weighted_score, 2) == 0.38

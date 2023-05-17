@@ -96,7 +96,6 @@ def calculate_score(probabilities):
 
 def read_frame_distribution_information_content_metric(
     read_frame_distribution: dict,
-    min_count_threshold: float = 0.05,
         ) -> float:
     """
     Calculate the read frame distribution metric from the output of
@@ -126,17 +125,36 @@ def read_frame_distribution_information_content_metric(
 
         pre_scores[read_length] = score, total_count
 
-    global_counts = sum(
-        total_count
-        for read_length, (score, total_count) in pre_scores.items()
-        )
-    scores = {
-        read_length: score
-        for read_length, (score, total_count) in pre_scores.items()
-        if total_count > min_count_threshold * global_counts
-        }
+    return pre_scores
 
-    return scores
+
+def information_metric_cutoff(
+    pre_scores: dict,
+    min_count_threshold: float = 0.05,
+        ) -> dict:
+    """
+    Apply the cut off to the information content metric
+
+    Inputs:
+        pre_scores: Dictionary containing the output of the
+                read_frame_distribution_information_content_metric module
+        min_count_threshold: Minimum count threshold for a read length to be
+                included in the metric
+
+    Outputs:
+        information_content_metric: Dictionary containing the information
+                content metric for each read length
+    """
+    information_content_metric = {}
+    total_reads = sum(
+        pre_scores[key][1]
+        for key in pre_scores
+        )
+    for read_length in pre_scores:
+        score, count = pre_scores[read_length]
+        if count > total_reads * min_count_threshold:
+            information_content_metric[read_length] = score
+    return information_content_metric
 
 
 def triplet_periodicity_best_read_length_score(information_content_metric):
@@ -155,31 +173,55 @@ def triplet_periodicity_best_read_length_score(information_content_metric):
 
 
 def triplet_periodicity_weighted_score(
-    information_content_metric,
-    read_length_distribution,
+    pre_scores: dict,
         ):
     '''
     Produce a single metric for the triplet periodicity by taking the weighted
     average of the scores for each read length.
 
     Inputs:
-        information_content_metric (dict): The information content metric
-            for each read length.
-        read_length_distribution_metric (float): The read length distribution.
+        pre_scores (dict): Dictionary containing the information
 
     Returns:
         result (float): The triplet periodicity score.
     '''
     total_reads = sum(
-        read_length_distribution[key][nested_key]
-        for key in read_length_distribution
-        for nested_key in read_length_distribution[key]
+        pre_scores[key][1]
+        for key in pre_scores
         )
     weighted_scores = []
-    for read_length, score in information_content_metric.items():
-        weighted_score = score * sum(
-            read_length_distribution[read_length].values()
-            )
+    for _, score in pre_scores.items():
+        weighted_score = score[0] * score[1]
+        weighted_scores.append(weighted_score)
+
+    return sum(weighted_scores) / total_reads
+
+
+def triplet_periodicity_weighted_score_best_3_read_lengths(
+        pre_scores: dict,) -> float:
+    """
+    Produce a single metric for the triplet periodicity by taking the weighted
+    average of the scores for the best 3 read lengths.
+
+    Inputs:
+        pre_scores: Dictionary containing the information
+                content metric and total counts for each read length
+
+    Returns:
+        result: The triplet periodicity score
+    """
+    total_reads = sum(
+        pre_scores[key][1]
+        for key in pre_scores
+        )
+    sorted_counts = sorted(
+        pre_scores.items(),
+        key=lambda x: x[1][1],
+        reverse=True,
+        )[:3]
+    weighted_scores = []
+    for _, score in sorted_counts:
+        weighted_score = score[0] * score[1]
         weighted_scores.append(weighted_score)
 
     return sum(weighted_scores) / total_reads

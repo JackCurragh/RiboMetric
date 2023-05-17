@@ -29,6 +29,9 @@ from .metrics import (
     ligation_bias_distribution_metric as lbd_metric,
     read_frame_distribution_information_content_metric as rfd_metric,
     triplet_periodicity_weighted_score,
+    triplet_periodicity_best_read_length_score as tpbrl_metric,
+    information_metric_cutoff,
+    triplet_periodicity_weighted_score_best_3_read_lengths as tpw3rl_metric,
 )
 
 
@@ -72,14 +75,22 @@ def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
     results_dict["nucleotide_composition"] = nucleotide_composition(read_df)
 
     print("> read_frame_distribution")
-    results_dict["read_frame_distribution"] = read_frame_distribution(read_df)
-    results_dict["read_frame_distribution_metric"] = rfd_metric(
-        results_dict["read_frame_distribution"]
+    read_frame_dist = read_frame_distribution(read_df)
+    pre_scores = rfd_metric(read_frame_dist)
+    results_dict["read_frame_distribution"] = read_frame_dist
+    results_dict["read_frame_distribution_metric"] = information_metric_cutoff(
+        pre_scores,
+        config['qc']['read_frame_distribution']['3nt_count_cutoff']
     )
     results_dict["3nt_weighted_score"] = triplet_periodicity_weighted_score(
-        results_dict["read_frame_distribution_metric"],
-        results_dict["read_frame_distribution"]
+        pre_scores,
         )
+    results_dict["3nt_weighted_score_best_3_read_lengths"] = tpw3rl_metric(
+        pre_scores,
+    )
+    results_dict["3nt_best_read_length_score"] = tpbrl_metric(
+        pre_scores,
+    )
 
     print("> sequence_slice")
     results_dict["sequence_slice"] = sequence_slice(
