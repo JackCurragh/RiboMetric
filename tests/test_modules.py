@@ -10,6 +10,7 @@ from RiboMetric.modules import (
     a_site_calculation,
     read_frame_distribution,
     annotate_reads,
+    mRNA_distribution,
     metagene_profile,
 )
 import pandas as pd
@@ -102,6 +103,30 @@ def test_read_frame_distribution():
     ].reset_index(drop=True)
     read_frame_dict = read_frame_distribution(a_site_calculation(read_df))
     assert read_frame_dict[33][0] == 1
+
+
+@pytest.mark.parametrize(
+    "test_input,expected",
+    [
+        ('mRNA_distribution_dict[29]["CDS"]', 3),
+        ('mRNA_distribution_dict[21]["three_trailer"]', 3),
+    ],
+)
+def test_mRNA_distribution(test_input, expected):
+    """
+    Test metagene distance calculations
+    """
+    annotation_df = pd.read_csv(
+        "tests/test_data/test_annotation.tsv", sep="\t"
+    )
+    read_df_pre = pd.read_csv("tests/test_data/test.csv")
+    read_df = read_df_pre.loc[
+        read_df_pre.index.repeat(read_df_pre["count"])
+    ].reset_index(drop=True)
+    a_site_df = a_site_calculation(read_df)
+    annotated_read_df = annotate_reads(a_site_df, annotation_df)
+    mRNA_distribution_dict = mRNA_distribution(annotated_read_df)
+    assert eval(test_input) == expected
 
 
 def test_metagene_profile():
