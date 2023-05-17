@@ -80,32 +80,38 @@ def global_nucleotide_proportion(
     # Remove first n characters and last character from sequences
     # with odd lengths
     if five_prime:
-        series = read_df["sequence"].drop_duplicates().apply(
-            lambda x: x[num_bases:-(len(x) % num_bases)]
+        series = (
+            read_df["sequence"]
+            .drop_duplicates()
+            .apply(lambda x: x[num_bases : -(len(x) % num_bases)])
         )
     # If five_prime is false, remove last n characters and first if odd length
     else:
-        series = read_df["sequence"].drop_duplicates().apply(
-            lambda x: x[len(x) % num_bases:-num_bases]
+        series = (
+            read_df["sequence"]
+            .drop_duplicates()
+            .apply(lambda x: x[len(x) % num_bases : -num_bases])
         )
     # Concatenate all strings in the Series
     concatenated = "".join(series.tolist())
     # Calculate dinucleotide occurrences
     expected_nucleotide_proportion = Counter(
-        concatenated[i: i + num_bases]
+        concatenated[i : i + num_bases]
         for i in range(0, len(concatenated) - 1, num_bases)
     )
     sumcounts = sum(expected_nucleotide_proportion.values())
     for k in expected_nucleotide_proportion:
-        expected_nucleotide_proportion[k] = expected_nucleotide_proportion[k]/sumcounts
+        expected_nucleotide_proportion[k] = (
+            expected_nucleotide_proportion[k] / sumcounts
+        )
     return dict(expected_nucleotide_proportion)
 
 
 def ligation_bias_distribution(
-        read_df: pd.DataFrame,
-        num_bases: int = 2,
-        five_prime: bool = True,
-    ) -> dict:
+    read_df: pd.DataFrame,
+    num_bases: int = 2,
+    five_prime: bool = True,
+) -> dict:
     """
     Calculate the proportion of the occurrence in the first or last n
     nucleotides of the reads to check for ligation bias
@@ -144,11 +150,11 @@ def ligation_bias_distribution(
 
 
 def normalise_ligation_bias(
-        read_df: pd.DataFrame,
-        ligation_bias_dict: dict,
-        num_bases: int = 2,
-        five_prime: bool = True
-    ) -> dict:
+    read_df: pd.DataFrame,
+    ligation_bias_dict: dict,
+    num_bases: int = 2,
+    five_prime: bool = True,
+) -> dict:
     expected_nucleotide_proportion = global_nucleotide_proportion(
         read_df, num_bases, five_prime
     )
@@ -156,10 +162,7 @@ def normalise_ligation_bias(
         if key not in expected_nucleotide_proportion:
             expected_nucleotide_proportion[key] = 0
     ligation_bias_dict = {
-        k: (
-            v
-            - expected_nucleotide_proportion[k]
-        )
+        k: (v - expected_nucleotide_proportion[k])
         for k, v in ligation_bias_dict.items()
     }
     return ligation_bias_dict
@@ -183,7 +186,9 @@ def nucleotide_composition(
     nucleotide_composition_dict = {nt: [] for nt in nucleotides}
     base_nts = pd.Series([0, 0, 0, 0], index=nucleotides)
     for i in range(readlen):
-        nucleotide_counts = read_df["sequence"].str.slice(i, i + 1).value_counts()
+        nucleotide_counts = (
+            read_df["sequence"].str.slice(i, i + 1).value_counts()
+        )
         nucleotide_counts.drop("", errors="ignore", inplace=True)
         nucleotide_counts = base_nts.add(nucleotide_counts, fill_value=0)
         nucleotide_sum = nucleotide_counts.sum()
@@ -455,7 +460,9 @@ def metagene_profile(
         pre_metaprofile_dict = (
             annotated_read_df[
                 (annotated_read_df["metagene_info"] > distance_range[0] - 1)
-                & (annotated_read_df["metagene_info"] < distance_range[1] + 1)
+                and (
+                    annotated_read_df["metagene_info"] < distance_range[1] + 1
+                )
             ]
             .groupby(["read_length", "metagene_info"])
             .size()
@@ -493,7 +500,7 @@ def sequence_slice(
     read_df: pd.DataFrame, nt_start: int = 0, nt_count: int = 15
 ) -> dict:
     sequence_slice_dict = {
-        k: v[nt_start: nt_start + nt_count]
+        k: v[nt_start : nt_start + nt_count]
         for k, v in read_df["sequence"].to_dict().items()
     }
     return sequence_slice_dict
@@ -522,7 +529,7 @@ def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict():
     dinucleotides = []
     for read in read_df["sequence"].drop_duplicates():
         for i in range(len(read) - 1):
-            dinucleotides.append(read[i: i + 2])
+            dinucleotides.append(read[i : i + 2])
 
     observed_freq = Counter(dinucleotides)
     total_count = sum(observed_freq.values())
