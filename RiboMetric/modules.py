@@ -460,9 +460,7 @@ def metagene_profile(
         pre_metaprofile_dict = (
             annotated_read_df[
                 (annotated_read_df["metagene_info"] > distance_range[0] - 1)
-                and (
-                    annotated_read_df["metagene_info"] < distance_range[1] + 1
-                )
+                & (annotated_read_df["metagene_info"] < distance_range[1] + 1)
             ]
             .groupby(["read_length", "metagene_info"])
             .size()
