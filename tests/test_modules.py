@@ -5,12 +5,14 @@ This script contains tests for the different functions found in modules.py
 from RiboMetric.modules import (
     read_length_distribution,
     ligation_bias_distribution,
+    normalise_ligation_bias,
     nucleotide_composition,
     a_site_calculation,
     read_frame_distribution,
     metagene_profile,
 )
 import pandas as pd
+import pytest
 
 
 def test_read_length_distribution():
@@ -25,7 +27,8 @@ def test_read_length_distribution():
     assert read_length_dict[29] == 4
 
 
-def test_ligation_bias_distribution():
+@pytest.mark.parametrize("test_input,expected", [('ligation_bias_dict_2nt["AA"]', 0.25), ('ligation_bias_dict_3nt["AAA"]', 0.25)])
+def test_ligation_bias_distribution(test_input, expected):
     """
     Test ligation bias distribution calculation
     """
@@ -34,17 +37,17 @@ def test_ligation_bias_distribution():
     read_df = read_df_pre.loc[
         read_df_pre.index.repeat(read_df_pre["count"])
     ].reset_index(drop=True)
-    ligation_bias_dict = ligation_bias_distribution(read_df,
-                                                    num_bases=2,
-                                                    five_prime=True)
-    if not ligation_bias_dict["AA"] == 0.25:
-        errors.append("Ligation bias (2 base, 5') error")
-    ligation_bias_dict = ligation_bias_distribution(read_df,
+    ligation_bias_dict_2nt = ligation_bias_distribution(read_df)
+    ligation_bias_dict_2nt = normalise_ligation_bias(read_df,
+                                                    ligation_bias_dict_2nt)
+    ligation_bias_dict_3nt = ligation_bias_distribution(read_df,
                                                     num_bases=3,
                                                     five_prime=False)
-    if not ligation_bias_dict["AAA"] == 0.25:
-        errors.append("Ligation bias (3 base, 3') error")
-    assert not errors, "errors occured:\n{}".format("\n".join(errors))
+    ligation_bias_dict_3nt = normalise_ligation_bias(read_df,
+                                                    ligation_bias_dict_3nt,
+                                                    num_bases=3,
+                                                    five_prime=False)
+    assert eval(test_input) == expected
 
 
 def test_nucleotide_composition():
