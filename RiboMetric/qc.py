@@ -35,78 +35,8 @@ from .metrics import (
 )
 
 
-def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
-    """
-    Run the annotation free mode of the qc analysis
-
-    Inputs:
-        read_df: dataframe containing the read information
-                (keys are the read names)
-        config:  Dictionary containing the configuration information
-
-    Outputs:
-        results_dict: Dictionary containing the results of the qc analysis
-    """
-
-    print("Running modules")
-    results_dict = {}
-    results_dict["mode"] = "annotation_free_mode"
-
-    print("> read_length_distribution")
-    results_dict["read_length_distribution"] = read_length_distribution(
-        read_df
-    )
-    results_dict["read_length_distribution_metric"] = rld_metric(
-        results_dict["read_length_distribution"]
-    )
-
-    print("> ligation_bias_distribution")
-    results_dict["ligation_bias_distribution"] = ligation_bias_distribution(
-        read_df
-    )
-    results_dict["ligation_bias_distribution_metric"] = lbd_metric(
-        results_dict["ligation_bias_distribution"],
-        calculate_expected_dinucleotide_freqs(
-            read_df,
-        ),
-    )
-
-    print("> nucleotide_composition")
-    results_dict["nucleotide_composition"] = nucleotide_composition(read_df)
-
-    print("> read_frame_distribution")
-    read_frame_dist = read_frame_distribution(read_df)
-    pre_scores = rfd_metric(read_frame_dist)
-    results_dict["read_frame_distribution"] = read_frame_dist
-    results_dict["read_frame_distribution_metric"] = information_metric_cutoff(
-        pre_scores,
-        config['qc']['read_frame_distribution']['3nt_count_cutoff']
-    )
-    results_dict["3nt_weighted_score"] = triplet_periodicity_weighted_score(
-        pre_scores,
-        )
-    results_dict["3nt_weighted_score_best_3_read_lengths"] = tpw3rl_metric(
-        pre_scores,
-    )
-    results_dict["3nt_best_read_length_score"] = tpbrl_metric(
-        pre_scores,
-    )
-
-    print("> sequence_slice")
-    results_dict["sequence_slice"] = sequence_slice(
-        read_df,
-        nt_start=config["plots"]["nucleotide_proportion"]["nucleotide_start"],
-        nt_count=config["plots"]["nucleotide_proportion"]["nucleotide_count"],
-    )
-
-    print("> summary_metrics")
-    results_dict["summary_metrics"] = {}
-
-    return results_dict
-
-
 def annotation_mode(
-    read_df: pd.DataFrame, annotation_df: pd.DataFrame, config: dict
+    read_df: pd.DataFrame, annotation_df: pd.DataFrame = pd.DataFrame(), config: dict = {}
 ) -> dict:
     """
     Run the annotation mode of the qc analysis
@@ -121,14 +51,21 @@ def annotation_mode(
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
-    print("Merging annotation and reads")
-    annotated_read_df = annotate_reads(read_df, annotation_df)
-    print("Subsetting to CDS reads")
-    cds_read_df = read_df_to_cds_read_df(annotated_read_df)
+    if len(annotation_df) > 0:
+        annotation = True
+        print("Merging annotation and reads")
+        annotated_read_df = annotate_reads(read_df, annotation_df)
+        print("Subsetting to CDS reads")
+        cds_read_df = read_df_to_cds_read_df(annotated_read_df)
+    else:
+        annotation = False
     print("Running modules")
 
     results_dict = {}
-    results_dict["mode"] = "annotation_mode"
+    results_dict["mode"] = ("annotation_mode" 
+                            if annotation 
+                            else "annotation_free_mode")
+    
     print("> read_length_distribution")
     results_dict["read_length_distribution"] = read_length_distribution(
         read_df
@@ -165,36 +102,46 @@ def annotation_mode(
 
     print("> nucleotide_composition")
     results_dict["nucleotide_composition"] = nucleotide_composition(read_df)
-
-    print("> sequence_slice")
-    results_dict["sequence_slice"] = sequence_slice(
-        read_df,
-        nt_start=config["plots"]["nucleotide_proportion"]["nucleotide_start"],
-        nt_count=config["plots"]["nucleotide_proportion"]["nucleotide_count"],
-    )
+    
+    if config["plots"]["logoplot"]["enable"]:
+        print("> sequence_slice")
+        results_dict["sequence_slice"] = sequence_slice(
+            read_df,
+            nt_start=config["plots"]["nucleotide_proportion"]["nucleotide_start"],
+            nt_count=config["plots"]["nucleotide_proportion"]["nucleotide_count"],
+        )
 
     print("> read_frame_distribution")
-    results_dict["read_frame_distribution"] = (
-        read_frame_distribution(cds_read_df)
-        if config["qc"]["use_cds_subset"]["read_frame_distribution"]
-        else read_frame_distribution(read_df)
+    read_frame_dist = (read_frame_distribution(cds_read_df)
+                       if config["qc"]["use_cds_subset"]["read_frame_distribution"] and annotation
+                       else read_frame_distribution(read_df)
+                       )
+    pre_scores = rfd_metric(read_frame_dist)
+    results_dict["read_frame_distribution"] = read_frame_dist
+    results_dict["read_frame_distribution_metric"] = information_metric_cutoff(
+        pre_scores,
+        config['qc']['read_frame_distribution']['3nt_count_cutoff']
     )
-    results_dict["read_frame_distribution_metric"] = rfd_metric(
-        results_dict["read_frame_distribution"]
+    results_dict["3nt_weighted_score"] = triplet_periodicity_weighted_score(
+        pre_scores,
+        )
+    results_dict["3nt_weighted_score_best_3_read_lengths"] = tpw3rl_metric(
+        pre_scores,
+    )
+    results_dict["3nt_best_read_length_score"] = tpbrl_metric(
+        pre_scores,
     )
 
-    print("> mRNA_distribution")
-    results_dict["mRNA_distribution"] = mRNA_distribution(annotated_read_df)
+    if annotation:
+        print("> mRNA_distribution")
+        results_dict["mRNA_distribution"] = mRNA_distribution(annotated_read_df)
 
-    print("> metagene_profile")
-    results_dict["metagene_profile"] = metagene_profile(
-        annotated_read_df,
-        config["plots"]["metagene_profile"]["distance_target"],
-        config["plots"]["metagene_profile"]["distance_range"],
-    )
-    print("> summary_metrics")
-    results_dict["summary_metrics"] = {}
-
+        print("> metagene_profile")
+        results_dict["metagene_profile"] = metagene_profile(
+            annotated_read_df,
+            config["plots"]["metagene_profile"]["distance_target"],
+            config["plots"]["metagene_profile"]["distance_range"],
+        )
     return results_dict
 
 

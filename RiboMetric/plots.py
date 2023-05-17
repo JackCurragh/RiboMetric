@@ -40,10 +40,13 @@ def generate_plots(results_dict: dict, config: dict) -> list:
             plot_read_frame_distribution(
                 results_dict["read_frame_distribution"], config
             ),
-            plot_logoplot(results_dict["sequence_slice"], config),
         ]
     )
+    if config["plots"]["logoplot"]["enable"]:
+        plots_list.append(plot_logoplot(results_dict["sequence_slice"], config))
+
     if results_dict["mode"] == "annotation_mode":
+        print("Finished basic plots, generating annotation plots")
         plots_list.extend(
             [
                 plot_mRNA_distribution(
@@ -701,7 +704,7 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
     }
     return plot_metagene_heatmap
 
-
+# Slow to generate, off by default
 def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
     """
     Generate a logoplot of the nucleotide distribution of the reads
