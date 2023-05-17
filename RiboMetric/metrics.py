@@ -88,6 +88,7 @@ def calculate_score(probabilities):
     maximum_entropy = math.log2(3)
     entropy = 0
     for probability in probabilities:
+        print(probability)
         entropy += -(probability * math.log2(probability))
 
     result = math.sqrt((maximum_entropy - entropy) / maximum_entropy)
@@ -111,7 +112,7 @@ def read_frame_distribution_metric(
         read_frame_distribution_metric: Shannon entropy of the read frame
                 distribution
     """
-    pseudocount = 1e-10000
+    pseudocount = 1e-100
     scores = {}
     for read_length in read_frame_distribution:
         total_count = sum(read_frame_distribution[read_length].values())
