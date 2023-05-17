@@ -14,13 +14,14 @@ from .modules import (
     read_length_distribution,
     read_df_to_cds_read_df,
     ligation_bias_distribution,
+    calculate_expected_dinucleotide_freqs,
+    normalise_ligation_bias,
     nucleotide_composition,
     read_frame_distribution,
     mRNA_distribution,
     annotate_reads,
     sequence_slice,
     metagene_profile,
-    calculate_expected_dinucleotide_freqs,
 )
 
 from .metrics import (
@@ -129,19 +130,17 @@ def annotation_mode(
         read_df,
         num_bases=config["plots"]["ligation_bias_distribution"]["nucleotide_count"],
         five_prime=config["plots"]["ligation_bias_distribution"]["five_prime"],
-        background_freq=config["plots"]["ligation_bias_distribution"]["background_freq"],
         )
     results_dict["ligation_bias_distribution_metric"] = lbd_metric(
-        # results_dict["ligation_bias_distribution"], # temp fix for math domain error below
-        ligation_bias_distribution(
-        read_df,
-        num_bases=config["plots"]["ligation_bias_distribution"]["nucleotide_count"],
-        five_prime=config["plots"]["ligation_bias_distribution"]["five_prime"],
-        background_freq=False,
-        ),
-        calculate_expected_dinucleotide_freqs(
+        results_dict["ligation_bias_distribution"],
+        calculate_expected_dinucleotide_freqs(read_df,),
+        )
+    if config["plots"]["ligation_bias_distribution"]["background_freq"]:
+        results_dict["ligation_bias_distribution"] = normalise_ligation_bias(
             read_df,
-        ),
+            results_dict["ligation_bias_distribution"],
+            num_bases=config["plots"]["ligation_bias_distribution"]["nucleotide_count"],
+            five_prime=config["plots"]["ligation_bias_distribution"]["five_prime"],
         )
 
     print("> nucleotide_composition")

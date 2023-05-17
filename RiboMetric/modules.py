@@ -102,11 +102,10 @@ def global_nucleotide_proportion(
 
 
 def ligation_bias_distribution(
-    read_df: pd.DataFrame,
-    num_bases: int = 2,
-    five_prime: bool = True,
-    background_freq: bool = True,
-) -> dict:
+        read_df: pd.DataFrame,
+        num_bases: int = 2,
+        five_prime: bool = True,
+    ) -> dict:
     """
     Calculate the proportion of the occurrence in the first or last n
     nucleotides of the reads to check for ligation bias
@@ -141,20 +140,28 @@ def ligation_bias_distribution(
     ligation_bias_dict.update(
         {k: v for k, v in sequence_dict.items() if "N" in k}
     )
-    if background_freq:
-        expected_nucleotide_proportion = global_nucleotide_proportion(
-            read_df, num_bases, five_prime
+    return ligation_bias_dict
+
+
+def normalise_ligation_bias(
+        read_df: pd.DataFrame,
+        ligation_bias_dict: dict,
+        num_bases: int = 2,
+        five_prime: bool = True
+    ) -> dict:
+    expected_nucleotide_proportion = global_nucleotide_proportion(
+        read_df, num_bases, five_prime
+    )
+    for key in ligation_bias_dict:
+        if key not in expected_nucleotide_proportion:
+            expected_nucleotide_proportion[key] = 0
+    ligation_bias_dict = {
+        k: (
+            v
+            - expected_nucleotide_proportion[k]
         )
-        for key in ligation_bias_dict:
-            if key not in expected_nucleotide_proportion:
-                expected_nucleotide_proportion[key] = 0
-        ligation_bias_dict = {
-            k: (
-                v
-                - expected_nucleotide_proportion[k]
-            )
-            for k, v in ligation_bias_dict.items()
-        }
+        for k, v in ligation_bias_dict.items()
+    }
     return ligation_bias_dict
 
 
