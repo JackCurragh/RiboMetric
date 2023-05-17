@@ -167,34 +167,58 @@ def normalise_ligation_bias(
     }
     return ligation_bias_dict
 
+# https://stackoverflow.com/a/39045337
+def slicer_vectorized(array,start,end):
+    """
+    String slicer for numpy arrays
 
-# Slow, needs improving
+    Inputs:
+        array: A numpy array of strings
+        start: The start position of the slice
+        end: The end position of the slice
+
+    Outputs:
+        sliced_array: An array consisting of only the selected characters
+        from the input string array
+    """
+    sliced_array = array.view((str,1)).reshape(len(array),-1)[:,start:end]
+    return np.frombuffer(sliced_array.tobytes(),dtype=(str,end-start))
+
+
 def nucleotide_composition(
     read_df: pd.DataFrame, nucleotides=["A", "C", "G", "T"]
 ) -> dict:
     """
-    Calculate the nucleotide composition
+    Calculate the nucleotide composition, the proportion of nucleotides
+    in each nucleotide position
 
     Inputs:
         read_df: Dataframe containing the read information
+        nucleotides: list of counted nucleotides
 
     Outputs:
         dict: Dictionary containing the nucleotide distribution for every
             read position.
     """
-    readlen = read_df["sequence"].drop_duplicates().str.len().max()
+    sequence_array = read_df["sequence"].to_numpy().astype(str)
+    readlen = len(max(sequence_array, key=len))
     nucleotide_composition_dict = {nt: [] for nt in nucleotides}
-    base_nts = pd.Series([0, 0, 0, 0], index=nucleotides)
-    for i in range(readlen):
-        nucleotide_counts = (
-            read_df["sequence"].str.slice(i, i + 1).value_counts()
-        )
-        nucleotide_counts.drop("", errors="ignore", inplace=True)
-        nucleotide_counts = base_nts.add(nucleotide_counts, fill_value=0)
-        nucleotide_sum = nucleotide_counts.sum()
-        for nt in nucleotides:
-            nt_proportion = nucleotide_counts[nt] / nucleotide_sum
-            nucleotide_composition_dict[nt].append(nt_proportion)
+    for i in range(readlen): #readlen
+        nucleotide_array = slicer_vectorized(sequence_array, i, i+1)
+        nucleotide_array = nucleotide_array[nucleotide_array != '']
+        nucleotide, counts = np.unique(nucleotide_array, return_counts=True)
+        nucleotide_counts = dict(zip(nucleotide, counts))
+        nucleotide_sum = sum(nucleotide_counts.values())
+
+        for nt in nucleotide_composition_dict.keys():
+            if nt in nucleotide_counts.keys():
+                nucleotide_composition_dict[nt].append(
+                    nucleotide_counts[nt]/nucleotide_sum
+                )
+            else:
+                nucleotide_composition_dict[nt].append(
+                    0
+                )
     return nucleotide_composition_dict
 
 
