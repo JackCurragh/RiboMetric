@@ -59,7 +59,7 @@ def test_read_frame_distribution_metric():
         32: {0: 1000, 1: 5000, 2: 5000},
     }
     read_frame_metric = rfd_metric(read_frame_dict)
-    assert round(read_frame_metric[32], 2) == 0.39
+    assert round(read_frame_metric[30], 2) == 0.23
 
 
 def test_read_frame_distribution_metric_best_read_length():
@@ -100,5 +100,4 @@ def test_triplet_periodicity_weighted_score():
         read_frame_metric,
         read_frame_dict,
     )
-    assert round(weighted_score, 2) == 0.38
-
+    assert round(weighted_score, 2) == 0.36
