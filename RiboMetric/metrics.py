@@ -152,7 +152,6 @@ def information_metric_cutoff(
         )
     for read_length in pre_scores:
         score, count = pre_scores[read_length]
-        print(count, total_reads * min_count_threshold)
         if count > total_reads * min_count_threshold:
             information_content_metric[read_length] = score
     return information_content_metric
@@ -174,31 +173,25 @@ def triplet_periodicity_best_read_length_score(information_content_metric):
 
 
 def triplet_periodicity_weighted_score(
-    information_content_metric,
-    read_length_distribution,
+    pre_scores: dict,
         ):
     '''
     Produce a single metric for the triplet periodicity by taking the weighted
     average of the scores for each read length.
 
     Inputs:
-        information_content_metric (dict): The information content metric
-            for each read length.
-        read_length_distribution_metric (float): The read length distribution.
+        pre_scores (dict): Dictionary containing the information
 
     Returns:
         result (float): The triplet periodicity score.
     '''
     total_reads = sum(
-        read_length_distribution[key][nested_key]
-        for key in read_length_distribution
-        for nested_key in read_length_distribution[key]
+        pre_scores[key][1]
+        for key in pre_scores
         )
     weighted_scores = []
-    for read_length, score in information_content_metric.items():
-        weighted_score = score * sum(
-            read_length_distribution[read_length].values()
-            )
+    for _, score in pre_scores.items():
+        weighted_score = score[0] * score[1]
         weighted_scores.append(weighted_score)
 
     return sum(weighted_scores) / total_reads
@@ -221,8 +214,13 @@ def triplet_periodicity_weighted_score_best_3_read_lengths(
         pre_scores[key][1]
         for key in pre_scores
         )
+    sorted_counts = sorted(
+        pre_scores.items(),
+        key=lambda x: x[1][1],
+        reverse=True,
+        )[:3]
     weighted_scores = []
-    for _, score in pre_scores.items():
+    for _, score in sorted_counts:
         weighted_score = score[0] * score[1]
         weighted_scores.append(weighted_score)
 
