@@ -12,7 +12,7 @@ from RiboMetric.modules import (
 from RiboMetric.metrics import (
     read_length_distribution_metric as rld_metric,
     ligation_bias_distribution_metric as lbd_metric,
-    read_frame_distribution_metric as rfd_metric,
+    read_frame_distribution_information_content_metric as rfd_metric,
 )
 
 
@@ -54,4 +54,4 @@ def test_read_frame_distribution_metric():
     ].reset_index(drop=True)
     read_frame_dict = read_frame_distribution(a_site_calculation(read_df))
     read_frame_metric = rfd_metric(read_frame_dict)
-    assert round(read_frame_metric[29][0], 2) == 0.7
+    assert round(read_frame_metric[29], 2) == 0.7
