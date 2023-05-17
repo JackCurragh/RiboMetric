@@ -112,7 +112,7 @@ def read_frame_distribution_information_content_metric(
                 distribution
     """
     pseudocount = 1e-100
-    scores = {}
+    pre_scores = {}
     for read_length in read_frame_distribution:
         total_count = sum(read_frame_distribution[read_length].values())
 
@@ -123,8 +123,38 @@ def read_frame_distribution_information_content_metric(
 
         score = calculate_score(probabilities)
 
-        scores[read_length] = score
-    return scores
+        pre_scores[read_length] = score, total_count
+
+    return pre_scores
+
+
+def information_metric_cutoff(
+    pre_scores: dict,
+    min_count_threshold: float = 0.05,
+        ) -> dict:
+    """
+    Apply the cut off to the information content metric
+
+    Inputs:
+        pre_scores: Dictionary containing the output of the
+                read_frame_distribution_information_content_metric module
+        min_count_threshold: Minimum count threshold for a read length to be
+                included in the metric
+
+    Outputs:
+        information_content_metric: Dictionary containing the information
+                content metric for each read length
+    """
+    information_content_metric = {}
+    total_reads = sum(
+        pre_scores[key][1]
+        for key in pre_scores
+        )
+    for read_length in pre_scores:
+        score, count = pre_scores[read_length]
+        if count > total_reads * min_count_threshold:
+            information_content_metric[read_length] = score
+    return information_content_metric
 
 
 def triplet_periodicity_best_read_length_score(information_content_metric):
@@ -143,29 +173,55 @@ def triplet_periodicity_best_read_length_score(information_content_metric):
 
 
 def triplet_periodicity_weighted_score(
-    information_content_metric,
-    read_length_distribution,
+    pre_scores: dict,
         ):
     '''
     Produce a single metric for the triplet periodicity by taking the weighted
     average of the scores for each read length.
 
     Inputs:
-        information_content_metric (dict): The information content metric
-            for each read length.
-        read_length_distribution_metric (float): The read length distribution.
+        pre_scores (dict): Dictionary containing the information
 
     Returns:
         result (float): The triplet periodicity score.
     '''
     total_reads = sum(
-        read_length_distribution[key][nested_key]
-        for key in read_length_distribution
-        for nested_key in read_length_distribution[key]
+        pre_scores[key][1]
+        for key in pre_scores
         )
     weighted_scores = []
-    for read_length, score in information_content_metric.items():
-        weighted_score = score * sum(read_length_distribution[read_length].values())
+    for _, score in pre_scores.items():
+        weighted_score = score[0] * score[1]
+        weighted_scores.append(weighted_score)
+
+    return sum(weighted_scores) / total_reads
+
+
+def triplet_periodicity_weighted_score_best_3_read_lengths(
+        pre_scores: dict,) -> float:
+    """
+    Produce a single metric for the triplet periodicity by taking the weighted
+    average of the scores for the best 3 read lengths.
+
+    Inputs:
+        pre_scores: Dictionary containing the information
+                content metric and total counts for each read length
+
+    Returns:
+        result: The triplet periodicity score
+    """
+    total_reads = sum(
+        pre_scores[key][1]
+        for key in pre_scores
+        )
+    sorted_counts = sorted(
+        pre_scores.items(),
+        key=lambda x: x[1][1],
+        reverse=True,
+        )[:3]
+    weighted_scores = []
+    for _, score in sorted_counts:
+        weighted_score = score[0] * score[1]
         weighted_scores.append(weighted_score)
 
     return sum(weighted_scores) / total_reads
