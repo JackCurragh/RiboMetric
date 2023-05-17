@@ -98,7 +98,7 @@ def calculate_score(probabilities):
 def read_frame_distribution_metric(
     read_frame_distribution: dict,
         ) -> float:
-    """       
+    """
     Calculate the read frame distribution metric from the output of
     the read_frame_distribution module.
 
