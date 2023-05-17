@@ -96,6 +96,7 @@ def calculate_score(probabilities):
 
 def read_frame_distribution_information_content_metric(
     read_frame_distribution: dict,
+    min_count_threshold: int = 100,
         ) -> float:
     """
     Calculate the read frame distribution metric from the output of
@@ -115,6 +116,9 @@ def read_frame_distribution_information_content_metric(
     scores = {}
     for read_length in read_frame_distribution:
         total_count = sum(read_frame_distribution[read_length].values())
+        if total_count < min_count_threshold:
+            scores[read_length] = 0
+            continue
 
         probabilities = []
         for frame, count in read_frame_distribution[read_length].items():
