@@ -58,7 +58,7 @@ from .file_parser import (
     parse_annotation,
     prepare_annotation,
 )
-from .qc import annotation_free_mode, annotation_mode, sequence_mode
+from .qc import annotation_mode, annotation_mode, sequence_mode
 from .plots import generate_plots
 from .modules import a_site_calculation
 from .html_report import generate_report
@@ -349,7 +349,7 @@ def main(args):
         read_df = a_site_calculation(read_df)
 
         if args.gff is None and args.annotation is None:
-            results_dict = annotation_free_mode(read_df, config)
+            results_dict = annotation_mode(read_df, config)
 
         else:
             if args.annotation is not None and args.gff is not None:
