@@ -27,7 +27,8 @@ from .modules import (
 from .metrics import (
     read_length_distribution_metric as rld_metric,
     ligation_bias_distribution_metric as lbd_metric,
-    read_frame_distribution_metric as rfd_metric,
+    read_frame_distribution_information_content_metric as rfd_metric,
+    triplet_periodicity_weighted_score,
 )
 
 
@@ -75,6 +76,10 @@ def annotation_free_mode(read_df: pd.DataFrame, config: dict) -> dict:
     results_dict["read_frame_distribution_metric"] = rfd_metric(
         results_dict["read_frame_distribution"]
     )
+    results_dict["3nt_weighted_score"] = triplet_periodicity_weighted_score(
+        results_dict["read_frame_distribution_metric"],
+        results_dict["read_frame_distribution"]
+        )
 
     print("> sequence_slice")
     results_dict["sequence_slice"] = sequence_slice(
