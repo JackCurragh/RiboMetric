@@ -9,6 +9,7 @@ import numpy as np
 from xhtml2pdf import pisa
 from collections import Counter
 
+
 def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     Convert the a_site_df to a cds_read_df by removing reads that do not
@@ -21,7 +22,9 @@ def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
         cds_read_df: Dataframe containing the read information for reads
                     that map to the CDS
     """
-    cds_read_df = df[(df["cds_start"] < df["a_site"]) & (df["a_site"] < df["cds_end"])]
+    cds_read_df = df[
+        (df["cds_start"] < df["a_site"]) & (df["a_site"] < df["cds_end"])
+    ]
     return cds_read_df
 
 
@@ -51,12 +54,63 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     Outputs:
         dict: Dictionary containing the read length distribution
     """
-    read_lengths, read_counts = np.unique(read_df["read_length"], return_counts=True)
+    read_lengths, read_counts = np.unique(
+        read_df["read_length"], return_counts=True
+    )
     return dict(zip(read_lengths.tolist(), read_counts.tolist()))
 
 
-def ligation_bias_distribution(
+def global_nucleotide_proportion(
     read_df: pd.DataFrame, num_bases: int = 2, five_prime: bool = True
+) -> dict:
+    """
+    Calculate the global proportion nucleotide groups in the reads,
+    used as a background for ligation bias distribution
+
+    Inputs:
+        read_df: Dataframe containing the read information
+        num_bases: Number of bases to be read (Default = 2)
+        five_prime: Start at 5' end (True) or 3' end (False) of read
+        (Default = True)
+
+    Outputs:
+        dinucleotide_counts: Dictionary containing the distribution of the
+        nucleotide groups in the reads
+    """
+    # Remove first n characters and last character from sequences
+    # with odd lengths
+    if five_prime:
+        series = (
+            read_df["sequence"]
+            .drop_duplicates()
+            .apply(lambda x: x[num_bases : -(len(x) % num_bases)])
+        )
+    # If five_prime is false, remove last n characters and first if odd length
+    else:
+        series = (
+            read_df["sequence"]
+            .drop_duplicates()
+            .apply(lambda x: x[len(x) % num_bases : -num_bases])
+        )
+    # Concatenate all strings in the Series
+    concatenated = "".join(series.tolist())
+    # Calculate dinucleotide occurrences
+    expected_nucleotide_proportion = Counter(
+        concatenated[i : i + num_bases]
+        for i in range(0, len(concatenated) - 1, num_bases)
+    )
+    sumcounts = sum(expected_nucleotide_proportion.values())
+    for k in expected_nucleotide_proportion:
+        expected_nucleotide_proportion[k] = (
+            expected_nucleotide_proportion[k] / sumcounts
+        )
+    return dict(expected_nucleotide_proportion)
+
+
+def ligation_bias_distribution(
+    read_df: pd.DataFrame,
+    num_bases: int = 2,
+    five_prime: bool = True,
 ) -> dict:
     """
     Calculate the proportion of the occurrence in the first or last n
@@ -69,7 +123,7 @@ def ligation_bias_distribution(
         (Default = True)
 
     Outputs:
-        read_start_df: Dictionary containing the distribution of the
+        ligation_bias_dict: Dictionary containing the distribution of the
         first two nucleotides in the reads
     """
     if five_prime:
@@ -86,8 +140,31 @@ def ligation_bias_distribution(
             .value_counts(normalize=True)
             .sort_index()
         )
-    ligation_bias_dict = {k: v for k, v in sequence_dict.items() if "N" not in k}
-    ligation_bias_dict.update({k: v for k, v in sequence_dict.items() if "N" in k})
+    ligation_bias_dict = {
+        k: v for k, v in sequence_dict.items() if "N" not in k
+    }
+    ligation_bias_dict.update(
+        {k: v for k, v in sequence_dict.items() if "N" in k}
+    )
+    return ligation_bias_dict
+
+
+def normalise_ligation_bias(
+    read_df: pd.DataFrame,
+    ligation_bias_dict: dict,
+    num_bases: int = 2,
+    five_prime: bool = True,
+) -> dict:
+    expected_nucleotide_proportion = global_nucleotide_proportion(
+        read_df, num_bases, five_prime
+    )
+    for key in ligation_bias_dict:
+        if key not in expected_nucleotide_proportion:
+            expected_nucleotide_proportion[key] = 0
+    ligation_bias_dict = {
+        k: (v - expected_nucleotide_proportion[k])
+        for k, v in ligation_bias_dict.items()
+    }
     return ligation_bias_dict
 
 
@@ -105,11 +182,13 @@ def nucleotide_composition(
         dict: Dictionary containing the nucleotide distribution for every
             read position.
     """
-    readlen = read_df["sequence"].str.len().max()
+    readlen = read_df["sequence"].drop_duplicates().str.len().max()
     nucleotide_composition_dict = {nt: [] for nt in nucleotides}
     base_nts = pd.Series([0, 0, 0, 0], index=nucleotides)
     for i in range(readlen):
-        nucleotide_counts = read_df.sequence.str.slice(i, i + 1).value_counts()
+        nucleotide_counts = (
+            read_df["sequence"].str.slice(i, i + 1).value_counts()
+        )
         nucleotide_counts.drop("", errors="ignore", inplace=True)
         nucleotide_counts = base_nts.add(nucleotide_counts, fill_value=0)
         nucleotide_sum = nucleotide_counts.sum()
@@ -261,9 +340,17 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
                                 mRNA category at the different read lengths
     """
     # Creating MultiIndex for reindexing
-    categories = ["five_leader", "start_codon", "CDS", "stop_codon", "three_trailer"]
+    categories = [
+        "five_leader",
+        "start_codon",
+        "CDS",
+        "stop_codon",
+        "three_trailer",
+    ]
     classes = annotated_read_df["read_length"].unique()
-    idx = pd.MultiIndex.from_product([classes, categories], names=["class", "category"])
+    idx = pd.MultiIndex.from_product(
+        [classes, categories], names=["class", "category"]
+    )
     # Adding mRNA category to annotated_read_df with assign_mRNA_category
     annotated_read_df["mRNA_category"] = annotated_read_df.apply(
         assign_mRNA_category, axis=1
@@ -316,7 +403,8 @@ def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
                 sum_mRNA_dict[k] = v
     if not config["plots"]["mRNA_distribution"]["absolute_counts"]:
         sum_mRNA_dict = {
-            k: (v / sum(sum_mRNA_dict.values())) for k, v in sum_mRNA_dict.items()
+            k: (v / sum(sum_mRNA_dict.values()))
+            for k, v in sum_mRNA_dict.items()
         }
 
     return sum_mRNA_dict
@@ -427,7 +515,7 @@ def convert_html_to_pdf(source_html, output_filename):
 def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict():
     """
     Calculate the expected dinucleotide frequencies based on the
-    nucleotide frequencies in the aligned reads 
+    nucleotide frequencies in the aligned reads
 
     Inputs:
         read_df: Dataframe containing the read information
@@ -437,15 +525,15 @@ def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict():
         dinucleotide frequencies
     """
     dinucleotides = []
-    for read in read_df["sequence"]:
+    for read in read_df["sequence"].drop_duplicates():
         for i in range(len(read) - 1):
-            dinucleotides.append(read[i:i+2])
-            
+            dinucleotides.append(read[i : i + 2])
+
     observed_freq = Counter(dinucleotides)
     total_count = sum(observed_freq.values())
 
     expected_dinucleotide_freqs = {}
     for dinucleotide, count in observed_freq.items():
         expected_dinucleotide_freqs[dinucleotide] = count / total_count
-        
+
     return expected_dinucleotide_freqs
