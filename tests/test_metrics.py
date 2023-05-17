@@ -6,6 +6,7 @@ from RiboMetric.modules import (
     ligation_bias_distribution,
     calculate_expected_dinucleotide_freqs,
     read_frame_distribution,
+    a_site_calculation,
 )
 
 from RiboMetric.metrics import (
@@ -51,6 +52,6 @@ def test_read_frame_distribution_metric():
     read_df = read_df_pre.loc[
         read_df_pre.index.repeat(read_df_pre["count"])
     ].reset_index(drop=True)
-    read_frame_dict = read_frame_distribution(read_df)
+    read_frame_dict = read_frame_distribution(a_site_calculation(read_df))
     read_frame_metric = rfd_metric(read_frame_dict)
-    assert read_frame_metric[30] == 0.0
+    assert round(read_frame_metric[29][0], 2) == 0.7
