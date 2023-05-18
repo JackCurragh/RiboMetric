@@ -11,6 +11,8 @@ Three main modes:
 
 import pandas as pd
 from .modules import (
+    annotate_reads,
+    assign_mRNA_category,
     read_length_distribution,
     read_df_to_cds_read_df,
     ligation_bias_distribution,
@@ -19,7 +21,6 @@ from .modules import (
     nucleotide_composition,
     read_frame_distribution,
     mRNA_distribution,
-    annotate_reads,
     sequence_slice,
     metagene_profile,
 )
@@ -55,6 +56,8 @@ def annotation_mode(
         annotation = True
         print("Merging annotation and reads")
         annotated_read_df = annotate_reads(read_df, annotation_df)
+        print("assigning mRNA categories")
+        annotated_read_df = assign_mRNA_category(annotated_read_df)
         print("Subsetting to CDS reads")
         cds_read_df = read_df_to_cds_read_df(annotated_read_df)
     else:
@@ -62,9 +65,9 @@ def annotation_mode(
     print("Running modules")
 
     results_dict = {}
-    results_dict["mode"] = ("annotation_mode" 
+    results_dict["mode"] = ("annotation" 
                             if annotation 
-                            else "annotation_free_mode")
+                            else "annotation_free")
     
     print("> read_length_distribution")
     results_dict["read_length_distribution"] = read_length_distribution(
