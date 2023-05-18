@@ -62,9 +62,9 @@ def annotation_mode(
     print("Running modules")
 
     results_dict = {}
-    results_dict["mode"] = ("annotation_mode" 
+    results_dict["mode"] = ("annotation" 
                             if annotation 
-                            else "annotation_free_mode")
+                            else "annotation_free")
     
     print("> read_length_distribution")
     results_dict["read_length_distribution"] = read_length_distribution(
