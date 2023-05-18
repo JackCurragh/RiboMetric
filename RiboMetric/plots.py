@@ -140,12 +140,14 @@ def plot_ligation_bias_distribution(
         plot_ligation_bias_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
-    # Remove nucleotide sequences with 'N'
-    # if 'Include_N' option in config is False
+    # Remove nucleotide sequences with 'N' if the option in config is False
     if config["plots"]["ligation_bias_distribution"]["include_N"] is False:
         ligation_bias_dict = {
             k: v for k, v in ligation_bias_dict.items() if "N" not in k
         }
+
+    # Set colors according to the value
+    color = ["#636efa" if value > 0 else "#da5325" for value in ligation_bias_dict.values()]
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
@@ -153,6 +155,7 @@ def plot_ligation_bias_distribution(
             y=list(ligation_bias_dict.values()),
             name="",
             hovertemplate="<b>Nucleotides</b>:%{x}<br><b>Proportion</b>:%{y}",
+            marker=dict(color=color),
         )
     )
     fig.add_hline(y=0)
