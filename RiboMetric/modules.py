@@ -203,10 +203,12 @@ def nucleotide_composition(
     sequence_array = read_df["sequence"].to_numpy().astype(str)
     readlen = len(max(sequence_array, key=len))
     nucleotide_composition_dict = {nt: [] for nt in nucleotides}
-    for i in range(readlen): #readlen
+    for i in range(readlen):
         nucleotide_array = slicer_vectorized(sequence_array, i, i+1)
         nucleotide_array = nucleotide_array[nucleotide_array != '']
+
         nucleotide, counts = np.unique(nucleotide_array, return_counts=True)
+        
         nucleotide_counts = dict(zip(nucleotide, counts))
         nucleotide_sum = sum(nucleotide_counts.values())
 
@@ -264,11 +266,13 @@ def read_frame_score(read_frame_dict: dict) -> dict:
     """
     scored_read_frame_dict = {}
     highest_peak_sum, second_peak_sum = 0, 0
+    
     for k, inner_dict in read_frame_dict.items():
         top_two_values = sorted(inner_dict.values(), reverse=True)[:2]
         highest_peak_sum += top_two_values[0]
         second_peak_sum += top_two_values[1]
         scored_read_frame_dict[k] = 1 - top_two_values[1] / top_two_values[0]
+
     scored_read_frame_dict["global"] = 1 - second_peak_sum / highest_peak_sum
     return scored_read_frame_dict
 
@@ -322,33 +326,37 @@ def annotate_reads(
     return annotated_read_df
 
 
-def assign_mRNA_category(row) -> str:
+def assign_mRNA_category(annotated_read_df) -> str:
+
     """
+    Adds the mRNA category column to the annotated_read_df, labelling the read
+    according to the position of the A-site
     Assign an mRNA category based on the A-site of the read
     and the CDS start/stop, used through df.apply()
 
     Inputs:
-        annotated_read_df: Dataframe containing the read information
-        with an added column for the a-site location along
-        with the columns from the gff file
+        annotated_read_df: Dataframe with read data, added a-site positions
+        and joined with annotation_df.
 
     Outputs:
         mRNA category: string with the category for the read
         ["five_leader", "start_codon", "CDS", "stop_codon", "three_trailer"]
     """
-    if row["a_site"] < row["cds_start"]:
-        return "five_leader"
-    elif row["a_site"] == row["cds_start"]:
-        return "start_codon"
-    elif row["cds_start"] < row["a_site"] < row["cds_end"]:
-        return "CDS"
-    elif row["a_site"] == row["cds_end"]:
-        return "stop_codon"
-    elif row["a_site"] > row["cds_end"]:
-        return "three_trailer"
-    else:
-        return "unknown"
+    # Calculate mRNA category based on conditions
+    conditions = [
+        annotated_read_df["a_site"] < annotated_read_df["cds_start"],
+        annotated_read_df["a_site"] == annotated_read_df["cds_start"],
+        (annotated_read_df["cds_start"] < annotated_read_df["a_site"]) &
+        (annotated_read_df["a_site"] < annotated_read_df["cds_end"]),
+        annotated_read_df["a_site"] == annotated_read_df["cds_end"],
+        annotated_read_df["a_site"] > annotated_read_df["cds_end"]
+    ]
+    choices = [
+        "five_leader", "start_codon", "CDS", "stop_codon", "three_trailer"
+    ]
+    annotated_read_df["mRNA_category"] = np.select(conditions, choices, "unknown")
 
+    return annotated_read_df
 
 # Slow, needs improving
 def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
@@ -375,17 +383,13 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
     idx = pd.MultiIndex.from_product(
         [classes, categories], names=["class", "category"]
     )
-    # Adding mRNA category to annotated_read_df with assign_mRNA_category
-    annotated_read_df["mRNA_category"] = annotated_read_df.apply(
-        assign_mRNA_category, axis=1
-    )
+    # Group annotated_read_df
     annotated_read_df = (
         annotated_read_df.groupby(["read_length", "mRNA_category"])
         .size()
         .reindex(idx, fill_value=0)
         .sort_index()
     )
-
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict = {}
     for index, value in annotated_read_df.items():
