@@ -10,6 +10,7 @@ from RiboMetric.modules import (
     a_site_calculation,
     read_frame_distribution,
     annotate_reads,
+    assign_mRNA_category,
     mRNA_distribution,
     metagene_profile,
 )
@@ -125,6 +126,7 @@ def test_mRNA_distribution(test_input, expected):
     ].reset_index(drop=True)
     a_site_df = a_site_calculation(read_df)
     annotated_read_df = annotate_reads(a_site_df, annotation_df)
+    annotated_read_df = assign_mRNA_category(annotated_read_df)
     mRNA_distribution_dict = mRNA_distribution(annotated_read_df)
     assert eval(test_input) == expected
 

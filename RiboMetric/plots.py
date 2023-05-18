@@ -25,7 +25,7 @@ def generate_plots(results_dict: dict, config: dict) -> list:
 
     """
     print("Generating plots")
-    plots_list = []
+    plots_list = [plot_metrics_summary(dict(), config)]
     plots_list.extend(
         [
             plot_read_length_distribution(
@@ -45,7 +45,7 @@ def generate_plots(results_dict: dict, config: dict) -> list:
     if config["plots"]["logoplot"]["enable"]:
         plots_list.append(plot_logoplot(results_dict["sequence_slice"], config))
 
-    if results_dict["mode"] == "annotation_mode":
+    if results_dict["mode"] == "annotation":
         print("Finished basic plots, generating annotation plots")
         plots_list.extend(
             [
@@ -69,13 +69,13 @@ def generate_plots(results_dict: dict, config: dict) -> list:
     return plots_list
 
 
-def plotly_to_image(fig: go.Figure, config: dict) -> str:
+def plotly_to_image(fig: go.Figure, width: int, height: int) -> str:
     base_64_plot = base64.b64encode(
         pio.to_image(
             fig,
             format="jpg",
-            width=config["plots"]["image_size"][0],
-            height=config["plots"]["image_size"][1],
+            width=width,
+            height=height,
         )
     ).decode("ascii")
     return base_64_plot
@@ -119,7 +119,9 @@ def plot_read_length_distribution(
         "name": "Read Length Distribution",
         "description": "Distribution of read lengths for the full dataset",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig, config),
+        "fig_image": plotly_to_image(fig,
+                                     config["plots"]["image_size"][0],
+                                     config["plots"]["image_size"][1]),
     }
     return plot_read_length_dict
 
@@ -138,12 +140,14 @@ def plot_ligation_bias_distribution(
         plot_ligation_bias_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
-    # Remove nucleotide sequences with 'N'
-    # if 'Include_N' option in config is False
+    # Remove nucleotide sequences with 'N' if the option in config is False
     if config["plots"]["ligation_bias_distribution"]["include_N"] is False:
         ligation_bias_dict = {
             k: v for k, v in ligation_bias_dict.items() if "N" not in k
         }
+
+    # Set colors according to the value
+    color = ["#636efa" if value > 0 else "#da5325" for value in ligation_bias_dict.values()]
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
@@ -151,6 +155,7 @@ def plot_ligation_bias_distribution(
             y=list(ligation_bias_dict.values()),
             name="",
             hovertemplate="<b>Nucleotides</b>:%{x}<br><b>Proportion</b>:%{y}",
+            marker=dict(color=color),
         )
     )
     fig.add_hline(y=0)
@@ -168,7 +173,9 @@ def plot_ligation_bias_distribution(
         "name": "Ligation Bias Distribution",
         "description": "Distribution of end bases for the full dataset",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig, config),
+        "fig_image": plotly_to_image(fig,
+                                     config["plots"]["image_size"][0],
+                                     config["plots"]["image_size"][1]),
     }
     return plot_ligation_bias_dict
 
@@ -210,7 +217,9 @@ def plot_nucleotide_composition(
         "name": "Nucleotide Composition",
         "description": "Nucleotide composition of the reads",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig, config),
+        "fig_image": plotly_to_image(fig,
+                                     config["plots"]["image_size"][0],
+                                     config["plots"]["image_size"][1]),
     }
     return plot_nucleotide_composition_dict
 
@@ -257,7 +266,9 @@ def plot_nucleotide_distribution(
         "description": "Nucleotide distribution across specified reads \
 (default: first 15 read)",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig, config),
+        "fig_image": plotly_to_image(fig,
+                                     config["plots"]["image_size"][0],
+                                     config["plots"]["image_size"][1]),
     }
     return plot_nucleotide_distribution_dict
 
@@ -363,7 +374,9 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         "name": "Read Frame Distribution",
         "description": "Frame distribution per read length",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig, config),
+        "fig_image": plotly_to_image(fig,
+                                     config["plots"]["image_size"][0],
+                                     config["plots"]["image_size"][1]),
     }
     return plot_read_frame_dict
 
@@ -417,7 +430,9 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
         "description": "Shows the proportion of the different transcript \
 regions represented in the reads",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig, config),
+        "fig_image": plotly_to_image(fig,
+                                     config["plots"]["image_size"][0],
+                                     config["plots"]["image_size"][1]),
     }
     return plot_mRNA_distribution_dict
 
@@ -495,7 +510,9 @@ def plot_mRNA_read_breakdown(
         "description": "Shows the proportion of the different transcript \
 regions represented in the reads over the different read lengths.",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig, config),
+        "fig_image": plotly_to_image(fig,
+                                     config["plots"]["image_size"][0],
+                                     config["plots"]["image_size"][1]),
     }
     return plot_mRNA_read_breakdown_dict
 
@@ -602,9 +619,11 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
     plot_metagene_profile_dict = {
         "name": "Metagene Profile",
         "description": "Metagene profile showing the distance count of \
-        reads per distance away from a target (default: start codon).",
+reads per distance away from a target (default: start codon).",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig, config),
+        "fig_image": plotly_to_image(fig,
+                                     config["plots"]["image_size"][0],
+                                     config["plots"]["image_size"][1]),
     }
     return plot_metagene_profile_dict
 
@@ -700,11 +719,13 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
         "description": "Metagene heatmap showing the distance between the \
             A-site and a target per read length and the counts in colorscale.",
         "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig, config),
+        "fig_image": plotly_to_image(fig,
+                                     config["plots"]["image_size"][0],
+                                     config["plots"]["image_size"][1]),
     }
     return plot_metagene_heatmap
 
-# Slow to generate, off by default
+
 def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
     """
     Generate a logoplot of the nucleotide distribution of the reads
@@ -749,7 +770,38 @@ def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
     }
     return plot_logoplot_dict
 
-
-def plot_summary_scoring() -> dict:
-    plot_summary_dict = {}
-    return plot_summary_dict
+# WIP
+def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
+    width = 450
+    height = 400
+    fig = go.Figure(data=go.Scatterpolar(
+    r=[0.8, .5, .2, .6, .3, 0.8],
+    theta=['read frame periodicity','ligation bias','nucleotide composition', 'mRNA breakdown',
+            'metagene profile', 'read frame periodicity'],
+    fill='toself'
+    ))
+        
+    fig.update_layout(
+    title="[WIP] Summary Scores",
+    # autosize=False,
+    # width=width,
+    # height=height,
+    polar=dict(
+        radialaxis=dict(
+        visible=False,
+        ),
+        radialaxis_range = [0, 1],
+        angularaxis_thetaunit = "radians"
+    ),
+    showlegend=False,
+    )
+    plot_metrics_summary_dict = {
+        "name": "Summary of Metrics",
+        "description": "Radar plot showing the difference scores ranging \
+from 0 to 1.",
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": plotly_to_image(fig,
+                                     width,
+                                     height),
+    }
+    return plot_metrics_summary_dict
