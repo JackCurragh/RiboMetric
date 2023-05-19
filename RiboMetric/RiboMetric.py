@@ -57,6 +57,8 @@ from .file_parser import (
     parse_fasta,
     parse_annotation,
     prepare_annotation,
+    flagstat_bam,
+    check_bam,
 )
 from .qc import annotation_mode, annotation_mode, sequence_mode
 from .plots import generate_plots
@@ -336,15 +338,29 @@ def main(args):
         elif args.pdf:
             report_export = "pdf"
 
+        
+        if not check_bam(args.bam):
+            raise(Exception("""
+            Either BAM file or it's index does not exist at given path
+            
+            To create an index for a BAM file, run:
+            samtools index <bam_file>
+            """))
+        flagstat = flagstat_bam(args.bam)
+        print(flagstat)
         read_df_pre = parse_bam(args.bam, args.subsample)
         print("Reads parsed")
 
         # Expand the dataframe to have one row per read
-        print("Expanding dataframe")
-        read_df = read_df_pre.loc[
-            read_df_pre.index.repeat(read_df_pre["count"])
-        ].reset_index(drop=True)
-        print("Dataframe expanded")
+        if "count" not in read_df_pre.columns:
+            read_df_pre["count"] = 1
+            read_df = read_df_pre
+        else:
+            print("Expanding dataframe")
+            read_df = read_df_pre.loc[
+                read_df_pre.index.repeat(read_df_pre["count"])
+            ].reset_index(drop=True)
+            print("Dataframe expanded")
         print("Calculating A site information")
         read_df = a_site_calculation(read_df)
 
