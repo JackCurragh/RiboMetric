@@ -25,7 +25,7 @@ def generate_plots(results_dict: dict, config: dict) -> list:
 
     """
     print("Generating plots")
-    plots_list = [plot_metrics_summary(dict(), config)]
+    plots_list = [plot_metrics_summary(results_dict["metrics"], config)]
 
     plots_list.append(
             plot_read_frame_distribution(
@@ -56,11 +56,11 @@ def generate_plots(results_dict: dict, config: dict) -> list:
         )
 
     plots_list.extend([
-            plot_nucleotide_composition(
-                results_dict["nucleotide_composition"], config
-            ),
             plot_ligation_bias_distribution(
                 results_dict["ligation_bias_distribution"], config
+            ),
+            plot_nucleotide_composition(
+                results_dict["nucleotide_composition"], config
             ),
             plot_read_length_distribution(
                 results_dict["read_length_distribution"], config
