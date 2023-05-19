@@ -69,12 +69,13 @@ def annotation_mode(
     results_dict["mode"] = ("annotation" 
                             if annotation 
                             else "annotation_free")
+    results_dict["metrics"] = {}
     
     print("> read_length_distribution")
     results_dict["read_length_distribution"] = read_length_distribution(
         read_df
     )
-    results_dict["read_length_distribution_metric"] = rld_metric(
+    results_dict["metrics"]["read_length_distribution_metric"] = rld_metric(
         results_dict["read_length_distribution"]
     )
 
@@ -86,7 +87,7 @@ def annotation_mode(
         ],
         five_prime=config["plots"]["ligation_bias_distribution"]["five_prime"],
     )
-    results_dict["ligation_bias_distribution_metric"] = lbd_metric(
+    results_dict["metrics"]["ligation_bias_distribution_metric"] = lbd_metric(
         results_dict["ligation_bias_distribution"],
         calculate_expected_dinucleotide_freqs(
             read_df,
@@ -122,17 +123,17 @@ def annotation_mode(
                        )
     pre_scores = rfd_metric(read_frame_dist)
     results_dict["read_frame_distribution"] = read_frame_dist
-    results_dict["read_frame_distribution_metric"] = information_metric_cutoff(
+    results_dict["metrics"]["read_frame_distribution_metric"] = information_metric_cutoff(
         pre_scores,
         config['qc']['read_frame_distribution']['3nt_count_cutoff']
     )
-    results_dict["3nt_weighted_score"] = triplet_periodicity_weighted_score(
+    results_dict["metrics"]["3nt_weighted_score"] = triplet_periodicity_weighted_score(
         pre_scores,
         )
-    results_dict["3nt_weighted_score_best_3_read_lengths"] = tpw3rl_metric(
+    results_dict["metrics"]["3nt_weighted_score_best_3_read_lengths"] = tpw3rl_metric(
         pre_scores,
     )
-    results_dict["3nt_best_read_length_score"] = tpbrl_metric(
+    results_dict["metrics"]["3nt_best_read_length_score"] = tpbrl_metric(
         pre_scores,
     )
 
@@ -147,7 +148,7 @@ def annotation_mode(
             config["plots"]["metagene_profile"]["distance_range"],
         )
 
-        results_dict["cds_coverage_metric"] = cds_coverage_metric(
+        results_dict["metrics"]["cds_coverage_metric"] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=1,
             in_frame_coverage=False)
