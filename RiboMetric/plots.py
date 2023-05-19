@@ -26,29 +26,24 @@ def generate_plots(results_dict: dict, config: dict) -> list:
     """
     print("Generating plots")
     plots_list = [plot_metrics_summary(dict(), config)]
-    plots_list.extend(
-        [
-            plot_read_length_distribution(
-                results_dict["read_length_distribution"], config
-            ),
-            plot_ligation_bias_distribution(
-                results_dict["ligation_bias_distribution"], config
-            ),
-            plot_nucleotide_composition(
-                results_dict["nucleotide_composition"], config
-            ),
+
+    plots_list.append(
             plot_read_frame_distribution(
                 results_dict["read_frame_distribution"], config
-            ),
-        ]
+            )
     )
-    if config["plots"]["logoplot"]["enable"]:
-        plots_list.append(plot_logoplot(results_dict["sequence_slice"], config))
 
     if results_dict["mode"] == "annotation":
         print("Finished basic plots, generating annotation plots")
         plots_list.extend(
             [
+                plot_metagene_profile(
+                    results_dict["metagene_profile"],
+                    config,
+                ),
+                plot_metagene_heatmap(
+                    results_dict["metagene_profile"], config
+                ),
                 plot_mRNA_distribution(
                     results_dict["mRNA_distribution"],
                     config,
@@ -57,15 +52,24 @@ def generate_plots(results_dict: dict, config: dict) -> list:
                     results_dict["mRNA_distribution"],
                     config,
                 ),
-                plot_metagene_profile(
-                    results_dict["metagene_profile"],
-                    config,
-                ),
-                plot_metagene_heatmap(
-                    results_dict["metagene_profile"], config
-                ),
             ]
         )
+
+    plots_list.extend([
+            plot_nucleotide_composition(
+                results_dict["nucleotide_composition"], config
+            ),
+            plot_ligation_bias_distribution(
+                results_dict["ligation_bias_distribution"], config
+            ),
+            plot_read_length_distribution(
+                results_dict["read_length_distribution"], config
+            ),
+            ])
+
+    if config["plots"]["logoplot"]["enable"]:
+        plots_list.append(plot_logoplot(results_dict["sequence_slice"], config))
+
     return plots_list
 
 
