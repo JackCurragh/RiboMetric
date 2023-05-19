@@ -124,3 +124,5 @@ bak*
 .gitignore
 RiboMetric_report.html
 RiboMetric_report.pdf
+
+sample_data/transcriptome_collapsed.bam
