@@ -68,7 +68,8 @@ def generate_plots(results_dict: dict, config: dict) -> list:
             ])
 
     if config["plots"]["logoplot"]["enable"]:
-        plots_list.append(plot_logoplot(results_dict["sequence_slice"], config))
+        plots_list.append(plot_logoplot(results_dict["sequence_slice"],
+                                        config))
 
     return plots_list
 
@@ -151,7 +152,8 @@ def plot_ligation_bias_distribution(
         }
 
     # Set colors according to the value
-    color = ["#636efa" if value > 0 else "#da5325" for value in ligation_bias_dict.values()]
+    color = ["#636efa" if value > 0 else "#da5325"
+             for value in ligation_bias_dict.values()]
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
@@ -306,7 +308,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
     font_size = max_font_size - (max_font_size - min_font_size) * (
         num_data_points / 50
     )
-
+    # Generate plot
     plot_data = []
     for i in range(0, 3):
         plot_data.append(
@@ -334,6 +336,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             color=config["plots"]["base_color"],
         ),
     )
+    # Place scores dynamically over bars
     if scored_read_frame_dict is not None:
         if config["plots"]["read_frame_distribution"]["show_scores"] == "all":
             for idx in enumerate(culled_read_frame_dict):
@@ -351,8 +354,8 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
 
                     if (
                         fig.data[0].y[idx[0]]
-                        + fig.data[0].y[idx[0]]
-                        + fig.data[0].y[idx[0]]
+                        + fig.data[1].y[idx[0]]
+                        + fig.data[2].y[idx[0]]
                         > y_buffer
                     ):
                         fig.add_annotation(
@@ -363,7 +366,6 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
                             xanchor="center",
                             font={"size": font_size},
                         )
-        fig.update_layout()
         fig.add_annotation(
             text=f'Score: {round(scored_read_frame_dict["global"], 2)}',
             showarrow=False,
@@ -374,6 +376,23 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             xanchor="left",
         )
 
+    for idx in enumerate(culled_read_frame_dict):
+        count_sum = (
+            fig.data[0].y[idx[0]]
+            + fig.data[1].y[idx[0]]
+            + fig.data[2].y[idx[0]])
+        if count_sum > y_buffer:
+            lower_limit = (idx[1])
+            break
+    for idx in list(enumerate((culled_read_frame_dict)))[::-1]:
+        count_sum = (
+            fig.data[0].y[idx[0]]
+            + fig.data[1].y[idx[0]]
+            + fig.data[2].y[idx[0]])
+        if count_sum > y_buffer:
+            upper_limit = (idx[1])
+            break
+    fig.update_xaxes(range=[lower_limit-0.5, upper_limit+0.5])
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
         "description": "Frame distribution per read length",
@@ -429,6 +448,7 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
         ),
         legend={"traceorder": "normal"},
     )
+    fig.update_xaxes(range=[0, 1])
     plot_mRNA_distribution_dict = {
         "name": "mRNA Reads Breakdown",
         "description": "Shows the proportion of the different transcript \
@@ -774,30 +794,43 @@ def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
     }
     return plot_logoplot_dict
 
+
 # WIP
 def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
+    """
+    Generate a radar plot that summarizes the scoring metrics of the reads
+
+    Inputs:
+
+
+    Outputs:
+
+    """
     width = 450
     height = 400
-    fig = go.Figure(data=go.Scatterpolar(
-    r=[0.8, .5, .2, .6, .3, 0.8],
-    theta=['read frame periodicity','ligation bias','nucleotide composition', 'mRNA breakdown',
-            'metagene profile', 'read frame periodicity'],
-    fill='toself'
-    ))
-        
+    fig = go.Figure(
+        data=go.Scatterpolar(
+            r=[0.8, .5, .2, .6, .3, 0.8],
+            theta=['read frame periodicity',
+                   'ligation bias',
+                   'nucleotide composition',
+                   'mRNA breakdown',
+                   'metagene profile',
+                   'read frame periodicity'],
+            fill='toself'
+        )
+    )
     fig.update_layout(
-    title="[WIP] Summary Scores",
-    # autosize=False,
-    # width=width,
-    # height=height,
-    polar=dict(
-        radialaxis=dict(
-        visible=False,
+        title="[WIP] Summary Scores",
+        # autosize=False,
+        # width=width,
+        # height=height,
+        polar=dict(
+            radialaxis=dict(visible=False),
+            radialaxis_range=[0, 1],
+            angularaxis_thetaunit="radians"
         ),
-        radialaxis_range = [0, 1],
-        angularaxis_thetaunit = "radians"
-    ),
-    showlegend=False,
+        showlegend=False,
     )
     plot_metrics_summary_dict = {
         "name": "Summary of Metrics",
