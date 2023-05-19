@@ -38,10 +38,10 @@ def generate_report(
 
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
-    binary_logo = open("Ribometric/templates/RiboMetric_logo.png",
+    binary_logo = open("RiboMetric/templates/RiboMetric_logo.png",
                        "rb").read()
     base64_logo = base64.b64encode(binary_logo).decode("utf-8")
-    binary_icon = open("Ribometric/templates/RiboMetric_favicon.png",
+    binary_icon = open("RiboMetric/templates/RiboMetric_favicon.png",
                        "rb").read()
     base64_icon = base64.b64encode(binary_icon).decode("utf-8")
 
