@@ -70,7 +70,8 @@ def ligation_bias_distribution_metric(
 
 
 def cds_coverage_metric(cds_read_df: pd.DataFrame,
-                        minimum_reads: int = 1
+                        minimum_reads: int = 1,
+                        in_frame_coverage: bool = True
                         ) -> float:
     """
     Calculates the proportion of CDS covered by ribosomal protected fragments
@@ -80,24 +81,15 @@ def cds_coverage_metric(cds_read_df: pd.DataFrame,
         a transcript available in the provided annotation
         minimum_reads: The minimum amount of reads that should cover
         a specific nucleotide to be counted for the proportion
+        in_frame_count: If set to True, only controls the coverage in frane
 
     Outputs:
         cds_coverage: A proportion of the amount of individual nucleotides
         represented by the A-sites over the total number of nucleotides in
         the CDS of transcripts present in the reads
     """
-    cds_reads_count = cds_read_df[cds_read_df
-                                  .groupby(["transcript_id", "a_site"])
-                                  .transform('size') > minimum_reads
-                                  ]
-    cds_reads_sum = (cds_reads_count
-                     .groupby(["transcript_id", "a_site"])
-                     .size()
-                     .groupby('transcript_id')
-                     .size()
-                     .sum()
-                     )
-
+    # Calculate the total combined length of the CDS of transcripts that have
+    # reads aligned to them
     cds_transcripts = cds_read_df[~cds_read_df["transcript_id"]
                                   .duplicated()
                                   ][["transcript_id", "cds_start", "cds_end"]]
@@ -105,8 +97,33 @@ def cds_coverage_metric(cds_read_df: pd.DataFrame,
                                      .apply(lambda x: x['cds_end']
                                             - x['cds_start'],
                                             axis=1))
-    cds_length_sum = cds_transcripts["cds_length"].sum()
-    return cds_reads_sum/cds_length_sum
+    cds_length_total = cds_transcripts["cds_length"].sum()
+
+    # Subset the dataframe so that only reads where the count covering a
+    # position is greater than minimum_reads
+    cds_reads_count = cds_read_df[cds_read_df
+                                  .groupby(["transcript_id", "a_site"])
+                                  .transform('size') > minimum_reads
+                                  ]
+    
+    # If in_frame_coverage is true, take only reads that are in frame for
+    # their transcript and divide the combined CDS length by 3
+    if in_frame_coverage:
+        cds_reads_count[
+        (cds_reads_count["a_site"] - cds_reads_count["cds_start"])%3 == 0
+        ]
+        cds_length_total = cds_length_total/3
+    
+    # Calculate the count of nucleotides covered by the reads after filtering
+    cds_reads_count = (cds_reads_count
+                     .groupby(["transcript_id", "a_site"])
+                     .size()
+                     .groupby('transcript_id')
+                     .size()
+                     .sum()
+                     )
+
+    return cds_reads_count/cds_length_total
 
 
 def calculate_score(probabilities):
