@@ -11,11 +11,11 @@ import json
 def generate_json(
     results_dict: dict,
     config: dict,
-    name: str = "RibosomeProfiler_data.json",
+    name: str = "RiboMetric_data.json",
     output_directory: str = "",
 ):
     """
-    Generate a machine readable format of the RibosomeProfiler results
+    Generate a machine readable format of the RiboMetric results
 
     Input:
         results_dict: Dictionary containing the results of the qc analysis
