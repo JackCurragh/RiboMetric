@@ -1,2 +1,3 @@
 # Files ignored for language statistics
+*.py              linguist-detectable
 example_reports/* linguist-vendored
