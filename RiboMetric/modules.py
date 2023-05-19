@@ -475,9 +475,8 @@ def metagene_profile(
         distance_range: The range of the plot
 
     Outputs:
-        metagene_profile_dict: dictionary with a tuple key containing the
-        read_length of the read and distance to the target and the counts
-        as values
+        metagene_profile_dict: dictionary containing the read_length of
+        the read and distance to the target as keys and the counts as values
     """
     target_loop = [target] if target != "both" else ["start", "stop"]
     metagene_profile_dict = {"start": {}, "stop": {}}
@@ -497,7 +496,7 @@ def metagene_profile(
         if pre_metaprofile_dict == {}:
             print(
                 "ERR - Metagene Profile: No reads found in specified range, \
-        removing boundaries..."
+removing boundaries..."
             )
             pre_metaprofile_dict = (
                 annotated_read_df.groupby(["read_length", "metagene_info"])
