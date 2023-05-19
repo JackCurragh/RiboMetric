@@ -33,6 +33,7 @@ from .metrics import (
     triplet_periodicity_best_read_length_score as tpbrl_metric,
     information_metric_cutoff,
     triplet_periodicity_weighted_score_best_3_read_lengths as tpw3rl_metric,
+    cds_coverage_metric
 )
 
 
@@ -145,6 +146,11 @@ def annotation_mode(
             config["plots"]["metagene_profile"]["distance_target"],
             config["plots"]["metagene_profile"]["distance_range"],
         )
+
+        results_dict["cds_coverage_metric"] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=1,
+            in_frame_coverage=False)
     return results_dict
 
 
