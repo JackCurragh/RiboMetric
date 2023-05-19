@@ -323,7 +323,7 @@ def prepare_annotation(
     coding_tx_ids = cds_df["transcript_id"].unique()[:num_transcripts]
 
     annotation_df = gff_df_to_cds_df(gffdf, coding_tx_ids)
-    basename = os.path.basename(gff_path).split(".")[0]
+    basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
     output_name = f"{basename}_RiboMetric.tsv"
     annotation_df.to_csv(
         os.path.join(outdir, output_name),
