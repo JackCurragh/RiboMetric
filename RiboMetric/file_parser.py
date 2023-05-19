@@ -72,6 +72,24 @@ def parse_fasta(fasta_path: str) -> dict:
     return transcript_dict
 
 
+def check_bam(bam_path: str) -> bool:
+    """
+    Check whether the bam file and its index exists at the provided path
+    Return True if both files exist, False otherwise
+
+    Inputs:
+        bam_path: Path to the bam file
+
+
+    Outputs:
+        bool: True if the bam file and its index exist, False otherwise 
+    """
+    if os.path.exists(bam_path) and os.path.exists(bam_path + ".bai"):
+        return True
+    else:
+        return False
+
+
 def flagstat_bam(bam_path: str) -> dict:
     """
     Run samtools flagstat on the bam file at the provided path
@@ -112,6 +130,7 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
                                shell=True,
                                stdout=subprocess.PIPE,
                                text=True)
+    
     print("Processing reads...")
     read_list = []
     for line in iter(process.stdout.readline, ""):

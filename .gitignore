@@ -124,3 +124,8 @@ bak*
 .gitignore
 RiboMetric_report.html
 RiboMetric_report.pdf
+
+sample_data/transcriptome_collapsed.bam
+sample_data/transcriptome_collapsed.bam.bai
+sample_data/gencode.v25.annotation.gff3 
+
