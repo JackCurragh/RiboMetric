@@ -69,7 +69,7 @@ def ligation_bias_distribution_metric(
     return kl_divergence
 
 
-def cds_coverage_metric(annotated_read_df: pd.DataFrame, minimum_reads: int = 1) -> float:
+def cds_coverage_metric(cds_read_df: pd.DataFrame, minimum_reads: int = 1) -> float:
     """
     Calculates the proportion of CDS covered by ribosomal protected fragments
 
@@ -84,8 +84,8 @@ def cds_coverage_metric(annotated_read_df: pd.DataFrame, minimum_reads: int = 1)
         by the A-sites over the total number of nucleotides in the CDS of transcripts 
         present in the reads
     """
-    cds_reads_sum = cds_read_df[cds_read_df.groupby(["transcript_id", "a_site"]).transform('size') > minimum_reads]
-    cds_reads_sum = cds_reads_sum.groupby(["transcript_id", "a_site"]).size().groupby('transcript_id').size().sum()
+    cds_reads_count = cds_read_df[cds_read_df.groupby(["transcript_id", "a_site"]).transform('size') > minimum_reads]
+    cds_reads_sum = cds_reads_count.groupby(["transcript_id", "a_site"]).size().groupby('transcript_id').size().sum()
 
     cds_transcripts = cds_read_df[~cds_read_df["transcript_id"].duplicated()][["transcript_id","cds_start","cds_end"]]
     cds_transcripts["cds_length"] = cds_transcripts.apply(lambda x: x['cds_end'] - x['cds_start'], axis=1)
