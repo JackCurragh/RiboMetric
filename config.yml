@@ -3,7 +3,7 @@ plots:
   font_family: Helvetica Neue,Helvetica,Arial,sans-serif
   base_color: '#7f7f7f'
   nucleotide_colors: {"A": "#c93434", "C": "#2e85db", "G": "#f0de1f", "T": "#1fc24d"}
-  image_size: [720, 360]      # [Width, Height] in pixels, used for pdf images
+  image_size: [720, 370]      # [Width, Height] in pixels, used for pdf images
   ligation_bias_distribution:
     nucleotide_count: 2       # Size of nucleotide groups to check (default = 2)
     five_prime: True          # If set to false, controls possible bias at 3' instead of 5'
@@ -30,6 +30,10 @@ plots:
     distance_range: [-30,30]
     colorscale: "electric"    # Heatmap colorscale, see https://plotly.com/python/builtin-colorscales/
     max_colorscale: 350       # set to 'None' (without quotes!) for automatic maximum
+  logoplot:
+    enable: false             # Logoplot generation with WebLogo can take a long time, disabled by default
+    nucleotide_count: 15      # How many nucleotides to include in the logoplot
+    
 qc:
   use_cds_subset:
   # Defines which modules use only reads that are on cds

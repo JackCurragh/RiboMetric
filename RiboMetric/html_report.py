@@ -57,6 +57,7 @@ def generate_report(
 
     template = env.get_template("base.html")
     context = {
+        "summary": plots.pop(0),
         "plots": plots,
         "completion_time": completion_time,
         "logo": base64_logo,
