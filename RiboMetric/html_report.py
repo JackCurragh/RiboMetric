@@ -9,6 +9,8 @@ from datetime import datetime
 from .modules import convert_html_to_pdf
 import base64
 
+import os
+
 
 def generate_report(
     plots: list,

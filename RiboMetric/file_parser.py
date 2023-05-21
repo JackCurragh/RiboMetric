@@ -160,9 +160,9 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
             process.kill()  # kill the process if we've read enough data
             break
         else:
-            read_percentage = round(len(read_list) / num_reads, 3) * 100
+            read_percentage = round(len(read_list) / num_reads * 100, 3)
             print(
-                f"Processed {len(read_list)}/{num_reads}({read_percentage}%)",
+                f"Processed {len(read_list)}/{num_reads} ({read_percentage}%)",
                 end="\r",
             )
 
