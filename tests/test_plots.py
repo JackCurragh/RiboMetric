@@ -20,7 +20,7 @@ import pandas as pd
 
 
 def test_plot_read_length_distribution():
-    with open("config.yml", "r") as ymlfile:
+    with open("RiboMetric/config.yml", "r") as ymlfile:
         config = yaml.load(ymlfile, Loader=yaml.Loader)
     read_df_pre = pd.read_csv("tests/test_data/test.csv")
     read_df = read_df_pre.loc[
@@ -34,7 +34,7 @@ def test_plot_read_length_distribution():
 
 def test_plots():
     errors = []
-    with open("config.yml", "r") as ymlfile:
+    with open("RiboMetric/config.yml", "r") as ymlfile:
         config = yaml.load(ymlfile, Loader=yaml.Loader)
     read_df_pre = pd.read_csv("tests/test_data/test.csv")
     read_df = read_df_pre.loc[
