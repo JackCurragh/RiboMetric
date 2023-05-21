@@ -355,8 +355,15 @@ def main(args):
             samtools index <bam_file>
             """)
         flagstat = flagstat_bam(args.bam)
-        print(flagstat)
-        read_df_pre = parse_bam(args.bam, args.subsample)
+        if flagstat['mapped_reads'] < args.subsample:
+            read_limit = flagstat['mapped_reads']
+        else:
+            read_limit = args.subsample
+
+        read_df_pre = parse_bam(
+            args.bam,
+            read_limit
+            )
         print("Reads parsed")
 
         # Expand the dataframe to have one row per read
