@@ -37,7 +37,9 @@ from .metrics import (
 
 
 def annotation_mode(
-    read_df: pd.DataFrame, annotation_df: pd.DataFrame = pd.DataFrame(), config: dict = {}
+    read_df: pd.DataFrame,
+    annotation_df: pd.DataFrame = pd.DataFrame(),
+    config: dict = {}
 ) -> dict:
     """
     Run the annotation mode of the qc analysis
@@ -65,10 +67,10 @@ def annotation_mode(
     print("Running modules")
 
     results_dict = {}
-    results_dict["mode"] = ("annotation" 
-                            if annotation 
+    results_dict["mode"] = ("annotation"
+                            if annotation
                             else "annotation_free")
-    
+
     print("> read_length_distribution")
     results_dict["read_length_distribution"] = read_length_distribution(
         read_df
@@ -105,20 +107,22 @@ def annotation_mode(
 
     print("> nucleotide_composition")
     results_dict["nucleotide_composition"] = nucleotide_composition(read_df)
-    
+
     if config["plots"]["logoplot"]["enable"]:
         print("> sequence_slice")
         results_dict["sequence_slice"] = sequence_slice(
             read_df,
-            nt_start=config["plots"]["nucleotide_proportion"]["nucleotide_start"],
-            nt_count=config["plots"]["nucleotide_proportion"]["nucleotide_count"],
+            config["plots"]["nucleotide_proportion"]["nucleotide_start"],
+            config["plots"]["nucleotide_proportion"]["nucleotide_count"],
         )
 
     print("> read_frame_distribution")
-    read_frame_dist = (read_frame_distribution(cds_read_df)
-                       if config["qc"]["use_cds_subset"]["read_frame_distribution"] and annotation
-                       else read_frame_distribution(read_df)
-                       )
+    read_frame_dist = (
+        read_frame_distribution(cds_read_df)
+        if config["qc"]["use_cds_subset"]["read_frame_distribution"]
+        and annotation
+        else read_frame_distribution(read_df)
+        )
     pre_scores = rfd_metric(read_frame_dist)
     results_dict["read_frame_distribution"] = read_frame_dist
     results_dict["read_frame_distribution_metric"] = information_metric_cutoff(
@@ -137,7 +141,9 @@ def annotation_mode(
 
     if annotation:
         print("> mRNA_distribution")
-        results_dict["mRNA_distribution"] = mRNA_distribution(annotated_read_df)
+        results_dict["mRNA_distribution"] = mRNA_distribution(
+            annotated_read_df
+            )
 
         print("> metagene_profile")
         results_dict["metagene_profile"] = metagene_profile(
@@ -145,6 +151,11 @@ def annotation_mode(
             config["plots"]["metagene_profile"]["distance_target"],
             config["plots"]["metagene_profile"]["distance_range"],
         )
+        print(metagene_profile(
+            annotated_read_df,
+            config["plots"]["metagene_profile"]["distance_target"],
+            config["plots"]["metagene_profile"]["distance_range"],
+        ))
     return results_dict
 
 
