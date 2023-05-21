@@ -51,6 +51,7 @@ from rich.table import Table
 from rich.emoji import Emoji
 
 import yaml
+import os
 
 from .file_parser import (
     parse_bam,
@@ -315,8 +316,14 @@ def main(args):
     console = Console()
     print_logo(console)
 
-    with open(args.config, "r") as ymlfile:
-        config = yaml.load(ymlfile, Loader=yaml.Loader)
+    if os.path.exists(args.config):
+        with open(args.config, "r") as ymlfile:
+            config = yaml.load(ymlfile, Loader=yaml.Loader)
+    else:
+        project_dir = os.path.dirname(os.path.abspath(__file__))
+        config_file_path = os.path.join(project_dir, 'config.yml')
+        with open(config_file_path, "r") as ymlfile:
+            config = yaml.load(ymlfile, Loader=yaml.Loader)
 
     if args.command == "prepare":
         print_table_prepare(args, console, "Prepare Mode")
@@ -338,14 +345,13 @@ def main(args):
         elif args.pdf:
             report_export = "pdf"
 
-        
         if not check_bam(args.bam):
-            raise(Exception("""
+            raise Exception("""
             Either BAM file or it's index does not exist at given path
-            
+
             To create an index for a BAM file, run:
             samtools index <bam_file>
-            """))
+            """)
         flagstat = flagstat_bam(args.bam)
         print(flagstat)
         read_df_pre = parse_bam(args.bam, args.subsample)
