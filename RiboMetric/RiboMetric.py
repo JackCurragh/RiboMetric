@@ -61,7 +61,7 @@ from .file_parser import (
     flagstat_bam,
     check_bam,
 )
-from .qc import annotation_mode, annotation_mode, sequence_mode
+from .qc import annotation_mode, sequence_mode
 from .plots import generate_plots
 from .modules import a_site_calculation
 from .html_report import generate_report
