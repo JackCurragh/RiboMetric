@@ -317,13 +317,15 @@ def main(args):
     print_logo(console)
 
     if os.path.exists(args.config):
-        with open(args.config, "r") as ymlfile:
-            config = yaml.load(ymlfile, Loader=yaml.Loader)
+        with open(args.config, "r") as yml:
+            config = yaml.load(yml, Loader=yaml.Loader)
     else:
+        # load default config file
         project_dir = os.path.dirname(os.path.abspath(__file__))
         config_file_path = os.path.join(project_dir, 'config.yml')
-        with open(config_file_path, "r") as ymlfile:
-            config = yaml.load(ymlfile, Loader=yaml.Loader)
+
+        with open(config_file_path, "r") as yml:
+            config = yaml.load(yml, Loader=yaml.Loader)
 
     if args.command == "prepare":
         print_table_prepare(args, console, "Prepare Mode")
