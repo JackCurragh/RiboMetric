@@ -145,6 +145,11 @@ def annotation_mode(
             config["plots"]["metagene_profile"]["distance_target"],
             config["plots"]["metagene_profile"]["distance_range"],
         )
+        print(metagene_profile(
+            annotated_read_df,
+            config["plots"]["metagene_profile"]["distance_target"],
+            config["plots"]["metagene_profile"]["distance_range"],
+        ))
     return results_dict
 
 
