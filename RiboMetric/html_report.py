@@ -33,18 +33,26 @@ def generate_report(
     Outputs:
         No variables will be output
     """
+    project_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env = Environment(
-        loader=FileSystemLoader(["templates", "RiboMetric/templates"]),
+        loader=FileSystemLoader(
+            ["templates", f"{project_path}/RiboMetric/templates"]
+        ),
         autoescape=False,
     )
 
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
-    binary_logo = open("RiboMetric/templates/RiboMetric_logo.png",
-                       "rb").read()
+    binary_logo = open(
+        f"{project_path}/RiboMetric/templates/RiboMetric_logo.png",
+        "rb"
+        ).read()
     base64_logo = base64.b64encode(binary_logo).decode("utf-8")
-    binary_icon = open("RiboMetric/templates/RiboMetric_favicon.png",
-                       "rb").read()
+
+    binary_icon = open(
+        f"{project_path}/RiboMetric/templates/RiboMetric_favicon.png",
+        "rb"
+        ).read()
     base64_icon = base64.b64encode(binary_icon).decode("utf-8")
 
     if outdir == "":
