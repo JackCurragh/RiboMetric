@@ -54,6 +54,15 @@ def annotation_mode(
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
+    read_df = read_df.drop(
+            [
+                'read_name',
+                'sequence',
+                'sequence_qualities',
+                'tags',
+                ], axis=1
+        )
+
     if len(annotation_df) > 0:
         annotation = True
         print("Merging annotation and reads")
@@ -151,11 +160,6 @@ def annotation_mode(
             config["plots"]["metagene_profile"]["distance_target"],
             config["plots"]["metagene_profile"]["distance_range"],
         )
-        print(metagene_profile(
-            annotated_read_df,
-            config["plots"]["metagene_profile"]["distance_target"],
-            config["plots"]["metagene_profile"]["distance_range"],
-        ))
     return results_dict
 
 
