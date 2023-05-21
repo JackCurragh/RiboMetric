@@ -57,7 +57,6 @@ def annotation_mode(
     read_df = read_df.drop(
             [
                 'read_name',
-                'sequence',
                 'sequence_qualities',
                 'tags',
                 ], axis=1
