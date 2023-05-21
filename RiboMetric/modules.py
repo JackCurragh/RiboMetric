@@ -168,7 +168,7 @@ def normalise_ligation_bias(
     return ligation_bias_dict
 
 
-def slicer_vectorized(array: np.Array, start: int, end: int):
+def slicer_vectorized(array: np.array, start: int, end: int):
     """
     String slicer for numpy arrays
 
