@@ -67,8 +67,8 @@ def annotation_mode(
     print("Running modules")
 
     results_dict = {}
-    results_dict["mode"] = ("annotation" 
-                            if annotation 
+    results_dict["mode"] = ("annotation"
+                            if annotation
                             else "annotation_free")
 
     print("> read_length_distribution")
@@ -107,7 +107,7 @@ def annotation_mode(
 
     print("> nucleotide_composition")
     results_dict["nucleotide_composition"] = nucleotide_composition(read_df)
-    
+
     if config["plots"]["logoplot"]["enable"]:
         print("> sequence_slice")
         results_dict["sequence_slice"] = sequence_slice(
