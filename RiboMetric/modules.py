@@ -83,14 +83,14 @@ def global_nucleotide_proportion(
         series = (
             read_df["sequence"]
             .drop_duplicates()
-            .apply(lambda x: x[num_bases : -(len(x) % num_bases)])
+            .apply(lambda x: x[num_bases: -(len(x) % num_bases)])
         )
     # If five_prime is false, remove last n characters and first if odd length
     else:
         series = (
             read_df["sequence"]
             .drop_duplicates()
-            .apply(lambda x: x[len(x) % num_bases : -num_bases])
+            .apply(lambda x: x[len(x) % num_bases: -num_bases])
         )
     # Concatenate all strings in the Series
     concatenated = "".join(series.tolist())
@@ -167,10 +167,12 @@ def normalise_ligation_bias(
     }
     return ligation_bias_dict
 
-# https://stackoverflow.com/a/39045337
-def slicer_vectorized(array,start,end):
+
+def slicer_vectorized(array: np.Array, start: int, end: int):
     """
     String slicer for numpy arrays
+
+    Note: https://stackoverflow.com/a/39045337
 
     Inputs:
         array: A numpy array of strings
@@ -181,8 +183,8 @@ def slicer_vectorized(array,start,end):
         sliced_array: An array consisting of only the selected characters
         from the input string array
     """
-    sliced_array = array.view((str,1)).reshape(len(array),-1)[:,start:end]
-    return np.frombuffer(sliced_array.tobytes(),dtype=(str,end-start))
+    sliced_array = array.view((str, 1)).reshape(len(array), -1)[:, start:end]
+    return np.frombuffer(sliced_array.tobytes(), dtype=(str, end-start))
 
 
 def nucleotide_composition(
@@ -208,7 +210,7 @@ def nucleotide_composition(
         nucleotide_array = nucleotide_array[nucleotide_array != '']
 
         nucleotide, counts = np.unique(nucleotide_array, return_counts=True)
-        
+
         nucleotide_counts = dict(zip(nucleotide, counts))
         nucleotide_sum = sum(nucleotide_counts.values())
 
@@ -266,7 +268,7 @@ def read_frame_score(read_frame_dict: dict) -> dict:
     """
     scored_read_frame_dict = {}
     highest_peak_sum, second_peak_sum = 0, 0
-    
+
     for k, inner_dict in read_frame_dict.items():
         top_two_values = sorted(inner_dict.values(), reverse=True)[:2]
         highest_peak_sum += top_two_values[0]
@@ -354,9 +356,13 @@ def assign_mRNA_category(annotated_read_df) -> str:
     choices = [
         "five_leader", "start_codon", "CDS", "stop_codon", "three_trailer"
     ]
-    annotated_read_df["mRNA_category"] = np.select(conditions, choices, "unknown")
-
+    annotated_read_df["mRNA_category"] = np.select(
+        conditions,
+        choices,
+        "unknown"
+        )
     return annotated_read_df
+
 
 # Slow, needs improving
 def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
@@ -526,7 +532,7 @@ def sequence_slice(
     read_df: pd.DataFrame, nt_start: int = 0, nt_count: int = 15
 ) -> dict:
     sequence_slice_dict = {
-        k: v[nt_start : nt_start + nt_count]
+        k: v[nt_start: nt_start + nt_count]
         for k, v in read_df["sequence"].to_dict().items()
     }
     return sequence_slice_dict

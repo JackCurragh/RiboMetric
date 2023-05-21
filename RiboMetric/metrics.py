@@ -69,33 +69,48 @@ def ligation_bias_distribution_metric(
     return kl_divergence
 
 
-def cds_coverage_metric(annotated_read_df: pd.DataFrame, minimum_reads: int = 1) -> float:
+def cds_coverage_metric(
+        cds_read_df: pd.DataFrame,
+        minimum_reads: int = 1
+        ) -> float:
     """
     Calculates the proportion of CDS covered by ribosomal protected fragments
 
     Inputs:
-        annotated_read_df: Dataframe containing the reads that have a transcript available
-        in the provided annotation
-        minimum_reads: The minimum amount of reads that should cover a specific nucleotide
-        to be counted for the proportion
+        annotated_read_df: Dataframe containing the reads that have a
+        transcript available in the provided annotation
+        minimum_reads: The minimum amount of reads that should cover a
+        specific nucleotide to be counted for the proportion
 
     Outputs:
-        cds_coverage: A proportion of the amount of individual nucleotides represented
-        by the A-sites over the total number of nucleotides in the CDS of transcripts 
-        present in the reads
+        cds_coverage: A proportion of the amount of individual nucleotides
+        represented by the A-sites over the total number of nucleotides in
+        the CDS of transcripts present in the reads
     """
-    cds_reads_sum = cds_read_df[cds_read_df.groupby(["transcript_id", "a_site"]).transform('size') > minimum_reads]
-    cds_reads_sum = cds_reads_sum.groupby(["transcript_id", "a_site"]).size().groupby('transcript_id').size().sum()
+    cds_reads_sum = cds_read_df[
+        cds_read_df.groupby(
+            ["transcript_id", "a_site"]
+        ).transform('size') > minimum_reads]
 
-    cds_transcripts = cds_read_df[~cds_read_df["transcript_id"].duplicated()][["transcript_id","cds_start","cds_end"]]
-    cds_transcripts["cds_length"] = cds_transcripts.apply(lambda x: x['cds_end'] - x['cds_start'], axis=1)
+    cds_reads_sum = cds_reads_sum.groupby(
+        ["transcript_id", "a_site"]
+        ).size().groupby('transcript_id').size().sum()
+
+    cds_transcripts = cds_read_df[
+        ~cds_read_df["transcript_id"].duplicated()
+        ][["transcript_id", "cds_start", "cds_end"]]
+
+    cds_transcripts["cds_length"] = cds_transcripts.apply(
+        lambda x: x['cds_end'] - x['cds_start'],
+        axis=1
+        )
     cds_length_sum = cds_transcripts["cds_length"].sum()
     return cds_reads_sum/cds_length_sum
 
 
 def calculate_score(probabilities):
     '''
-    Calculate the triplet periocity score for a given probability of a read
+    Calculate the triplet periodicity score for a given probability of a read
     being in frame. The score is the square root of the bits of information in
     the triplet distribution.
 
