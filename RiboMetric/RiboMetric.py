@@ -51,6 +51,7 @@ from rich.table import Table
 from rich.emoji import Emoji
 
 import yaml
+import os
 
 from .file_parser import (
     parse_bam,
@@ -60,7 +61,7 @@ from .file_parser import (
     flagstat_bam,
     check_bam,
 )
-from .qc import annotation_mode, annotation_mode, sequence_mode
+from .qc import annotation_mode, sequence_mode
 from .plots import generate_plots
 from .modules import a_site_calculation
 from .html_report import generate_report
@@ -315,8 +316,16 @@ def main(args):
     console = Console()
     print_logo(console)
 
-    with open(args.config, "r") as ymlfile:
-        config = yaml.load(ymlfile, Loader=yaml.Loader)
+    if os.path.exists(args.config):
+        with open(args.config, "r") as yml:
+            config = yaml.load(yml, Loader=yaml.Loader)
+    else:
+        # load default config file
+        project_dir = os.path.dirname(os.path.abspath(__file__))
+        config_file_path = os.path.join(project_dir, 'config.yml')
+
+        with open(config_file_path, "r") as yml:
+            config = yaml.load(yml, Loader=yaml.Loader)
 
     if args.command == "prepare":
         print_table_prepare(args, console, "Prepare Mode")
@@ -338,17 +347,23 @@ def main(args):
         elif args.pdf:
             report_export = "pdf"
 
-        
         if not check_bam(args.bam):
-            raise(Exception("""
+            raise Exception("""
             Either BAM file or it's index does not exist at given path
-            
+
             To create an index for a BAM file, run:
             samtools index <bam_file>
-            """))
+            """)
         flagstat = flagstat_bam(args.bam)
-        print(flagstat)
-        read_df_pre = parse_bam(args.bam, args.subsample)
+        if flagstat['mapped_reads'] < args.subsample:
+            read_limit = flagstat['mapped_reads']
+        else:
+            read_limit = args.subsample
+
+        read_df_pre = parse_bam(
+            args.bam,
+            read_limit
+            )
         print("Reads parsed")
 
         # Expand the dataframe to have one row per read

@@ -69,10 +69,11 @@ def ligation_bias_distribution_metric(
     return kl_divergence
 
 
-def cds_coverage_metric(cds_read_df: pd.DataFrame,
-                        minimum_reads: int = 1,
-                        in_frame_coverage: bool = True
-                        ) -> float:
+def cds_coverage_metric(
+        cds_read_df: pd.DataFrame,
+        minimum_reads: int = 1,
+        in_frame_coverage: bool = True
+        ) -> float:
     """
     Calculates the proportion of CDS covered by ribosomal protected fragments
 
@@ -81,7 +82,7 @@ def cds_coverage_metric(cds_read_df: pd.DataFrame,
         a transcript available in the provided annotation
         minimum_reads: The minimum amount of reads that should cover
         a specific nucleotide to be counted for the proportion
-        in_frame_count: If set to True, only controls the coverage in frane
+        in_frame_count: If set to True, only controls the coverage in frame
 
     Outputs:
         cds_coverage: A proportion of the amount of individual nucleotides
@@ -128,7 +129,7 @@ def cds_coverage_metric(cds_read_df: pd.DataFrame,
 
 def calculate_score(probabilities):
     '''
-    Calculate the triplet periocity score for a given probability of a read
+    Calculate the triplet periodicity score for a given probability of a read
     being in frame. The score is the square root of the bits of information in
     the triplet distribution.
 
