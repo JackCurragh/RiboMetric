@@ -382,7 +382,8 @@ def main(args):
         read_df = a_site_calculation(read_df)
 
         if args.gff is None and args.annotation is None:
-            results_dict = annotation_mode(read_df, config)
+            results_dict = annotation_mode(read_df,
+                                           config=config)
 
         else:
             if args.annotation is not None and args.gff is not None:
