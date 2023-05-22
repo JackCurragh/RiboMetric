@@ -376,7 +376,7 @@ def main(args):
                 read_df_pre.index.repeat(read_df_pre["count"])
             ].reset_index(drop=True)
             print("Dataframe expanded")
-        
+
         del read_df_pre
         print("Calculating A site information")
         read_df = a_site_calculation(read_df)
@@ -394,6 +394,7 @@ def main(args):
                     args.gff, args.output, args.transcripts, config
                 )
                 print("Annotation prepared")
+
             elif args.annotation is not None and args.gff is None:
                 print("Annotation provided, parsing")
                 annotation_df = parse_annotation(args.annotation)
