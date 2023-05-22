@@ -55,14 +55,6 @@ def annotation_mode(
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
-    read_df = read_df.drop(
-            [
-                'read_name',
-                'sequence_qualities',
-                'tags',
-                ], axis=1
-        )
-
     if len(annotation_df) > 0:
         annotation = True
         print("Merging annotation and reads")
