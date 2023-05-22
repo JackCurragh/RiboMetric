@@ -82,7 +82,7 @@ def check_bam(bam_path: str) -> bool:
 
 
     Outputs:
-        bool: True if the bam file and its index exist, False otherwise 
+        bool: True if the bam file and its index exist, False otherwise
     """
     if os.path.exists(bam_path) and os.path.exists(bam_path + ".bai"):
         return True
@@ -130,12 +130,17 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
                                shell=True,
                                stdout=subprocess.PIPE,
                                text=True)
-    
+
     print("Processing reads...")
+    counter = 0
     read_list = []
+    read_df = pd.DataFrame(columns=['read_length',
+                                    'reference_name','reference_start',
+                                    'sequence', 'count'])
     for line in iter(process.stdout.readline, ""):
         if line.startswith("@"):
             continue
+        counter += 1
         fields = line.strip().split("\t")
 
         if "_x" in fields[0]:
@@ -144,18 +149,23 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
             count = 1
 
         read_list.append(
-            {
-                "read_name": fields[0],
-                "read_length": len(fields[9]),
-                "reference_name": fields[2],
-                "reference_start": int(fields[3]) - 1,
-                "sequence": fields[9],
-                "sequence_qualities": fields[10],
-                "tags": fields[11:],
-                "count": count,
-            }
+            [
+                len(fields[9]),         # read_length
+                fields[2],              # reference_name
+                int(fields[3]) - 1,     # reference_start
+                fields[9],              # sequence
+                count,                  # count
+            ]
         )
-
+            
+        if counter > 100000:
+            read_df = pd.concat([read_df, 
+                                 pd.DataFrame(
+                                    read_list,
+                                    columns=read_df.columns)
+                                ])
+            counter = 0
+            read_list = []
         if len(read_list) > num_reads:
             process.kill()  # kill the process if we've read enough data
             break
@@ -167,7 +177,7 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
             )
 
     process.kill()
-    return pd.DataFrame(read_list)
+    return read_df
 
 
 def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
