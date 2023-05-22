@@ -126,15 +126,18 @@ def annotation_mode(
         )
     pre_scores = rfd_metric(read_frame_dist)
     results_dict["read_frame_distribution"] = read_frame_dist
-    results_dict["metrics"]["read_frame_distribution_metric"] = information_metric_cutoff(
-        pre_scores,
-        config['qc']['read_frame_distribution']['3nt_count_cutoff']
-    )
-    results_dict["metrics"]["3nt_weighted_score"] = triplet_periodicity_weighted_score(
-        pre_scores,
+    results_dict["metrics"]["read_frame_distribution_metric"] =\
+        information_metric_cutoff(
+            pre_scores,
+            config['qc']['read_frame_distribution']['3nt_count_cutoff']
         )
-    results_dict["metrics"]["3nt_weighted_score_best_3_read_lengths"] = tpw3rl_metric(
-        pre_scores,
+    results_dict["metrics"]["3nt_weighted_score"] = \
+        triplet_periodicity_weighted_score(
+            pre_scores,
+        )
+    results_dict["metrics"]["3nt_weighted_score_best_3_read_lengths"] = \
+        tpw3rl_metric(
+            pre_scores,
     )
     results_dict["metrics"]["3nt_best_read_length_score"] = tpbrl_metric(
         pre_scores,

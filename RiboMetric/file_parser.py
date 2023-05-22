@@ -135,7 +135,7 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
     counter, read_df_length = 0, 0
     read_list = []
     read_df = pd.DataFrame(columns=['read_length',
-                                    'reference_name','reference_start',
+                                    'reference_name', 'reference_start',
                                     'sequence', 'count'])
     for line in iter(process.stdout.readline, ""):
         if line.startswith("@"):
@@ -157,13 +157,13 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
                 count,                  # count
             ]
         )
-            
-        if counter > 100000 or counter+read_df_length > num_reads:
-            read_df = pd.concat([read_df, 
+
+        if counter > 1000000 or counter+read_df_length > num_reads:
+            read_df = pd.concat([read_df,
                                  pd.DataFrame(
                                     read_list,
                                     columns=read_df.columns)
-                                ])
+                                 ])
             read_df_length = len(read_df)
             counter = 0
             read_list = []
@@ -172,9 +172,11 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
             print()
             break
         else:
-            read_percentage = round((counter+read_df_length) / num_reads * 100, 3)
+            read_percentage = round((counter+read_df_length)
+                                    / num_reads * 100, 3)
             print(
-                f"Processed {counter+read_df_length}/{num_reads} ({read_percentage}%)",
+                f"Processed {counter+read_df_length}/{num_reads} \
+({read_percentage}%)",
                 end="\r",
             )
 
