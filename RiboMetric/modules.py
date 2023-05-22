@@ -509,7 +509,7 @@ removing boundaries..."
                 .size()
                 .to_dict()
             )
-        # Fill empty read length and distance keys with None            
+        # Fill empty read length and distance keys with None
         min_length = min([x[0] for x in list(pre_metaprofile_dict.keys())])
         max_length = max([x[0] for x in list(pre_metaprofile_dict.keys())])
         for y in range(min_length, max_length):
