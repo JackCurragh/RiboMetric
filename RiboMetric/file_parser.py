@@ -132,7 +132,7 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
                                text=True)
 
     print("Processing reads...")
-    counter = 0
+    counter, read_df_length = 0, 0
     read_list = []
     read_df = pd.DataFrame(columns=['read_length',
                                     'reference_name','reference_start',
@@ -158,21 +158,23 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
             ]
         )
             
-        if counter > 100000:
+        if counter > 100000 or counter+read_df_length > num_reads:
             read_df = pd.concat([read_df, 
                                  pd.DataFrame(
                                     read_list,
                                     columns=read_df.columns)
                                 ])
+            read_df_length = len(read_df)
             counter = 0
             read_list = []
-        if len(read_list) > num_reads:
+        if read_df_length > num_reads:
             process.kill()  # kill the process if we've read enough data
+            print()
             break
         else:
-            read_percentage = round(len(read_list) / num_reads * 100, 3)
+            read_percentage = round(counter+read_df_length / num_reads * 100, 3)
             print(
-                f"Processed {len(read_list)}/{num_reads} ({read_percentage}%)",
+                f"Processed {counter+read_df_length}/{num_reads} ({read_percentage}%)",
                 end="\r",
             )
 
