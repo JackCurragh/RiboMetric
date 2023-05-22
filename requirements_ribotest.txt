@@ -43,7 +43,6 @@ PyYAML==6.0
 qrcode==7.4.2
 reportlab==3.6.13
 requests==2.29.0
--e git+https://github.com/JackCurragh/RibosomeProfiler.git@671f7e73495c2758d049042d001f1d1b6df69b3d#egg=RiboMetric
 rich==13.3.4
 six==1.16.0
 svglib==1.5.1
