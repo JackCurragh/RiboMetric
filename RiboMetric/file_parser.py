@@ -172,7 +172,7 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
             print()
             break
         else:
-            read_percentage = round(counter+read_df_length / num_reads * 100, 3)
+            read_percentage = round((counter+read_df_length) / num_reads * 100, 3)
             print(
                 f"Processed {counter+read_df_length}/{num_reads} ({read_percentage}%)",
                 end="\r",

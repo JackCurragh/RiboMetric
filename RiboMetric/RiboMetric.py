@@ -52,6 +52,7 @@ from rich.emoji import Emoji
 
 import yaml
 import os
+import numpy as np
 
 from .file_parser import (
     parse_bam,
@@ -372,9 +373,8 @@ def main(args):
             read_df = read_df_pre
         else:
             print("Expanding dataframe")
-            read_df = read_df_pre.loc[
-                read_df_pre.index.repeat(read_df_pre["count"])
-            ].reset_index(drop=True)
+            repeat_indices = np.repeat(read_df_pre.index, read_df_pre["count"])
+            read_df = read_df_pre.iloc[repeat_indices].reset_index(drop=True)
             print("Dataframe expanded")
 
         del read_df_pre
