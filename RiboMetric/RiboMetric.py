@@ -361,6 +361,8 @@ def main(args):
                 read_df_pre.index.repeat(read_df_pre["count"])
             ].reset_index(drop=True)
             print("Dataframe expanded")
+        
+        del read_df_pre
         print("Calculating A site information")
         read_df = a_site_calculation(read_df)
 
