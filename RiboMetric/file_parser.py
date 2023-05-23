@@ -8,6 +8,7 @@ from Bio import SeqIO
 import pysam
 import pandas as pd
 import subprocess
+import pysam
 import gffpandas.gffpandas as gffpd
 import os
 import numpy as np
@@ -124,39 +125,29 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
         (keys are the read names)
     """
     # Convert the BAM file to SAM format and read the output in chunks
-    cmd = f"samtools view {bam_file}"
-    print(f"Running {cmd}")
-    process = subprocess.Popen(cmd,
-                               shell=True,
-                               stdout=subprocess.PIPE,
-                               text=True)
-
+    print(f"Running pysam")
     print("Processing reads...")
     counter, read_df_length = 0, 0
     read_list = []
     read_df = pd.DataFrame(columns=['read_length',
                                     'reference_name', 'reference_start',
                                     'sequence', 'count'])
-    for line in iter(process.stdout.readline, ""):
-        if line.startswith("@"):
-            continue
-        counter += 1
-        fields = line.strip().split("\t")
-
-        if "_x" in fields[0]:
-            count = int(fields[0].split("_x")[-1])
+    samfile = pysam.AlignmentFile(bam_file, "rb")
+    for read in samfile.fetch():
+        if "_x" in read.query_name:
+            count = int(read.query_name.split("_x")[-1])
         else:
             count = 1
-
         read_list.append(
             [
-                len(fields[9]),         # read_length
-                fields[2],              # reference_name
-                int(fields[3]) - 1,     # reference_start
-                fields[9],              # sequence
+                read.query_length,      # read_length
+                read.reference_name,    # reference_name
+                read.reference_start,   # reference_start
+                read.query_sequence,    # sequence
                 count,                  # count
             ]
         )
+        counter += 1
 
         if counter > 1000000 or counter+read_df_length > num_reads:
             read_df = pd.concat([read_df,
@@ -169,7 +160,6 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
             counter = 0
             read_list = []
         if read_df_length > num_reads:
-            process.kill()  # kill the process if we've read enough data
             print()
             break
         else:
@@ -181,7 +171,10 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
                 end="\r",
             )
 
-    process.kill()  
+        if counter+read_df_length > num_reads:
+            break
+    samfile.close()
+
     read_df["reference_name"] = read_df["reference_name"].astype("category")
     return read_df
 
