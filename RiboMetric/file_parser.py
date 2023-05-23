@@ -7,7 +7,7 @@ The functions are called by the main script RiboMetric.py
 from Bio import SeqIO
 import pysam
 import pandas as pd
-import subprocess
+from multiprocessing import Pool
 import pysam
 import gffpandas.gffpandas as gffpd
 import os
@@ -112,7 +112,7 @@ def flagstat_bam(bam_path: str) -> dict:
     return flagstat_dict
 
 
-def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
+def single_parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
     """
     Read in the bam file at the provided path and return a dictionary
 
@@ -177,6 +177,67 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
 
     read_df["reference_name"] = read_df["reference_name"].astype("category")
     return read_df
+
+
+def process_reads(reads):
+    read_list = []
+    for read in reads:
+        # Process the read and extract the relevant information    
+        # if "_x" in read.query_name:
+        #     count = int(read.query_name.split("_x")[-1])
+        # else:
+        #     count = 1
+        # read_list.append(
+        #     [
+        #         read.query_length,      # read_length
+        #         read.reference_name,    # reference_name
+        #         read.reference_start,   # reference_start
+        #         read.query_sequence,    # sequence
+        #         count,                  # count
+        #     ]
+        # )
+        if "_x" in read[0]:
+            count = int(read[0].split("_x")[-1])
+        else:
+            count = 1
+        read_list.append(
+            [
+                len(read[9]),      # read_length
+                read[2],    # reference_name
+                int(read[3]),   # reference_start
+                read[9],    # sequence
+                count,                  # count
+            ]
+        )
+    batch_df = pd.DataFrame(read_list, columns=['read_length',
+                                    'reference_name', 'reference_start',
+                                    'sequence', 'count'])  # Convert to DataFrame
+    batch_df["reference_name"] = batch_df["reference_name"].astype("category")
+    return batch_df
+
+
+def parse_bam(bam_file, batch_size, num_processes, max_reads=None):
+    samfile = pysam.AlignmentFile(bam_file, "rb")
+    pool = Pool(processes=num_processes)
+    read_list = []
+
+    for i, read in enumerate(samfile.fetch()):
+        if max_reads and i >= max_reads:
+            break
+        # print(read.to_string().split(sep="\t"))
+        read_list.append(read.to_string().split(sep="\t"))
+
+        if len(read_list) == batch_size:
+            batch_df = pool.map(process_reads, [read_list])[0]
+            read_list = []
+            yield batch_df
+
+    if read_list:
+        batch_df = pool.map(process_reads, [read_list])[0]
+        yield batch_df
+
+    pool.close()
+    pool.join()
 
 
 def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
