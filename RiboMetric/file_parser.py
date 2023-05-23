@@ -8,6 +8,7 @@ from Bio import SeqIO
 import pysam
 import pandas as pd
 import subprocess
+import pysam
 import gffpandas.gffpandas as gffpd
 import os
 import numpy as np
@@ -82,7 +83,7 @@ def check_bam(bam_path: str) -> bool:
 
 
     Outputs:
-        bool: True if the bam file and its index exist, False otherwise 
+        bool: True if the bam file and its index exist, False otherwise
     """
     if os.path.exists(bam_path) and os.path.exists(bam_path + ".bai"):
         return True
@@ -124,50 +125,58 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
         (keys are the read names)
     """
     # Convert the BAM file to SAM format and read the output in chunks
-    cmd = f"samtools view {bam_file}"
-    print(f"Running {cmd}")
-    process = subprocess.Popen(cmd,
-                               shell=True,
-                               stdout=subprocess.PIPE,
-                               text=True)
-    
+    print(f"Running pysam")
     print("Processing reads...")
+    counter, read_df_length = 0, 0
     read_list = []
-    for line in iter(process.stdout.readline, ""):
-        if line.startswith("@"):
-            continue
-        fields = line.strip().split("\t")
-
-        if "_x" in fields[0]:
-            count = int(fields[0].split("_x")[-1])
+    read_df = pd.DataFrame(columns=['read_length',
+                                    'reference_name', 'reference_start',
+                                    'sequence', 'count'])
+    samfile = pysam.AlignmentFile(bam_file, "rb")
+    for read in samfile.fetch():
+        if "_x" in read.query_name:
+            count = int(read.query_name.split("_x")[-1])
         else:
             count = 1
-
         read_list.append(
-            {
-                "read_name": fields[0],
-                "read_length": len(fields[9]),
-                "reference_name": fields[2],
-                "reference_start": int(fields[3]) - 1,
-                "sequence": fields[9],
-                "sequence_qualities": fields[10],
-                "tags": fields[11:],
-                "count": count,
-            }
+            [
+                read.query_length,      # read_length
+                read.reference_name,    # reference_name
+                read.reference_start,   # reference_start
+                read.query_sequence,    # sequence
+                count,                  # count
+            ]
         )
+        counter += 1
 
-        if len(read_list) > num_reads:
-            process.kill()  # kill the process if we've read enough data
+        if counter > 1000000 or counter+read_df_length > num_reads:
+            read_df = pd.concat([read_df,
+                                 pd.DataFrame(
+                                    read_list,
+                                    columns=read_df.columns)
+                                 ])
+
+            read_df_length = len(read_df)
+            counter = 0
+            read_list = []
+        if read_df_length > num_reads:
+            print()
             break
         else:
-            read_percentage = round(len(read_list) / num_reads * 100, 3)
+            read_percentage = round((counter+read_df_length)
+                                    / num_reads * 100, 3)
             print(
-                f"Processed {len(read_list)}/{num_reads} ({read_percentage}%)",
+                f"Processed {counter+read_df_length}/{num_reads} \
+({read_percentage}%)",
                 end="\r",
             )
 
-    process.kill()
-    return pd.DataFrame(read_list)
+        if counter+read_df_length > num_reads:
+            break
+    samfile.close()
+
+    read_df["reference_name"] = read_df["reference_name"].astype("category")
+    return read_df
 
 
 def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
