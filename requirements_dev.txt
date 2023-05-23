@@ -36,6 +36,7 @@ pyhanko-certvalidator==0.22.0
 pypdf==3.9.0
 pypng==0.20220715.0
 pysam==0.21.0
+pytest==7.3.1
 python-bidi==0.4.2
 python-dateutil==2.8.2
 pytz==2023.3
