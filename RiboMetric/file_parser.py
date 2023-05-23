@@ -164,6 +164,7 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
                                     read_list,
                                     columns=read_df.columns)
                                  ])
+
             read_df_length = len(read_df)
             counter = 0
             read_list = []
@@ -180,7 +181,8 @@ def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
                 end="\r",
             )
 
-    process.kill()
+    process.kill()  
+    read_df["reference_name"] = read_df["reference_name"].astype("category")
     return read_df
 
 
