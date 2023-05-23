@@ -140,9 +140,9 @@ def single_parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
             count = 1
         read_list.append(
             [
-                read.query_length,      # read_length
+                int(read.query_length),      # read_length
                 read.reference_name,    # reference_name
-                read.reference_start,   # reference_start
+                int(read.reference_start),   # reference_start
                 read.query_sequence,    # sequence
                 count,                  # count
             ]
@@ -182,59 +182,85 @@ def single_parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
 def process_reads(reads):
     read_list = []
     for read in reads:
-        # Process the read and extract the relevant information    
-        # if "_x" in read.query_name:
-        #     count = int(read.query_name.split("_x")[-1])
-        # else:
-        #     count = 1
-        # read_list.append(
-        #     [
-        #         read.query_length,      # read_length
-        #         read.reference_name,    # reference_name
-        #         read.reference_start,   # reference_start
-        #         read.query_sequence,    # sequence
-        #         count,                  # count
-        #     ]
-        # )
         if "_x" in read[0]:
             count = int(read[0].split("_x")[-1])
         else:
             count = 1
         read_list.append(
             [
-                len(read[9]),      # read_length
-                read[2],    # reference_name
-                int(read[3]),   # reference_start
-                read[9],    # sequence
-                count,                  # count
+                len(read[9]),   # read_length
+                read[2],        # reference_name
+                int(read[3])-1, # reference_start
+                # read[9],        # sequence
+                count,          # count
             ]
         )
     batch_df = pd.DataFrame(read_list, columns=['read_length',
                                     'reference_name', 'reference_start',
-                                    'sequence', 'count'])  # Convert to DataFrame
+                                    'count'])  # Convert to DataFrame
     batch_df["reference_name"] = batch_df["reference_name"].astype("category")
     return batch_df
+
+
+def process_sequences(sequences, pattern_length=1, sequence_length = 50):
+    """
+    Calculate the occurence of nucleotides or groups of nucleotides in the sequences from the reads.
+    The nucleotides or groups are stored in lexicographic order, (i.e. AA, AC, AG, AT, CA... TG, TT)
+    """
+    # Create an empty 2D array to store the counts
+    counts_array = np.zeros((4 ** pattern_length, sequence_length - pattern_length + 1), dtype=int)
+
+    # Iterate over each position in the sequences
+    for i in range(sequence_length - pattern_length + 1):
+        # Get the nucleotides at the current position
+        patterns = [sequence[i:i+pattern_length] if i + pattern_length <= len(sequence) else 0 for sequence in sequences]
+
+        # Count the occurrences of each nucleotide pattern at the current position
+        counts = np.unique(patterns, return_counts=True)
+
+        # Update the counts array
+        for pattern, count in zip(counts[0], counts[1]):
+            if pattern is not None:
+                index = pattern_to_index(pattern)
+                counts_array[index, i] = count
+
+    return counts_array
+
+def pattern_to_index(pattern):
+    """
+    Converts a nucleotide pattern to its corresponding index in the counts array.
+    """
+    index = 0
+    base_to_index = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+    for nucleotide in pattern:
+        if nucleotide in base_to_index:
+            index = index * 4 + base_to_index[nucleotide]
+        else:
+            return 0
+    return index
 
 
 def parse_bam(bam_file, batch_size, num_processes, max_reads=None):
     samfile = pysam.AlignmentFile(bam_file, "rb")
     pool = Pool(processes=num_processes)
     read_list = []
+    sequence ={}
 
     for i, read in enumerate(samfile.fetch()):
         if max_reads and i >= max_reads:
             break
-        # print(read.to_string().split(sep="\t"))
         read_list.append(read.to_string().split(sep="\t"))
 
         if len(read_list) == batch_size:
             batch_df = pool.map(process_reads, [read_list])[0]
+            sequence["mono"] = pool.map(process_sequences, [read_list[9]])[0]
             read_list = []
-            yield batch_df
+            yield batch_df, sequence
 
     if read_list:
         batch_df = pool.map(process_reads, [read_list])[0]
-        yield batch_df
+        sequence["mono"] = pool.map(process_sequences, [read_list[9]])[0]
+        yield batch_df, sequence
 
     pool.close()
     pool.join()
