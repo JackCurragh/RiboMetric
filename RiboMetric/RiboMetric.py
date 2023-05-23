@@ -53,6 +53,7 @@ from rich.emoji import Emoji
 import yaml
 import os
 import numpy as np
+import pandas as pd
 
 from .file_parser import (
     parse_bam,
@@ -361,10 +362,15 @@ def main(args):
         else:
             read_limit = args.subsample
 
-        read_df_pre = parse_bam(
+        batch_size = 100000
+        num_processes = 4
+        read_df_pre = pd.concat(parse_bam(
             args.bam,
+            batch_size,
+            num_processes,
             read_limit
-            )
+            ), ignore_index=True)
+        read_df_pre["reference_name"] = read_df_pre["reference_name"].astype("category")
         print("Reads parsed")
 
         # Expand the dataframe to have one row per read
