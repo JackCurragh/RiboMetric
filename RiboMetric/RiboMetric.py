@@ -52,6 +52,7 @@ from rich.emoji import Emoji
 
 import yaml
 import os
+import numpy as np
 
 from .file_parser import (
     parse_bam,
@@ -372,9 +373,8 @@ def main(args):
             read_df = read_df_pre
         else:
             print("Expanding dataframe")
-            read_df = read_df_pre.loc[
-                read_df_pre.index.repeat(read_df_pre["count"])
-            ].reset_index(drop=True)
+            repeat_indices = np.repeat(read_df_pre.index, read_df_pre["count"])
+            read_df = read_df_pre.iloc[repeat_indices].reset_index(drop=True)
             print("Dataframe expanded")
 
         del read_df_pre
@@ -382,7 +382,8 @@ def main(args):
         read_df = a_site_calculation(read_df)
 
         if args.gff is None and args.annotation is None:
-            results_dict = annotation_mode(read_df, config)
+            results_dict = annotation_mode(read_df,
+                                           config=config)
 
         else:
             if args.annotation is not None and args.gff is not None:

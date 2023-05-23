@@ -322,9 +322,10 @@ def annotate_reads(
         with an added column for the a-site location along
         with the columns from the gff file
     """
-    annotated_read_df = a_site_df.assign(
+    annotated_read_df = a_site_df.drop("sequence", axis=1).assign(
         transcript_id=a_site_df.reference_name.str.split("|").str[0]
     ).merge(annotation_df, on="transcript_id")
+    annotated_read_df["transcript_id"] = annotated_read_df["transcript_id"].astype("category")
     return annotated_read_df
 
 
@@ -361,6 +362,8 @@ def assign_mRNA_category(annotated_read_df) -> str:
         choices,
         "unknown"
         )
+    annotated_read_df["mRNA_category"] = \
+        annotated_read_df["mRNA_category"].astype("category")
     return annotated_read_df
 
 
@@ -509,7 +512,7 @@ removing boundaries..."
                 .size()
                 .to_dict()
             )
-        # Fill empty read length and distance keys with None            
+        # Fill empty read length and distance keys with None
         min_length = min([x[0] for x in list(pre_metaprofile_dict.keys())])
         max_length = max([x[0] for x in list(pre_metaprofile_dict.keys())])
         for y in range(min_length, max_length):
