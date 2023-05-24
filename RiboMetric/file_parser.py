@@ -202,13 +202,13 @@ def process_reads(reads):
     return batch_df
 
 
-def parse_bam(bam_file, batch_size, num_processes, max_reads=None):
+def parse_bam(bam_file, batch_size, num_processes, num_reads=1000000):
     samfile = pysam.AlignmentFile(bam_file, "rb")
     pool = Pool(processes=num_processes)
     read_list = []
 
     for i, read in enumerate(samfile.fetch()):
-        if max_reads and i >= max_reads:
+        if num_reads and i >= num_reads:
             break
         # print(read.to_string().split(sep="\t"))
         read_list.append(read.to_string().split(sep="\t"))
@@ -217,6 +217,10 @@ def parse_bam(bam_file, batch_size, num_processes, max_reads=None):
             batch_df = pool.map(process_reads, [read_list])[0]
             read_list = []
             yield batch_df
+        read_percentage = round((i) / num_reads * 100, 3)
+        print(f"Processed {i}/{num_reads} \
+({read_percentage}%)", end="\r",
+        )
 
     if read_list:
         batch_df = pool.map(process_reads, [read_list])[0]
