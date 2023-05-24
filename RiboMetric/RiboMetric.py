@@ -367,7 +367,8 @@ def main(args):
             read_limit
             ), ignore_index=True)
 
-        read_df_pre["reference_name"] = read_df_pre["reference_name"].astype("category")
+        read_df_pre["reference_name"] = (read_df_pre["reference_name"]
+                                         .astype("category"))
 
         # sequence_data = {}
         # for item in sequence_list:
@@ -432,10 +433,17 @@ def main(args):
 
         if args.html or args.pdf:
             plots_list = generate_plots(results_dict, config)
-            generate_report(plots_list, config, report_export, report_prefix, args.output)
+            generate_report(plots_list,
+                            config,
+                            report_export,
+                            report_prefix,
+                            args.output)
 
         if args.json:
-            generate_json(results_dict, config, report_prefix, args.output)
+            generate_json(results_dict,
+                          config,
+                          report_prefix,
+                          args.output)
 
 
 if __name__ == "__main__":
