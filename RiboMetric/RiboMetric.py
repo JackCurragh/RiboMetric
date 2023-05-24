@@ -362,13 +362,10 @@ def main(args):
         else:
             read_limit = args.subsample
 
-        batch_size = 100000
-        num_processes = 4
         read_df_pre = pd.concat(parse_bam(
             args.bam,
-            batch_size,
-            num_processes,
-            read_limit), ignore_index=True)
+            read_limit
+            ), ignore_index=True)
         read_df_pre["reference_name"] = read_df_pre["reference_name"].astype("category")
         print("Reads parsed")
 
@@ -414,12 +411,18 @@ def main(args):
                 results_dict = sequence_mode(
                     results_dict, read_df, fasta_dict, config
                 )
+
+        filename = args.bam.split('/')[-1]
+        if "." in filename:
+            filename = filename.split('.')[:-1]
+        report_prefix = f"{''.join(filename)}_RiboMetric"
+
         if args.html or args.pdf:
             plots_list = generate_plots(results_dict, config)
-            report_prefix = f"{args.bam}_RiboMetric"
             generate_report(plots_list, config, report_export, report_prefix, args.output)
+
         if args.json:
-            generate_json(results_dict, config)
+            generate_json(results_dict, config, report_prefix, args.output)
 
 
 if __name__ == "__main__":
