@@ -39,7 +39,7 @@ Optional Arguments:
 Output:
     --json : Output the results as a json file
     --html : Output the results as an html file (default)
-    --pdf : Output the results as a pdf file (default)
+    --pdf : Output the results as a pdf file
     --csv : Output the results as a csv file
     --all : Output the results as all of the above
 """
@@ -250,6 +250,12 @@ def argument_parser():
         action="store_true",
         default=True,
         help="Output the results as an html file (default)",
+    )
+    run_parser.add_argument(
+        "--no-html",
+        dest='html',
+        action='store_false',
+        help="Disable html output",
     )
     run_parser.add_argument(
         "--pdf",
