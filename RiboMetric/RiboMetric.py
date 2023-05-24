@@ -416,7 +416,8 @@ def main(args):
                 )
         if args.html or args.pdf:
             plots_list = generate_plots(results_dict, config)
-            generate_report(plots_list, config, report_export)
+            report_prefix = f"{args.bam}_RiboMetric"
+            generate_report(plots_list, config, report_export, report_prefix, args.output)
         if args.json:
             generate_json(results_dict, config)
 
