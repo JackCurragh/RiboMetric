@@ -368,8 +368,7 @@ def main(args):
             args.bam,
             batch_size,
             num_processes,
-            read_limit
-            ), ignore_index=True)
+            read_limit), ignore_index=True)
         read_df_pre["reference_name"] = read_df_pre["reference_name"].astype("category")
         print("Reads parsed")
 
