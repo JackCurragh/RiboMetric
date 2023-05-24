@@ -182,20 +182,6 @@ def single_parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
 def process_reads(reads):
     read_list = []
     for read in reads:
-        # Process the read and extract the relevant information    
-        # if "_x" in read.query_name:
-        #     count = int(read.query_name.split("_x")[-1])
-        # else:
-        #     count = 1
-        # read_list.append(
-        #     [
-        #         read.query_length,      # read_length
-        #         read.reference_name,    # reference_name
-        #         read.reference_start,   # reference_start
-        #         read.query_sequence,    # sequence
-        #         count,                  # count
-        #     ]
-        # )
         if "_x" in read[0]:
             count = int(read[0].split("_x")[-1])
         else:
@@ -203,10 +189,10 @@ def process_reads(reads):
         read_list.append(
             [
                 len(read[9]),      # read_length
-                read[2],    # reference_name
-                int(read[3]),   # reference_start
-                read[9],    # sequence
-                count,                  # count
+                read[2],           # reference_name
+                int(read[3]),      # reference_start
+                read[9],           # sequence
+                count,             # count
             ]
         )
     batch_df = pd.DataFrame(read_list, columns=['read_length',
