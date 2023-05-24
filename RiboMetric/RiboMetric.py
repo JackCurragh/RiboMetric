@@ -366,7 +366,20 @@ def main(args):
             args.bam,
             read_limit
             ), ignore_index=True)
+
         read_df_pre["reference_name"] = read_df_pre["reference_name"].astype("category")
+
+        sequence_data = {}
+        for item in sequence_list:
+            for key, value in item.items():
+                if key in sequence_data:
+                    sequence_data[key] += value
+                else:
+                    sequence_data[key] = value
+
+        del sequence_list
+        print(sequence_data) # temp
+        print(read_df_pre.head()) # temp
         print("Reads parsed")
 
         # Expand the dataframe to have one row per read
