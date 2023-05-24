@@ -54,7 +54,7 @@ def generate_report(
         "rb"
         ).read()
     base64_icon = base64.b64encode(binary_icon).decode("utf-8")
-
+    
     if outdir == "":
         output = name
     else:

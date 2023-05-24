@@ -112,74 +112,16 @@ def flagstat_bam(bam_path: str) -> dict:
     return flagstat_dict
 
 
-def single_parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
+def process_reads(reads):
     """
-    Read in the bam file at the provided path and return a dictionary
+    Process batches of reads from parse_bam, retrieving the data of interest and putting it in a dataframe.
 
     Inputs:
-        bam_file: Path to the bam file
-        Num_reads: Number of reads to parse
+        reads:
 
     Outputs:
-        read_dict: Dictionary containing the read information
-        (keys are the read names)
+        batch_df:
     """
-    # Convert the BAM file to SAM format and read the output in chunks
-    print(f"Running pysam")
-    print("Processing reads...")
-    counter, read_df_length = 0, 0
-    read_list = []
-    read_df = pd.DataFrame(columns=['read_length',
-                                    'reference_name', 'reference_start',
-                                    'sequence', 'count'])
-    samfile = pysam.AlignmentFile(bam_file, "rb")
-    for read in samfile.fetch():
-        if "_x" in read.query_name:
-            count = int(read.query_name.split("_x")[-1])
-        else:
-            count = 1
-        read_list.append(
-            [
-                int(read.query_length),      # read_length
-                read.reference_name,    # reference_name
-                int(read.reference_start),   # reference_start
-                read.query_sequence,    # sequence
-                count,                  # count
-            ]
-        )
-        counter += 1
-
-        if counter > 1000000 or counter+read_df_length > num_reads:
-            read_df = pd.concat([read_df,
-                                 pd.DataFrame(
-                                    read_list,
-                                    columns=read_df.columns)
-                                 ])
-
-            read_df_length = len(read_df)
-            counter = 0
-            read_list = []
-        if read_df_length > num_reads:
-            print()
-            break
-        else:
-            read_percentage = round((counter+read_df_length)
-                                    / num_reads * 100, 3)
-            print(
-                f"Processed {counter+read_df_length}/{num_reads} \
-({read_percentage}%)",
-                end="\r",
-            )
-
-        if counter+read_df_length > num_reads:
-            break
-    samfile.close()
-
-    read_df["reference_name"] = read_df["reference_name"].astype("category")
-    return read_df
-
-
-def process_reads(reads):
     read_list = []
     for read in reads:
         if "_x" in read[0]:
@@ -188,11 +130,11 @@ def process_reads(reads):
             count = 1
         read_list.append(
             [
-                len(read[9]),   # read_length
-                read[2],        # reference_name
-                int(read[3])-1, # reference_start
-                # read[9],        # sequence
-                count,          # count
+                len(read[9]),      # read_length
+                read[2],           # reference_name
+                int(read[3]),      # reference_start
+                read[9],           # sequence
+                count,             # count
             ]
         )
     batch_df = pd.DataFrame(read_list, columns=['read_length',
@@ -239,31 +181,27 @@ def pattern_to_index(pattern):
             return 0
     return index
 
-
-def parse_bam(bam_file, batch_size, num_processes, max_reads=None):
-    samfile = pysam.AlignmentFile(bam_file, "rb")
-    pool = Pool(processes=num_processes)
-    read_list = []
-    sequence ={}
-
-    for i, read in enumerate(samfile.fetch()):
-        if max_reads and i >= max_reads:
-            break
+  
+    for idx, read in enumerate(samfile.fetch()):
         read_list.append(read.to_string().split(sep="\t"))
+        if idx >= num_reads - 1:
+            break
 
         if len(read_list) == batch_size:
-            batch_df = pool.map(process_reads, [read_list])[0]
-            sequence["mono"] = pool.map(process_sequences, [read_list[9]])[0]
+            batch_results.append(pool.apply_async(process_reads, [read_list]))
             read_list = []
-            yield batch_df, sequence
+        read_percentage = round((idx) / num_reads * 100, 3)
+        print(f"Processed {idx}/{num_reads} \
+({read_percentage}%)", end="\r",
+        )
 
     if read_list:
-        batch_df = pool.map(process_reads, [read_list])[0]
-        sequence["mono"] = pool.map(process_sequences, [read_list[9]])[0]
-        yield batch_df, sequence
+        batch_results.append(pool.apply_async(process_reads, [read_list]))
 
     pool.close()
     pool.join()
+
+    return [result.get() for result in batch_results]
 
 
 def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
