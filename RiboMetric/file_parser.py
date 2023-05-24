@@ -114,10 +114,14 @@ def flagstat_bam(bam_path: str) -> dict:
     return flagstat_dict
 
 
-def parse_bam(bam_file, num_reads=1000000, batch_size=100000, num_processes=1) -> list:
+def parse_bam(bam_file,
+              num_reads=1000000,
+              batch_size=100000,
+              num_processes=1
+              ) -> list:
     """
     Read in the bam file at the provided path and return a list of dataframes
-    
+
     Inputs:
         bam_file: Path to the bam file
         num_reads: Number of reads to parse
@@ -143,7 +147,7 @@ def parse_bam(bam_file, num_reads=1000000, batch_size=100000, num_processes=1) -
         read_percentage = round((idx) / num_reads * 100, 3)
         print(f"Processed {idx}/{num_reads} \
 ({read_percentage}%)", end="\r",
-        )
+              )
 
     if read_list:
         batch_results.append(pool.apply_async(process_reads, [read_list]))
