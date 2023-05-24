@@ -112,74 +112,16 @@ def flagstat_bam(bam_path: str) -> dict:
     return flagstat_dict
 
 
-def single_parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
+def process_reads(reads):
     """
-    Read in the bam file at the provided path and return a dictionary
+    Process batches of reads from parse_bam, retrieving the data of interest and putting it in a dataframe.
 
     Inputs:
-        bam_file: Path to the bam file
-        Num_reads: Number of reads to parse
+        reads:
 
     Outputs:
-        read_dict: Dictionary containing the read information
-        (keys are the read names)
+        batch_df:
     """
-    # Convert the BAM file to SAM format and read the output in chunks
-    print(f"Running pysam")
-    print("Processing reads...")
-    counter, read_df_length = 0, 0
-    read_list = []
-    read_df = pd.DataFrame(columns=['read_length',
-                                    'reference_name', 'reference_start',
-                                    'sequence', 'count'])
-    samfile = pysam.AlignmentFile(bam_file, "rb")
-    for read in samfile.fetch():
-        if "_x" in read.query_name:
-            count = int(read.query_name.split("_x")[-1])
-        else:
-            count = 1
-        read_list.append(
-            [
-                read.query_length,      # read_length
-                read.reference_name,    # reference_name
-                read.reference_start,   # reference_start
-                read.query_sequence,    # sequence
-                count,                  # count
-            ]
-        )
-        counter += 1
-
-        if counter > 1000000 or counter+read_df_length > num_reads:
-            read_df = pd.concat([read_df,
-                                 pd.DataFrame(
-                                    read_list,
-                                    columns=read_df.columns)
-                                 ])
-
-            read_df_length = len(read_df)
-            counter = 0
-            read_list = []
-        if read_df_length > num_reads:
-            print()
-            break
-        else:
-            read_percentage = round((counter+read_df_length)
-                                    / num_reads * 100, 3)
-            print(
-                f"Processed {counter+read_df_length}/{num_reads} \
-({read_percentage}%)",
-                end="\r",
-            )
-
-        if counter+read_df_length > num_reads:
-            break
-    samfile.close()
-
-    read_df["reference_name"] = read_df["reference_name"].astype("category")
-    return read_df
-
-
-def process_reads(reads):
     read_list = []
     for read in reads:
         if "_x" in read[0]:
@@ -202,15 +144,29 @@ def process_reads(reads):
     return batch_df
 
 
-def parse_bam(bam_file, batch_size, num_processes, num_reads=1000000):
+def parse_bam(bam_file, batch_size, num_processes, num_reads=1000000) -> list:
+    """
+    Read in the bam file at the provided path and return a list of dataframes
+
+    Inputs:
+        bam_file: Path to the bam file
+        batch_size: The number of reads that are processed at a time
+        num_processes: The maximum number of processes that this function can
+        create
+        num_reads: Number of reads to parse
+
+    Outputs:
+        batch_results: List containing dataframes for the parsed reads which
+        will be grouped together in following steps
+    """
     samfile = pysam.AlignmentFile(bam_file, "rb")
     pool = Pool(processes=num_processes)
     read_list, batch_results = [], []
 
     for i, read in enumerate(samfile.fetch()):
-        if num_reads and i >= num_reads:
-            break
         read_list.append(read.to_string().split(sep="\t"))
+        if i > num_reads:
+            break
 
         if len(read_list) == batch_size:
             batch_results.append(pool.apply_async(process_reads, [read_list]))
