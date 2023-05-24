@@ -139,30 +139,49 @@ def process_reads(reads):
         )
     batch_df = pd.DataFrame(read_list, columns=['read_length',
                                     'reference_name', 'reference_start',
-                                    'sequence', 'count'])  # Convert to DataFrame
+                                    'count'])  # Convert to DataFrame
     batch_df["reference_name"] = batch_df["reference_name"].astype("category")
     return batch_df
 
 
-def parse_bam(bam_file, num_reads=1000000, batch_size=100000, num_processes=1) -> list:
+def process_sequences(sequences, pattern_length=1, sequence_length = 50):
     """
-    Read in the bam file at the provided path and return a list of dataframes
-
-    Inputs:
-        bam_file: Path to the bam file
-        batch_size: The number of reads that are processed at a time
-        num_processes: The maximum number of processes that this function can
-        create
-        num_reads: Number of reads to parse
-
-    Outputs:
-        batch_results: List containing dataframes for the parsed reads which
-        will be grouped together in following steps
+    Calculate the occurence of nucleotides or groups of nucleotides in the sequences from the reads.
+    The nucleotides or groups are stored in lexicographic order, (i.e. AA, AC, AG, AT, CA... TG, TT)
     """
-    samfile = pysam.AlignmentFile(bam_file, "rb")
-    pool = Pool(processes=num_processes)
-    read_list, batch_results = [], []
+    # Create an empty 2D array to store the counts
+    counts_array = np.zeros((4 ** pattern_length, sequence_length - pattern_length + 1), dtype=int)
 
+    # Iterate over each position in the sequences
+    for i in range(sequence_length - pattern_length + 1):
+        # Get the nucleotides at the current position
+        patterns = [sequence[i:i+pattern_length] if i + pattern_length <= len(sequence) else 0 for sequence in sequences]
+
+        # Count the occurrences of each nucleotide pattern at the current position
+        counts = np.unique(patterns, return_counts=True)
+
+        # Update the counts array
+        for pattern, count in zip(counts[0], counts[1]):
+            if pattern is not None:
+                index = pattern_to_index(pattern)
+                counts_array[index, i] = count
+
+    return counts_array
+
+def pattern_to_index(pattern):
+    """
+    Converts a nucleotide pattern to its corresponding index in the counts array.
+    """
+    index = 0
+    base_to_index = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+    for nucleotide in pattern:
+        if nucleotide in base_to_index:
+            index = index * 4 + base_to_index[nucleotide]
+        else:
+            return 0
+    return index
+
+  
     for idx, read in enumerate(samfile.fetch()):
         read_list.append(read.to_string().split(sep="\t"))
         if idx >= num_reads - 1:
