@@ -144,7 +144,7 @@ def process_reads(reads):
     return batch_df
 
 
-def parse_bam(bam_file, batch_size, num_processes, num_reads=1000000) -> list:
+def parse_bam(bam_file, num_reads=1000000, batch_size=100000, num_processes=1) -> list:
     """
     Read in the bam file at the provided path and return a list of dataframes
 
@@ -163,16 +163,16 @@ def parse_bam(bam_file, batch_size, num_processes, num_reads=1000000) -> list:
     pool = Pool(processes=num_processes)
     read_list, batch_results = [], []
 
-    for i, read in enumerate(samfile.fetch()):
+    for idx, read in enumerate(samfile.fetch()):
         read_list.append(read.to_string().split(sep="\t"))
-        if i > num_reads:
+        if idx >= num_reads - 1:
             break
 
         if len(read_list) == batch_size:
             batch_results.append(pool.apply_async(process_reads, [read_list]))
             read_list = []
-        read_percentage = round((i) / num_reads * 100, 3)
-        print(f"Processed {i}/{num_reads} \
+        read_percentage = round((idx) / num_reads * 100, 3)
+        print(f"Processed {idx}/{num_reads} \
 ({read_percentage}%)", end="\r",
         )
 
