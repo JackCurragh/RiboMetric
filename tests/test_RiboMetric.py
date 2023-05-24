@@ -35,7 +35,7 @@ def test_main_prepare():
 
 def test_main_run():
     file_path = os.path.join(os.path.dirname(__file__), "test_data")
-
+    print(file_path)
     args = Namespace(
         command="run",
         annotation=f"{file_path}/1000_entry_RiboMetric.tsv",
