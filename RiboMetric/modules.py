@@ -325,7 +325,8 @@ def annotate_reads(
     annotated_read_df = a_site_df.assign(
         transcript_id=a_site_df.reference_name.str.split("|").str[0]
     ).merge(annotation_df, on="transcript_id")
-    annotated_read_df["transcript_id"] = annotated_read_df["transcript_id"].astype("category")
+    annotated_read_df["transcript_id"] = (annotated_read_df["transcript_id"]
+                                          .astype("category"))
     return annotated_read_df.drop(["reference_name"], axis=1)
 
 
