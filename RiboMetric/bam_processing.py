@@ -1,12 +1,19 @@
+"""
+This script contains processing steps used to parse bam files.
+"""
+import pandas as pd
+import numpy as np
+
+
 def process_reads(reads):
     """
     Process batches of reads from parse_bam, retrieving the data of interest and putting it in a dataframe.
 
     Inputs:
-        reads:
+        reads: List of read contents from bam files, returned by pysam
 
     Outputs:
-        batch_df:
+        batch_df: Dataframe containing a processed batch of reads
     """
     read_list = []
     for read in reads:
@@ -25,7 +32,7 @@ def process_reads(reads):
         )
     batch_df = pd.DataFrame(read_list, columns=['read_length',
                                     'reference_name', 'reference_start',
-                                    'count'])  # Convert to DataFrame
+                                    'sequence', 'count'])
     batch_df["reference_name"] = batch_df["reference_name"].astype("category")
     return batch_df
 
@@ -53,6 +60,7 @@ def process_sequences(sequences, pattern_length=1, sequence_length = 50):
                 counts_array[index, i] = count
 
     return counts_array
+
 
 def pattern_to_index(pattern):
     """
