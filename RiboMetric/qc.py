@@ -155,11 +155,11 @@ def annotation_mode(
             config["plots"]["metagene_profile"]["distance_target"],
             config["plots"]["metagene_profile"]["distance_range"],
         )
-
+        print("> cds_coverage_metric")
         results_dict["metrics"]["cds_coverage_metric"] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=1,
-            in_frame_coverage=False)
+            in_frame_coverage=True) # should be in config  
     return results_dict
 
 
