@@ -131,3 +131,5 @@ sample_data/transcriptome_collapsed.bam.bai
 sample_data/gencode.v25.annotation.gff3 
 *.csv
 
+transcriptome_collapsed_RiboMetric.html
+mprofile_*

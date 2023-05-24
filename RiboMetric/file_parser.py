@@ -139,7 +139,7 @@ def process_reads(reads):
         )
     batch_df = pd.DataFrame(read_list, columns=['read_length',
                                     'reference_name', 'reference_start',
-                                    'count'])  # Convert to DataFrame
+                                    'sequence', 'count'])  # Convert to DataFrame
     batch_df["reference_name"] = batch_df["reference_name"].astype("category")
     return batch_df
 
@@ -181,7 +181,24 @@ def pattern_to_index(pattern):
             return 0
     return index
 
-  
+def parse_bam(bam_file, num_reads=1000000, batch_size=100000, num_processes=1) -> list:
+    """
+    Read in the bam file at the provided path and return a list of dataframes
+    
+    Inputs:
+        bam_file: Path to the bam file
+        num_reads: Number of reads to parse
+        batch_size: The number of reads that are processed at a time
+        num_processes: The maximum number of processes that this function can
+        create
+
+    Outputs:
+        batch_results: List containing dataframes for the parsed reads which
+        will be grouped together in following steps
+    """
+    samfile = pysam.AlignmentFile(bam_file, "rb")
+    pool = Pool(processes=num_processes)
+    read_list, batch_results = [], []
     for idx, read in enumerate(samfile.fetch()):
         read_list.append(read.to_string().split(sep="\t"))
         if idx >= num_reads - 1:

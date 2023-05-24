@@ -322,11 +322,11 @@ def annotate_reads(
         with an added column for the a-site location along
         with the columns from the gff file
     """
-    annotated_read_df = a_site_df.drop("sequence", axis=1).assign(
+    annotated_read_df = a_site_df.assign(
         transcript_id=a_site_df.reference_name.str.split("|").str[0]
     ).merge(annotation_df, on="transcript_id")
     annotated_read_df["transcript_id"] = annotated_read_df["transcript_id"].astype("category")
-    return annotated_read_df
+    return annotated_read_df.drop(["reference_name"], axis=1)
 
 
 def assign_mRNA_category(annotated_read_df) -> str:
