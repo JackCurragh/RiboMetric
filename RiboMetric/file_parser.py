@@ -135,18 +135,19 @@ def parse_bam(bam_file,
     samfile = pysam.AlignmentFile(bam_file, "rb")
     pool = Pool(processes=num_processes)
     read_list, batch_results = [], []
-    sequence_results = {"mono": [], "di": []}
+    sequence_results = {1: [], 2: []}
     for idx, read in enumerate(samfile.fetch()):
         read_list.append(read.to_string().split(sep="\t"))
         if idx >= num_reads - 1:
             break
-
+        
         if len(read_list) == batch_size:
             batch_results.append(pool.apply_async(process_reads, [read_list]))
             for group in sequence_results:
                 sequence_results[group].append(
                     pool.apply_async(process_sequences,
-                                     [[read[9] for read in read_list]]))
+                                     [[(read[0], read[9]) for read in read_list],
+                                      group]))
             read_list = []
         read_percentage = round((idx) / num_reads * 100, 3)
         print(f"Processed {idx}/{num_reads} \
@@ -157,7 +158,8 @@ def parse_bam(bam_file,
         for group in sequence_results:
             sequence_results[group].append(
                 pool.apply_async(process_sequences,
-                                    [[read[9] for read in read_list]]))
+                                    [[(read[0], read[9]) for read in read_list],
+                                     group]))
 
     pool.close()
     pool.join()
