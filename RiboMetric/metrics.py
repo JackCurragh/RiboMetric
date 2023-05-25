@@ -68,7 +68,7 @@ def ligation_bias_distribution_metric(
 
     return kl_divergence
 
-# Memory intensive
+
 def cds_coverage_metric(
         cds_read_df: pd.DataFrame,
         minimum_reads: int = 1,
@@ -91,15 +91,20 @@ def cds_coverage_metric(
     """
     # Create the cds_coverage_df that contains only the required columns and
     # the "name_pos" column, combining the transcript_id and a_site
-    cds_coverage_df = cds_read_df[["transcript_id","a_site","cds_start","cds_end"]].copy()
-    cds_coverage_df["name_pos"] = (cds_coverage_df["transcript_id"].astype("object")
-                                  + cds_coverage_df["a_site"].astype(str)
-                                  ).astype("category")
+    cds_coverage_df = cds_read_df[["transcript_id",
+                                   "a_site",
+                                   "cds_start",
+                                   "cds_end"]].copy()
+    cds_coverage_df["name_pos"] = (cds_coverage_df["transcript_id"]
+                                   .astype("object")
+                                   + cds_coverage_df["a_site"]
+                                   .astype(str)
+                                   ).astype("category")
 
     # Calculate the total combined length of the CDS of transcripts that have
     # reads aligned to them
     cds_transcripts = cds_coverage_df[~cds_coverage_df["transcript_id"]
-                                  .duplicated()].copy()
+                                      .duplicated()].copy()
     cds_transcripts["cds_length"] = (cds_transcripts
                                      .apply(lambda x: x['cds_end']
                                             - x['cds_start'],
@@ -111,12 +116,14 @@ def cds_coverage_metric(
     # their transcript and divide the combined CDS length by 3
     if in_frame_coverage:
         cds_coverage_df = cds_coverage_df[
-        (cds_coverage_df["a_site"] - cds_coverage_df["cds_start"])%3 == 0
-        ]
+            (cds_coverage_df["a_site"]
+             - cds_coverage_df["cds_start"]
+             ) % 3 == 0]
         cds_length_total = cds_length_total/3
-    
+
     # Calculate the count of nucleotides covered by the reads after filtering
-    cds_reads_count = sum(cds_coverage_df.value_counts("name_pos") > minimum_reads)
+    cds_reads_count = sum(cds_coverage_df.value_counts("name_pos")
+                          > minimum_reads)
 
     return cds_reads_count/cds_length_total
 

@@ -39,7 +39,7 @@ Optional Arguments:
 Output:
     --json : Output the results as a json file
     --html : Output the results as an html file (default)
-    --pdf : Output the results as a pdf file (default)
+    --pdf : Output the results as a pdf file
     --csv : Output the results as a csv file
     --all : Output the results as all of the above
 """
@@ -252,6 +252,12 @@ def argument_parser():
         help="Output the results as an html file (default)",
     )
     run_parser.add_argument(
+        "--no-html",
+        dest='html',
+        action='store_false',
+        help="Disable html output",
+    )
+    run_parser.add_argument(
         "--pdf",
         action="store_true",
         default=False,
@@ -317,7 +323,6 @@ def main(args):
     """
     console = Console()
     print_logo(console)
-
     if os.path.exists(args.config):
         with open(args.config, "r") as yml:
             config = yaml.load(yml, Loader=yaml.Loader)
@@ -367,7 +372,8 @@ def main(args):
             read_limit
             ), ignore_index=True)
 
-        read_df_pre["reference_name"] = read_df_pre["reference_name"].astype("category")
+        read_df_pre["reference_name"] = (read_df_pre["reference_name"]
+                                         .astype("category"))
 
         # sequence_data = {}
         # for item in sequence_list:
@@ -432,14 +438,23 @@ def main(args):
 
         if args.html or args.pdf:
             plots_list = generate_plots(results_dict, config)
-            generate_report(plots_list, config, report_export, report_prefix, args.output)
+            generate_report(plots_list,
+                            config,
+                            report_export,
+                            report_prefix,
+                            args.output)
 
         if args.json:
-            generate_json(results_dict, config, report_prefix, args.output)
+            generate_json(results_dict,
+                          config,
+                          report_prefix,
+                          args.output)
 
 
 if __name__ == "__main__":
     parser = argument_parser()
     args = parser.parse_args()
+    if not vars(args):
+         parser.print_help()
 
     main(args)
