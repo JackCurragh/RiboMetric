@@ -8,7 +8,6 @@ from Bio import SeqIO
 import pysam
 import pandas as pd
 from multiprocessing import Pool
-import pysam
 import gffpandas.gffpandas as gffpd
 import os
 import numpy as np
@@ -116,7 +115,7 @@ def flagstat_bam(bam_path: str) -> dict:
 
 def parse_bam(bam_file,
               num_reads=1000000,
-              batch_size=100000,
+              batch_size=1000000,
               num_processes=1
               ) -> list:
     """
@@ -146,8 +145,7 @@ def parse_bam(bam_file,
             read_list = []
         read_percentage = round((idx) / num_reads * 100, 3)
         print(f"Processed {idx}/{num_reads} \
-({read_percentage}%)", end="\r",
-              )
+({read_percentage}%)", end="\r")
 
     if read_list:
         batch_results.append(pool.apply_async(process_reads, [read_list]))
