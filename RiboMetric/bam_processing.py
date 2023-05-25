@@ -3,6 +3,7 @@ This script contains processing steps used to parse bam files.
 """
 import pandas as pd
 import numpy as np
+import time
 
 
 def process_reads(reads):
@@ -16,6 +17,7 @@ def process_reads(reads):
     Outputs:
         batch_df: Dataframe containing a processed batch of reads
     """
+    t0 = time.time()
     read_list = []
     for read in reads:
         if "_x" in read[0]:
@@ -27,16 +29,15 @@ def process_reads(reads):
                 len(read[9]),      # read_length
                 read[2],           # reference_name
                 int(read[3]),      # reference_start
-                read[9],           # sequence
                 count,             # count
             ]
         )
     batch_df = pd.DataFrame(read_list, columns=['read_length',
                                                 'reference_name',
                                                 'reference_start',
-                                                'sequence',
                                                 'count'])
     batch_df["reference_name"] = batch_df["reference_name"].astype("category")
+    print(f"read process batch completion time: {time.time() - t0}")
     return batch_df
 
 
@@ -48,6 +49,7 @@ def process_sequences(sequences,
     sequences from the reads. The nucleotides or groups are stored in
     lexicographic order.
     """
+    t0 = time.time()
     # Create an empty 2D array to store the counts
     counts_array = np.zeros((4 ** pattern_length,
                              sequence_length - pattern_length + 1
@@ -69,7 +71,7 @@ def process_sequences(sequences,
             if pattern != 0:
                 index = pattern_to_index(pattern)
                 counts_array[index, position] = count
-
+    print(f"sequence process batch completion time: {time.time() - t0}")
     return counts_array
 
 
