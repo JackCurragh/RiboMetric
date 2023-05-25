@@ -323,7 +323,6 @@ def main(args):
     """
     console = Console()
     print_logo(console)
-
     if os.path.exists(args.config):
         with open(args.config, "r") as yml:
             config = yaml.load(yml, Loader=yaml.Loader)
@@ -455,5 +454,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argument_parser()
     args = parser.parse_args()
+    if not vars(args):
+         parser.print_help()
 
     main(args)
