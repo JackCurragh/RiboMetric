@@ -46,18 +46,18 @@ def process_sequences(sequences,
     """
     Calculate the occurence of nucleotides or groups of nucleotides in the
     sequences from the reads. The nucleotides or groups are stored in
-    lexicographic order, (i.e. AA, AC, AG, AT, CA... TG, TT)
+    lexicographic order.
     """
     # Create an empty 2D array to store the counts
     counts_array = np.zeros((4 ** pattern_length,
                              sequence_length - pattern_length + 1
                              ), dtype=int)
 
-    # Iterate over each position in the sequences
-    for i in range(sequence_length - pattern_length + 1):
-        # Get the nucleotides at the current position
-        patterns = [sequence[i:i+pattern_length]
-                    if i + pattern_length <= len(sequence)
+    # Iterate over positions in the sequences
+    for position in range(sequence_length - pattern_length + 1):
+        # Get the nucleotides at the current position in all reads
+        patterns = [sequence[position:position+pattern_length]
+                    if position + pattern_length <= len(sequence)
                     else 0 for sequence in sequences]
 
         # Count the occurrences of each nucleotide pattern at
@@ -66,17 +66,18 @@ def process_sequences(sequences,
 
         # Update the counts array
         for pattern, count in zip(counts[0], counts[1]):
-            if pattern is not None:
+            if pattern != 0:
                 index = pattern_to_index(pattern)
-                counts_array[index, i] = count
+                counts_array[index, position] = count
 
     return counts_array
 
 
-def pattern_to_index(pattern):
+def pattern_to_index(pattern: str) -> int:
     """
     Converts a nucleotide pattern to its corresponding index in
-    the counts array.
+    the counts array. Ensure A,C,G,T ordered array.
+    (i.e. AA, AC, AG, AT, CA... TG, TT)
     """
     index = 0
     base_to_index = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
