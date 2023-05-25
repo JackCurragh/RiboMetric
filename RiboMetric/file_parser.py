@@ -115,9 +115,9 @@ def flagstat_bam(bam_path: str) -> dict:
 
 def parse_bam(bam_file,
               num_reads=1000000,
-              batch_size=1000000,
-              num_processes=1
-              ) -> list:
+              batch_size=100000,
+              num_processes=4
+              ) -> tuple:
     """
     Read in the bam file at the provided path and return a list of dataframes
 
@@ -135,6 +135,7 @@ def parse_bam(bam_file,
     samfile = pysam.AlignmentFile(bam_file, "rb")
     pool = Pool(processes=num_processes)
     read_list, batch_results = [], []
+    sequence_results = {"mono": [], "di": []}
     for idx, read in enumerate(samfile.fetch()):
         read_list.append(read.to_string().split(sep="\t"))
         if idx >= num_reads - 1:
@@ -142,6 +143,10 @@ def parse_bam(bam_file,
 
         if len(read_list) == batch_size:
             batch_results.append(pool.apply_async(process_reads, [read_list]))
+            for group in sequence_results:
+                sequence_results[group].append(
+                    pool.apply_async(process_sequences,
+                                     [[read[9] for read in read_list]]))
             read_list = []
         read_percentage = round((idx) / num_reads * 100, 3)
         print(f"Processed {idx}/{num_reads} \
@@ -149,11 +154,24 @@ def parse_bam(bam_file,
 
     if read_list:
         batch_results.append(pool.apply_async(process_reads, [read_list]))
+        for group in sequence_results:
+            sequence_results[group].append(
+                pool.apply_async(process_sequences,
+                                    [[read[9] for read in read_list]]))
 
     pool.close()
     pool.join()
 
-    return [result.get() for result in batch_results]
+    batch_results = [result.get() for result in batch_results]
+
+    for key in sequence_results:
+        updated_results = []
+        for result in sequence_results[key]:
+            updated_results.append(result.get())
+        sequence_results[key] = updated_results
+
+    return (batch_results,
+            sequence_results)
 
 
 def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:

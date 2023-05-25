@@ -366,26 +366,20 @@ def main(args):
             read_limit = flagstat['mapped_reads']
         else:
             read_limit = args.subsample
-
-        read_df_pre = pd.concat(parse_bam(
+        bam_results = parse_bam(
             args.bam,
-            read_limit
-            ), ignore_index=True)
-
+            read_limit)
+        read_df_pre = pd.concat(bam_results[0], ignore_index=True)
         read_df_pre["reference_name"] = (read_df_pre["reference_name"]
                                          .astype("category"))
 
-        # sequence_data = {}
-        # for item in sequence_list:
-        #     for key, value in item.items():
-        #         if key in sequence_data:
-        #             sequence_data[key] += value
-        #         else:
-        #             sequence_data[key] = value
-
-        # del sequence_list
-        # print(sequence_data) # temp
-        # print(read_df_pre.head()) # temp
+        sequence_data = {}
+        for key, array_list in bam_results[1].items():
+            sequence_data[key] = sum(array_list)
+            
+        del bam_results
+        print(sequence_data) # temp
+        print(read_df_pre.head()) # temp
         print("Reads parsed")
 
         # Expand the dataframe to have one row per read
