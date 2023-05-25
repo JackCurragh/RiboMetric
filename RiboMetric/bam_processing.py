@@ -3,7 +3,9 @@ This script contains processing steps used to parse bam files.
 """
 import pandas as pd
 import numpy as np
-
+import itertools
+#temp test imports
+import time
 
 def process_reads(reads):
     """
@@ -40,54 +42,82 @@ def process_reads(reads):
 
 
 def process_sequences(sequences_counts,
-                      pattern_length=1,
-                      sequence_length=50):
+                      pattern_length=1):
     """
     Calculate the occurence of nucleotides or groups of nucleotides in the
     sequences from the reads. The nucleotides or groups are stored in
     lexicographic order.
     """
+    t0 = time.time() 
+
+    # Create the counts array
     read_names = [sequences[0] for sequences in sequences_counts]
-    duplicate_counts = []
+    counts_array = []
     for read in read_names:
         if "_x" in read:
-            duplicate_counts.append(int(read.split("_x")[-1]))
+            counts_array.append(int(read.split("_x")[-1]))
         else:
-            duplicate_counts.append(1)
+            counts_array.append(1)
+    counts_array = np.array(counts_array)
 
-    sequences = {}
-    sequences["single"] = [sequences[1] for sequences in sequences_counts]
-    sequences["duplicates"] = np.repeat(sequences["single"], np.array(duplicate_counts)-1)
+    # Set sequences and calculate array dimensions
+    sequences = [sequences[1] for sequences in sequences_counts]
+    num_sequences = len(sequences)
+    max_sequence_length = max(len(seq) for seq in sequences)
 
-    counts_array = {}
-    for key in sequences:
-        # Create an empty 2D array to store the counts
-        counts_array[key] = np.zeros((4 ** pattern_length,
-                                sequence_length - pattern_length + 1
-                                ), dtype=int)
-
-        # Iterate over positions in the sequences
-        for position in range(sequence_length - pattern_length + 1):
-            # Get the nucleotides at the current position in all reads
-            patterns = [sequence[position:position+pattern_length]
-                        if position + pattern_length <= len(sequence)
-                        else 0 for sequence in sequences[key]]
-
-            # Count the occurrences of each nucleotide pattern at
-            # the current position
-            counts = np.unique(patterns, return_counts=True)
-
-            # Update the counts array
-            for pattern, count in zip(counts[0], counts[1]):
-                if pattern != 0:
-                    index = pattern_to_index(pattern)
-                    counts_array[key][index, position] = count
+    # Create the 3D numpy array with zeros
+    sequence_array = np.zeros((num_sequences, max_sequence_length - pattern_length + 1, 4 ** pattern_length), dtype=int)
     
-    background_frequency = np.delete(b,0,1)
-    background_frequency = np.sum(background_frequency,axis=1)/np.sum(background_frequency)
+    # Populate the sequence array with counts for the corresponding nucleotide patterns
+    for i, sequence in enumerate(sequences):
+        for j in range(len(sequence) - pattern_length + 1):  # Adjusted range to include last position
+            pattern = sequence[j:j + pattern_length]
+            index = pattern_to_index(pattern)
+            if index != -1:
+                sequence_array[i, j, index] = 1
 
-    counts_array = np.add(counts_array["single"], counts_array["duplicates"])
-    return counts_array
+    """Following 2 blocks could be in its own function"""
+    # Calculate the background frequency for three prime patterns
+    condensed_arrays = {}
+    three_prime_bg = np.copy(sequence_array)
+    for i, sequence in enumerate(sequences):
+        last_pattern_index = len(sequence) - pattern_length
+        three_prime_bg[i, last_pattern_index, :] = 0
+        
+    nucleotides = ["".join(nt) for nt in itertools.product('ACGT', repeat=pattern_length)]
+    for nucleotide in nucleotides:
+        nucleotide_counts = np.sum(three_prime_bg[:, :, pattern_to_index(nucleotide)])
+        condensed_arrays[nucleotide] = nucleotide_counts
+    total_bg_counts = sum(condensed_arrays.values())
+    three_prime_bg = {k: v/total_bg_counts for k,v in condensed_arrays.items()}
+
+    # Calculate the background frequency for five prime patterns
+    condensed_arrays = {}
+    five_prime_bg = np.copy(sequence_array)
+    for i, sequence in enumerate(sequences):
+        five_prime_bg[i, 0, :] = 0
+
+    for nucleotide in nucleotides:
+        nucleotide_counts = np.sum(five_prime_bg[:, :, pattern_to_index(nucleotide)])
+        condensed_arrays[nucleotide] = nucleotide_counts
+    total_bg_counts = sum(condensed_arrays.values())
+    five_prime_bg = {k: v/total_bg_counts for k,v in condensed_arrays.items()}
+
+    # Perform element-wise multiplication of sequence array and counts array
+    result_array = sequence_array * counts_array[:, None, None]
+
+    # Create the condensed 2D arrays for each nucleotide
+    condensed_arrays = {}
+    nucleotides = ["".join(nt) for nt in itertools.product('ACGT', repeat=pattern_length)]
+    for nucleotide in nucleotides:
+        nucleotide_counts = np.sum(result_array[:, :, pattern_to_index(nucleotide)], axis=0)
+        condensed_arrays[nucleotide] = nucleotide_counts
+    condensed_arrays["3_prime_bg"] = three_prime_bg
+    condensed_arrays["5_prime_bg"] = five_prime_bg
+    condensed_arrays["sequence_number"] = num_sequences
+    print(f"completion time: {time.time() - t0}")
+
+    return condensed_arrays
 
 
 def pattern_to_index(pattern: str) -> int:

@@ -375,7 +375,17 @@ def main(args):
 
         sequence_data = {}
         for key, array_list in bam_results[1].items():
-            sequence_data[key] = sum(array_list)
+            sequence_data[key] = {}
+            for batch in array_list:
+                for pattern, array in batch.items():
+                    # print(pattern,array)
+                    if "bg" or "number" in pattern:
+                        continue
+                    if pattern in sequence_data[key]:
+                        sequence_data[key][pattern] += array
+                    else:
+                        sequence_data[key][pattern] = array
+
             
         del bam_results
         print(sequence_data) # temp

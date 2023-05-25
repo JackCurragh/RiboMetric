@@ -115,7 +115,7 @@ def flagstat_bam(bam_path: str) -> dict:
 
 def parse_bam(bam_file,
               num_reads=1000000,
-              batch_size=100000,
+              batch_size=25000,
               num_processes=4
               ) -> tuple:
     """
@@ -135,7 +135,7 @@ def parse_bam(bam_file,
     samfile = pysam.AlignmentFile(bam_file, "rb")
     pool = Pool(processes=num_processes)
     read_list, batch_results = [], []
-    sequence_results = {1: [], 2: []}
+    sequence_results = {1: []}#, 2: []} # temp disable dinucleotide for testing purposes
     for idx, read in enumerate(samfile.fetch()):
         read_list.append(read.to_string().split(sep="\t"))
         if idx >= num_reads - 1:
