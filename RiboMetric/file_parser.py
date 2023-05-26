@@ -12,7 +12,7 @@ import gffpandas.gffpandas as gffpd
 import os
 import numpy as np
 
-from .bam_processing import process_reads, process_sequences
+from .bam_processing import process_reads, process_sequences, join_batches
 
 
 def parse_gff(gff_path: str) -> gffpd.Gff3DataFrame:
@@ -117,7 +117,7 @@ def parse_bam(bam_file,
               num_reads=1000000,
               batch_size=25000,
               num_processes=4
-              ) -> tuple:
+              ) -> tuple():
     """
     Read in the bam file at the provided path and return a list of dataframes
 
@@ -134,17 +134,17 @@ def parse_bam(bam_file,
     """
     samfile = pysam.AlignmentFile(bam_file, "rb")
     pool = Pool(processes=num_processes)
-    read_list, batch_results = [], []
-    sequence_results = {1: []}#, 2: []} # temp disable dinucleotide for testing purposes
+    read_list, read_batches = [], []
+    sequence_batches = {1: [], 2: []} # temp disable dinucleotide for testing purposes
     for idx, read in enumerate(samfile.fetch()):
         read_list.append(read.to_string().split(sep="\t"))
         if idx >= num_reads - 1:
             break
         
         if len(read_list) == batch_size:
-            batch_results.append(pool.apply_async(process_reads, [read_list]))
-            for group in sequence_results:
-                sequence_results[group].append(
+            read_batches.append(pool.apply_async(process_reads, [read_list]))
+            for group in sequence_batches:
+                sequence_batches[group].append(
                     pool.apply_async(process_sequences,
                                      [[(read[0], read[9]) for read in read_list],
                                       group]))
@@ -154,9 +154,9 @@ def parse_bam(bam_file,
 ({read_percentage}%)", end="\r")
 
     if read_list:
-        batch_results.append(pool.apply_async(process_reads, [read_list]))
-        for group in sequence_results:
-            sequence_results[group].append(
+        read_batches.append(pool.apply_async(process_reads, [read_list]))
+        for group in sequence_batches:
+            sequence_batches[group].append(
                 pool.apply_async(process_sequences,
                                     [[(read[0], read[9]) for read in read_list],
                                      group]))
@@ -164,16 +164,9 @@ def parse_bam(bam_file,
     pool.close()
     pool.join()
 
-    batch_results = [result.get() for result in batch_results]
+    parsed_bam = join_batches(read_batches, sequence_batches)
 
-    for key in sequence_results:
-        updated_results = []
-        for result in sequence_results[key]:
-            updated_results.append(result.get())
-        sequence_results[key] = updated_results
-
-    return (batch_results,
-            sequence_results)
+    return (parsed_bam)
 
 
 def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:

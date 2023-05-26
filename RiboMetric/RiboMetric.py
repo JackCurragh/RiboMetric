@@ -369,27 +369,11 @@ def main(args):
         bam_results = parse_bam(
             args.bam,
             read_limit)
-        read_df_pre = pd.concat(bam_results[0], ignore_index=True)
-        read_df_pre["reference_name"] = (read_df_pre["reference_name"]
-                                         .astype("category"))
+        
+        read_df_pre = bam_results[0]
+        sequence_data = bam_results[1]
+        sequence_background = bam_results[2]
 
-        sequence_data = {}
-        for key, array_list in bam_results[1].items():
-            sequence_data[key] = {}
-            for batch in array_list:
-                for pattern, array in batch.items():
-                    # print(pattern,array)
-                    if "bg" or "number" in pattern:
-                        continue
-                    if pattern in sequence_data[key]:
-                        sequence_data[key][pattern] += array
-                    else:
-                        sequence_data[key][pattern] = array
-
-            
-        del bam_results
-        print(sequence_data) # temp
-        print(read_df_pre.head()) # temp
         print("Reads parsed")
 
         # Expand the dataframe to have one row per read
@@ -408,6 +392,8 @@ def main(args):
 
         if args.gff is None and args.annotation is None:
             results_dict = annotation_mode(read_df,
+                                           sequence_data,
+                                           sequence_background,
                                            config=config)
 
         else:
@@ -427,7 +413,11 @@ def main(args):
                 print("Annotation parsed")
 
                 print("Running annotation mode")
-                results_dict = annotation_mode(read_df, annotation_df, config)
+                results_dict = annotation_mode(read_df,
+                                               sequence_data,
+                                               sequence_background,
+                                               annotation_df,
+                                               config)
 
             if args.fasta is not None:
                 fasta_dict = parse_fasta(args.fasta)

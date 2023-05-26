@@ -41,8 +41,9 @@ def process_reads(reads):
     return batch_df
 
 
-def process_sequences(sequences_counts,
-                      pattern_length=1):
+def process_sequences(sequences_counts: list,
+                      pattern_length: int = 1,
+                      max_sequence_length: int = None):
     """
     Calculate the occurence of nucleotides or groups of nucleotides in the
     sequences from the reads. The nucleotides or groups are stored in
@@ -63,7 +64,8 @@ def process_sequences(sequences_counts,
     # Set sequences and calculate array dimensions
     sequences = [sequences[1] for sequences in sequences_counts]
     num_sequences = len(sequences)
-    max_sequence_length = max(len(seq) for seq in sequences)
+    if max_sequence_length is None:
+        max_sequence_length = max(len(seq) for seq in sequences)
 
     # Create the 3D numpy array with zeros
     sequence_array = np.zeros((num_sequences, max_sequence_length - pattern_length + 1, 4 ** pattern_length), dtype=int)
@@ -76,10 +78,26 @@ def process_sequences(sequences_counts,
             if index != -1:
                 sequence_array[i, j, index] = 1
 
-    """Following 2 blocks could be in its own function"""
+    """Following 2 blocks (background calculation) could be in its own function"""
     # Calculate the background frequency for three prime patterns
     condensed_arrays = {}
     three_prime_bg = np.copy(sequence_array)
+    
+    # Flip array
+    # for i in range(num_sequences):
+    #     row = three_prime_bg[i]
+    #     non_zero_indices = np.where(row != 0)[0]
+    #     non_zero_values = row[non_zero_indices]
+    #     flipped_row = np.zeros_like(row)
+    #     flipped_row[:len(non_zero_indices)] = non_zero_values
+    #     three_prime_bg[i] = flipped_row
+
+    # Iterate over each row in the array
+    for row in three_prime_bg:
+        # Filter non-zero values and move them to the left
+        row = [value for value in row if value != 0] + [0] * row.count(0)
+        three_prime_bg.append(row)
+
     for i, sequence in enumerate(sequences):
         last_pattern_index = len(sequence) - pattern_length
         three_prime_bg[i, last_pattern_index, :] = 0
@@ -134,3 +152,92 @@ def pattern_to_index(pattern: str) -> int:
         else:
             return 0
     return index
+
+
+def calculate_background(sequence_array: np.array, sequences, pattern_length, five_prime: bool) -> dict:
+    """
+    
+    """
+    condensed_arrays = {}
+    three_prime_bg = np.copy(sequence_array)
+    for i, sequence in enumerate(sequences):
+        last_pattern_index = len(sequence) - pattern_length
+        three_prime_bg[i, last_pattern_index, :] = 0
+        
+    nucleotides = ["".join(nt) for nt in itertools.product('ACGT', repeat=pattern_length)]
+    for nucleotide in nucleotides:
+        nucleotide_counts = np.sum(three_prime_bg[:, :, pattern_to_index(nucleotide)])
+        condensed_arrays[nucleotide] = nucleotide_counts
+    total_bg_counts = sum(condensed_arrays.values())
+    three_prime_bg = {k: v/total_bg_counts for k,v in condensed_arrays.items()}
+    return
+
+
+def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
+    """
+
+    """
+    print("\nGetting data from async objects..")
+
+    read_batches = [result.get() for result in read_batches]
+
+    background_batches, sequence_batches = {}, {}
+    for pattern_length in full_sequence_batches:
+        background_batches[pattern_length] = {}
+        sequence_batches[pattern_length] = {}
+        for result in full_sequence_batches[pattern_length]:
+            result_dict = result.get()
+            for pattern, array in result_dict.items():
+                if "bg" in pattern or "sequence" in pattern:
+                    if pattern not in background_batches[pattern_length]:
+                        background_batches[pattern_length][pattern] = [array]
+                    else:
+                        background_batches[pattern_length][pattern].append(array)
+                else:
+                    if pattern not in sequence_batches[pattern_length]:
+                        sequence_batches[pattern_length][pattern] = [array]
+                    else:
+                        sequence_batches[pattern_length][pattern].append(array)
+    
+    print("Joining batch files..")
+
+    read_df_pre = pd.concat(read_batches, ignore_index=True)
+    read_df_pre["reference_name"] = (read_df_pre["reference_name"]
+                                         .astype("category"))
+    sequence_data = {}
+    for pattern_length in sequence_batches:
+        sequence_data[pattern_length] = {}
+        for pattern in sequence_batches[pattern_length]:
+            # Determine the maximum length among the arrays
+            max_length = max(len(arr) for arr in sequence_batches[pattern_length][pattern])
+
+            # Pad the arrays with zeros to match the maximum length
+            padded_arrays = [np.pad(arr, (0, max_length - len(arr)), mode='constant') for arr in sequence_batches[pattern_length][pattern]]
+
+            sequence_data[pattern_length][pattern] = np.sum(padded_arrays, axis=0)
+
+    sequence_background = {}
+    for pattern_length in background_batches:
+        sequence_background[pattern_length] = {}
+        for background in background_batches[pattern_length].keys():
+        # Iterate over the patterns in the dictionaries
+            if "sequence" in background:
+                continue
+            sequence_background[pattern_length][background] = {}
+
+            for pattern in background_batches[pattern_length][background][0].keys():
+                total_weighted_sum = 0
+                total_count = 0
+
+                # Calculate the weighted sum for the current pattern
+                for i, dictionary in enumerate(background_batches[pattern_length][background]):
+                    proportion = dictionary[pattern]
+                    count = background_batches[pattern_length]["sequence_number"][i]
+                    weighted_sum = proportion * count
+                    total_weighted_sum += weighted_sum
+                    total_count += count
+
+                # Calculate the weighted average for the current key
+                sequence_background[pattern_length][background][pattern] = total_weighted_sum / total_count
+
+    return (read_df_pre, sequence_data, sequence_background)
