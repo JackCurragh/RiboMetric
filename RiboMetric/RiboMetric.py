@@ -455,6 +455,6 @@ if __name__ == "__main__":
     parser = argument_parser()
     args = parser.parse_args()
     if not vars(args):
-         parser.print_help()
+        parser.print_help()
 
     main(args)
