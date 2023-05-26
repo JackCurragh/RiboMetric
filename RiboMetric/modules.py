@@ -60,7 +60,6 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     return dict(zip(read_lengths.tolist(), read_counts.tolist()))
 
 
-# deprecated
 def ligation_bias_distribution(
     sequence_data: pd.DataFrame,
     pattern_length: int = 2,
@@ -87,7 +86,12 @@ def ligation_bias_distribution(
     for pattern in sequence_data[pattern_length]:
         total_count += sequence_data[pattern_length][pattern][0]
         ligation_bias_dict["five_prime"][pattern] = sequence_data[pattern_length][pattern][0]
-        ligation_bias_dict["five_prime"][pattern] = sequence_data[pattern_length][pattern][0]
+        
+        # Find the index of the maximum value in the list
+        max_index = sequence_data[pattern_length][pattern].index(max(sequence_data[pattern_length][pattern]))
+        # Reverse the list and find the index of the last occurrence of the max value
+        last_index = len(lst) - lst[::-1].index(value) - 1
+        ligation_bias_dict["three_prime"][pattern] = sequence_data[pattern_length][pattern][0]
         
 
 
