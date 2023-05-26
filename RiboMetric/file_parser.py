@@ -115,7 +115,7 @@ def flagstat_bam(bam_path: str) -> dict:
 
 def parse_bam(bam_file,
               num_reads=1000000,
-              batch_size=1000000,
+              batch_size=100000,
               num_processes=1
               ) -> list:
     """
