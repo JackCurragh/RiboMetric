@@ -56,9 +56,9 @@ def generate_plots(results_dict: dict, config: dict) -> list:
         )
 
     plots_list.extend([
-            plot_ligation_bias_distribution(
-                results_dict["ligation_bias_distribution"], config
-            ),
+            # plot_ligation_bias_distribution(
+            #     results_dict["ligation_bias_distribution"], config
+            # ),
             plot_nucleotide_composition(
                 results_dict["nucleotide_composition"], config
             ),
@@ -193,7 +193,8 @@ def plot_nucleotide_composition(
     Generate a plot of the nucleotide composition for the full dataset
 
     Inputs:
-        read_length_df: Dataframe containing the read length distribution
+        nucleotide_composition_dict: Dictionary containing the distribution of
+        nucleotides per read position
         config: Dictionary containing the configuration information
 
     Outputs:
