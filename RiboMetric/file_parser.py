@@ -7,11 +7,12 @@ The functions are called by the main script RiboMetric.py
 from Bio import SeqIO
 import pysam
 import pandas as pd
-import subprocess
-import pysam
+from multiprocessing import Pool
 import gffpandas.gffpandas as gffpd
 import os
 import numpy as np
+
+from .bam_processing import process_reads, process_sequences
 
 
 def parse_gff(gff_path: str) -> gffpd.Gff3DataFrame:
@@ -112,71 +113,47 @@ def flagstat_bam(bam_path: str) -> dict:
     return flagstat_dict
 
 
-def parse_bam(bam_file: str, num_reads: int) -> pd.DataFrame:
+def parse_bam(bam_file,
+              num_reads=1000000,
+              batch_size=1000000,
+              num_processes=1
+              ) -> list:
     """
-    Read in the bam file at the provided path and return a dictionary
+    Read in the bam file at the provided path and return a list of dataframes
 
     Inputs:
         bam_file: Path to the bam file
-        Num_reads: Number of reads to parse
+        num_reads: Number of reads to parse
+        batch_size: The number of reads that are processed at a time
+        num_processes: The maximum number of processes that this function can
+        create
 
     Outputs:
-        read_dict: Dictionary containing the read information
-        (keys are the read names)
+        batch_results: List containing dataframes for the parsed reads which
+        will be grouped together in following steps
     """
-    # Convert the BAM file to SAM format and read the output in chunks
-    print(f"Running pysam")
-    print("Processing reads...")
-    counter, read_df_length = 0, 0
-    read_list = []
-    read_df = pd.DataFrame(columns=['read_length',
-                                    'reference_name', 'reference_start',
-                                    'sequence', 'count'])
     samfile = pysam.AlignmentFile(bam_file, "rb")
-    for read in samfile.fetch():
-        if "_x" in read.query_name:
-            count = int(read.query_name.split("_x")[-1])
-        else:
-            count = 1
-        read_list.append(
-            [
-                read.query_length,      # read_length
-                read.reference_name,    # reference_name
-                read.reference_start,   # reference_start
-                read.query_sequence,    # sequence
-                count,                  # count
-            ]
-        )
-        counter += 1
+    pool = Pool(processes=num_processes)
+    read_list, batch_results = [], []
+    for idx, read in enumerate(samfile.fetch()):
+        read_list.append(read.to_string().split(sep="\t"))
+        if idx >= num_reads - 1:
+            break
 
-        if counter > 1000000 or counter+read_df_length > num_reads:
-            read_df = pd.concat([read_df,
-                                 pd.DataFrame(
-                                    read_list,
-                                    columns=read_df.columns)
-                                 ])
-
-            read_df_length = len(read_df)
-            counter = 0
+        if len(read_list) == batch_size:
+            batch_results.append(pool.apply_async(process_reads, [read_list]))
             read_list = []
-        if read_df_length > num_reads:
-            print()
-            break
-        else:
-            read_percentage = round((counter+read_df_length)
-                                    / num_reads * 100, 3)
-            print(
-                f"Processed {counter+read_df_length}/{num_reads} \
-({read_percentage}%)",
-                end="\r",
-            )
+        read_percentage = round((idx) / num_reads * 100, 3)
+        print(f"Processed {idx}/{num_reads} \
+({read_percentage}%)", end="\r")
 
-        if counter+read_df_length > num_reads:
-            break
-    samfile.close()
+    if read_list:
+        batch_results.append(pool.apply_async(process_reads, [read_list]))
 
-    read_df["reference_name"] = read_df["reference_name"].astype("category")
-    return read_df
+    pool.close()
+    pool.join()
+
+    return [result.get() for result in batch_results]
 
 
 def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:

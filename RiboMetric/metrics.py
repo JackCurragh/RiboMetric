@@ -89,40 +89,41 @@ def cds_coverage_metric(
         represented by the A-sites over the total number of nucleotides in
         the CDS of transcripts present in the reads
     """
+    # Create the cds_coverage_df that contains only the required columns and
+    # the "name_pos" column, combining the transcript_id and a_site
+    cds_coverage_df = cds_read_df[["transcript_id",
+                                   "a_site",
+                                   "cds_start",
+                                   "cds_end"]].copy()
+    cds_coverage_df["name_pos"] = (cds_coverage_df["transcript_id"]
+                                   .astype("object")
+                                   + cds_coverage_df["a_site"]
+                                   .astype(str)
+                                   ).astype("category")
+
     # Calculate the total combined length of the CDS of transcripts that have
     # reads aligned to them
-    cds_transcripts = cds_read_df[~cds_read_df["transcript_id"]
-                                  .duplicated()
-                                  ][["transcript_id", "cds_start", "cds_end"]]
+    cds_transcripts = cds_coverage_df[~cds_coverage_df["transcript_id"]
+                                      .duplicated()].copy()
     cds_transcripts["cds_length"] = (cds_transcripts
                                      .apply(lambda x: x['cds_end']
                                             - x['cds_start'],
                                             axis=1))
     cds_length_total = cds_transcripts["cds_length"].sum()
+    del cds_transcripts
 
-    # Subset the dataframe so that only reads where the count covering a
-    # position is greater than minimum_reads
-    cds_reads_count = cds_read_df[cds_read_df
-                                  .groupby(["transcript_id", "a_site"])
-                                  .transform('size') > minimum_reads
-                                  ]
-    
     # If in_frame_coverage is true, take only reads that are in frame for
     # their transcript and divide the combined CDS length by 3
     if in_frame_coverage:
-        cds_reads_count[
-        (cds_reads_count["a_site"] - cds_reads_count["cds_start"])%3 == 0
-        ]
+        cds_coverage_df = cds_coverage_df[
+            (cds_coverage_df["a_site"]
+             - cds_coverage_df["cds_start"]
+             ) % 3 == 0]
         cds_length_total = cds_length_total/3
-    
+
     # Calculate the count of nucleotides covered by the reads after filtering
-    cds_reads_count = (cds_reads_count
-                     .groupby(["transcript_id", "a_site"])
-                     .size()
-                     .groupby('transcript_id')
-                     .size()
-                     .sum()
-                     )
+    cds_reads_count = sum(cds_coverage_df.value_counts("name_pos")
+                          > minimum_reads)
 
     return cds_reads_count/cds_length_total
 
