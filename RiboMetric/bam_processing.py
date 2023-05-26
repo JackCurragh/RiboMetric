@@ -29,6 +29,8 @@ def process_reads(reads):
                 len(read[9]),      # read_length
                 read[2],           # reference_name
                 int(read[3]),      # reference_start
+                read[9][0:2],      # first dinucleotide
+                read[9][-2:],      # last dinucleotide
                 count,             # count
             ]
         )
@@ -82,24 +84,9 @@ def process_sequences(sequences_counts: list,
     # Calculate the background frequency for three prime patterns
     condensed_arrays = {}
     three_prime_bg = np.copy(sequence_array)
-    
-    # Flip array
-    # for i in range(num_sequences):
-    #     row = three_prime_bg[i]
-    #     non_zero_indices = np.where(row != 0)[0]
-    #     non_zero_values = row[non_zero_indices]
-    #     flipped_row = np.zeros_like(row)
-    #     flipped_row[:len(non_zero_indices)] = non_zero_values
-    #     three_prime_bg[i] = flipped_row
-
-    # Iterate over each row in the array
-    for row in three_prime_bg:
-        # Filter non-zero values and move them to the left
-        row = [value for value in row if value != 0] + [0] * row.count(0)
-        three_prime_bg.append(row)
 
     for i, sequence in enumerate(sequences):
-        last_pattern_index = len(sequence) - pattern_length
+        last_pattern_index = len(sequence) - pattern_length # changed because of flipped array
         three_prime_bg[i, last_pattern_index, :] = 0
         
     nucleotides = ["".join(nt) for nt in itertools.product('ACGT', repeat=pattern_length)]
