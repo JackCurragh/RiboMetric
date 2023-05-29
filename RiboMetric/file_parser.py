@@ -129,24 +129,30 @@ def parse_bam(bam_file,
         create
 
     Outputs:
-        batch_results: List containing dataframes for the parsed reads which
-        will be grouped together in following steps
+        parsed_bam: Tuple containing:
+            read_df_pre: The read dataframe containing read information before
+            further modifications to the dataframe
+            sequence_data: Dictionary containing the total counts of
+            nucleotide patterns per nucleotide position
+            sequence_background: Dictionary containing the background
+            frequency of nucleotide patterns for five and three prime
     """
     samfile = pysam.AlignmentFile(bam_file, "rb")
     pool = Pool(processes=num_processes)
     read_list, read_batches = [], []
-    sequence_batches = {1: [], 2: []} # temp disable dinucleotide for testing purposes
+    sequence_batches = {1: [], 2: []}
     for idx, read in enumerate(samfile.fetch()):
         read_list.append(read.to_string().split(sep="\t"))
         if idx >= num_reads - 1:
             break
-        
+
         if len(read_list) == batch_size:
             read_batches.append(pool.apply_async(process_reads, [read_list]))
             for group in sequence_batches:
                 sequence_batches[group].append(
                     pool.apply_async(process_sequences,
-                                     [[(read[0], read[9]) for read in read_list],
+                                     [[(read[0], read[9]) for read in
+                                       read_list],
                                       group]))
             read_list = []
         read_percentage = round((idx) / num_reads * 100, 3)
@@ -158,8 +164,9 @@ def parse_bam(bam_file,
         for group in sequence_batches:
             sequence_batches[group].append(
                 pool.apply_async(process_sequences,
-                                    [[(read[0], read[9]) for read in read_list],
-                                     group]))
+                                 [[(read[0], read[9]) for read in
+                                   read_list],
+                                  group]))
 
     pool.close()
     pool.join()
