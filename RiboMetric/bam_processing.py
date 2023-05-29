@@ -176,7 +176,7 @@ def calculate_background(sequence_array: np.array, sequences, pattern_length, fi
     return sequence_bg
 
 
-def join_batches(read_batches: list(pd.DataFrame), full_sequence_batches: dict) -> tuple(pd.DataFrame, dict, dict):
+def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
     """
     Get and join the data returned from multiprocessed_batches
 
@@ -187,12 +187,13 @@ def join_batches(read_batches: list(pd.DataFrame), full_sequence_batches: dict) 
         position and background) returned from multiprocessed batches
 
     Outputs:
-        read_df_pre: The read dataframe containing read information before
-        further modifications to the dataframe
-        sequence_data: Dictionary containing the total counts of nucleotide
-        patterns per nucleotide position
-        sequence_background: Dictionary containing the background frequency
-        of nucleotide patterns for five and three prime
+        tuple containing:
+            read_df_pre: The read dataframe containing read information before
+            further modifications to the dataframe
+            sequence_data: Dictionary containing the total counts of
+            nucleotide patterns per nucleotide position
+            sequence_background: Dictionary containing the background
+            frequency of nucleotide patterns for five and three prime
     """
     print("\nGetting data from async objects..")
 
