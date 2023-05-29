@@ -49,12 +49,24 @@ def process_reads(reads):
 def process_sequences(sequences_counts: list,
                       pattern_length: int = 1,
                       max_sequence_length: int = None,
-                      return_composition: bool = False,
-                      return_background: bool = False):
+                      ) -> dict:
     """
-    Calculate the occurence of nucleotides or groups of nucleotides in the
-    sequences from the reads. The nucleotides or groups are stored in
-    lexicographic order.
+    Calculate the occurence of nucleotides patterns in the sequences from
+    the reads. The nucleotides patterns are stored in lexicographic order
+    (see pattern to index)
+
+    Inputs:
+        sequences_counts: List of tuples containing read_name and sequence
+        pattern_length: Length of the nucleotide pattern
+        (e.g. 1: [A,C,G,T], 2: [AA,AC,AG,..,GT,TT]) 
+        max_sequence_length: Manually set the max sequence length, sequences
+        will be cut to this length. If None, takes the max found sequence
+        length in the list of sequences 
+
+    Outputs:
+        condensed_arrays: Dictionary containing raw pattern counts, 5' and 3'
+        background frequencies and number of sequences in the batch (used
+        later for joining of background frequencies)
     """
     # Create the counts array
     read_names = [sequences[0] for sequences in sequences_counts]
@@ -97,6 +109,7 @@ def process_sequences(sequences_counts: list,
         nucleotide_counts = np.sum(result_array[:, :, pattern_to_index(nucleotide)], axis=0)
         condensed_arrays[nucleotide] = nucleotide_counts
 
+    # Add backgrounds and sequence_number to output dictionary
     condensed_arrays["3_prime_bg"] = three_prime_bg
     condensed_arrays["5_prime_bg"] = five_prime_bg
     condensed_arrays["sequence_number"] = num_sequences
