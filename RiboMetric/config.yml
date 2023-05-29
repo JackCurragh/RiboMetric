@@ -41,3 +41,5 @@ qc:
     read_frame_distribution: False
   read_frame_distribution:
     3nt_count_cutoff: 0.05
+  cds_coverage:
+    in_frame_coverage: True   # Only check in-frame coverage, otherwise check complete cds coverage
