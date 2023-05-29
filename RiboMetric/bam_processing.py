@@ -122,7 +122,20 @@ def pattern_to_index(pattern: str) -> int:
 
 def calculate_background(sequence_array: np.array, sequences, pattern_length, five_prime: bool) -> dict:
     """
-    
+    Calculate the background frequency for a list of sequences. The background
+    frequency is the proportion of nucleotide patterns without the first or
+    last pattern in the read, for five prime and three prime respectively.
+
+    Inputs:
+        sequence_array: 3D array of a batch of sequences
+        sequences: list of sequences from a batch
+        pattern_length: The length of nucleotide patterns being processed
+        five_prime: If set to True, returns the 'five_prime_bg' background, else
+        returns the 'three_prime_bg' background
+
+    Outputs:
+        sequence_bg: A dictionary with the nucleotide pattern as keys and
+        their background proportion as values
     """
     condensed_arrays = {}
     sequence_bg = np.copy(sequence_array)
@@ -150,9 +163,23 @@ def calculate_background(sequence_array: np.array, sequences, pattern_length, fi
     return sequence_bg
 
 
-def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
+def join_batches(read_batches: list(pd.DataFrame), full_sequence_batches: dict) -> tuple(pd.DataFrame, dict, dict):
     """
+    Get and join the data returned from multiprocessed_batches
 
+    Inputs:
+        read_batches: List of dataframes containing read information returned
+        from multiprocessed batches
+        full_sequence_batches: Dictionary containing sequence data (counts per
+        position and background) returned from multiprocessed batches
+
+    Outputs:
+        read_df_pre: The read dataframe containing read information before
+        further modifications to the dataframe
+        sequence_data: Dictionary containing the total counts of nucleotide
+        patterns per nucleotide position
+        sequence_background: Dictionary containing the background frequency
+        of nucleotide patterns for five and three prime
     """
     print("\nGetting data from async objects..")
 
