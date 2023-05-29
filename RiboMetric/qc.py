@@ -16,7 +16,6 @@ from .modules import (
     read_length_distribution,
     read_df_to_cds_read_df,
     ligation_bias_distribution,
-    calculate_expected_dinucleotide_freqs,
     normalise_ligation_bias,
     nucleotide_composition,
     read_frame_distribution,
@@ -39,6 +38,8 @@ from .metrics import (
 
 def annotation_mode(
     read_df: pd.DataFrame,
+    sequence_data: dict,
+    sequence_background: dict,
     annotation_df: pd.DataFrame = pd.DataFrame(),
     config: dict = {}
 ) -> dict:
@@ -83,31 +84,26 @@ def annotation_mode(
     print("> ligation_bias_distribution")
     results_dict["ligation_bias_distribution"] = ligation_bias_distribution(
         read_df,
-        num_bases=config["plots"]["ligation_bias_distribution"][
+        pattern_length=config["plots"]["ligation_bias_distribution"][
             "nucleotide_count"
-        ],
-        five_prime=config["plots"]["ligation_bias_distribution"]["five_prime"],
+        ]
     )
     results_dict["metrics"]["ligation_bias_distribution_metric"] = lbd_metric(
         results_dict["ligation_bias_distribution"],
-        calculate_expected_dinucleotide_freqs(
-            read_df,
-        ),
+        sequence_background[2]["5_prime_bg"],
     )
     if config["plots"]["ligation_bias_distribution"]["background_freq"]:
         results_dict["ligation_bias_distribution"] = normalise_ligation_bias(
-            read_df,
             results_dict["ligation_bias_distribution"],
-            num_bases=config["plots"]["ligation_bias_distribution"][
+            sequence_background=sequence_background,
+            pattern_length=config["plots"]["ligation_bias_distribution"][
                 "nucleotide_count"
-            ],
-            five_prime=config["plots"]["ligation_bias_distribution"][
-                "five_prime"
             ],
         )
 
     print("> nucleotide_composition")
-    results_dict["nucleotide_composition"] = nucleotide_composition(read_df)
+    results_dict["nucleotide_composition"] = nucleotide_composition(
+        sequence_data[1])
 
     if config["plots"]["logoplot"]["enable"]:
         print("> sequence_slice")
@@ -159,7 +155,8 @@ def annotation_mode(
         results_dict["metrics"]["cds_coverage_metric"] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=1,
-            in_frame_coverage=True) # should be in config  
+            in_frame_coverage=config["qc"]["cds_coverage"]["in_frame_coverage"]
+            )
     return results_dict
 
 
