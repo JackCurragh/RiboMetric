@@ -82,31 +82,25 @@ def annotation_mode(
         results_dict["read_length_distribution"]
     )
 
-    # print("> ligation_bias_distribution")
-    # results_dict["ligation_bias_distribution"] = ligation_bias_distribution(
-    #     read_df,
-    #     num_bases=config["plots"]["ligation_bias_distribution"][
-    #         "nucleotide_count"
-    #     ],
-    #     five_prime=config["plots"]["ligation_bias_distribution"]["five_prime"],
-    # )
-    # results_dict["metrics"]["ligation_bias_distribution_metric"] = lbd_metric(
-    #     results_dict["ligation_bias_distribution"],
-    #     calculate_expected_dinucleotide_freqs(
-    #         read_df,
-    #     ),
-    # )
-    # if config["plots"]["ligation_bias_distribution"]["background_freq"]:
-    #     results_dict["ligation_bias_distribution"] = normalise_ligation_bias(
-    #         read_df,
-    #         results_dict["ligation_bias_distribution"],
-    #         num_bases=config["plots"]["ligation_bias_distribution"][
-    #             "nucleotide_count"
-    #         ],
-    #         five_prime=config["plots"]["ligation_bias_distribution"][
-    #             "five_prime"
-    #         ],
-    #     )
+    print("> ligation_bias_distribution")
+    results_dict["ligation_bias_distribution"] = ligation_bias_distribution(
+        read_df,
+        pattern_length=config["plots"]["ligation_bias_distribution"][
+            "nucleotide_count"
+        ]
+    )
+    results_dict["metrics"]["ligation_bias_distribution_metric"] = lbd_metric(
+        results_dict["ligation_bias_distribution"],
+        sequence_background[2]["5_prime_bg"],
+    )
+    if config["plots"]["ligation_bias_distribution"]["background_freq"]:
+        results_dict["ligation_bias_distribution"] = normalise_ligation_bias(
+            results_dict["ligation_bias_distribution"],
+            sequence_background=sequence_background,
+            pattern_length=config["plots"]["ligation_bias_distribution"][
+                "nucleotide_count"
+            ],
+        )
 
     print("> nucleotide_composition")
     results_dict["nucleotide_composition"] = nucleotide_composition(sequence_data[1])

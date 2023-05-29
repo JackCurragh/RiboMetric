@@ -60,7 +60,7 @@ def ligation_bias_distribution_metric(
     """
     kl_divergence = 0.0
 
-    for dinucleotide, observed_prob in observed_freq.items():
+    for dinucleotide, observed_prob in observed_freq["five_prime"].items():
         expected_prob = expected_freq[dinucleotide]
         kl_divergence += observed_prob * math.log2(
                                             observed_prob / expected_prob
