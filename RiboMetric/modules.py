@@ -119,19 +119,20 @@ def normalise_ligation_bias(
         # pattern_length: Length of nucleotide pattern
 
     Outputs:
-        ligation_bias_dict: Modified to show the difference between observed
-        and expected distributions
+        ligation_bias_dict_norm: Modified ligation_bias_dict to show the
+        difference between observed and expected distributions
     """
+    ligation_bias_dict_norm = ligation_bias_dict
     expected_distribution = {"five_prime": {}, "three_prime": {}}
     expected_distribution["five_prime"] = sequence_background[pattern_length]["5_prime_bg"]
     expected_distribution["three_prime"] = sequence_background[pattern_length]["3_prime_bg"]
 
-    for prime in ligation_bias_dict:
-        for pattern in ligation_bias_dict[prime]:
+    for prime in ligation_bias_dict_norm:
+        for pattern in ligation_bias_dict_norm[prime]:
             if pattern in expected_distribution[prime]:
-                ligation_bias_dict[prime][pattern] -= expected_distribution[prime][pattern]
+                ligation_bias_dict_norm[prime][pattern] -= expected_distribution[prime][pattern]
 
-    return ligation_bias_dict
+    return ligation_bias_dict_norm
 
 
 def slicer_vectorized(array: np.array, start: int, end: int):
