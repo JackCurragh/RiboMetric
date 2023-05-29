@@ -61,60 +61,76 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
 
 
 def ligation_bias_distribution(
-    sequence_data: pd.DataFrame,
+    read_df: pd.DataFrame,
     pattern_length: int = 2,
-    five_prime: bool = True,
+    keep_N: bool = False
 ) -> dict:
     """
     Calculate the proportion of the occurrence in the first or last n
     nucleotides of the reads to check for ligation bias
 
     Inputs:
-        sequence_data: dictionary containing the read counts for different
-        pattern lengths
-        num_bases: Number of bases to be read (Default = 2)
-        five_prime: Start at 5' end (True) or 3' end (False) of read
-        (Default = True)
+        read_df: Dataframe containing read information 
+        # pattern_length: Length of nucleotide pattern
+        keep_N: Keep nucleotide patterns with 'N', or discard if False
 
     Outputs:
         ligation_bias_dict: Dictionary containing the distribution of the
         first pattern of nucleotides in the reads
     """
     ligation_bias_dict = {"five_prime": {}, "three_prime": {}}
-    total_count = 0
+    
+    total_counts = len(read_df)
+    five_prime_counts = read_df["first_dinucleotide"].value_counts()
+    three_prime_counts = read_df["last_dinucleotide"].value_counts()
 
-    for pattern in sequence_data[pattern_length]:
-        total_count += sequence_data[pattern_length][pattern][0]
-        ligation_bias_dict["five_prime"][pattern] = sequence_data[pattern_length][pattern][0]
-        
-        # Find the index of the maximum value in the list
-        max_index = sequence_data[pattern_length][pattern].index(max(sequence_data[pattern_length][pattern]))
-        # Reverse the list and find the index of the last occurrence of the max value
-        last_index = len(lst) - lst[::-1].index(value) - 1
-        ligation_bias_dict["three_prime"][pattern] = sequence_data[pattern_length][pattern][0]
-        
+    pattern_list = read_df["first_dinucleotide"].cat.categories.to_list()
+    pattern_list += read_df["last_dinucleotide"].cat.categories.to_list()
+    pattern_list = list(dict.fromkeys(pattern_list))
 
+    if keep_N:
+        pattern_list = sorted(pattern_list, key=lambda x: ('N' in x, x))
+    else:
+        pattern_list = [pattern for pattern in pattern_list if 'N' not in pattern]
+
+    for pattern in pattern_list:
+        ligation_bias_dict["five_prime"][pattern] = (five_prime_counts[pattern]
+            /total_counts) if pattern in read_df["first_dinucleotide"].cat.categories else 0
+        ligation_bias_dict["three_prime"][pattern] = (three_prime_counts[pattern]
+            /total_counts) if pattern in read_df["last_dinucleotide"].cat.categories else 0
 
     return ligation_bias_dict
 
 
-# deprecated
 def normalise_ligation_bias(
-    read_df: pd.DataFrame,
     ligation_bias_dict: dict,
-    num_bases: int = 2,
-    five_prime: bool = True,
+    sequence_background: dict,
+    pattern_length: int = 2,
 ) -> dict:
-    expected_nucleotide_proportion = global_nucleotide_proportion(
-        read_df, num_bases, five_prime
-    )
-    for key in ligation_bias_dict:
-        if key not in expected_nucleotide_proportion:
-            expected_nucleotide_proportion[key] = 0
-    ligation_bias_dict = {
-        k: (v - expected_nucleotide_proportion[k])
-        for k, v in ligation_bias_dict.items()
-    }
+    """
+    Calculate the difference between the observed and expected nucleotide
+    pattern at the start and end of the sequences.
+
+    Inputs:
+        ligation_bias_dict: Dictionary containing observed proportions for 5'
+        and 3' ends of the sequences 
+        sequence_background: Dictionary containig expected proportions for 5'
+        and 3' directions of sequences
+        # pattern_length: Length of nucleotide pattern
+
+    Outputs:
+        ligation_bias_dict: Modified to show the difference between observed
+        and expected distributions
+    """
+    expected_distribution = {"five_prime": {}, "three_prime": {}}
+    expected_distribution["five_prime"] = sequence_background[pattern_length]["5_prime_bg"]
+    expected_distribution["three_prime"] = sequence_background[pattern_length]["3_prime_bg"]
+
+    for prime in ligation_bias_dict:
+        for pattern in ligation_bias_dict[prime]:
+            if pattern in expected_distribution[prime]:
+                ligation_bias_dict[prime][pattern] -= expected_distribution[prime][pattern]
+
     return ligation_bias_dict
 
 
@@ -484,6 +500,7 @@ def convert_html_to_pdf(source_html, output_filename):
     return pisa_status.err
 
 
+# Deprecated
 def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict():
     """
     Calculate the expected dinucleotide frequencies based on the
