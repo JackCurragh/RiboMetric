@@ -4,8 +4,6 @@ This script contains processing steps used to parse bam files.
 import pandas as pd
 import numpy as np
 import itertools
-#temp test imports
-import time
 
 def process_reads(reads):
     """
@@ -37,7 +35,12 @@ def process_reads(reads):
     batch_df = pd.DataFrame(read_list, columns=['read_length',
                                                 'reference_name',
                                                 'reference_start',
+                                                'first_dinucleotide',
+                                                'last_dinucleotide',
                                                 'count'])
+    
+    batch_df["first_dinucleotide"] = batch_df["first_dinucleotide"].astype("category")
+    batch_df["last_dinucleotide"] = batch_df["last_dinucleotide"].astype("category")
     batch_df["reference_name"] = batch_df["reference_name"].astype("category")
 
     return batch_df
@@ -45,14 +48,14 @@ def process_reads(reads):
 
 def process_sequences(sequences_counts: list,
                       pattern_length: int = 1,
-                      max_sequence_length: int = None):
+                      max_sequence_length: int = None,
+                      return_composition: bool = False,
+                      return_background: bool = False):
     """
     Calculate the occurence of nucleotides or groups of nucleotides in the
     sequences from the reads. The nucleotides or groups are stored in
     lexicographic order.
     """
-    t0 = time.time() 
-
     # Create the counts array
     read_names = [sequences[0] for sequences in sequences_counts]
     counts_array = []
@@ -80,33 +83,9 @@ def process_sequences(sequences_counts: list,
             if index != -1:
                 sequence_array[i, j, index] = 1
 
-    """Following 2 blocks (background calculation) could be in its own function"""
-    # Calculate the background frequency for three prime patterns
-    condensed_arrays = {}
-    three_prime_bg = np.copy(sequence_array)
-
-    for i, sequence in enumerate(sequences):
-        last_pattern_index = len(sequence) - pattern_length # changed because of flipped array
-        three_prime_bg[i, last_pattern_index, :] = 0
-        
-    nucleotides = ["".join(nt) for nt in itertools.product('ACGT', repeat=pattern_length)]
-    for nucleotide in nucleotides:
-        nucleotide_counts = np.sum(three_prime_bg[:, :, pattern_to_index(nucleotide)])
-        condensed_arrays[nucleotide] = nucleotide_counts
-    total_bg_counts = sum(condensed_arrays.values())
-    three_prime_bg = {k: v/total_bg_counts for k,v in condensed_arrays.items()}
-
-    # Calculate the background frequency for five prime patterns
-    condensed_arrays = {}
-    five_prime_bg = np.copy(sequence_array)
-    for i, sequence in enumerate(sequences):
-        five_prime_bg[i, 0, :] = 0
-
-    for nucleotide in nucleotides:
-        nucleotide_counts = np.sum(five_prime_bg[:, :, pattern_to_index(nucleotide)])
-        condensed_arrays[nucleotide] = nucleotide_counts
-    total_bg_counts = sum(condensed_arrays.values())
-    five_prime_bg = {k: v/total_bg_counts for k,v in condensed_arrays.items()}
+    # Calculate background frequencies
+    three_prime_bg = calculate_background(sequence_array, sequences, pattern_length, five_prime=False)
+    five_prime_bg = calculate_background(sequence_array, sequences, pattern_length, five_prime=True)
 
     # Perform element-wise multiplication of sequence array and counts array
     result_array = sequence_array * counts_array[:, None, None]
@@ -117,10 +96,10 @@ def process_sequences(sequences_counts: list,
     for nucleotide in nucleotides:
         nucleotide_counts = np.sum(result_array[:, :, pattern_to_index(nucleotide)], axis=0)
         condensed_arrays[nucleotide] = nucleotide_counts
+
     condensed_arrays["3_prime_bg"] = three_prime_bg
     condensed_arrays["5_prime_bg"] = five_prime_bg
     condensed_arrays["sequence_number"] = num_sequences
-    print(f"completion time: {time.time() - t0}")
 
     return condensed_arrays
 
@@ -146,18 +125,29 @@ def calculate_background(sequence_array: np.array, sequences, pattern_length, fi
     
     """
     condensed_arrays = {}
-    three_prime_bg = np.copy(sequence_array)
+    sequence_bg = np.copy(sequence_array)
+    if not five_prime:
+        # Flip array so 3' is at the start
+        flipped_arr = np.flip(sequence_bg, axis=1)
+
+        # Move rows containing only zeros to the end of each matrix
+        nonzero_mask = np.any(flipped_arr != 0, axis=2)
+        sequence_bg = np.zeros_like(flipped_arr)
+        for i in range(flipped_arr.shape[0]):
+            nonzeros = flipped_arr[i, nonzero_mask[i]]
+            zeros = flipped_arr[i, ~nonzero_mask[i]]
+            sequence_bg[i] = np.concatenate((nonzeros, zeros), axis=0)
+
     for i, sequence in enumerate(sequences):
-        last_pattern_index = len(sequence) - pattern_length
-        three_prime_bg[i, last_pattern_index, :] = 0
-        
+        sequence_bg[i, 0, :] = 0
+
     nucleotides = ["".join(nt) for nt in itertools.product('ACGT', repeat=pattern_length)]
     for nucleotide in nucleotides:
-        nucleotide_counts = np.sum(three_prime_bg[:, :, pattern_to_index(nucleotide)])
+        nucleotide_counts = np.sum(sequence_bg[:, :, pattern_to_index(nucleotide)])
         condensed_arrays[nucleotide] = nucleotide_counts
     total_bg_counts = sum(condensed_arrays.values())
-    three_prime_bg = {k: v/total_bg_counts for k,v in condensed_arrays.items()}
-    return
+    sequence_bg = {k: v/total_bg_counts for k,v in condensed_arrays.items()}
+    return sequence_bg
 
 
 def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
@@ -189,8 +179,10 @@ def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
     print("Joining batch files..")
 
     read_df_pre = pd.concat(read_batches, ignore_index=True)
-    read_df_pre["reference_name"] = (read_df_pre["reference_name"]
+    category_columns = ["reference_name", "first_dinucleotide", "last_dinucleotide"]
+    read_df_pre[category_columns] = (read_df_pre[category_columns]
                                          .astype("category"))
+    
     sequence_data = {}
     for pattern_length in sequence_batches:
         sequence_data[pattern_length] = {}
