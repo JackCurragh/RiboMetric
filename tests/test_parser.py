@@ -4,7 +4,7 @@ import pandas as pd
 
 def test_bam_parsing():
     """Test bam parsing"""
-    bam = pd.concat(parse_bam(
+    bam = parse_bam(
         "tests/test_data/test.bam", 10000
-    ))
+    )[0]
     assert len(bam) == 10000
