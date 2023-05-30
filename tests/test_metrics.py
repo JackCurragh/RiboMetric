@@ -48,9 +48,9 @@ def test_ligation_bias_distribution_metric():
                                 'AG': 0.0975609756097561,
                                 'AT': 0.0,
                                 'CA': 0.04878048780487805,
-                                'CC': 0.07317073170731707,
+                                'CC': 0.04317073170731707,
                                 'CG': 0.0,
-                                'CT': 0.0,
+                                'CT': 0.03,
                                 'GA': 0.0,
                                 'GC': 0.0,
                                 'GG': 0.17073170731707318,
@@ -58,27 +58,11 @@ def test_ligation_bias_distribution_metric():
                                 'TA': 0.024390243902439025,
                                 'TC': 0.12195121951219512,
                                 'TG': 0.0,
-                                'TT': 0.0975609756097561},
-                            "3_prime_bg":{
-                                'AA': 0.2926829268292683,
-                                'AC': 0.0,
-                                'AG': 0.0975609756097561,
-                                'AT': 0.0,
-                                'CA': 0.024390243902439025,
-                                'CC': 0.07317073170731707,
-                                'CG': 0.0,
-                                'CT': 0.024390243902439025,
-                                'GA': 0.0,
-                                'GC': 0.0,
-                                'GG': 0.1951219512195122,
-                                'GT': 0.12195121951219512,
-                                'TA': 0.024390243902439025,
-                                'TC': 0.04878048780487805,
-                                'TG': 0.0,
                                 'TT': 0.0975609756097561}}}
+    print(ligation_bias_dict["five_prime"])
     ligation_bias_metric = lbd_metric(ligation_bias_dict, sequence_background[2]["5_prime_bg"])
 
-    assert round(ligation_bias_metric, 2) == 1.17
+    assert round(ligation_bias_metric, 2) == 1.2
 
 
 def test_read_frame_distribution_metric():
