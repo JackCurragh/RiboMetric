@@ -63,7 +63,8 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
 def ligation_bias_distribution(
     read_df: pd.DataFrame,
     pattern_length: int = 2,
-    keep_N: bool = False
+    keep_N: bool = False,
+    target: str = "both",
 ) -> dict:
     """
     Calculate the proportion of the occurrence in the first or last n
@@ -73,20 +74,27 @@ def ligation_bias_distribution(
         read_df: Dataframe containing read information 
         # pattern_length: Length of nucleotide pattern
         keep_N: Keep nucleotide patterns with 'N', or discard if False
+        target: Calculate ligation bias for 5', 3' or both 
 
     Outputs:
         ligation_bias_dict: Dictionary containing the distribution of the
         first pattern of nucleotides in the reads
     """
-    ligation_bias_dict = {"five_prime": {}, "three_prime": {}}
-    
+    ligation_bias_dict = ({target:{}} if target != "both"
+                          else {"five_prime": {}, "three_prime": {}})    
+
     total_counts = len(read_df)
-    five_prime_counts = read_df["first_dinucleotide"].value_counts()
-    three_prime_counts = read_df["last_dinucleotide"].value_counts()
+    prime_counts = {}
+    prime_counts["five_prime"] = read_df["first_dinucleotide"].value_counts()
+    prime_counts["three_prime"] = read_df["last_dinucleotide"].value_counts()
+
+    categories = {}
+    categories["five_prime"] = read_df["first_dinucleotide"].cat.categories.to_list()
+    categories["three_prime"] = read_df["last_dinucleotide"].cat.categories.to_list()
 
     pattern_list = read_df["first_dinucleotide"].cat.categories.to_list()
     pattern_list += read_df["last_dinucleotide"].cat.categories.to_list()
-    pattern_list = list(dict.fromkeys(pattern_list))
+    pattern_list = sorted(list(set(categories["five_prime"]) | set(categories["three_prime"])))
 
     if keep_N:
         pattern_list = sorted(pattern_list, key=lambda x: ('N' in x, x))
@@ -94,10 +102,10 @@ def ligation_bias_distribution(
         pattern_list = [pattern for pattern in pattern_list if 'N' not in pattern]
 
     for pattern in pattern_list:
-        ligation_bias_dict["five_prime"][pattern] = (five_prime_counts[pattern]
-            /total_counts) if pattern in read_df["first_dinucleotide"].cat.categories else 0
-        ligation_bias_dict["three_prime"][pattern] = (three_prime_counts[pattern]
-            /total_counts) if pattern in read_df["last_dinucleotide"].cat.categories else 0
+        for prime in ligation_bias_dict:
+            if pattern in categories[prime]:
+                ligation_bias_dict[prime][pattern] = \
+                    prime_counts[prime][pattern]/total_counts
 
     return ligation_bias_dict
 
@@ -320,7 +328,6 @@ def assign_mRNA_category(annotated_read_df) -> str:
     return annotated_read_df
 
 
-# Slow, needs improving
 def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
     """
     Calculate the distribution of the mRNA categories over the read length
