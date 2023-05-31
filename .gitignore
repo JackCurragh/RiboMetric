@@ -134,3 +134,5 @@ sample_data/gencode.v25.annotation.gff3
 transcriptome_collapsed_RiboMetric.html
 mprofile_*
 tests/test_data/test_RiboMetric.html
+
+*.html

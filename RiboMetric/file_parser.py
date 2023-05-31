@@ -296,8 +296,11 @@ def extract_transcript_id(attr_str):
 
 
 def prepare_annotation(
-    gff_path: str, outdir: str, num_transcripts: int, config: str
-) -> pd.DataFrame:
+        gff_path: str,
+        outdir: str,
+        num_transcripts: int,
+        config: str
+        ) -> pd.DataFrame:
     """
     Given a path to a gff file, produce a tsv file containing the
     transcript_id, tx_cds_start, tx_cds_end, tx_length,
@@ -314,11 +317,6 @@ def prepare_annotation(
     """
     print("Parsing gff")
     gffdf = parse_gff(gff_path).df
-
-    # transcript_id_regex = r"transcript_id=([^;]+)"
-    # gffdf.loc[:, "transcript_id"] = gffdf["attributes"].str.extract(
-    # transcript_id_regex
-    # )
 
     gffdf.loc[:, "transcript_id"] = gffdf["attributes"].apply(
         extract_transcript_id
