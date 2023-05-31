@@ -58,9 +58,11 @@ def ligation_bias_distribution_metric(
     Outputs:
         lbd_df: Dataframe containing the ligation bias metric in bits
     """
+    # Needs possible rewrite using normalised ligation bias. Current iteration only accounts for five_prime  
+    # division by 0 if background is non-existent, Only patterns that occur at least once are used (needs to be changed in ligation bias)
     kl_divergence = 0.0
 
-    for dinucleotide, observed_prob in observed_freq.items():
+    for dinucleotide, observed_prob in observed_freq["five_prime"].items():
         expected_prob = expected_freq[dinucleotide]
         kl_divergence += observed_prob * math.log2(
                                             observed_prob / expected_prob
