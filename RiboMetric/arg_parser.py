@@ -1,4 +1,6 @@
 
+import os
+import yaml
 import argparse
 from rich.emoji import Emoji
 
@@ -159,9 +161,9 @@ def argument_parser():
     return parser
 
 
-def args_to_config(args, config: dict) -> dict:
+def open_config(args) -> dict:
     """
-    Overrides config dictionary with commandline arguments 
+    Opens config and overrides config dictionary with commandline arguments 
     
     Inputs:
         args: Arguments passed from the commandline through argparse
@@ -170,4 +172,25 @@ def args_to_config(args, config: dict) -> dict:
     Outputs:
         config: Modified config with arguments
     """
+    if os.path.exists(args.config):
+        with open(args.config, "r") as yml:
+            config = yaml.load(yml, Loader=yaml.Loader)
+    else:
+        # load default config file
+        project_dir = os.path.dirname(os.path.abspath(__file__))
+        config_file_path = os.path.join(project_dir, 'config.yml')
 
+        with open(config_file_path, "r") as yml:
+            config = yaml.load(yml, Loader=yaml.Loader)
+
+    if args.all:
+        args.json = True
+        args.html = True
+        args.pdf = True
+        args.csv = True
+
+    for arg in vars(args):
+        if getattr(args, arg) != False:
+            config["argument"][arg] = getattr(args, arg)
+
+    return config
