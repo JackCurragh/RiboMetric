@@ -34,7 +34,7 @@ def generate_json(
     else:
         if output_directory.endswith("/") and output_directory != "":
             output_directory = output_directory[:-1]
-        output = output_directory + "/" + name
+        output = output_directory + "/" + name + ".json"
 
     data = {"results": results_dict, "config": config}
 

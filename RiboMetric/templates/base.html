@@ -61,6 +61,14 @@
     .flex-child:first-child {
         margin-right: 20px;
     } 
+    table, th, td {
+        border: 1px solid white;
+        border-collapse: collapse;
+    }
+    th, td {
+        background-color: #636EFA80;
+        padding: 5px;
+    }
   </style>
 </head>
 <body>
@@ -73,16 +81,28 @@
     </div>
     {% endif %}
     <div class="main">
-        <h1>RiboMetric Report</h1>
-        <h5>Results from your RiboMetric analysis, completed at {{completion_time}}</h5>
-        <h2>Summary Report</h2>
         <div class="flex-container">
             <div class="flex-child">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed aliquam finibus odio sed rutrum. Donec semper est eget odio pharetra, at viverra lorem pharetra. Morbi non ante sagittis ante feugiat porta. Donec laoreet consequat ipsum sit amet aliquet. Phasellus ullamcorper, augue eget eleifend fermentum, massa ipsum volutpat elit, non sagittis tortor ligula sit amet nisi. Nunc sed ipsum consequat, venenatis enim nec, tempus nisl. Aliquam pretium purus sagittis rutrum ornare.
-
-                Maecenas id justo ante. Cras molestie id est sed eleifend. Maecenas a ex vitae orci ultricies auctor. Integer a mi eget urna vulputate tempor. Curabitur eu fringilla nisl, sit amet dapibus ipsum. Aenean ante sem, varius ut lectus eget, tempus tempor dui. Vivamus sed libero elit. Cras dolor sem, tempus vel bibendum sit amet, rhoncus sed erat.
-                
-                Sed accumsan, tortor at ullamcorper auctor, sapien lacus suscipit nisi, sed vulputate nisl dui nec tortor. Phasellus aliquet sit amet lectus nec finibus. Cras lobortis at dui ac suscipit. Morbi vehicula, tortor in consequat interdum, sapien ipsum mattis libero, rutrum iaculis ante lectus nec urna. Phasellus dignissim elit ligula, sit amet rutrum ex fermentum sit amet. Proin in turpis sed nunc mattis vulputate vitae non mauris. Sed imperdiet est quis porta commodo. Praesent sed viverra nisl.
+                <h1>RiboMetric Report</h1>
+                <h5>Results from your RiboMetric analysis, completed at {{completion_time}}</h5>
+                <h2>Summary Report</h2>
+                <div>
+                    WIP table
+                    <table>
+                        <tr>
+                            <td><b>Metric 1</b></td>
+                            <td>values</td>
+                        </tr>
+                        <tr>
+                            <td><b>Metric 2</b></td>
+                            <td>values</td>
+                        </tr>
+                        <tr>
+                            <td><b>Metric 3</b></td>
+                            <td>values</td>
+                        </tr>
+                    </table>
+                </div>
             </div>
             <div class="flex-child">
                 {% if filetype == "html" %}

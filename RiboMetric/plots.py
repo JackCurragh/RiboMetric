@@ -34,7 +34,6 @@ def generate_plots(results_dict: dict, config: dict) -> list:
     )
 
     if results_dict["mode"] == "annotation":
-        print("Finished basic plots, generating annotation plots")
         plots_list.extend(
             [
                 plot_metagene_profile(
@@ -145,26 +144,42 @@ def plot_ligation_bias_distribution(
         plot_ligation_bias_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
-    # Remove nucleotide sequences with 'N' if the option in config is False
-    if config["plots"]["ligation_bias_distribution"]["include_N"] is False:
-        ligation_bias_dict = {
-            k: v for k, v in ligation_bias_dict.items() if "N" not in k
-        }
+    if ligation_bias_dict["five_prime"] != {}:
+        target_loop = ["five_prime"]
+        if ligation_bias_dict["three_prime"] != {}:
+            target_loop.append("three_prime")
+            columns = 2
+    else:
+        target_loop = ["three_prime"]
 
-    # Set colors according to the value
-    color = ["#636efa" if value > 0 else "#da5325"
-             for value in ligation_bias_dict.values()]
-    fig = go.Figure()
-    fig.add_trace(
-        go.Bar(
-            x=list(ligation_bias_dict.keys()),
-            y=list(ligation_bias_dict.values()),
-            name="",
-            hovertemplate="<b>Nucleotides</b>:%{x}<br><b>Proportion</b>:%{y}",
-            marker=dict(color=color),
-        )
+    fig = make_subplots(
+        rows=1,
+        cols=columns,
+        shared_yaxes=True,
+        subplot_titles=["5' Ligation Bias", "3' Ligation Bias"]
+        if len(target_loop) > 1
+        else ["5' Ligation Bias"]
+        if target_loop == ["five_prime"]
+        else ["3' Ligation Bias"],
     )
-    fig.add_hline(y=0)
+    count = 0
+    for current_target in target_loop:
+        count += 1
+        # Set colors according to the value
+        color = ["#636efa" if value > 0 else "#da5325"
+                for value in ligation_bias_dict[current_target].values()]
+        fig.add_trace(
+            go.Bar(
+                x=list(ligation_bias_dict[current_target].keys()),
+                y=list(ligation_bias_dict[current_target].values()),
+                name="",
+                hovertemplate="<b>Nucleotides</b>:%{x}<br><b>Bias</b>:%{y}",
+                marker=dict(color=color),
+            ),
+            row=1,
+            col=count,
+        )
+        fig.add_hline(y=0)
     fig.update_layout(
         title="Ligation Bias Distribution",
         xaxis_title="Read Start",
@@ -174,7 +189,21 @@ def plot_ligation_bias_distribution(
             size=18,
             color=config["plots"]["base_color"],
         ),
+        showlegend=False,
     )
+    if columns > 1:
+        fig.update_layout(
+            xaxis=dict(
+                domain=[0, 0.48], zeroline=False
+            ),  # Adjust domain and remove x-axis zeroline for subplot 1
+            xaxis2=dict(
+                domain=[0.52, 1], zeroline=False
+            ),  # Adjust domain and remove x-axis zeroline for subplot 2
+        )
+    else:
+        fig.update_layout(
+            xaxis=dict(domain=[0, 1], zeroline=False),
+        )
     plot_ligation_bias_dict = {
         "name": "Ligation Bias Distribution",
         "description": "Distribution of end bases for the full dataset",
@@ -193,7 +222,8 @@ def plot_nucleotide_composition(
     Generate a plot of the nucleotide composition for the full dataset
 
     Inputs:
-        read_length_df: Dataframe containing the read length distribution
+        nucleotide_composition_dict: Dictionary containing the distribution of
+        nucleotides per read position
         config: Dictionary containing the configuration information
 
     Outputs:
@@ -556,19 +586,19 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
         description and plotly figure for html and pdf export
     """
     count = 0
-    colnums = 1
+    columns = 1
     frame_colors = {0: "#636efa", 1: "#ef553b", 2: "#00cc96"}
     if metagene_profile_dict["start"] != {}:
         target_loop = ["start"]
         if metagene_profile_dict["stop"] != {}:
             target_loop.append("stop")
-            colnums = 2
+            columns = 2
     else:
         target_loop = ["stop"]
 
     fig = make_subplots(
         rows=1,
-        cols=colnums,
+        cols=columns,
         shared_yaxes=config["plots"]["metagene_profile"]["shared_yaxis"],
         subplot_titles=["Distance from 5'", "Distance from 3'"]
         if len(target_loop) > 1
@@ -623,7 +653,7 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
         bargap=0,
         showlegend=False,
     )
-    if colnums > 1:
+    if columns > 1:
         fig.update_layout(
             xaxis=dict(
                 domain=[0, 0.48], zeroline=False
@@ -667,18 +697,18 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
         description and plotly figure for html and pdf export
     """
     count = 0
-    colnums = 1
+    columns = 1
     if metagene_profile_dict["start"] != {}:
         target_loop = ["start"]
         if metagene_profile_dict["stop"] != {}:
             target_loop.append("stop")
-            colnums = 2
+            columns = 2
     else:
         target_loop = ["stop"]
 
     fig = make_subplots(
         rows=1,
-        cols=colnums,
+        cols=columns,
         shared_yaxes=True,
         subplot_titles=["Distance from 5'", "Distance from 3'"]
         if len(target_loop) > 1
@@ -725,7 +755,7 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
         legend={"traceorder": "normal"},
         showlegend=False,
     )
-    if colnums > 1:
+    if columns > 1:
         fig.update_layout(
             xaxis=dict(
                 domain=[0, 0.48], zeroline=False

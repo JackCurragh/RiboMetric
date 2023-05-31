@@ -6,7 +6,7 @@ plots:
   image_size: [720, 370]      # [Width, Height] in pixels, used for pdf images
   ligation_bias_distribution:
     nucleotide_count: 2       # Size of nucleotide groups to check (default = 2)
-    five_prime: True          # If set to false, controls possible bias at 3' instead of 5'
+    target: "both"            # Options: ["five_prime", "three-prime", "both"]
     include_N: False          # Show nucleotide groups with N in plot
     background_freq: True     # Use background frequency of nucleotide groups in reads to check ligation bias
   nucleotide_proportion:
@@ -41,3 +41,5 @@ qc:
     read_frame_distribution: False
   read_frame_distribution:
     3nt_count_cutoff: 0.05
+  cds_coverage:
+    in_frame_coverage: True   # Only check in-frame coverage, otherwise check complete cds coverage
