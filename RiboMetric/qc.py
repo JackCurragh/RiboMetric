@@ -58,6 +58,7 @@ def annotation_mode(
     """
     if len(annotation_df) > 0:
         annotation = True
+        print(annotation_df)
         print("Merging annotation and reads")
         annotated_read_df = annotate_reads(read_df, annotation_df)
         print("assigning mRNA categories")
