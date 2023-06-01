@@ -271,13 +271,13 @@ def main(args):
                             report_prefix,
                             config["argument"]["output"])
 
-        if config["argument"]["pdf"]:
+        if config["argument"]["json"]:
             generate_json(results_dict,
                           config,
                           report_prefix,
                           config["argument"]["output"])
         
-        # if config["argument"]["pdf"]:
+        # if config["argument"]["csv"]:
         #     generate_csv(results_dict,
         #                   config,
         #                   report_prefix,
