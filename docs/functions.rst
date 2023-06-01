@@ -5,9 +5,9 @@ Table of Contents
     :local:
     :backlinks: top
     :depth: 2
-
-File Parsing
-=============
+    
+File Parsing (file_parser.py)
+=================
 
 parse_bam
 ---------------
@@ -171,3 +171,42 @@ Parameters:
 
 Returns:
     - ``asite_df`` (pd.DataFrame): Dataframe containing the read information with an added column for the A-site.
+    
+----
+
+annotate_reads
+---------------
+
+Merges the annotation dataframe with the read dataframe. This function takes a dataframe containing read information with an added column for the A-site location (`a_site_df`) and a dataframe containing CDS start/stop and transcript ID from a GFF file (`annotation_df`). It returns a dataframe containing the read information with an added column for the A-site location and columns from the GFF file.
+
+Parameters:
+    - ``a_site_df`` (pd.DataFrame): Dataframe containing the read information with an added column for the A-site location.
+    - ``annotation_df`` (pd.DataFrame): Dataframe containing the CDS start/stop and transcript ID from a GFF file.
+
+Returns:
+    - ``pd.DataFrame``: A dataframe containing the read information with an added column for the A-site location and columns from the GFF file.
+
+The function assigns the transcript ID to a new column in `a_site_df` by splitting the `reference_name` column on the "|" character and taking the first element. It then merges `a_site_df` with `annotation_df` based on the transcript ID, using the `merge` method.
+
+Finally, the function converts the "transcript_id" column to the "category" dtype and drops the "reference_name" column from the resulting dataframe.
+
+----
+
+assign_mRNA_category
+---------------
+
+Adds the mRNA category column to the annotated read dataframe, labeling the read according to the position of the A-site. This function takes the annotated read dataframe (`annotated_read_df`) and returns a string with the category for each read.
+
+Parameters:
+    - ``annotated_read_df``: Dataframe with read data, added A-site positions, and joined with `annotation_df`.
+
+Returns:
+    - ``str``: The mRNA category for the read (one of ["five_leader", "start_codon", "CDS", "stop_codon", "three_trailer"]).
+
+The function calculates the mRNA category based on the A-site position and CDS start/stop values using conditional statements. The conditions compare the A-site position with the CDS start and end positions, and the choices represent the corresponding mRNA categories.
+
+The `np.select` function is used to apply the conditions and choices to each row of the dataframe, assigning the appropriate mRNA category to the "mRNA_category" column.
+
+Finally, the function converts the "mRNA_category" column to the "category" dtype and returns the annotated read dataframe.
+
+
