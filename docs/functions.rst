@@ -117,6 +117,46 @@ The function returns a dictionary with the nucleotide patterns as keys and their
 
 ----
 
+join_batches
+---------------
+
+
+Get and join the data returned from multiprocessed batches. This function takes a list of dataframes containing read information and a dictionary containing sequence data returned from multiprocessed batches. It returns a tuple containing the joined read dataframe, the total counts of nucleotide patterns per nucleotide position, and the background frequency of nucleotide patterns for the 5' and 3' ends.
+
+Parameters:
+    - ``read_batches`` (list): List of dataframes containing read information returned from multiprocessed batches.
+    - ``full_sequence_batches`` (dict): Dictionary containing sequence data (counts per position and background) returned from multiprocessed batches.
+
+Returns:
+    - ``tuple``: A tuple containing the joined read dataframe, the sequence data dictionary, and the sequence background dictionary.
+
+The function starts by calling the `get_batch_data` helper function to retrieve the data from the asynchronous objects. It then proceeds to join the read data by concatenating the dataframes in the `read_batches` list. The categorical columns in the joined dataframe are converted to the "category" dtype.
+
+Next, the function joins the sequence data by iterating over the pattern lengths and patterns in the `sequence_batches` dictionary. It determines the maximum length among the arrays and pads them with zeros to match the maximum length. The padded arrays are summed along the 0-axis to obtain the total counts of nucleotide patterns per position.
+
+Similarly, the function joins the sequence backgrounds by iterating over the pattern lengths and backgrounds in the `background_batches` dictionary. For each pattern, it calculates the weighted sum of the background proportions using the counts from the "sequence_number" key in the dictionary. It then calculates the weighted average for each key and stores the results in the `sequence_background` dictionary.
+
+Finally, the function returns a tuple containing the joined read dataframe, the sequence data dictionary, and the sequence background dictionary.
+
+----
+
+get_batch_data
+~~~~~~~~~~~~~~~~~~
+
+Return readable data from the multiprocessed pools, separating the full sequence data into background data and sequence data. This function is called in the `join_batches` function.
+
+Parameters:
+    - ``read_batches`` (list): List of dataframes containing read information returned from multiprocessed batches.
+    - ``full_sequence_batches`` (dict): Dictionary containing sequence data (counts per position and background) returned from multiprocessed batches.
+
+Returns:
+    - ``tuple``: A tuple containing the read batches, background batches, and sequence batches.
+
+The function iterates over the pattern lengths and results in the `full_sequence_batches` dictionary. For each result, it checks if the pattern contains "bg" or "sequence" to determine whether it belongs to the background or sequence data. It appends the array to the corresponding dictionary entry based on the pattern and pattern length.
+
+Finally, the function returns a tuple containing the read batches, background batches, and sequence batches.
+
+
 Read Data Frame Modifications
 =============
 
