@@ -66,7 +66,7 @@ from .qc import annotation_mode, sequence_mode
 from .plots import generate_plots
 from .modules import a_site_calculation
 from .html_report import generate_report
-from .json_output import generate_json
+from .results_output import generate_json, generate_csv
 
 
 def print_logo(console):
@@ -276,11 +276,11 @@ def main(args):
                           report_prefix,
                           config["argument"]["output"])
         
-        # if config["argument"]["csv"]:
-        #     generate_csv(results_dict,
-        #                   config,
-        #                   report_prefix,
-        #                   config["argument"]["output"])
+        if config["argument"]["csv"]:
+            generate_csv(results_dict,
+                          config,
+                          report_prefix,
+                          config["argument"]["output"])
 
 
 if __name__ == "__main__":
