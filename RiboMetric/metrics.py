@@ -34,7 +34,7 @@ def read_length_distribution_metric(
     Q3 = rld_df["read_length"].quantile(0.75)
     Q1 = rld_df["read_length"].quantile(0.25)
     inter_quartile_range = Q3 - Q1
-    max_range = max(rld_df["read_length"]) - min(rld_df["read_length"])
+    max_range = rld_df["read_length"].quantile(0.9) - rld_df["read_length"].quantile(0.1)
 
     return 1 - (inter_quartile_range / max_range)
 
