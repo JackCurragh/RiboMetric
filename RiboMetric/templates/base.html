@@ -65,11 +65,22 @@
         border: 1px solid white;
         border-collapse: collapse;
     }
-    th, td {
-        background-color: #636EFA80;
-        padding: 5px;
-    }
   </style>
+    {% if filetype == "html" %}
+        <style>
+            th, td {
+                background-color: #636EFA80;
+                padding: 5px;
+            }
+        </style>
+    {% elif filetype == "pdf" %}
+        <style>
+            th, td {
+                background-color: #B0B6FC;
+                padding: 5px;
+            }
+        </style>
+    {% endif %}
 </head>
 <body>
     {% if filetype == "html" %}
@@ -87,28 +98,21 @@
                 <h5>Results from your RiboMetric analysis, completed at {{completion_time}}</h5>
                 <h2>Summary Report</h2>
                 <div>
-                    WIP table
                     <table>
+                        {% for metric in summary.metrics %}
                         <tr>
-                            <td><b>Metric 1</b></td>
-                            <td>values</td>
+                            <td><b>{{metric.name}}</b></td>
+                            <td>{{metric.score}}</td>
                         </tr>
-                        <tr>
-                            <td><b>Metric 2</b></td>
-                            <td>values</td>
-                        </tr>
-                        <tr>
-                            <td><b>Metric 3</b></td>
-                            <td>values</td>
-                        </tr>
+                        {% endfor %}
                     </table>
                 </div>
             </div>
             <div class="flex-child">
                 {% if filetype == "html" %}
-                    {{summary.fig_html}}
+                    {{summary.plot.fig_html}}
                 {% elif filetype == "pdf" %}
-                    <img src="data:image/png;base64,{{summary.fig_image}}">
+                    <img src="data:image/png;base64,{{summary.plot.fig_image}}">
                 {% endif %}
             </div>
             

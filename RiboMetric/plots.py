@@ -836,15 +836,8 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     Outputs:
 
     """
-    width = 450
-    height = 400
-    r=[0.8, .5, .2, .6, .3, 0.8],
-    theta=['read frame periodicity',
-            'ligation bias',
-            'nucleotide composition',
-            'mRNA breakdown',
-            'metagene profile',
-            'read frame periodicity'],
+    width = 750
+    height = 320
     fig = go.Figure(
         data=go.Scatterpolar(
             # first value is appended to the end so that the radar plot closes properly
@@ -856,10 +849,7 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
         )
     )
     fig.update_layout(
-        title="[WIP] Summary Scores",
-        # autosize=False,
-        # width=width,
-        # height=height,
+        title="Summary Scores",
         polar=dict(
             radialaxis=dict(visible=False),
             radialaxis_range=[0, 1],
@@ -868,12 +858,16 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
         showlegend=False,
     )
     plot_metrics_summary_dict = {
-        "name": "Summary of Metrics",
-        "description": "Radar plot showing the difference scores ranging \
-from 0 to 1.",
-        "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig,
-                                     width,
-                                     height),
+        "plot": {
+            "name": "Summary of Metrics",
+            "description": "Radar plot showing the difference scores ranging \
+    from 0 to 1.",
+            "fig_html": pio.to_html(fig, full_html=False),
+            "fig_image": plotly_to_image(fig,
+                                        width,
+                                        height),
+        },
+        "metrics":
+            [{"name":k.replace("_", " ").capitalize(), "score":round(v,3)} for k,v in metrics_dict.items()]
     }
     return plot_metrics_summary_dict
