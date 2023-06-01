@@ -58,7 +58,6 @@ def annotation_mode(
     """
     if len(annotation_df) > 0:
         annotation = True
-        print(annotation_df)
         print("Merging annotation and reads")
         annotated_read_df = annotate_reads(read_df, annotation_df)
         print("assigning mRNA categories")
@@ -136,9 +135,9 @@ def annotation_mode(
         tpw3rl_metric(
             frame_info_content_dict,
     )
-    results_dict["metrics"]["3nt_best_read_length_score"] = tpbrl_metric(
-        frame_info_content_dict,
-    )
+    # results_dict["metrics"]["3nt_best_read_length_score"] = tpbrl_metric(
+    #     frame_info_content_dict,
+    # )
 
     if annotation:
         print("> mRNA_distribution")

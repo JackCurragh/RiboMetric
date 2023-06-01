@@ -838,16 +838,21 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     """
     width = 450
     height = 400
+    r=[0.8, .5, .2, .6, .3, 0.8],
+    theta=['read frame periodicity',
+            'ligation bias',
+            'nucleotide composition',
+            'mRNA breakdown',
+            'metagene profile',
+            'read frame periodicity'],
     fig = go.Figure(
         data=go.Scatterpolar(
-            r=[0.8, .5, .2, .6, .3, 0.8],
-            theta=['read frame periodicity',
-                   'ligation bias',
-                   'nucleotide composition',
-                   'mRNA breakdown',
-                   'metagene profile',
-                   'read frame periodicity'],
-            fill='toself'
+            # first value is appended to the end so that the radar plot closes properly
+            r=list(metrics_dict.values()) + [(list(metrics_dict.values())[0])],
+            theta=[metric.replace("_", " ") for metric in
+                   (list(metrics_dict.keys()) + [list(metrics_dict.keys())[0]])],
+            fill='toself',
+            hovertemplate='<b>%{theta}</b>: %{r}<extra></extra>'
         )
     )
     fig.update_layout(
