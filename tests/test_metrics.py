@@ -10,7 +10,7 @@ from RiboMetric.modules import (
 from RiboMetric.metrics import (
     read_length_distribution_metric as rld_metric,
     ligation_bias_distribution_metric as lbd_metric,
-    information_metric_cutoff as rfd_metric,
+    read_frame_information_content as rfd_metric,
     triplet_periodicity_weighted_score,
     triplet_periodicity_best_read_length_score as tpbrl_metric,
     information_metric_cutoff,

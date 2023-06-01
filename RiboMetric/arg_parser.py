@@ -182,8 +182,11 @@ def open_config(args) -> dict:
 
         with open(config_file_path, "r") as yml:
             config = yaml.load(yml, Loader=yaml.Loader)
-
-    if args.all:
+    
+    for arg in vars(args):
+        print(f"{arg}: {getattr(args, arg)}")
+    
+    if args.command == "run" and args.all:
         args.json = True
         args.html = True
         args.pdf = True
