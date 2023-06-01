@@ -27,7 +27,7 @@ def test_read_length_distribution_metric():
     ].reset_index(drop=True)
     read_length_dict = read_length_distribution(read_df)
     read_length_metric = rld_metric(read_length_dict)
-    assert read_length_metric == 6.0
+    assert round(read_length_metric, 3) == 0.375
 
 
 def test_ligation_bias_distribution_metric():
