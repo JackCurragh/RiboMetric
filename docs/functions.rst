@@ -81,7 +81,7 @@ The function calculates the 5' and 3' background frequencies using the ``calcula
 ----
 
 pattern_to_index
----------------
+~~~~~~~~~~~~~~~~~~
 
 Converts a nucleotide pattern to its corresponding index in the counts array. The function ensures an A, C, G, T-ordered array.
 
@@ -96,7 +96,7 @@ The function iterates through each nucleotide in the pattern, converts it to the
 ----
 
 calculate_background
----------------
+~~~~~~~~~~~~~~~~~~
 
 Calculate the background frequency for a list of sequences. The background frequency is the proportion of nucleotide patterns without the first or last pattern in the read, for the 5' and 3' ends, respectively.
 
