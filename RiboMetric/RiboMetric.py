@@ -98,50 +98,49 @@ def print_logo(console):
     console.print(logo)
 
 
-def print_table_run(args, console, mode):
+def print_table_run(args, config: dict, console, mode):
     console = Console()
 
     Inputs = Table(show_header=True, header_style="bold magenta")
     Inputs.add_column("Parameters", style="dim", width=20)
     Inputs.add_column("Values")
-    Inputs.add_row("Bam File:", args.bam)
-    Inputs.add_row("Gff File:", args.gff)
-    Inputs.add_row("Transcriptome File:", args.fasta)
+    Inputs.add_row("Bam File:", config["argument"]["bam"])
+    Inputs.add_row("Gff File:", config["argument"]["gff"])
+    Inputs.add_row("Transcriptome File:", config["argument"]["fasta"])
 
     Configs = Table(show_header=True, header_style="bold yellow")
     Configs.add_column("Options", style="dim", width=20)
     Configs.add_column("Values")
     Configs.add_row("Mode:", mode)
-    Configs.add_row("# of reads:", str(args.subsample))
-    Configs.add_row("# of transcripts:", str(args.transcripts))
+    Configs.add_row("# of reads:", str(config["argument"]["subsample"]))
+    Configs.add_row("# of transcripts:", str(config["argument"]["transcripts"]))
     Configs.add_row("Config file:", args.config)
 
     Output = Table(show_header=True, header_style="bold blue")
     Output.add_column("Output Options", style="dim", width=20)
     Output.add_column("Values")
-    Output.add_row("JSON:", str(args.json))
-    Output.add_row("HTML:", str(args.html))
-    Output.add_row("PDF:", str(args.pdf))
-    Output.add_row("CSV:", str(args.csv))
-    Output.add_row("All:", str(args.all))
+    Output.add_row("JSON:", str(config["argument"]["json"]))
+    Output.add_row("HTML:", str(config["argument"]["html"]))
+    Output.add_row("PDF:", str(config["argument"]["pdf"]))
+    Output.add_row("CSV:", str(config["argument"]["csv"]))
 
     # Print tables side by side
     console.print(Inputs, Configs, Output, justify="inline", style="bold")
 
 
-def print_table_prepare(args, console, mode):
+def print_table_prepare(args, config, console, mode):
     console = Console()
 
     Inputs = Table(show_header=True, header_style="bold magenta")
     Inputs.add_column("Parameters", style="dim", width=20)
     Inputs.add_column("Values")
-    Inputs.add_row("Gff File:", args.gff)
+    Inputs.add_row("Gff File:", config["argument"]["gff"])
 
     Configs = Table(show_header=True, header_style="bold yellow")
     Configs.add_column("Options", style="dim", width=20)
     Configs.add_column("Values")
     Configs.add_row("Mode:", mode)
-    Configs.add_row("# of transcripts:", str(args.transcripts))
+    Configs.add_row("# of transcripts:", str(config["argument"]["transcripts"]))
     Configs.add_row("Config file:", args.config)
 
     # Print tables side by side
@@ -164,7 +163,7 @@ def main(args):
     config = open_config(args)
 
     if args.command == "prepare":
-        print_table_prepare(args, console, "Prepare Mode")
+        print_table_prepare(args, config, console, "Prepare Mode")
         prepare_annotation(config["argument"]["gff"],
                            config["argument"]["output"],
                            config["argument"]["transcripts"],
@@ -172,7 +171,7 @@ def main(args):
                            )
 
     else:
-        print_table_run(args, console, "Run Mode")
+        print_table_run(args, config, console, "Run Mode")
 
         if not check_bam(config["argument"]["bam"]):
             raise Exception("""
