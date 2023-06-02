@@ -19,6 +19,8 @@ def read_length_distribution_metric(
 
     This metric is the IQR of the read length distribution and is
     calculated as the difference between the 75th and 25th percentile
+    The metric is then normalised by dividing by the range of the
+    read length distribution between the 10th and 90th percentile
 
     Inputs:
         rld_dict: Dictionary containing the output of the
@@ -34,7 +36,9 @@ def read_length_distribution_metric(
     Q3 = rld_df["read_length"].quantile(0.75)
     Q1 = rld_df["read_length"].quantile(0.25)
     inter_quartile_range = Q3 - Q1
-    max_range = rld_df["read_length"].quantile(0.9) - rld_df["read_length"].quantile(0.1)
+
+    max_range = rld_df["read_length"].quantile(0.9)\
+        - rld_df["read_length"].quantile(0.1)
 
     return 1 - (inter_quartile_range / max_range)
 
@@ -60,8 +64,10 @@ def ligation_bias_distribution_metric(
     Outputs:
         lbd_df: Dataframe containing the ligation bias metric in bits
     """
-    # Needs possible rewrite using normalised ligation bias. Current iteration only accounts for five_prime  
-    # division by 0 if background is non-existent, Only patterns that occur at least once are used (needs to be changed in ligation bias)
+    # Needs possible rewrite using normalised ligation bias.
+    # Current iteration only accounts for five_prime
+    # division by 0 if background is non-existent, Only patterns that occur
+    # at least once are used (needs to be changed in ligation bias)
     kl_divergence = 0.0
 
     for dinucleotide, observed_prob in observed_freq["five_prime"].items():
@@ -132,7 +138,7 @@ def cds_coverage_metric(
     return cds_reads_count/cds_length_total
 
 
-def calculate_score(probabilities):
+def calculate_3nt_periodicity_score(probabilities):
     '''
     Calculate the triplet periodicity score for a given probability of a read
     being in frame. The score is the square root of the bits of information in
@@ -186,7 +192,7 @@ def read_frame_information_content(
             prob = (count + pseudocount) / total_count
             probabilities.append(prob)
 
-        score = calculate_score(probabilities)
+        score = calculate_3nt_periodicity_score(probabilities)
 
         frame_info_content_dict[read_length] = score, total_count
 
