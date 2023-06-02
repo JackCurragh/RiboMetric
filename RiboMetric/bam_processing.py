@@ -10,6 +10,7 @@ def process_reads(reads):
     """
     Process batches of reads from parse_bam, retrieving the data of interest
     and putting it in a dataframe.
+    Ensure category columns are set to category type for memory efficiency.
 
     Inputs:
         reads: List of read contents from bam files, returned by pysam
@@ -204,18 +205,20 @@ def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
 
     Inputs:
         read_batches: List of dataframes containing read information returned
-        from multiprocessed batches
+                    from multiprocessed batches
         full_sequence_batches: Dictionary containing sequence data (counts per
-        position and background) returned from multiprocessed batches
+                    position and background) returned from multiprocessed
+                    batches
 
     Outputs:
         tuple containing:
             read_df_pre: The read dataframe containing read information before
-            further modifications to the dataframe
+                        further modifications to the dataframe
             sequence_data: Dictionary containing the total counts of
-            nucleotide patterns per nucleotide position
+                        nucleotide patterns per nucleotide position
             sequence_background: Dictionary containing the background
-            frequency of nucleotide patterns for five and three prime
+                        frequency of nucleotide patterns for five and
+                        three prime
     """
     print("\nGetting data from async objects..")
     read_batches, background_batches, sequence_batches = \
