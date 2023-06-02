@@ -4,6 +4,28 @@ This script contains processing steps used to parse bam files.
 import pandas as pd
 import numpy as np
 import itertools
+import oxbow as ox
+import io
+import pyarrow.ipc
+from .bam_splitting import split_bam
+import os
+
+
+def ox_parse_reads(bam_file,split_num,reference_df,tempdir,t0):
+    """
+    WIP title
+    """
+    tmp_bam = split_bam(bam_file,
+                           split_num,
+                           reference_df,
+                           tempdir,
+                           t0)
+    print(f"{tmp_bam}: {os.path.exists(tmp_bam)}")
+    print("started oxbow parse")
+    arrow_ipc = ox.read_bam(tmp_bam)
+    df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
+    print("finished oxbow run")
+    return df
 
 
 def process_reads(reads):
