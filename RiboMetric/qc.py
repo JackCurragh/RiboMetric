@@ -105,14 +105,6 @@ def annotation_mode(
     results_dict["nucleotide_composition"] = nucleotide_composition(
         sequence_data[1])
 
-    if config["plots"]["logoplot"]["enable"]:
-        print("> sequence_slice")
-        results_dict["sequence_slice"] = sequence_slice(
-            read_df,
-            config["plots"]["nucleotide_proportion"]["nucleotide_start"],
-            config["plots"]["nucleotide_proportion"]["nucleotide_count"],
-        )
-
     print("> read_frame_distribution")
     read_frame_dist = (
         read_frame_distribution(cds_read_df)
