@@ -136,3 +136,5 @@ mprofile_*
 tests/test_data/test_RiboMetric.html
 
 *.html
+transcriptome_collapsed_RiboMetric.pdf
+transcriptome_collapsed_RiboMetric.json
