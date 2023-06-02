@@ -71,35 +71,41 @@ def ligation_bias_distribution(
     nucleotides of the reads to check for ligation bias
 
     Inputs:
-        read_df: Dataframe containing read information 
+        read_df: Dataframe containing read information
         # pattern_length: Length of nucleotide pattern
         keep_N: Keep nucleotide patterns with 'N', or discard if False
-        target: Calculate ligation bias for 5', 3' or both 
+        target: Calculate ligation bias for 5', 3' or both
 
     Outputs:
         ligation_bias_dict: Dictionary containing the distribution of the
         first pattern of nucleotides in the reads
     """
-    ligation_bias_dict = ({target:{}} if target != "both"
-                          else {"five_prime": {}, "three_prime": {}})    
+    ligation_bias_dict = ({target: {}} if target != "both"
+                          else {"five_prime": {}, "three_prime": {}})
 
     total_counts = len(read_df)
-    prime_counts = {}
-    prime_counts["five_prime"] = read_df["first_dinucleotide"].value_counts()
-    prime_counts["three_prime"] = read_df["last_dinucleotide"].value_counts()
+    prime_counts = {
+        "five_prime": read_df["first_dinucleotide"].value_counts(),
+        "three_prime": read_df["last_dinucleotide"].value_counts(),
+    }
 
-    categories = {}
-    categories["five_prime"] = read_df["first_dinucleotide"].cat.categories.to_list()
-    categories["three_prime"] = read_df["last_dinucleotide"].cat.categories.to_list()
+    categories = {
+        "five_prime": read_df["first_dinucleotide"].cat.categories.to_list(),
+        "three_prime": read_df["last_dinucleotide"].cat.categories.to_list(),
+    }
 
     pattern_list = read_df["first_dinucleotide"].cat.categories.to_list()
     pattern_list += read_df["last_dinucleotide"].cat.categories.to_list()
-    pattern_list = sorted(list(set(categories["five_prime"]) | set(categories["three_prime"])))
+    pattern_list = sorted(
+        list(set(categories["five_prime"]) | set(categories["three_prime"]))
+        )
 
     if keep_N:
         pattern_list = sorted(pattern_list, key=lambda x: ('N' in x, x))
     else:
-        pattern_list = [pattern for pattern in pattern_list if 'N' not in pattern]
+        pattern_list = [
+            pattern for pattern in pattern_list if 'N' not in pattern
+            ]
 
     for pattern in pattern_list:
         for prime in ligation_bias_dict:
@@ -121,24 +127,28 @@ def normalise_ligation_bias(
 
     Inputs:
         ligation_bias_dict: Dictionary containing observed proportions for 5'
-        and 3' ends of the sequences 
-        sequence_background: Dictionary containig expected proportions for 5'
-        and 3' directions of sequences
+                            and 3' ends of the sequences
+        sequence_background: Dictionary containing expected proportions for 5'
+                            and 3' directions of sequences
         # pattern_length: Length of nucleotide pattern
 
     Outputs:
         ligation_bias_dict_norm: Modified ligation_bias_dict to show the
-        difference between observed and expected distributions
+                                difference between observed and expected
+                                distributions
     """
     ligation_bias_dict_norm = ligation_bias_dict
-    expected_distribution = {"five_prime": {}, "three_prime": {}}
-    expected_distribution["five_prime"] = sequence_background[pattern_length]["5_prime_bg"]
-    expected_distribution["three_prime"] = sequence_background[pattern_length]["3_prime_bg"]
+    expected_distribution = {
+        "five_prime": sequence_background[pattern_length]["5_prime_bg"],
+        "three_prime": sequence_background[pattern_length]["3_prime_bg"],
+        }
 
     for prime in ligation_bias_dict_norm:
         for pattern in ligation_bias_dict_norm[prime]:
+
             if pattern in expected_distribution[prime]:
-                ligation_bias_dict_norm[prime][pattern] -= expected_distribution[prime][pattern]
+                ligation_bias_dict_norm[prime][pattern]\
+                    -= expected_distribution[prime][pattern]
 
     return ligation_bias_dict_norm
 
@@ -175,13 +185,15 @@ def nucleotide_composition(sequence_data_single: dict) -> dict:
         for single nucleotides on each read position
     """
     read_length = len(sequence_data_single["A"])
-    nucleotide_composition_dict = {nt: [] for nt in ["A","C","G","T",]}
+    nucleotide_composition_dict = {nt: [] for nt in ["A", "C", "G", "T"]}
     for position in range(read_length):
         position_count = 0
         for nt in sequence_data_single:
             position_count += sequence_data_single[nt][position]
         for nt in sequence_data_single:
-            nucleotide_composition_dict[nt].append(sequence_data_single[nt][position] / position_count)
+            nucleotide_composition_dict[nt].append(
+                sequence_data_single[nt][position] / position_count
+                )
 
     return nucleotide_composition_dict
 
