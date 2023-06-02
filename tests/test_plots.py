@@ -40,6 +40,9 @@ def test_plots():
     read_df = read_df_pre.loc[
         read_df_pre.index.repeat(read_df_pre["count"])
     ].reset_index(drop=True)
+    categories = ["first_dinucleotide", "last_dinucleotide"]
+    read_df[categories] = read_df[categories].astype("category")
+    sequence_data_single = {"A":[5,2,3,1],"T":[0,2,1,2]}
     if (
         "<div>" not in plot_read_length_distribution(
             read_length_distribution(read_df),
@@ -50,7 +53,7 @@ def test_plots():
             ligation_bias_distribution(read_df), config)["fig_html"]):
         errors.append("Ligation bias distribution plot html output error")
     if ("<div>" not in plot_nucleotide_composition(
-            nucleotide_composition(read_df), config)["fig_html"]):
+            nucleotide_composition(sequence_data_single), config)["fig_html"]):
         errors.append("Nucleotide composition plot html output error")
     if ("<div>" not in plot_read_frame_distribution(
             read_frame_distribution(
