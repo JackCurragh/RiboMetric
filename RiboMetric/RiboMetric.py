@@ -48,10 +48,7 @@ from rich.console import Console
 from rich.text import Text
 from rich.table import Table
 
-import os
-import yaml
 import numpy as np
-import pandas as pd
 
 from .file_parser import (
     parse_bam,
@@ -88,8 +85,8 @@ def print_logo(console):
         """
     ███╗   ███╗███████╗█████████╗██████╗  ██╗  ██████╗
     ████╗ ████║██╔════╝╚══██╔═══╝██╔══██╗ ██║ ██╔════╝
-    ██╔████╔██║█████╗     ██║    ██████╔╝ ██║ ██║     
-    ██║╚██╔╝██║██╔══╝     ██║    ██╔══██╗ ██║ ██║     
+    ██╔████╔██║█████╗     ██║    ██████╔╝ ██║ ██║
+    ██║╚██╔╝██║██╔══╝     ██║    ██╔══██╗ ██║ ██║
     ██║ ╚═╝ ██║███████╗   ██║    ██║  ██║ ██║ ╚██████╗
     ╚═╝     ╚═╝╚══════╝   ╚═╝    ╚═╝  ╚═╝ ╚═╝  ╚═════╝
     """,
@@ -113,7 +110,8 @@ def print_table_run(args, config: dict, console, mode):
     Configs.add_column("Values")
     Configs.add_row("Mode:", mode)
     Configs.add_row("# of reads:", str(config["argument"]["subsample"]))
-    Configs.add_row("# of transcripts:", str(config["argument"]["transcripts"]))
+    Configs.add_row("# of transcripts:",
+                    str(config["argument"]["transcripts"]))
     Configs.add_row("Config file:", args.config)
 
     Output = Table(show_header=True, header_style="bold blue")
@@ -140,7 +138,8 @@ def print_table_prepare(args, config, console, mode):
     Configs.add_column("Options", style="dim", width=20)
     Configs.add_column("Values")
     Configs.add_row("Mode:", mode)
-    Configs.add_row("# of transcripts:", str(config["argument"]["transcripts"]))
+    Configs.add_row("# of transcripts:",
+                    str(config["argument"]["transcripts"]))
     Configs.add_row("Config file:", args.config)
 
     # Print tables side by side
@@ -188,7 +187,7 @@ def main(args):
         bam_results = parse_bam(
             config["argument"]["bam"],
             read_limit)
-        
+
         read_df_pre = bam_results[0]
         sequence_data = bam_results[1]
         sequence_background = bam_results[2]
@@ -209,17 +208,22 @@ def main(args):
         print("Calculating A site information")
         read_df = a_site_calculation(read_df)
 
-        if config["argument"]["gff"] is None and config["argument"]["annotation"] is None:
+        if (config["argument"]["gff"] is None and
+                config["argument"]["annotation"] is None):
             results_dict = annotation_mode(read_df,
                                            sequence_data,
                                            sequence_background,
                                            config=config)
 
         else:
-            if config["argument"]["annotation"] is not None and config["argument"]["gff"] is not None:
+            if (config["argument"]["annotation"] is not None and
+                    config["argument"]["gff"] is not None):
                 print("Both annotation and gff provided, using annotation")
-                annotation_df = parse_annotation(config["argument"]["annotation"])
-            elif config["argument"]["annotation"] is None and config["argument"]["gff"] is not None:
+                annotation_df = parse_annotation(
+                    config["argument"]["annotation"]
+                    )
+            elif (config["argument"]["annotation"] is None and
+                  config["argument"]["gff"] is not None):
                 print("Gff provided, preparing annotation")
                 annotation_df = prepare_annotation(
                     config["argument"]["gff"],
@@ -229,9 +233,12 @@ def main(args):
                 )
                 print("Annotation prepared")
 
-            elif config["argument"]["annotation"] is not None and config["argument"]["gff"] is None:
+            elif (config["argument"]["annotation"] is not None and
+                  config["argument"]["gff"] is None):
                 print("Annotation provided, parsing")
-                annotation_df = parse_annotation(config["argument"]["annotation"])
+                annotation_df = parse_annotation(
+                    config["argument"]["annotation"]
+                    )
                 print("Annotation parsed")
 
                 print("Running annotation mode")
@@ -275,12 +282,12 @@ def main(args):
                           config,
                           report_prefix,
                           config["argument"]["output"])
-        
+
         if config["argument"]["csv"]:
             generate_csv(results_dict,
-                          config,
-                          report_prefix,
-                          config["argument"]["output"])
+                         config,
+                         report_prefix,
+                         config["argument"]["output"])
 
 
 if __name__ == "__main__":
