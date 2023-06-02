@@ -84,7 +84,6 @@ def check_bam(bam_path: str) -> bool:
     Inputs:
         bam_path: Path to the bam file
 
-
     Outputs:
         bool: True if the bam file and its index exist, False otherwise
     """
@@ -326,10 +325,10 @@ def prepare_annotation(
         )
 
     cds_df = gffdf[gffdf["type"] == "CDS"]
-
     coding_tx_ids = cds_df["transcript_id"].unique()[:num_transcripts]
 
     annotation_df = gff_df_to_cds_df(gffdf, coding_tx_ids)
+
     basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
     output_name = f"{basename}_RiboMetric.tsv"
     annotation_df.to_csv(
