@@ -5,12 +5,14 @@ in the RiboMetric pipeline
 The functions are called by the main script RiboMetric.py
 """
 from Bio import SeqIO
-import pysam
-import pandas as pd
-from multiprocessing import Pool
+from pysam import AlignmentFile
 import gffpandas.gffpandas as gffpd
-import os
+
+import pandas as pd
 import numpy as np
+import os
+from multiprocessing import Pool
+
 
 from .bam_processing import process_reads, process_sequences, join_batches
 
@@ -82,7 +84,6 @@ def check_bam(bam_path: str) -> bool:
     Inputs:
         bam_path: Path to the bam file
 
-
     Outputs:
         bool: True if the bam file and its index exist, False otherwise
     """
@@ -105,7 +106,7 @@ def flagstat_bam(bam_path: str) -> dict:
 
     """
     flagstat_dict = {}
-    with pysam.AlignmentFile(bam_path, "rb") as bamfile:
+    with AlignmentFile(bam_path, "rb") as bamfile:
         flagstat_dict["total_reads"] = bamfile.mapped + bamfile.unmapped
         flagstat_dict["mapped_reads"] = bamfile.mapped
         flagstat_dict["unmapped_reads"] = bamfile.unmapped
@@ -126,18 +127,19 @@ def parse_bam(bam_file,
         num_reads: Number of reads to parse
         batch_size: The number of reads that are processed at a time
         num_processes: The maximum number of processes that this function can
-        create
+                        create
 
     Outputs:
         parsed_bam: Tuple containing:
             read_df_pre: The read dataframe containing read information before
-            further modifications to the dataframe
+                         further modifications to the dataframe
             sequence_data: Dictionary containing the total counts of
-            nucleotide patterns per nucleotide position
+                           nucleotide patterns per nucleotide position
             sequence_background: Dictionary containing the background
-            frequency of nucleotide patterns for five and three prime
+                                frequency of nucleotide patterns for five and
+                                three prime
     """
-    samfile = pysam.AlignmentFile(bam_file, "rb")
+    samfile = AlignmentFile(bam_file, "rb")
     pool = Pool(processes=num_processes)
     read_list, read_batches = [], []
     sequence_batches = {1: [], 2: []}
@@ -323,10 +325,10 @@ def prepare_annotation(
         )
 
     cds_df = gffdf[gffdf["type"] == "CDS"]
-
     coding_tx_ids = cds_df["transcript_id"].unique()[:num_transcripts]
 
     annotation_df = gff_df_to_cds_df(gffdf, coding_tx_ids)
+
     basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
     output_name = f"{basename}_RiboMetric.tsv"
     annotation_df.to_csv(
