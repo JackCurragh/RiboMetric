@@ -14,7 +14,7 @@ def generate_json(
     config: dict,
     name: str = "RiboMetric_data.json",
     output_directory: str = "",
-    ):
+):
     """
     Generate a machine readable format of the RiboMetric results
 
@@ -43,12 +43,13 @@ def generate_json(
         json.dump(data, f, indent=2)
     print(f"Results written in {output}")
 
+
 def generate_csv(
     results_dict: dict,
     config: dict,
     name: str = "RiboMetric_data.json",
     output_directory: str = "",
-    ):
+):
     """
     Generate a csv file containing the different metrics and their
     corresponding score
@@ -70,10 +71,12 @@ def generate_csv(
         output = output_directory + "/" + name + ".csv"
 
     columns = ["metric", "score"]
+    metrics_dict = [{"metric": key, "score": value} for key, value
+                    in results_dict["metrics"].items()]
 
     with open(output, "w") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=columns)
         writer.writeheader()
-        for data in [{"metric":key,"score":value}for key,value in results_dict["metrics"].items()]:
+        for data in metrics_dict:
             writer.writerow(data)
     print(f"Metrics written in {output}")
