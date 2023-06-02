@@ -6,8 +6,6 @@ RiboMetric reports
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from .modules import read_frame_cull, read_frame_score, sum_mRNA_distribution
-import tempfile  # logoplot
-import subprocess  # logoplot
 import plotly.io as pio
 import base64
 
@@ -65,10 +63,6 @@ def generate_plots(results_dict: dict, config: dict) -> list:
                 results_dict["read_length_distribution"], config
             ),
             ])
-
-    if config["plots"]["logoplot"]["enable"]:
-        plots_list.append(plot_logoplot(results_dict["sequence_slice"],
-                                        config))
 
     return plots_list
 
@@ -780,52 +774,6 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
     return plot_metagene_heatmap
 
 
-def plot_logoplot(sequence_slice_dict: dict, config: dict) -> dict:
-    """
-    Generate a logoplot of the nucleotide distribution of the reads
-
-    Inputs:
-        sequence_slice_dict: Dictionary containing the sequences as values
-            and read length as keys
-        config: Dictionary containing the configuration information
-
-    Outputs:
-        plot_logoplot_dict: Dictionary containing the plot name,
-        description and plotly figure for html and pdf export
-    """
-    # nt_start, nt_count = (
-    #     config["plots"]["nucleotide_proportion"]["nucleotide_start"],
-    #     config["plots"]["nucleotide_proportion"]["nucleotide_count"],
-    # )
-    with tempfile.TemporaryDirectory() as tempdir:
-        with open(f"{tempdir}/temp_fasta.fasta", "w+") as fasta:
-            count = 0
-            for n in sequence_slice_dict.values():
-                count += 1
-                fasta.write(f">{count}\n{n}\n")
-            with open(f"{tempdir}/temp_plot.png", "w+b") as plot:
-                weblogo_prompt = [
-                    "weblogo",
-                    f"-f{fasta.name}",
-                    "-Dfasta",
-                    f"-o{plot.name}",
-                    "-Fpng_print",
-                ]
-                subprocess.run(weblogo_prompt)
-                plot.seek(0)
-                fig_image = base64.b64encode(plot.read()).decode("utf-8")
-
-    plot_logoplot_dict = {
-        "name": "Logoplot",
-        "description": "Logoplot created with WebLogo ver 3.7.12",
-        "fig_html": f'<img src="data:image/png;base64,{fig_image}" \
-            alt="Logoplot created with WebLogo" width="100%" height="auto"">',
-        "fig_image": fig_image,
-    }
-    return plot_logoplot_dict
-
-
-# WIP
 def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     """
     Generate a radar plot that summarizes the scoring metrics of the reads
