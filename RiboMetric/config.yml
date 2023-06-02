@@ -45,9 +45,6 @@ plots:
     distance_range: [-30,30]
     colorscale: "electric"    # Heatmap colorscale, see https://plotly.com/python/builtin-colorscales/
     max_colorscale: null       # set to null for automatic maximum
-  logoplot:
-    enable: false             # Logoplot generation with WebLogo can take a long time, disabled by default
-    nucleotide_count: 15      # How many nucleotides to include in the logoplot
     
 qc:
   use_cds_subset:
