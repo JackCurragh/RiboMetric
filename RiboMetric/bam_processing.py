@@ -284,9 +284,7 @@ def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
 def get_batch_data(
         read_batches: list,
         full_sequence_batches: dict
-        ) -> tuple(
-                list, dict, dict
-        ):
+        ) -> tuple:
     """
     Return readable data from the multiprocessed pools, separating the
     full sequence data into backgrounds data and sequence data.
