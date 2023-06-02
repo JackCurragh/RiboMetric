@@ -163,12 +163,12 @@ def argument_parser():
 
 def open_config(args) -> dict:
     """
-    Opens config and overrides config dictionary with commandline arguments 
-    
+    Opens config and overrides config dictionary with commandline arguments
+
     Inputs:
         args: Arguments passed from the commandline through argparse
         config: Config read from yaml file
-    
+
     Outputs:
         config: Modified config with arguments
     """
@@ -182,10 +182,10 @@ def open_config(args) -> dict:
 
         with open(config_file_path, "r") as yml:
             config = yaml.load(yml, Loader=yaml.Loader)
-    
+
     for arg in vars(args):
         print(f"{arg}: {getattr(args, arg)}")
-    
+
     if args.command == "run" and args.all:
         args.json = True
         args.html = True
@@ -193,7 +193,7 @@ def open_config(args) -> dict:
         args.csv = True
 
     for arg in vars(args):
-        if getattr(args, arg) != False:
+        if getattr(args, arg) is not False:
             config["argument"][arg] = getattr(args, arg)
 
     return config
