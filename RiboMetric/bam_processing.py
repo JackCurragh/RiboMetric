@@ -281,11 +281,28 @@ def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
     return (read_df_pre, sequence_data, sequence_background)
 
 
-def get_batch_data(read_batches: list, full_sequence_batches: dict):
+def get_batch_data(
+        read_batches: list,
+        full_sequence_batches: dict
+        ) -> tuple(
+                list, dict, dict
+        ):
     """
-    Return readable data from the multiprocessed pools, seperating the
+    Return readable data from the multiprocessed pools, separating the
     full sequence data into backgrounds data and sequence data.
     Called in the join_batches function
+
+    Inputs:
+        read_batches: List of dataframes containing read information returned
+                    from multiprocessed batches
+        full_sequence_batches: Dictionary containing sequence data (counts per
+                    position and background) returned from multiprocessed
+
+    Outputs:
+        tuple containing:
+            read_batches: List of dataframes containing read information
+            background_batches: Dictionary containing background data
+            sequence_batches: Dictionary containing sequence data
     """
     read_batches = [result.get() for result in read_batches]
 
@@ -293,8 +310,10 @@ def get_batch_data(read_batches: list, full_sequence_batches: dict):
     for pattern_length in full_sequence_batches:
         background_batches[pattern_length] = {}
         sequence_batches[pattern_length] = {}
+
         for result in full_sequence_batches[pattern_length]:
             result_dict = result.get()
+
             for pattern, array in result_dict.items():
                 if "bg" in pattern or "sequence" in pattern:
                     if pattern not in background_batches[pattern_length]:
@@ -308,4 +327,5 @@ def get_batch_data(read_batches: list, full_sequence_batches: dict):
                     else:
                         (sequence_batches[pattern_length][pattern]
                          .append(array))
+
     return read_batches, background_batches, sequence_batches
