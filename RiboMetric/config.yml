@@ -1,3 +1,18 @@
+# Arguments, overwritten when called in the command-line
+argument:
+  bam: null                   # Filepath for bam
+  annotation: null            # Filepath for annotation
+  gff: null                   # Filepath for gff
+  fasta: null                 # Filepath for fasta
+  name: null                  # Sets the name for the reports and/or data output, when set to None, uses bam filename
+  output: "."                 # Sets the output directory for the reports and/or data output
+  subsample: 1000000          # Number of reads processed from the bam file, null being the entire file
+  transcripts: null           # Number of transcripts processed from a gff file, null being the entire file
+  html: True
+  pdf: False
+  json: False
+  csv: False
+
 plots:
   # Controls general plot theming and specific plot options
   font_family: Helvetica Neue,Helvetica,Arial,sans-serif
@@ -6,7 +21,7 @@ plots:
   image_size: [720, 370]      # [Width, Height] in pixels, used for pdf images
   ligation_bias_distribution:
     nucleotide_count: 2       # Size of nucleotide groups to check (default = 2)
-    five_prime: True          # If set to false, controls possible bias at 3' instead of 5'
+    target: "both"            # Options: ["five_prime", "three-prime", "both"]
     include_N: False          # Show nucleotide groups with N in plot
     background_freq: True     # Use background frequency of nucleotide groups in reads to check ligation bias
   nucleotide_proportion:
@@ -29,7 +44,7 @@ plots:
     shared_yaxis: False       # For the metagene profile barplot, controls whether the start and stop distance share a y-axis or not
     distance_range: [-30,30]
     colorscale: "electric"    # Heatmap colorscale, see https://plotly.com/python/builtin-colorscales/
-    max_colorscale: 350       # set to 'None' (without quotes!) for automatic maximum
+    max_colorscale: null       # set to null for automatic maximum
   logoplot:
     enable: false             # Logoplot generation with WebLogo can take a long time, disabled by default
     nucleotide_count: 15      # How many nucleotides to include in the logoplot
@@ -41,3 +56,5 @@ qc:
     read_frame_distribution: False
   read_frame_distribution:
     3nt_count_cutoff: 0.05
+  cds_coverage:
+    in_frame_coverage: True   # Only check in-frame coverage, otherwise check complete cds coverage

@@ -45,8 +45,8 @@ def test_read_length_distribution():
 @pytest.mark.parametrize(
     "test_input,expected",
     [
-        ('ligation_bias_dict_2nt["AA"]', 0.25),
-        ('ligation_bias_dict_3nt["AAA"]', 0.25),
+        ('AA_test', 0.5),
+        ('ligation_bias_dict_norm["three_prime"]["TC"]', 0.25),
     ],
 )
 def test_ligation_bias_distribution(test_input, expected):
@@ -57,15 +57,13 @@ def test_ligation_bias_distribution(test_input, expected):
     read_df = read_df_pre.loc[
         read_df_pre.index.repeat(read_df_pre["count"])
     ].reset_index(drop=True)
-    ligation_bias_dict_2nt = ligation_bias_distribution(read_df)
-    ligation_bias_dict_2nt = normalise_ligation_bias(
-        read_df, ligation_bias_dict_2nt
-    )
-    ligation_bias_dict_3nt = ligation_bias_distribution(
-        read_df, num_bases=3, five_prime=False
-    )
-    ligation_bias_dict_3nt = normalise_ligation_bias(
-        read_df, ligation_bias_dict_3nt, num_bases=3, five_prime=False
+    categories = ["first_dinucleotide", "last_dinucleotide"]
+    read_df[categories] = read_df[categories].astype("category")
+    sequence_background = {2:{"5_prime_bg":{"AA":0.25,"AG":0.3,"TT":0.45},"3_prime_bg":{"AA":0.875,"TC":0.125}}}
+    ligation_bias_dict = ligation_bias_distribution(read_df)
+    AA_test = ligation_bias_dict["five_prime"]["AA"]
+    ligation_bias_dict_norm = normalise_ligation_bias(
+        ligation_bias_dict, sequence_background
     )
     assert eval(test_input) == expected
 
@@ -74,11 +72,13 @@ def test_nucleotide_composition():
     """
     Test nucleotide composition calculation
     """
-    read_df_pre = pd.read_csv("tests/test_data/test.csv")
-    read_df = read_df_pre.loc[
-        read_df_pre.index.repeat(read_df_pre["count"])
-    ].reset_index(drop=True)
-    nucleotide_composition_dict = nucleotide_composition(read_df)
+    sequence_data={1:{
+        "A":[4,4,5,5,1,0,0,3,3,3,2],
+        "C":[1,0,0,3,3,3,3,0,0,0,0],
+        "G":[3,3,0,0,4,5,5,0,0,0,0],
+        "T":[0,1,3,0,0,0,0,5,5,5,0]}}
+    nucleotide_composition_dict = nucleotide_composition(sequence_data[1])
+    print(nucleotide_composition_dict)
     assert nucleotide_composition_dict["A"] == [
         0.5,
         0.5,

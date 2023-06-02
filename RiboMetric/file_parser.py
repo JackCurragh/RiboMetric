@@ -5,13 +5,16 @@ in the RiboMetric pipeline
 The functions are called by the main script RiboMetric.py
 """
 from Bio import SeqIO
-import pysam
-import pandas as pd
-from multiprocessing import Pool
-import pysam
+from pysam import AlignmentFile
 import gffpandas.gffpandas as gffpd
-import os
+
+import pandas as pd
 import numpy as np
+import os
+from multiprocessing import Pool
+
+
+from .bam_processing import process_reads, process_sequences, join_batches
 
 
 def parse_gff(gff_path: str) -> gffpd.Gff3DataFrame:
@@ -81,7 +84,6 @@ def check_bam(bam_path: str) -> bool:
     Inputs:
         bam_path: Path to the bam file
 
-
     Outputs:
         bool: True if the bam file and its index exist, False otherwise
     """
@@ -104,7 +106,7 @@ def flagstat_bam(bam_path: str) -> dict:
 
     """
     flagstat_dict = {}
-    with pysam.AlignmentFile(bam_path, "rb") as bamfile:
+    with AlignmentFile(bam_path, "rb") as bamfile:
         flagstat_dict["total_reads"] = bamfile.mapped + bamfile.unmapped
         flagstat_dict["mapped_reads"] = bamfile.mapped
         flagstat_dict["unmapped_reads"] = bamfile.unmapped
@@ -112,113 +114,68 @@ def flagstat_bam(bam_path: str) -> dict:
     return flagstat_dict
 
 
-def process_reads(reads):
-    """
-    Process batches of reads from parse_bam, retrieving the data of interest and putting it in a dataframe.
-
-    Inputs:
-        reads:
-
-    Outputs:
-        batch_df:
-    """
-    read_list = []
-    for read in reads:
-        if "_x" in read[0]:
-            count = int(read[0].split("_x")[-1])
-        else:
-            count = 1
-        read_list.append(
-            [
-                len(read[9]),      # read_length
-                read[2],           # reference_name
-                int(read[3]),      # reference_start
-                read[9],           # sequence
-                count,             # count
-            ]
-        )
-    batch_df = pd.DataFrame(read_list, columns=['read_length',
-                                    'reference_name', 'reference_start',
-                                    'sequence', 'count'])  # Convert to DataFrame
-    batch_df["reference_name"] = batch_df["reference_name"].astype("category")
-    return batch_df
-
-
-def process_sequences(sequences, pattern_length=1, sequence_length = 50):
-    """
-    Calculate the occurence of nucleotides or groups of nucleotides in the sequences from the reads.
-    The nucleotides or groups are stored in lexicographic order, (i.e. AA, AC, AG, AT, CA... TG, TT)
-    """
-    # Create an empty 2D array to store the counts
-    counts_array = np.zeros((4 ** pattern_length, sequence_length - pattern_length + 1), dtype=int)
-
-    # Iterate over each position in the sequences
-    for i in range(sequence_length - pattern_length + 1):
-        # Get the nucleotides at the current position
-        patterns = [sequence[i:i+pattern_length] if i + pattern_length <= len(sequence) else 0 for sequence in sequences]
-
-        # Count the occurrences of each nucleotide pattern at the current position
-        counts = np.unique(patterns, return_counts=True)
-
-        # Update the counts array
-        for pattern, count in zip(counts[0], counts[1]):
-            if pattern is not None:
-                index = pattern_to_index(pattern)
-                counts_array[index, i] = count
-
-    return counts_array
-
-def pattern_to_index(pattern):
-    """
-    Converts a nucleotide pattern to its corresponding index in the counts array.
-    """
-    index = 0
-    base_to_index = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
-    for nucleotide in pattern:
-        if nucleotide in base_to_index:
-            index = index * 4 + base_to_index[nucleotide]
-        else:
-            return 0
-    return index
-
-def parse_bam(bam_file, num_reads=1000000, batch_size=100000, num_processes=1) -> list:
+def parse_bam(bam_file,
+              num_reads=1000000,
+              batch_size=10000,
+              num_processes=4
+              ) -> tuple():
     """
     Read in the bam file at the provided path and return a list of dataframes
-    
+
     Inputs:
         bam_file: Path to the bam file
         num_reads: Number of reads to parse
         batch_size: The number of reads that are processed at a time
         num_processes: The maximum number of processes that this function can
-        create
+                        create
 
     Outputs:
-        batch_results: List containing dataframes for the parsed reads which
-        will be grouped together in following steps
+        parsed_bam: Tuple containing:
+            read_df_pre: The read dataframe containing read information before
+                         further modifications to the dataframe
+            sequence_data: Dictionary containing the total counts of
+                           nucleotide patterns per nucleotide position
+            sequence_background: Dictionary containing the background
+                                frequency of nucleotide patterns for five and
+                                three prime
     """
-    samfile = pysam.AlignmentFile(bam_file, "rb")
+    samfile = AlignmentFile(bam_file, "rb")
     pool = Pool(processes=num_processes)
-    read_list, batch_results = [], []
+    read_list, read_batches = [], []
+    sequence_batches = {1: [], 2: []}
     for idx, read in enumerate(samfile.fetch()):
         read_list.append(read.to_string().split(sep="\t"))
         if idx >= num_reads - 1:
             break
 
         if len(read_list) == batch_size:
-            batch_results.append(pool.apply_async(process_reads, [read_list]))
+            read_batches.append(pool.apply_async(process_reads, [read_list]))
+            for group in sequence_batches:
+                sequence_batches[group].append(
+                    pool.apply_async(process_sequences,
+                                     [[(read[0], read[9]) for read in
+                                       read_list],
+                                      group]))
             read_list = []
         read_percentage = round((idx) / num_reads * 100, 3)
         print(f"Processed {idx}/{num_reads} \
-({read_percentage}%)", end="\r",
-        )
+({read_percentage}%)", end="\r")
 
     if read_list:
-        batch_results.append(pool.apply_async(process_reads, [read_list]))
+        read_batches.append(pool.apply_async(process_reads, [read_list]))
+        for group in sequence_batches:
+            sequence_batches[group].append(
+                pool.apply_async(process_sequences,
+                                 [[(read[0], read[9]) for read in
+                                   read_list],
+                                  group]))
 
     pool.close()
     pool.join()
 
-    return [result.get() for result in batch_results]
+    parsed_bam = join_batches(read_batches, sequence_batches)
+
+    return (parsed_bam)
 
 
 def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
@@ -341,8 +298,11 @@ def extract_transcript_id(attr_str):
 
 
 def prepare_annotation(
-    gff_path: str, outdir: str, num_transcripts: int, config: str
-) -> pd.DataFrame:
+        gff_path: str,
+        outdir: str,
+        num_transcripts: int,
+        config: str
+        ) -> pd.DataFrame:
     """
     Given a path to a gff file, produce a tsv file containing the
     transcript_id, tx_cds_start, tx_cds_end, tx_length,
@@ -360,20 +320,15 @@ def prepare_annotation(
     print("Parsing gff")
     gffdf = parse_gff(gff_path).df
 
-    # transcript_id_regex = r"transcript_id=([^;]+)"
-    # gffdf.loc[:, "transcript_id"] = gffdf["attributes"].str.extract(
-    # transcript_id_regex
-    # )
-
     gffdf.loc[:, "transcript_id"] = gffdf["attributes"].apply(
         extract_transcript_id
         )
 
     cds_df = gffdf[gffdf["type"] == "CDS"]
-
     coding_tx_ids = cds_df["transcript_id"].unique()[:num_transcripts]
 
     annotation_df = gff_df_to_cds_df(gffdf, coding_tx_ids)
+
     basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
     output_name = f"{basename}_RiboMetric.tsv"
     annotation_df.to_csv(

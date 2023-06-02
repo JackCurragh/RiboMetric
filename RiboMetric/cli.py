@@ -8,6 +8,8 @@ def main():
     """Console script for RiboMetric."""
     parser = p()
     args = parser.parse_args()
+    if not vars(args):
+        parser.print_help()
 
     m(args)
     return 0
