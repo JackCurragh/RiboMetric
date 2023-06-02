@@ -1,3 +1,18 @@
+# Arguments, overwritten when called in the command-line
+argument:
+  bam: null                   # Filepath for bam
+  annotation: null            # Filepath for annotation
+  gff: null                   # Filepath for gff
+  fasta: null                 # Filepath for fasta
+  name: null                  # Sets the name for the reports and/or data output, when set to None, uses bam filename
+  output: "."                 # Sets the output directory for the reports and/or data output
+  subsample: 1000000          # Number of reads processed from the bam file, null being the entire file
+  transcripts: null           # Number of transcripts processed from a gff file, null being the entire file
+  html: True
+  pdf: False
+  json: False
+  csv: False
+
 plots:
   # Controls general plot theming and specific plot options
   font_family: Helvetica Neue,Helvetica,Arial,sans-serif
@@ -29,7 +44,7 @@ plots:
     shared_yaxis: False       # For the metagene profile barplot, controls whether the start and stop distance share a y-axis or not
     distance_range: [-30,30]
     colorscale: "electric"    # Heatmap colorscale, see https://plotly.com/python/builtin-colorscales/
-    max_colorscale: 350       # set to 'None' (without quotes!) for automatic maximum
+    max_colorscale: null       # set to null for automatic maximum
   logoplot:
     enable: false             # Logoplot generation with WebLogo can take a long time, disabled by default
     nucleotide_count: 15      # How many nucleotides to include in the logoplot

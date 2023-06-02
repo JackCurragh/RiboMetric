@@ -6,6 +6,7 @@ parsing and modules again.
 # Maybe json and csv in one script? Add option for keeping or leaving config?
 # Option to then use config in json (if exists) or local config
 import json
+import csv
 
 
 def generate_json(
@@ -13,7 +14,7 @@ def generate_json(
     config: dict,
     name: str = "RiboMetric_data.json",
     output_directory: str = "",
-):
+    ):
     """
     Generate a machine readable format of the RiboMetric results
 
@@ -41,3 +42,38 @@ def generate_json(
     with open(output, "w") as f:
         json.dump(data, f, indent=2)
     print(f"Results written in {output}")
+
+def generate_csv(
+    results_dict: dict,
+    config: dict,
+    name: str = "RiboMetric_data.json",
+    output_directory: str = "",
+    ):
+    """
+    Generate a csv file containing the different metrics and their
+    corresponding score
+
+    Input:
+        results_dict: Dictionary containing the results of the qc analysis
+        config: Dictionary containing the configuration information
+        name: Name of the output file
+        output_directory: Directory to write the output file to
+
+    Output:
+        Writes to a csv file
+    """
+    if output_directory == "":
+        output = name
+    else:
+        if output_directory.endswith("/") and output_directory != "":
+            output_directory = output_directory[:-1]
+        output = output_directory + "/" + name + ".csv"
+
+    columns = ["metric", "score"]
+
+    with open(output, "w") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=columns)
+        writer.writeheader()
+        for data in [{"metric":key,"score":value}for key,value in results_dict["metrics"].items()]:
+            writer.writerow(data)
+    print(f"Metrics written in {output}")

@@ -23,10 +23,9 @@ def generate_report(
     Generates a report of the RiboMetric results with plots
 
     Inputs:
-        results: A dictionary containing the results of
-                    the RiboMetric analysis
-        export_mode: A string defining the mode of
-                    export: 'html','pdf' or 'both' (Default: 'html')
+        plots: A list containing the plots and metrics for the report
+        export_mode: A string defining the mode of export: 'html', 'pdf' or
+        'both' (Default: 'html')
         name: A string for the file name (Default: 'RiboMetric_report')
         outdir: A string for the output directory (Default: '')
 
@@ -83,10 +82,11 @@ def generate_report(
             out = output + ".html"
             with open(out, mode="w", encoding="utf-8") as f:
                 f.write(jinja_render)
+            print(f"Your {filetype} report can be found in {out}")
         else:
             context["filetype"] = filetype
             jinja_render = template.render(context)
             out = output + ".pdf"
             convert_html_to_pdf(jinja_render, out)
+            print(f"Your {filetype} report can be found in {out}")
 
-    print(f"Done! Your report can be found in {out}")
