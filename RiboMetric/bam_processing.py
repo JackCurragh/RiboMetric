@@ -15,20 +15,30 @@ def ox_parse_reads(bam_file,split_num,reference_df,tempdir,t0):
     """
     WIP title
     """
+    print(f"> splitting file {split_num}")
     tmp_bam = split_bam(bam_file,
                            split_num,
                            reference_df,
                            tempdir,
                            t0)
-    print(f"{tmp_bam}: {os.path.exists(tmp_bam)}")
-    print("started oxbow parse")
+    print(f"> oxbow parse {split_num}")
     arrow_ipc = ox.read_bam(tmp_bam)
-    df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
-    print("finished oxbow run")
-    return df
+    oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
+    del arrow_ipc
+    print(f"> Creating read df {split_num}")
+    read_df = process_reads(oxbow_df)
+    # print(f"> Creating sequence_data {split_num}")
+    # sequence_data = {1:{},2:{}}
+    # for pattern_length in sequence_data:
+    #     print(f"  - {pattern_length}")
+    #     process_sequences(oxbow_df["seq"].tolist(),
+    #                       read_df["count"],
+    #                       pattern_length)
+    # return (read_df, sequence_data)
+    return (read_df)
 
 
-def process_reads(reads):
+def process_reads(oxbow_df):
     """
     Process batches of reads from parse_bam, retrieving the data of interest
     and putting it in a dataframe.
@@ -40,40 +50,19 @@ def process_reads(reads):
     Outputs:
         batch_df: Dataframe containing a processed batch of reads
     """
-    read_list = []
-    for read in reads:
-        if "_x" in read[0]:
-            count = int(read[0].split("_x")[-1])
-        else:
-            count = 1
-        read_list.append(
-            [
-                len(read[9]),      # read_length
-                read[2],           # reference_name
-                int(read[3]),      # reference_start
-                read[9][0:2],      # first dinucleotide
-                read[9][-2:],      # last dinucleotide
-                count,             # count
-            ]
-        )
-    batch_df = pd.DataFrame(read_list, columns=['read_length',
-                                                'reference_name',
-                                                'reference_start',
-                                                'first_dinucleotide',
-                                                'last_dinucleotide',
-                                                'count'])
+    read_df = pd.DataFrame()
+    read_df["read_length"] = pd.Series(oxbow_df["end"] - oxbow_df["pos"] + 1, dtype="category")
+    read_df["reference_name"] = oxbow_df["rname"].astype("category")
+    read_df["reference_start"] = oxbow_df["pos"]
+    read_df["first_dinucleotide"] = oxbow_df["seq"].str.slice(stop=2).astype("category")
+    read_df["last_dinucleotide"] = oxbow_df["seq"].str.slice(stop=-3,step=-1).astype("category")
+    read_df["count"] = pd.Series([int(query.split("_x")[-1]) if "_x" in query else 1 for query in oxbow_df["qname"]], dtype="category")
 
-    batch_df["first_dinucleotide"] = (batch_df["first_dinucleotide"]
-                                      .astype("category"))
-    batch_df["last_dinucleotide"] = (batch_df["last_dinucleotide"]
-                                     .astype("category"))
-    batch_df["reference_name"] = (batch_df["reference_name"]
-                                  .astype("category"))
-
-    return batch_df
+    return read_df
 
 
-def process_sequences(sequences_counts: list,
+def process_sequences(sequences: list,
+                      counts: list,
                       pattern_length: int = 1,
                       max_sequence_length: int = None,
                       ) -> dict:
@@ -96,17 +85,9 @@ def process_sequences(sequences_counts: list,
         later for joining of background frequencies)
     """
     # Create the counts array
-    read_names = [sequences[0] for sequences in sequences_counts]
-    counts_array = []
-    for read in read_names:
-        if "_x" in read:
-            counts_array.append(int(read.split("_x")[-1]))
-        else:
-            counts_array.append(1)
-    counts_array = np.array(counts_array)
+    counts_array = np.array(counts)
 
     # Set sequences and calculate array dimensions
-    sequences = [sequences[1] for sequences in sequences_counts]
     num_sequences = len(sequences)
     if max_sequence_length is None:
         max_sequence_length = max(len(seq) for seq in sequences)
@@ -221,7 +202,7 @@ def calculate_background(sequence_array: np.array,
     return sequence_bg
 
 
-def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
+def join_batches(bam_batches: list) -> tuple:
     """
     Get and join the data returned from multiprocessed_batches
 
@@ -244,14 +225,16 @@ def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
     """
     print("\nGetting data from async objects..")
     read_batches, background_batches, sequence_batches = \
-        get_batch_data(read_batches, full_sequence_batches)
+        get_batch_data(bam_batches)
 
     print("Joining batch files..")
     # Joining reads
     read_df_pre = pd.concat(read_batches, ignore_index=True)
-    category_columns = ["reference_name",
+    category_columns = ["read_length",
+                        "reference_name",
                         "first_dinucleotide",
-                        "last_dinucleotide"]
+                        "last_dinucleotide",
+                        "count"]
     read_df_pre[category_columns] = (read_df_pre[category_columns]
                                      .astype("category"))
     # Joining sequence data
@@ -300,12 +283,11 @@ def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
                 sequence_background[pattern_length][background][pattern] = \
                     total_weighted_sum / total_count
 
-    return (read_df_pre, sequence_data, sequence_background)
+    return (read_df_pre, sequence_data, sequence_background))
 
 
 def get_batch_data(
-        read_batches: list,
-        full_sequence_batches: dict
+        bam_batches: list
         ) -> tuple:
     """
     Return readable data from the multiprocessed pools, separating the
@@ -324,7 +306,11 @@ def get_batch_data(
             background_batches: Dictionary containing background data
             sequence_batches: Dictionary containing sequence data
     """
-    read_batches = [result.get() for result in read_batches]
+    bam_tuples = [result.get() for result in bam_batches]
+
+    read_batches = [data[0] for data in bam_tuples]
+
+    full_sequence_batches = [data[1] for data in bam_tuples]
 
     background_batches, sequence_batches = {}, {}
     for pattern_length in full_sequence_batches:

@@ -144,64 +144,27 @@ def parse_bam(bam_file,
     """
     t0 = datetime.now()
     pool = Pool(processes=num_processes)
-    read_batches = []
+    bam_batches = []
     with TemporaryDirectory() as tempdir:
         tempdir = "/home/lukas/projects/RiboMetric/test_files/oxbow"
         print(f"using {tempdir}")
         idxstats_df = run_samtools_idxstats(bam_file)
-        reference_dfs = split_idxstats_df(idxstats_df, batch_size)
-        for split_num, reference_df in enumerate(reference_dfs):
-            # tmp_bam = pool.apply_async(split_bam, [bam_file,
-            #                            split_num,
-            #                            reference_df,
-            #                            tempdir,
-            #                            t0])
-            
-            read_batches.append(pool.apply_async(ox_parse_reads, 
+        reference_dfs = split_idxstats_df(idxstats_df,
+                                          batch_size,
+                                          num_reads)
+        for split_num, reference_df in enumerate(reference_dfs):            
+            bam_batches.append(pool.apply_async(ox_parse_reads, 
                                                  [bam_file,
                                                   split_num,
                                                   reference_df,
                                                   tempdir,
                                                   t0]))
-            
         pool.close()
         pool.join()
-    
-#     read_list, read_batches = [], []
-#     sequence_batches = {1: [], 2: []}
-#     for idx, read in enumerate(samfile.fetch()):
-#         read_list.append(read.to_string().split(sep="\t"))
-#         if idx >= num_reads - 1:
-#             break
 
-#         if len(read_list) == batch_size:
-#             read_batches.append(pool.apply_async(process_reads, [read_list]))
-#             for group in sequence_batches:
-#                 sequence_batches[group].append(
-#                     pool.apply_async(process_sequences,
-#                                      [[(read[0], read[9]) for read in
-#                                        read_list],
-#                                       group]))
-#             read_list = []
-#         read_percentage = round((idx) / num_reads * 100, 3)
-#         print(f"Processed {idx}/{num_reads} \
-# ({read_percentage}%)", end="\r")
+    parsed_bam = join_batches(bam_batches)
 
-#     if read_list:
-#         read_batches.append(pool.apply_async(process_reads, [read_list]))
-#         for group in sequence_batches:
-#             sequence_batches[group].append(
-#                 pool.apply_async(process_sequences,
-#                                  [[(read[0], read[9]) for read in
-#                                    read_list],
-#                                   group]))
-
-    # pool.close()
-    # pool.join()
-
-    # parsed_bam = join_batches(read_batches, sequence_batches)
-
-    return (read_batches)
+    return parsed_bam
 
 
 def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
