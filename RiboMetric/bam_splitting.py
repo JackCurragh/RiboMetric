@@ -86,7 +86,7 @@ def split_idxstats_df(idxstats_df: pd.DataFrame,
     return split_dfs
 
 
-def split_bam(bam_file: str, split_num: int, reference_df: list, tempdir: str,timer):
+def split_bam(bam_file: str, split_num: int, reference_df: list, tempdir: str):
     """
     Splits the bam files with the bed files generated from the idxstats
 

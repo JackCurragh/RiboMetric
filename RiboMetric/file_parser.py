@@ -13,7 +13,6 @@ import numpy as np
 import os
 from multiprocessing import Pool
 from tempfile import TemporaryDirectory
-from datetime import datetime
 
 
 from .bam_processing import process_reads, process_sequences, join_batches, ox_parse_reads
@@ -142,7 +141,6 @@ def parse_bam(bam_file,
                                 frequency of nucleotide patterns for five and
                                 three prime
     """
-    t0 = datetime.now()
     pool = Pool(processes=num_processes)
     bam_batches = []
     with TemporaryDirectory() as tempdir:
@@ -157,8 +155,7 @@ def parse_bam(bam_file,
                                                  [bam_file,
                                                   split_num,
                                                   reference_df,
-                                                  tempdir,
-                                                  t0]))
+                                                  tempdir]))
         pool.close()
         pool.join()
 

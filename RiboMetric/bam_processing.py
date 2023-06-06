@@ -8,10 +8,10 @@ import oxbow as ox
 import io
 import pyarrow.ipc
 from .bam_splitting import split_bam
-import os
+from datetime import datetime
 
 
-def ox_parse_reads(bam_file,split_num,reference_df,tempdir,t0):
+def ox_parse_reads(bam_file,split_num,reference_df,tempdir):
     """
     WIP title
     """
@@ -19,23 +19,36 @@ def ox_parse_reads(bam_file,split_num,reference_df,tempdir,t0):
     tmp_bam = split_bam(bam_file,
                            split_num,
                            reference_df,
-                           tempdir,
-                           t0)
+                           tempdir)
     print(f"> oxbow parse {split_num}")
     arrow_ipc = ox.read_bam(tmp_bam)
     oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
     del arrow_ipc
     print(f"> Creating read df {split_num}")
     read_df = process_reads(oxbow_df)
-    # print(f"> Creating sequence_data {split_num}")
-    # sequence_data = {1:{},2:{}}
-    # for pattern_length in sequence_data:
-    #     print(f"  - {pattern_length}")
-    #     process_sequences(oxbow_df["seq"].tolist(),
-    #                       read_df["count"],
-    #                       pattern_length)
-    # return (read_df, sequence_data)
-    return (read_df)
+    print(f"> Creating sequence_data {split_num}")
+    sequence_data = {1:{},2:{}}
+    sequence_list = oxbow_df["seq"].tolist()
+    count_list = read_df["count"].tolist()
+    size = 10000
+    count = 0
+    for pattern_length in sequence_data:
+        print(f"  - {pattern_length}")
+        t1 = datetime.now()
+        for i in range(0, len(sequence_list), size):
+            count += 1
+            if count%10 != 0:
+                continue
+            t0 = datetime.now()
+            section = sequence_list[i:i+size]
+            counts = count_list[i:i+size]
+            process_sequences(section,
+                            counts,
+                            pattern_length)
+            print(f"section done in {datetime.now()-t0}")
+
+        print(f"pattern_length done in {datetime.now()-t1}")
+    return (read_df, sequence_data)
 
 
 def process_reads(oxbow_df):
@@ -283,7 +296,7 @@ def join_batches(bam_batches: list) -> tuple:
                 sequence_background[pattern_length][background][pattern] = \
                     total_weighted_sum / total_count
 
-    return (read_df_pre, sequence_data, sequence_background))
+    return (read_df_pre, sequence_data, sequence_background)
 
 
 def get_batch_data(
@@ -313,7 +326,7 @@ def get_batch_data(
     full_sequence_batches = [data[1] for data in bam_tuples]
 
     background_batches, sequence_batches = {}, {}
-    for pattern_length in full_sequence_batches:
+    for pattern_length in full_sequence_batches[0].keys():
         background_batches[pattern_length] = {}
         sequence_batches[pattern_length] = {}
 
