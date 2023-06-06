@@ -14,7 +14,7 @@ def run_samtools_idxstats(bam_file: str) -> pd.DataFrame:
     the results
 
     Inputs:
-        bam_file Path to the bam file
+        bam_file: Path to the bam file
 
     Outputs:
         idxstats_df: dataframe containing idxstats for the bam file
@@ -31,7 +31,9 @@ def run_samtools_idxstats(bam_file: str) -> pd.DataFrame:
     return df
 
 
-def split_idxstats_df(idxstats_df: pd.DataFrame, max_reads: int) -> list[pd.DataFrame]:
+def split_idxstats_df(idxstats_df: pd.DataFrame,
+                      max_reads: int,
+                      num_reads: int) -> list[pd.DataFrame]:
     """
     Split the idxstats data frame into a list of data frames limited to
     the max read count while also preparing the dataframe for conversion to
@@ -40,6 +42,7 @@ def split_idxstats_df(idxstats_df: pd.DataFrame, max_reads: int) -> list[pd.Data
     Inputs:
         idxstats_df: Results from samtools idxstats
         max_reads: Maximum number of reads in a batch
+        num_reads: Number of reads to parse
 
     Outputs:
         split_dfs
@@ -58,6 +61,8 @@ def split_idxstats_df(idxstats_df: pd.DataFrame, max_reads: int) -> list[pd.Data
         reads = mapped_reads[i] + unmapped_reads[i]
         if current_sum + reads <= max_reads:
             current_sum += reads
+            if (current_sum + (split_num * max_reads)) > num_reads:
+                break
         else:
             current_df = idxstats_df.iloc[last_index:i, [0, 1]].copy()
             current_df['Start'] = np.zeros(i - last_index, dtype=np.int8)
@@ -71,7 +76,11 @@ def split_idxstats_df(idxstats_df: pd.DataFrame, max_reads: int) -> list[pd.Data
             current_sum = reads
 
     # Add the last remaining DataFrame
-    current_df['Start'] = np.zeros(len(idxstats_df) - last_index)
+    current_df = idxstats_df.iloc[last_index:i, [0, 1]].copy()
+    current_df['Start'] = np.zeros(i - last_index, dtype=np.int8)
+    current_df = current_df[['Reference',
+                            'Start',
+                            'Length']]
     split_dfs.append(current_df)
 
     return split_dfs
@@ -91,7 +100,6 @@ def split_bam(bam_file: str, split_num: int, reference_df: list, tempdir: str,ti
     Outputs:
         bed and bam files for split reads in a temp directory.
     """
-    print(f"start of split {split_num} = {datetime.now() - timer}")
     bedfile = f"{tempdir}/bed_{split_num}.bed"
     reference_df.to_csv(bedfile, sep="\t", header=False, index=False)
     outfile = f"{tempdir}/split_sorted_{split_num}.bam"
@@ -99,6 +107,5 @@ def split_bam(bam_file: str, split_num: int, reference_df: list, tempdir: str,ti
     subprocess.run(('samtools', 'sort', '-O', 'bam', '-o', outfile), stdin=samview.stdout)
     samview.wait()
     subprocess.run(('samtools', 'index', outfile))
-    print(f"split {split_num} finished = {datetime.now() - timer}")
 
     return outfile
