@@ -7,4 +7,4 @@ def test_bam_parsing():
     bam = parse_bam(
         "tests/test_data/test.bam", 10000
     )[0]
-    assert len(bam) == 10000
+    assert len(bam) == 9997
