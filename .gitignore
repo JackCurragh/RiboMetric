@@ -107,15 +107,6 @@ ENV/
 
 data/
 
-# Lukasdev
-*.ipynb
-test_files/
-RiboMetric_report.*
-1000_entry_RibosomeProfiler.tsv
-Saccharomyces_cerevisiae_RibosomeProfiler.tsv
-gencode_RibosomeProfiler.tsv
-parse_to_csv.py
-
 *.gtf
 *.gff
 !1000_entry.gff
@@ -136,6 +127,15 @@ mprofile_*
 tests/test_data/test_RiboMetric.html
 
 *.html
+
+# Lukasdev
+*.ipynb
+test_files/
+RiboMetric_report.*
+1000_entry_RibosomeProfiler.tsv
+Saccharomyces_cerevisiae_RibosomeProfiler.tsv
+gencode_RibosomeProfiler.tsv
+parse_to_csv.py
 transcriptome_collapsed_RiboMetric.pdf
 transcriptome_collapsed_RiboMetric.json
 mprof/*
