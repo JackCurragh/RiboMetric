@@ -120,13 +120,13 @@ def parse_bam(bam_file,
               num_reads=1000000,
               batch_size=10000000,
               num_processes=8
-              ) -> tuple():
+              ) -> tuple[pd.DataFrame,dict,dict]:
     """
     Read in the bam file at the provided path and return a list of dataframes
 
     Inputs:
         bam_file: Path to the bam file
-        num_reads: Number of reads to parse
+        num_reads: Maximum number of reads to parse
         batch_size: The number of reads that are processed at a time
         num_processes: The maximum number of processes that this function can
                         create
