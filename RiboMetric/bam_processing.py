@@ -31,10 +31,11 @@ def ox_parse_reads(bam_file,split_num,reference_df,tempdir):
     sequence_list = oxbow_df["seq"].tolist()
     count_list = read_df["count"].tolist()
     size = 10000
-    count = 0
+    if len(sequence_list) < size:
+        size = len(sequence_list)
     for pattern_length in sequence_data:
-        print(f"  - {pattern_length}")
         t1 = datetime.now()
+        count = -1
         for i in range(0, len(sequence_list), size):
             count += 1
             if count%10 != 0:
@@ -47,7 +48,7 @@ def ox_parse_reads(bam_file,split_num,reference_df,tempdir):
                                                    pattern_length))
             print(f"section done in {datetime.now()-t0}")
 
-        print(f"pattern_length done in {datetime.now()-t1}")
+        print(f"> {split_num}: pattern length {pattern_length} done in {datetime.now()-t1}")
     return (read_df, sequence_data)
 
 

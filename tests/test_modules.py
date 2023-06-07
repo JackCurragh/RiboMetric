@@ -59,7 +59,7 @@ def test_ligation_bias_distribution(test_input, expected):
     ].reset_index(drop=True)
     categories = ["first_dinucleotide", "last_dinucleotide"]
     read_df[categories] = read_df[categories].astype("category")
-    sequence_background = {2:{"5_prime_bg":{"AA":0.25,"AG":0.3,"TT":0.45},"3_prime_bg":{"AA":0.875,"TC":0.125}}}
+    sequence_background = {"5_prime_bg":{"AA":0.25,"AG":0.3,"TT":0.45},"3_prime_bg":{"AA":0.875,"TC":0.125}}
     ligation_bias_dict = ligation_bias_distribution(read_df)
     AA_test = ligation_bias_dict["five_prime"]["AA"]
     ligation_bias_dict_norm = normalise_ligation_bias(
