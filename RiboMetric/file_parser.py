@@ -119,7 +119,7 @@ def flagstat_bam(bam_path: str) -> dict:
 def parse_bam(bam_file,
               num_reads=1000000,
               batch_size=10000000,
-              num_processes=4
+              num_processes=8
               ) -> tuple():
     """
     Read in the bam file at the provided path and return a list of dataframes
@@ -144,7 +144,7 @@ def parse_bam(bam_file,
     pool = Pool(processes=num_processes)
     bam_batches = []
     with TemporaryDirectory() as tempdir:
-        tempdir = "/home/lukas/projects/RiboMetric/test_files/oxbow"
+        #tempdir = "/home/lukas/projects/RiboMetric/test_files/oxbow"
         print(f"using {tempdir}")
         idxstats_df = run_samtools_idxstats(bam_file)
         reference_dfs = split_idxstats_df(idxstats_df,
