@@ -86,7 +86,7 @@ def split_idxstats_df(idxstats_df: pd.DataFrame,
     return split_dfs
 
 
-def split_bam(bam_file: str, split_num: int, reference_df: list, tempdir: str):
+def split_bam(bam_file: str, split_num: int, reference_df: list, tempdir: str) -> str:
     """
     Splits the bam files with the bed files generated from the idxstats
 
@@ -98,7 +98,7 @@ def split_bam(bam_file: str, split_num: int, reference_df: list, tempdir: str):
         tempdir: Path to the temp directory
 
     Outputs:
-        bed and bam files for split reads in a temp directory.
+        outfile: Path to the split bam file
     """
     bedfile = f"{tempdir}/bed_{split_num}.bed"
     reference_df.to_csv(bedfile, sep="\t", header=False, index=False)

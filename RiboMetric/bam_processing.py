@@ -11,9 +11,25 @@ from .bam_splitting import split_bam
 from datetime import datetime
 
 
-def ox_parse_reads(bam_file,split_num,reference_df,tempdir):
+def ox_parse_reads(bam_file: str,
+                   split_num: int,
+                   reference_df: pd.DataFrame,
+                   tempdir: str) -> tuple[pd.DataFrame,dict]:
     """
-    WIP title
+    Splits a bam files using generated bed files, uses oxbow to process these
+    batches of reads directly into a data frame and then processes the data
+    from this generated dataframe into read and sequence data
+
+    Args:
+        bam_file: Path to the BAM file
+        split_num: Number of the split
+        reference_df: Reference dataframe, generated from samtools idxstats
+        tempdir: Path to the temporary directory
+
+    Returns:
+        tuple: A tuple containing:
+            batch_df: Dataframe containing a processed batch of reads
+            sequence_data: Dictionary containing the processed sequence data
     """
     print(f"> splitting file {split_num}")
     tmp_bam = split_bam(bam_file,
@@ -25,11 +41,11 @@ def ox_parse_reads(bam_file,split_num,reference_df,tempdir):
     oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
     del arrow_ipc
     print(f"> Creating read df {split_num}")
-    read_df = process_reads(oxbow_df)
+    batch_df = process_reads(oxbow_df)
     print(f"> Creating sequence_data {split_num}")
     sequence_data = {1:[],2:[]}
     sequence_list = oxbow_df["seq"].tolist()
-    count_list = read_df["count"].tolist()
+    count_list = batch_df["count"].tolist()
     size = 10000
     if len(sequence_list) < size:
         size = len(sequence_list)
@@ -49,30 +65,30 @@ def ox_parse_reads(bam_file,split_num,reference_df,tempdir):
             print(f"section done in {datetime.now()-t0}")
 
         print(f"> {split_num}: pattern length {pattern_length} done in {datetime.now()-t1}")
-    return (read_df, sequence_data)
+    return (batch_df, sequence_data)
 
 
-def process_reads(oxbow_df):
+def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     """
     Process batches of reads from parse_bam, retrieving the data of interest
     and putting it in a dataframe.
     Ensure category columns are set to category type for memory efficiency.
 
     Inputs:
-        reads: List of read contents from bam files, returned by pysam
+        oxbow_df: List of read contents from bam files, returned by pysam
 
     Outputs:
         batch_df: Dataframe containing a processed batch of reads
     """
-    read_df = pd.DataFrame()
-    read_df["read_length"] = pd.Series(oxbow_df["end"] - oxbow_df["pos"] + 1, dtype="category")
-    read_df["reference_name"] = oxbow_df["rname"].astype("category")
-    read_df["reference_start"] = oxbow_df["pos"]
-    read_df["first_dinucleotide"] = oxbow_df["seq"].str.slice(stop=2).astype("category")
-    read_df["last_dinucleotide"] = oxbow_df["seq"].str.slice(stop=-3,step=-1).astype("category")
-    read_df["count"] = pd.Series([int(query.split("_x")[-1]) if "_x" in query else 1 for query in oxbow_df["qname"]], dtype="category")
+    batch_df = pd.DataFrame()
+    batch_df["read_length"] = pd.Series(oxbow_df["end"] - oxbow_df["pos"] + 1, dtype="category")
+    batch_df["reference_name"] = oxbow_df["rname"].astype("category")
+    batch_df["reference_start"] = oxbow_df["pos"]
+    batch_df["first_dinucleotide"] = oxbow_df["seq"].str.slice(stop=2).astype("category")
+    batch_df["last_dinucleotide"] = oxbow_df["seq"].str.slice(stop=-3,step=-1).astype("category")
+    batch_df["count"] = pd.Series([int(query.split("_x")[-1]) if "_x" in query else 1 for query in oxbow_df["qname"]], dtype="category")
 
-    return read_df
+    return batch_df
 
 
 def process_sequences(sequences: list,
