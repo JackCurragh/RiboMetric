@@ -139,8 +139,8 @@ def normalise_ligation_bias(
     """
     ligation_bias_dict_norm = ligation_bias_dict
     expected_distribution = {
-        "five_prime": sequence_background[pattern_length]["5_prime_bg"],
-        "three_prime": sequence_background[pattern_length]["3_prime_bg"],
+        "five_prime": sequence_background["5_prime_bg"],
+        "three_prime": sequence_background["3_prime_bg"],
         }
 
     for prime in ligation_bias_dict_norm:
