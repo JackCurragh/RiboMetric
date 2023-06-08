@@ -185,6 +185,13 @@ def plot_ligation_bias_distribution(
         ),
         showlegend=False,
     )
+    distance = 0.2
+    for prime in ligation_bias_dict:
+        for bias in ligation_bias_dict[prime].values():
+            if abs(bias) > distance:
+                distance = abs(bias)
+    max_range = [-distance, distance]
+    fig.update_yaxes(range=max_range)
     if columns > 1:
         fig.update_layout(
             xaxis=dict(
