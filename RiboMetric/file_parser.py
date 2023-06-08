@@ -119,7 +119,7 @@ def flagstat_bam(bam_path: str) -> dict:
 def parse_bam(bam_file,
               num_reads=1000000,
               batch_size=10000000,
-              num_processes=8
+              num_processes=4
               ) -> tuple[pd.DataFrame,dict,dict]:
     """
     Read in the bam file at the provided path and return a list of dataframes

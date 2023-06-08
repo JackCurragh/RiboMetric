@@ -113,6 +113,7 @@ def print_table_run(args, config: dict, console, mode):
     Configs.add_row("# of transcripts:",
                     str(config["argument"]["transcripts"]))
     Configs.add_row("Config file:", args.config)
+    Configs.add_row("# of threads:", str(config["argument"]["threads"]))
 
     Output = Table(show_header=True, header_style="bold blue")
     Output.add_column("Output Options", style="dim", width=20)
@@ -185,8 +186,9 @@ def main(args):
         else:
             read_limit = config["argument"]["subsample"]
         bam_results = parse_bam(
-            config["argument"]["bam"],
-            read_limit)
+            bam_file=config["argument"]["bam"],
+            num_reads=read_limit,
+            num_processes=config["argument"]["threads"],)
 
         read_df_pre = bam_results[0]
         sequence_data = bam_results[1]

@@ -54,6 +54,13 @@ def argument_parser():
         help="Path to the transcriptome fasta file",
     )
     run_parser.add_argument(
+        "-p",
+        "--threads",
+        type=str,
+        required=False,
+        help="""Number of threads used by RiboMetric""",
+    )
+    run_parser.add_argument(
         "-n",
         "--name",
         type=str,
@@ -84,8 +91,9 @@ def argument_parser():
         "--transcripts",
         type=int,
         required=False,
-        default=100000,
-        help="Number of transcripts to consider (default: 100000)",
+        default=1000000,
+        help="""Number of transcripts to consider
+            (default: 1000000)""",
     )
     run_parser.add_argument(
         "-c",
