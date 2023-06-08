@@ -4,9 +4,9 @@ argument:
   annotation: null            # Filepath for annotation
   gff: null                   # Filepath for gff
   fasta: null                 # Filepath for fasta
-  threads: 8                  # Number of threads used by RiboMetric
   name: null                  # Sets the name for the reports and/or data output, when set to None, uses bam filename
   output: "."                 # Sets the output directory for the reports and/or data output
+  threads: 8                  # Number of threads used by RiboMetric
   subsample: 1000000          # Number of reads processed from the bam file, null being the entire file
   transcripts: null           # Number of transcripts processed from a gff file, null being the entire file
   html: True                  # Output HTML report
