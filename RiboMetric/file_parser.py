@@ -284,6 +284,26 @@ def extract_transcript_id(attr_str):
     return np.nan
 
 
+def check_annotation(file_path: str) -> bool:
+    """
+    Checks whether an annotation file exists and is in the right format
+
+    Inputs:
+        file_path: Path to the annotation or gff file
+    
+    Outputs:
+        bool: True if an annotation exists, False otherwise
+    """
+    if os.path.exists(file_path):
+        with open(file_path) as f:
+            if "transcript_id" in str(f.readline()):
+                return True
+            else:
+                return False
+    else:
+        return False
+
+
 def prepare_annotation(
         gff_path: str,
         outdir: str,

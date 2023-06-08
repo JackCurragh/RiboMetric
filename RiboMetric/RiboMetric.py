@@ -57,6 +57,7 @@ from .file_parser import (
     prepare_annotation,
     flagstat_bam,
     check_bam,
+    check_annotation
 )
 from .arg_parser import argument_parser, open_config
 from .qc import annotation_mode, sequence_mode
@@ -161,7 +162,8 @@ def main(args):
     print_logo(console)
 
     config = open_config(args)
-
+    
+    
     if args.command == "prepare":
         print_table_prepare(args, config, console, "Prepare Mode")
         prepare_annotation(config["argument"]["gff"],
@@ -180,6 +182,16 @@ def main(args):
             To create an index for a BAM file, run:
             samtools index <bam_file>
             """)
+        
+        if config["argument"]["annotation"] is not None:
+            if not check_annotation(config["argument"]["annotation"]):
+                raise Exception("""
+                Annotation file not found or not in the correct format.
+
+                To create an annotation file, run:
+                RiboMetric prepare -g <gff_file>
+                """)
+
         flagstat = flagstat_bam(config["argument"]["bam"])
         if flagstat['mapped_reads'] < config["argument"]["subsample"]:
             read_limit = flagstat['mapped_reads']
