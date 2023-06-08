@@ -19,19 +19,6 @@ from .bam_processing import process_reads, process_sequences, join_batches, ox_p
 from .bam_splitting import run_samtools_idxstats, split_idxstats_df, split_bam
 
 
-def parse_gff(gff_path: str) -> gffpd.Gff3DataFrame:
-    """
-    Read in the gff file at the provided path and return a dataframe
-
-    Inputs:
-        gff_path: Path to the gff file
-
-    Outputs:
-        gff_df: Dataframe containing the gff information
-    """
-    return gffpd.read_gff3(gff_path)
-
-
 def parse_annotation(annotation_path: str) -> pd.DataFrame:
     """
     Read in the annotation file at the provided path and return a dataframe
@@ -130,7 +117,7 @@ def parse_bam(bam_file,
         num_reads: Maximum number of reads to parse
         batch_size: The number of reads that are processed at a time
         num_processes: The maximum number of processes that this function can
-                        create
+                       create
 
     Outputs:
         parsed_bam: Tuple containing:
@@ -145,8 +132,6 @@ def parse_bam(bam_file,
     pool = Pool(processes=num_processes)
     bam_batches = []
     with TemporaryDirectory() as tempdir:
-        #tempdir = "/home/lukas/projects/RiboMetric/test_files/oxbow"
-        print(f"using {tempdir}")
         idxstats_df = run_samtools_idxstats(bam_file)
         reference_dfs = split_idxstats_df(idxstats_df,
                                           batch_size,
@@ -304,11 +289,24 @@ def check_annotation(file_path: str) -> bool:
         return False
 
 
+def parse_gff(gff_path: str) -> pd.DataFrame:
+    """
+    Read in the gff file at the provided path and return a dataframe
+
+    Inputs:
+        gff_path: Path to the gff file
+
+    Outputs:
+        gff_df: Dataframe containing the gff information
+    """
+    return gffpd.read_gff3(gff_path).df
+
+
 def prepare_annotation(
         gff_path: str,
         outdir: str,
         num_transcripts: int,
-        config: str
+        num_processes:int,
         ) -> pd.DataFrame:
     """
     Given a path to a gff file, produce a tsv file containing the
@@ -319,13 +317,14 @@ def prepare_annotation(
         gff_path: Path to the gff file
         outdir: Path to the output directory
         num_transcripts: Number of transcripts to include in the annotation
-        config: Path to the config file
+        num_processes: The maximum number of processes that this function can
+                       create
 
     Outputs:
         annotation_df: Dataframe containing the annotation information
     """
-    print("Parsing gff")
-    gffdf = parse_gff(gff_path).df
+    print("Parsing gff..")
+    gffdf = parse_gff(gff_path)
 
     gffdf.loc[:, "transcript_id"] = gffdf["attributes"].apply(
         extract_transcript_id
@@ -334,6 +333,7 @@ def prepare_annotation(
     cds_df = gffdf[gffdf["type"] == "CDS"]
     coding_tx_ids = cds_df["transcript_id"].unique()[:num_transcripts]
 
+    print("Subsetting CDS regions..")
     annotation_df = gff_df_to_cds_df(gffdf, coding_tx_ids)
 
     basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
