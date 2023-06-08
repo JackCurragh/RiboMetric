@@ -56,13 +56,11 @@ def ox_parse_reads(bam_file: str,
             count += 1
             if count%10 != 0:
                 continue
-            t0 = datetime.now()
             section = sequence_list[i:i+size]
             counts = count_list[i:i+size]
             sequence_data[pattern_length].append(process_sequences(section,
                                                    counts,
                                                    pattern_length))
-            print(f"section done in {datetime.now()-t0}")
 
         print(f"> {split_num}: pattern length {pattern_length} done in {datetime.now()-t1}")
     return (batch_df, sequence_data)
