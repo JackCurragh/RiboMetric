@@ -122,7 +122,8 @@ def parse_bam(bam_file,
               num_processes=4
               ) -> tuple[pd.DataFrame,dict,dict]:
     """
-    Read in the bam file at the provided path and return a list of dataframes
+    Read in the bam file at the provided path and return parsed read and
+    sequence data
 
     Inputs:
         bam_file: Path to the bam file
