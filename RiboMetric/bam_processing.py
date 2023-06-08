@@ -47,7 +47,7 @@ def ox_parse_reads(bam_file: str,
     sequence_list = oxbow_df["seq"].tolist()
     count_list = batch_df["count"].tolist()
     size = 10000
-    if len(sequence_list) < size:
+    if len(sequence_list) < size and len(sequence_list) != 0:
         size = len(sequence_list)
     for pattern_length in sequence_data:
         t1 = datetime.now()
