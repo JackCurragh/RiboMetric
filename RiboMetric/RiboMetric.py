@@ -113,8 +113,8 @@ def print_table_run(args, config: dict, console, mode):
     Configs.add_row("# of reads:", str(config["argument"]["subsample"]))
     Configs.add_row("# of transcripts:",
                     str(config["argument"]["transcripts"]))
-    Configs.add_row("Config file:", args.config)
     Configs.add_row("# of threads:", str(config["argument"]["threads"]))
+    Configs.add_row("Config file:", args.config)
 
     Output = Table(show_header=True, header_style="bold blue")
     Output.add_column("Output Options", style="dim", width=20)
@@ -142,6 +142,7 @@ def print_table_prepare(args, config, console, mode):
     Configs.add_row("Mode:", mode)
     Configs.add_row("# of transcripts:",
                     str(config["argument"]["transcripts"]))
+    Configs.add_row("# of threads:", str(config["argument"]["threads"]))
     Configs.add_row("Config file:", args.config)
 
     # Print tables side by side
@@ -169,7 +170,7 @@ def main(args):
         prepare_annotation(config["argument"]["gff"],
                            config["argument"]["output"],
                            config["argument"]["transcripts"],
-                           config
+                           config["argument"]["threads"],
                            )
 
     else:
