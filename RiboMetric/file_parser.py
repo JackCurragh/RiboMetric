@@ -104,7 +104,7 @@ def flagstat_bam(bam_path: str) -> dict:
 
 
 def parse_bam(bam_file,
-              num_reads=1000000,
+              num_reads,
               batch_size=10000000,
               num_processes=4
               ) -> tuple[pd.DataFrame,dict,dict]:

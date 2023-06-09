@@ -624,7 +624,7 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
                         inner_value if inner_value is not None else 0
                     )
         n = 0
-        color = [(x % 3) for x in metagene_dict.keys()]
+        color = [(int(x) % 3) for x in metagene_dict.keys()]
         for i in color:
             color[n] = frame_colors[i]
             n += 1

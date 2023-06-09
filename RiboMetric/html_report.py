@@ -8,6 +8,7 @@ from jinja2 import Environment, FileSystemLoader
 from datetime import datetime
 from .modules import convert_html_to_pdf
 import base64
+import json
 
 import os
 
@@ -40,6 +41,12 @@ def generate_report(
         autoescape=False,
     )
 
+    file_names = {"bam":config["argument"]["bam"].split("/")[-1]}
+    if config["argument"]["annotation"]:
+        file_names["annotation"] = config["argument"]["annotation"].split("/")[-1]
+    elif config["argument"]["gff"]:
+        file_names["annotation"] = config["argument"]["gff"].split("/")[-1]
+
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
     binary_logo = open(
@@ -70,6 +77,7 @@ def generate_report(
     context = {
         "summary": plots.pop(0),
         "plots": plots,
+        "file_names": file_names,
         "completion_time": completion_time,
         "logo": base64_logo,
         "favicon": base64_icon,
@@ -90,3 +98,31 @@ def generate_report(
             convert_html_to_pdf(jinja_render, out)
             print(f"Your {filetype} report can be found in {out}")
 
+
+def int_keys_hook(data):
+    """
+    Custom object_hook for JSON parsing that converts number strings into integers
+    """
+    for key in list(data.keys()):
+        if isinstance(key, str) and key.isdigit():
+            data[int(key)] = data.pop(key)
+    return data
+
+
+def parse_json_input(json_path: str) -> tuple[dict,dict]:
+    """
+    Parse json input from a previous RiboMetric run for use in generating plots
+
+    Inputs:
+        json_path: Path to json file 
+
+    Outputs:
+        results_dict: Dictionary containing results from a RiboMetric analysis
+        json_config: Config from the RiboMetric analysis
+    """
+    with open(json_path, 'r') as json_file:
+        json_dict = json.load(json_file, object_hook=int_keys_hook)
+    result_dict = json_dict["results"]
+    json_config = json_dict["config"]
+
+    return (result_dict, json_config)
