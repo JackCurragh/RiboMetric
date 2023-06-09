@@ -116,17 +116,20 @@ bak*
 RiboMetric_report.html
 RiboMetric_report.pdf
 RiboMetric_data.json
+*.csv
+*.html
+*.json
+*.pdf
+!example-reports/*
 
 sample_data/transcriptome_collapsed.bam
 sample_data/transcriptome_collapsed.bam.bai
 sample_data/gencode.v25.annotation.gff3 
-*.csv
 
 transcriptome_collapsed_RiboMetric.html
 mprofile_*
 tests/test_data/test_RiboMetric.html
 
-*.html
 
 # Lukasdev
 *.ipynb
