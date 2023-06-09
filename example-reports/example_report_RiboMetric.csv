@@ -1,0 +1,6 @@
+metric,score
+read_length_distribution_metric,0.3125
+ligation_bias_distribution_metric,0.23122740461568003
+3nt_weighted_score,0.0695475072141941
+3nt_weighted_score_best_3_read_lengths,0.015420241716889245
+CDS_coverage_metric,0.001017078514014742
