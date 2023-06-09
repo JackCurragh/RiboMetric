@@ -10,6 +10,15 @@ import pandas as pd
 import math
 
 
+def find_category_by_cumulative_percentage(df, percentage):
+    """
+    Calculate the read_length with cumulative percentages
+    """
+    df['cumulative_percentage'] = df['read_count'].cumsum() / df['read_count'].sum()
+    read_length = df.loc[df['cumulative_percentage'] >= percentage, 'read_length'].iloc[0]
+    return read_length
+
+
 def read_length_distribution_metric(
         rld_dict: dict,
         ) -> pd.DataFrame:
@@ -33,12 +42,12 @@ def read_length_distribution_metric(
     rld_df = rld_df.reset_index()
     rld_df.columns = ["read_length", "read_count"]
 
-    Q3 = rld_df["read_length"].quantile(0.75)
-    Q1 = rld_df["read_length"].quantile(0.25)
+    Q3 = find_category_by_cumulative_percentage(rld_df, 0.75)
+    Q1 = find_category_by_cumulative_percentage(rld_df, 0.25)
     inter_quartile_range = Q3 - Q1
 
-    max_range = rld_df["read_length"].quantile(0.9)\
-        - rld_df["read_length"].quantile(0.1)
+    max_range = find_category_by_cumulative_percentage(rld_df, 0.9)\
+        - find_category_by_cumulative_percentage(rld_df, 0.1)
 
     return 1 - (inter_quartile_range / max_range)
 
