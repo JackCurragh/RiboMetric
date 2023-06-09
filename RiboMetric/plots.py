@@ -161,7 +161,7 @@ def plot_ligation_bias_distribution(
         count += 1
         # Set colors according to the value
         color = ["#636efa" if value > 0 else "#da5325"
-                for value in ligation_bias_dict[current_target].values()]
+                 for value in ligation_bias_dict[current_target].values()]
         fig.add_trace(
             go.Bar(
                 x=list(ligation_bias_dict[current_target].keys()),
@@ -795,10 +795,13 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     height = 320
     fig = go.Figure(
         data=go.Scatterpolar(
-            # first value is appended to the end so that the radar plot closes properly
-            r=list(metrics_dict.values()) + [(list(metrics_dict.values())[0])],
+            # first value is appended to the end so that the radar plot closes
+            # properly
+            r=(list(metrics_dict.values())
+               + [(list(metrics_dict.values())[0])]),
             theta=[metric.replace("_", " ") for metric in
-                   (list(metrics_dict.keys()) + [list(metrics_dict.keys())[0]])],
+                   (list(metrics_dict.keys())
+                    + [list(metrics_dict.keys())[0]])],
             fill='toself',
             hovertemplate='<b>%{theta}</b>: %{r}<extra></extra>'
         )
@@ -819,10 +822,11 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     from 0 to 1.",
             "fig_html": pio.to_html(fig, full_html=False),
             "fig_image": plotly_to_image(fig,
-                                        width,
-                                        height),
+                                         width,
+                                         height),
         },
         "metrics":
-            [{"name":k.replace("_", " ").capitalize(), "score":round(v,3)} for k,v in metrics_dict.items()]
+            [{"name": k.replace("_", " ").capitalize(), "score": round(v, 3)}
+             for k, v in metrics_dict.items()]
     }
     return plot_metrics_summary_dict

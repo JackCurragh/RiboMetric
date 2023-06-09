@@ -14,8 +14,10 @@ def find_category_by_cumulative_percentage(df, percentage):
     """
     Calculate the read_length with cumulative percentages
     """
-    df['cumulative_percentage'] = df['read_count'].cumsum() / df['read_count'].sum()
-    read_length = df.loc[df['cumulative_percentage'] >= percentage, 'read_length'].iloc[0]
+    df['cumulative_percentage'] = (df['read_count'].cumsum()
+                                   / df['read_count'].sum())
+    read_length = df.loc[df['cumulative_percentage'] >= percentage,
+                         'read_length'].iloc[0]
     return read_length
 
 

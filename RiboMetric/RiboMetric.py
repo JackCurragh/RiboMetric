@@ -113,9 +113,10 @@ def print_table_run(args, config: dict, console, mode):
     Configs.add_column("Options", style="dim", width=20)
     Configs.add_column("Values")
     Configs.add_row("Mode:", mode)
-    Configs.add_row("# of reads:", str(config["argument"]["subsample"] if not None else "Full file"))
-    Configs.add_row("# of transcripts:",
-                    str(config["argument"]["transcripts"] if not None else "Full file"))
+    Configs.add_row("# of reads:", str(config["argument"]["subsample"]
+                                       if not None else "Full file"))
+    Configs.add_row("# of transcripts:", str(config["argument"]["transcripts"]
+                                             if not None else "Full file"))
     Configs.add_row("# of threads:", str(config["argument"]["threads"]))
     Configs.add_row("Config file:", args.config)
 
@@ -143,8 +144,8 @@ def print_table_prepare(args, config, console, mode):
     Configs.add_column("Options", style="dim", width=20)
     Configs.add_column("Values")
     Configs.add_row("Mode:", mode)
-    Configs.add_row("# of transcripts:",
-                    str(config["argument"]["transcripts"] if not None else "Full file"))
+    Configs.add_row("# of transcripts:", str(config["argument"]["transcripts"]
+                                             if not None else "Full file"))
     Configs.add_row("# of threads:", str(config["argument"]["threads"]))
     Configs.add_row("Config file:", args.config)
 
@@ -178,7 +179,7 @@ def main(args):
 
     else:
         print_table_run(args, config, console, "Run Mode")
-        
+
         if config["argument"]["bam"]:
             if not check_bam(config["argument"]["bam"]):
                 raise Exception("""
@@ -187,7 +188,7 @@ def main(args):
                 To create an index for a BAM file, run:
                 samtools index <bam_file>
                 """)
-            
+
             if config["argument"]["annotation"] is not None:
                 if not check_annotation(config["argument"]["annotation"]):
                     raise Exception("""
@@ -198,7 +199,9 @@ def main(args):
                     """)
 
             flagstat = flagstat_bam(config["argument"]["bam"])
-            if config["argument"]["subsample"] is None or flagstat['mapped_reads'] < config["argument"]["subsample"]:
+            if (config["argument"]["subsample"] is None
+                    or flagstat['mapped_reads'] <
+                    config["argument"]["subsample"]):
                 read_limit = flagstat['mapped_reads']
             else:
                 read_limit = config["argument"]["subsample"]
@@ -219,8 +222,10 @@ def main(args):
                 read_df = read_df_pre
             else:
                 print("Expanding dataframe")
-                repeat_indices = np.repeat(read_df_pre.index, read_df_pre["count"])
-                read_df = read_df_pre.iloc[repeat_indices].reset_index(drop=True)
+                repeat_indices = np.repeat(read_df_pre.index,
+                                           read_df_pre["count"])
+                read_df = (read_df_pre.iloc[repeat_indices]
+                           .reset_index(drop=True))
                 print("Dataframe expanded")
 
             del read_df_pre
@@ -230,9 +235,9 @@ def main(args):
             if (config["argument"]["gff"] is None and
                     config["argument"]["annotation"] is None):
                 results_dict = annotation_mode(read_df,
-                                            sequence_data,
-                                            sequence_background,
-                                            config=config)
+                                               sequence_data,
+                                               sequence_background,
+                                               config=config)
 
             else:
                 if (config["argument"]["annotation"] is not None and
@@ -242,7 +247,7 @@ def main(args):
                         config["argument"]["annotation"]
                         )
                 elif (config["argument"]["annotation"] is None and
-                    config["argument"]["gff"] is not None):
+                        config["argument"]["gff"] is not None):
                     print("Gff provided, preparing annotation")
                     annotation_df = prepare_annotation(
                         config["argument"]["gff"],
@@ -253,7 +258,7 @@ def main(args):
                     print("Annotation prepared")
 
                 elif (config["argument"]["annotation"] is not None and
-                    config["argument"]["gff"] is None):
+                        config["argument"]["gff"] is None):
                     print("Annotation provided, parsing")
                     annotation_df = parse_annotation(
                         config["argument"]["annotation"]
@@ -262,10 +267,10 @@ def main(args):
 
                     print("Running annotation mode")
                     results_dict = annotation_mode(read_df,
-                                                sequence_data,
-                                                sequence_background,
-                                                annotation_df,
-                                                config)
+                                                   sequence_data,
+                                                   sequence_background,
+                                                   annotation_df,
+                                                   config)
 
                 if config["argument"]["fasta"] is not None:
                     fasta_dict = parse_fasta(config["argument"]["fasta"])
@@ -276,9 +281,9 @@ def main(args):
             filename = config["argument"]["bam"].split('/')[-1]
             if "." in filename:
                 filename = filename.split('.')[:-1]
-                
+
         elif config["argument"]["json_in"]:
-                
+
             filename = config["argument"]["json_in"].split('/')[-1]
             if "." in filename:
                 filename = filename.split('.')[:-1]
@@ -330,7 +335,14 @@ def main(args):
 if __name__ == "__main__":
     parser = argument_parser()
     args = parser.parse_args()
+
     if not vars(args):
         parser.print_help()
+
+    if args.bam and args.json_in:
+        parser.error(
+            "Only one of -b/--bam or -j/--json-in should be specified.")
+    elif not args.bam and not args.json_in:
+        parser.error("Either -b/--bam or -j/--json-in must be specified.")
 
     main(args)

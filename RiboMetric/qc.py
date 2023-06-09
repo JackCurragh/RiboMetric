@@ -20,7 +20,6 @@ from .modules import (
     nucleotide_composition,
     read_frame_distribution,
     mRNA_distribution,
-    sequence_slice,
     metagene_profile,
 )
 

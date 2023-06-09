@@ -8,13 +8,12 @@ import oxbow as ox
 import io
 import pyarrow.ipc
 from .bam_splitting import split_bam
-from datetime import datetime
 
 
 def ox_parse_reads(bam_file: str,
                    split_num: int,
                    reference_df: pd.DataFrame,
-                   tempdir: str) -> tuple[pd.DataFrame,dict]:
+                   tempdir: str) -> tuple[pd.DataFrame, dict]:
     """
     Splits a bam files using generated bed files, uses oxbow to process these
     batches of reads directly into a data frame and then processes the data
@@ -33,9 +32,9 @@ def ox_parse_reads(bam_file: str,
     """
     print(f"> splitting file {split_num}")
     tmp_bam = split_bam(bam_file,
-                           split_num,
-                           reference_df,
-                           tempdir)
+                        split_num,
+                        reference_df,
+                        tempdir)
     print(f"> oxbow parse {split_num}")
     arrow_ipc = ox.read_bam(tmp_bam)
     oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
@@ -43,26 +42,27 @@ def ox_parse_reads(bam_file: str,
     print(f"> Creating read df {split_num}")
     batch_df = process_reads(oxbow_df)
     print(f"> Creating sequence_data {split_num}")
-    sequence_data = {1:[],2:[]}
+    sequence_data = {1: [], 2: []}
     sequence_list = oxbow_df["seq"].tolist()
     count_list = batch_df["count"].tolist()
     size = 10000
     if len(sequence_list) < size and len(sequence_list) != 0:
         size = len(sequence_list)
     for pattern_length in sequence_data:
-        t1 = datetime.now()
         count = -1
         for i in range(0, len(sequence_list), size):
             count += 1
-            if count%10 != 0:
+            if count % 10 != 0:
                 continue
             section = sequence_list[i:i+size]
             counts = count_list[i:i+size]
-            sequence_data[pattern_length].append(process_sequences(section,
-                                                   counts,
-                                                   pattern_length))
+            sequence_data[pattern_length].append(
+                process_sequences(section,
+                                  counts,
+                                  pattern_length))
 
-        print(f"> {split_num}: pattern length {pattern_length} done in {datetime.now()-t1}")
+        print(f"> {split_num}: pattern length {pattern_length}, "
+              "done in {datetime.now()-t1}")
     return (batch_df, sequence_data)
 
 
@@ -79,12 +79,18 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
         batch_df: Dataframe containing a processed batch of reads
     """
     batch_df = pd.DataFrame()
-    batch_df["read_length"] = pd.Series(oxbow_df["end"] - oxbow_df["pos"] + 1, dtype="category")
+    batch_df["read_length"] = pd.Series(oxbow_df["end"] - oxbow_df["pos"] + 1,
+                                        dtype="category")
     batch_df["reference_name"] = oxbow_df["rname"].astype("category")
     batch_df["reference_start"] = oxbow_df["pos"]
-    batch_df["first_dinucleotide"] = oxbow_df["seq"].str.slice(stop=2).astype("category")
-    batch_df["last_dinucleotide"] = oxbow_df["seq"].str.slice(stop=-3,step=-1).astype("category")
-    batch_df["count"] = pd.Series([int(query.split("_x")[-1]) if "_x" in query else 1 for query in oxbow_df["qname"]], dtype="category")
+    batch_df["first_dinucleotide"] = (oxbow_df["seq"].str.slice(stop=2)
+                                      .astype("category"))
+    batch_df["last_dinucleotide"] = (oxbow_df["seq"].str.slice(stop=-3,
+                                                               step=-1)
+                                     .astype("category"))
+    batch_df["count"] = pd.Series([int(query.split("_x")[-1]) if "_x" in query
+                                   else 1 for query in oxbow_df["qname"]],
+                                  dtype="category")
 
     return batch_df
 
@@ -137,27 +143,28 @@ def process_sequences(sequences: list,
     if pattern_length == 2:
         # Calculate background frequencies
         three_prime_bg = calculate_background(sequence_array,
-                                            sequences,
-                                            pattern_length,
-                                            five_prime=False)
+                                              sequences,
+                                              pattern_length,
+                                              five_prime=False)
         five_prime_bg = calculate_background(sequence_array,
-                                            sequences,
-                                            pattern_length,
-                                            five_prime=True)
-        
+                                             sequences,
+                                             pattern_length,
+                                             five_prime=True)
+
     condensed_arrays = {}
 
     if pattern_length == 1:
-        # Perform element-wise multiplication of sequence array and counts array
+        # Perform element-wise multiplication of sequence array
+        # and counts array
         result_array = sequence_array * counts_array[:, None, None]
         # Create the condensed 2D arrays for each nucleotide
-        
+
         nucleotides = ["".join(nt) for nt in
-                    itertools.product('ACGT', repeat=pattern_length)]
+                       itertools.product('ACGT', repeat=pattern_length)]
         for nucleotide in nucleotides:
-            nucleotide_counts = np.sum(result_array[:, :,
-                                                    pattern_to_index(nucleotide)],
-                                    axis=0)
+            nucleotide_counts = np.sum(
+                result_array[:, :, pattern_to_index(nucleotide)],
+                axis=0)
             condensed_arrays[nucleotide] = nucleotide_counts
 
     # Add backgrounds and sequence_number to output dictionary
@@ -275,15 +282,15 @@ def join_batches(bam_batches: list) -> tuple:
     for pattern in sequence_batches:
         # Determine the maximum length among the arrays
         max_length = max(len(arr) for arr in
-                            sequence_batches[pattern])
+                         sequence_batches[pattern])
 
         # Pad the arrays with zeros to match the maximum length
         padded_arrays = [np.pad(arr, (0, max_length - len(arr)),
                                 mode='constant') for arr in
-                            sequence_batches[pattern]]
+                         sequence_batches[pattern]]
 
         sequence_data[pattern] = np.sum(padded_arrays,
-                                                        axis=0)
+                                        axis=0)
     # Joining sequence backgrounds
     sequence_background = {}
 
@@ -354,12 +361,12 @@ def get_batch_data(
                             background_batches[pattern] = [array]
                         else:
                             (background_batches[pattern]
-                            .append(array))
+                             .append(array))
                     else:
                         if pattern not in sequence_batches:
                             sequence_batches[pattern] = [array]
                         else:
                             (sequence_batches[pattern]
-                            .append(array))
+                             .append(array))
 
     return read_batches, background_batches, sequence_batches
