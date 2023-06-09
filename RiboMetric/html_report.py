@@ -42,9 +42,9 @@ def generate_report(
     )
 
     file_names = {"bam":config["argument"]["bam"].split("/")[-1]}
-    if config["argument"]["annotation"]:
+    if config["argument"]["annotation"] is not None:
         file_names["annotation"] = config["argument"]["annotation"].split("/")[-1]
-    elif config["argument"]["gff"]:
+    elif config["argument"]["gff"] is not None:
         file_names["annotation"] = config["argument"]["gff"].split("/")[-1]
 
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
