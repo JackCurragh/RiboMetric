@@ -5,7 +5,6 @@
 import subprocess
 import pandas as pd
 import numpy as np
-from datetime import datetime
 
 
 def run_samtools_idxstats(bam_file: str) -> pd.DataFrame:
@@ -20,14 +19,19 @@ def run_samtools_idxstats(bam_file: str) -> pd.DataFrame:
         idxstats_df: dataframe containing idxstats for the bam file
     """
     # Run samtools idxstats command and capture the output
-    process = subprocess.Popen(['samtools', 'idxstats', bam_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(['samtools', 'idxstats', bam_file],
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
 
     # Convert the output to a pandas DataFrame
     lines = stdout.decode().strip().split('\n')
     data = [line.split('\t') for line in lines]
-    df = pd.DataFrame(data, columns=['Reference', 'Length', 'Mapped_Reads', 'Unmapped_Reads'])
-    
+    df = pd.DataFrame(data, columns=['Reference',
+                                     'Length',
+                                     'Mapped_Reads',
+                                     'Unmapped_Reads'])
+
     return df
 
 
@@ -67,8 +71,8 @@ def split_idxstats_df(idxstats_df: pd.DataFrame,
             current_df = idxstats_df.iloc[last_index:i, [0, 1]].copy()
             current_df['Start'] = np.zeros(i - last_index, dtype=np.int8)
             current_df = current_df[['Reference',
-                                    'Start',
-                                    'Length']]
+                                     'Start',
+                                     'Length']]
             split_dfs.append(current_df)
             split_num += 1
             current_df = pd.DataFrame()
@@ -79,14 +83,18 @@ def split_idxstats_df(idxstats_df: pd.DataFrame,
     current_df = idxstats_df.iloc[last_index:i, [0, 1]].copy()
     current_df['Start'] = np.zeros(i - last_index, dtype=np.int8)
     current_df = current_df[['Reference',
-                            'Start',
-                            'Length']]
+                             'Start',
+                             'Length']]
     split_dfs.append(current_df)
 
     return split_dfs
 
 
-def split_bam(bam_file: str, split_num: int, reference_df: list, tempdir: str) -> str:
+def split_bam(bam_file: str,
+              split_num: int,
+              reference_df: list,
+              tempdir: str
+              ) -> str:
     """
     Splits the bam files with the bed files generated from the idxstats
 
@@ -103,9 +111,23 @@ def split_bam(bam_file: str, split_num: int, reference_df: list, tempdir: str) -
     bedfile = f"{tempdir}/bed_{split_num}.bed"
     reference_df.to_csv(bedfile, sep="\t", header=False, index=False)
     outfile = f"{tempdir}/split_sorted_{split_num}.bam"
-    samview = subprocess.Popen(('samtools', 'view', '-h', '-L', bedfile, bam_file), stdout=subprocess.PIPE)
-    subprocess.run(('samtools', 'sort', '-O', 'bam', '-o', outfile), stdin=samview.stdout)
+    samview = subprocess.Popen(('samtools',
+                                'view',
+                                '-h',
+                                '-L',
+                                bedfile,
+                                bam_file),
+                               stdout=subprocess.PIPE)
+    subprocess.run(('samtools',
+                    'sort',
+                    '-O',
+                    'bam',
+                    '-o',
+                    outfile),
+                   stdin=samview.stdout)
     samview.wait()
-    subprocess.run(('samtools', 'index', outfile))
+    subprocess.run(('samtools',
+                    'index',
+                    outfile))
 
     return outfile

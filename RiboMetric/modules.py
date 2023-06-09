@@ -536,7 +536,7 @@ def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict():
     dinucleotides = []
     for read in read_df["sequence"].drop_duplicates():
         for i in range(len(read) - 1):
-            dinucleotides.append(read[i : i + 2])
+            dinucleotides.append(read[i: i + 2])
 
     observed_freq = Counter(dinucleotides)
     total_count = sum(observed_freq.values())

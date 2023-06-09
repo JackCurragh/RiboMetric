@@ -15,8 +15,8 @@ from multiprocessing import Pool
 from tempfile import TemporaryDirectory
 
 
-from .bam_processing import process_reads, process_sequences, join_batches, ox_parse_reads
-from .bam_splitting import run_samtools_idxstats, split_idxstats_df, split_bam
+from .bam_processing import join_batches, ox_parse_reads
+from .bam_splitting import run_samtools_idxstats, split_idxstats_df
 
 
 def parse_annotation(annotation_path: str) -> pd.DataFrame:
@@ -107,7 +107,7 @@ def parse_bam(bam_file,
               num_reads,
               batch_size=10000000,
               num_processes=4
-              ) -> tuple[pd.DataFrame,dict,dict]:
+              ) -> tuple[pd.DataFrame, dict, dict]:
     """
     Read in the bam file at the provided path and return parsed read and
     sequence data
@@ -136,12 +136,12 @@ def parse_bam(bam_file,
         reference_dfs = split_idxstats_df(idxstats_df,
                                           batch_size,
                                           num_reads)
-        for split_num, reference_df in enumerate(reference_dfs):            
-            bam_batches.append(pool.apply_async(ox_parse_reads, 
-                                                 [bam_file,
-                                                  split_num,
-                                                  reference_df,
-                                                  tempdir]))
+        for split_num, reference_df in enumerate(reference_dfs):
+            bam_batches.append(pool.apply_async(ox_parse_reads,
+                                                [bam_file,
+                                                 split_num,
+                                                 reference_df,
+                                                 tempdir]))
         pool.close()
         pool.join()
 
@@ -275,7 +275,7 @@ def check_annotation(file_path: str) -> bool:
 
     Inputs:
         file_path: Path to the annotation or gff file
-    
+
     Outputs:
         bool: True if an annotation exists, False otherwise
     """
@@ -306,7 +306,7 @@ def prepare_annotation(
         gff_path: str,
         outdir: str,
         num_transcripts: int,
-        num_processes:int,
+        num_processes: int,
         ) -> pd.DataFrame:
     """
     Given a path to a gff file, produce a tsv file containing the

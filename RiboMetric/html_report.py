@@ -41,9 +41,10 @@ def generate_report(
         autoescape=False,
     )
 
-    file_names = {"bam":config["argument"]["bam"].split("/")[-1]}
+    file_names = {"bam": config["argument"]["bam"].split("/")[-1]}
     if config["argument"]["annotation"] is not None:
-        file_names["annotation"] = config["argument"]["annotation"].split("/")[-1]
+        file_names["annotation"] = (config["argument"]["annotation"]
+                                    .split("/")[-1])
     elif config["argument"]["gff"] is not None:
         file_names["annotation"] = config["argument"]["gff"].split("/")[-1]
 
@@ -60,7 +61,7 @@ def generate_report(
         "rb"
         ).read()
     base64_icon = base64.b64encode(binary_icon).decode("utf-8")
-    
+
     if outdir == "":
         output = name
     else:
@@ -101,7 +102,8 @@ def generate_report(
 
 def int_keys_hook(data):
     """
-    Custom object_hook for JSON parsing that converts number strings into integers
+    Custom object_hook for JSON parsing that converts number strings into
+    integers
     """
     for key in list(data.keys()):
         if isinstance(key, str) and key.isdigit():
@@ -109,12 +111,12 @@ def int_keys_hook(data):
     return data
 
 
-def parse_json_input(json_path: str) -> tuple[dict,dict]:
+def parse_json_input(json_path: str) -> tuple[dict, dict]:
     """
     Parse json input from a previous RiboMetric run for use in generating plots
 
     Inputs:
-        json_path: Path to json file 
+        json_path: Path to json file
 
     Outputs:
         results_dict: Dictionary containing results from a RiboMetric analysis

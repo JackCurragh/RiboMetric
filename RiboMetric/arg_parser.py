@@ -72,7 +72,7 @@ def argument_parser():
         "--json-config",
         action="store_true",
         default=False,
-        help="Use JSON config instead of this config for generating plots",
+        help="Use JSON config instead of active config for generating plots",
     )
     run_parser.add_argument(
         "-n",
@@ -87,28 +87,28 @@ def argument_parser():
         "--output",
         type=str,
         required=False,
-        help="""Path to the output directory""",
+        help="Path to the output directory",
     )
     run_parser.add_argument(
         "-S",
         "--subsample",
         type=int,
         required=False,
-        help="""Number of reads to subsample from the bam file""",
+        help="Number of reads to subsample from the bam file",
     )
     run_parser.add_argument(
         "-T",
         "--transcripts",
         type=int,
         required=False,
-        help="""Number of transcripts to consider""",
+        help="Number of transcripts to consider",
     )
     run_parser.add_argument(
         "-p",
         "--threads",
         type=int,
         required=False,
-        help="""Number of threads used by RiboMetric""",
+        help="Number of threads used by RiboMetric",
     )
     run_parser.add_argument(
         "-c",
@@ -170,14 +170,14 @@ def argument_parser():
         "--transcripts",
         type=int,
         required=False,
-        help="Number of transcripts to consider (default: 100000)",
+        help="Number of transcripts to consider",
     )
     prepare_parser.add_argument(
         "-p",
         "--threads",
         type=int,
         required=False,
-        help="""Number of threads used by RiboMetric""",
+        help="Number of threads used by RiboMetric",
     )
     prepare_parser.add_argument(
         "-c",
@@ -201,11 +201,6 @@ def open_config(args) -> dict:
     Outputs:
         config: Modified config with arguments
     """
-    if args.bam and args.json_in:
-        parser.error("Only one of -b/--bam or -j/--json-in should be specified.")
-    elif not args.bam and not args.json_in:
-        parser.error("Either -b/--bam or -j/--json-in must be specified.")
-
     if os.path.exists(args.config):
         with open(args.config, "r") as yml:
             config = yaml.load(yml, Loader=yaml.Loader)
