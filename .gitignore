@@ -112,10 +112,7 @@ data/
 !1000_entry.gff
 bak*
 
-.gitignore
-RiboMetric_report.html
-RiboMetric_report.pdf
-RiboMetric_data.json
+# Reports
 *.csv
 *.html
 *.json
