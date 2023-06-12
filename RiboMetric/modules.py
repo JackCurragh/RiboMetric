@@ -444,16 +444,21 @@ def metagene_profile(
     annotated_read_df: pd.DataFrame,
     target: str = "both",
     distance_range: list = [-50, 50],
+    fill_value: int = None
 ) -> dict:
     """
     Groups the reads by read_length and distance to a target and counts them
 
     Inputs:
-        annotated_read_df: Dataframe containing the read information
-        with an added column for the a-site location along with data from
-        the annotation file
-        target: Target from which the distance is calculated
-        distance_range: The range of the plot
+        annotated_read_df: Dataframe containing the read information with
+                           an added column for the a-site location along with
+                           data from the annotation file
+        target: Target from which the distance is calculated ("start", "stop"
+                or "both")
+        distance_range: The range checked from the target, both up- and
+                        downstream. If no read are found in this range, all
+                        reads will be used.
+        fill_value: Value used to fill up missing entries (Default: None)
 
     Outputs:
         metagene_profile_dict: dictionary containing the read_length of
@@ -476,8 +481,8 @@ def metagene_profile(
         )
         if pre_metaprofile_dict == {}:
             print(
-                "ERR - Metagene Profile: No reads found in specified range, \
-removing boundaries..."
+                "ERR - Metagene Profile: No reads found in specified range, ",
+                "removing boundaries..."
             )
             pre_metaprofile_dict = (
                 annotated_read_df.groupby(["read_length", "metagene_info"])
@@ -489,13 +494,11 @@ removing boundaries..."
         max_length = max([x[0] for x in list(pre_metaprofile_dict.keys())])
         for y in range(min_length, max_length):
             if y not in [x[0] for x in list(pre_metaprofile_dict.keys())]:
-                pre_metaprofile_dict[(y, 0)] = None
+                pre_metaprofile_dict[(y, 0)] = fill_value
 
-        min_distance = min([x[1] for x in list(pre_metaprofile_dict.keys())])
-        max_distance = max([x[1] for x in list(pre_metaprofile_dict.keys())])
-        for z in range(min_distance, max_distance):
+        for z in range(distance_range[0], distance_range[1]):
             if z not in [x[1] for x in list(pre_metaprofile_dict.keys())]:
-                pre_metaprofile_dict[(min_length, z)] = None
+                pre_metaprofile_dict[(min_length, z)] = fill_value
 
         for key, value in pre_metaprofile_dict.items():
             if key[0] not in metagene_profile_dict[current_target]:

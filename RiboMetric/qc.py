@@ -59,12 +59,19 @@ def annotation_mode(
         annotation = True
         print("Merging annotation and reads")
         annotated_read_df = annotate_reads(read_df, annotation_df)
+        # print("Calculating A-site location")
+        # a_site_offset = calculate_a_site_offset
+        # annotated_read_df = add_a_site_offset(annotated_read_df, a_site_offset)
+        # read_df = add_a_site_offset(read_df, a_site_offset)
         print("assigning mRNA categories")
         annotated_read_df = assign_mRNA_category(annotated_read_df)
         print("Subsetting to CDS reads")
         cds_read_df = read_df_to_cds_read_df(annotated_read_df)
     else:
         annotation = False
+        # print("Setting A-site offset")
+        # read_df = add_a_site_offset(read_df)
+
     print("Running modules")
 
     results_dict = {}

@@ -46,8 +46,8 @@ plots:
     distance_target: "both"   # Options: ["start", "stop", "both"]
     shared_yaxis: False       # For the metagene profile barplot, controls whether the start and stop distance share a y-axis or not
     distance_range: [-30,30]
-    colorscale: "electric"    # Heatmap colorscale, see https://plotly.com/python/builtin-colorscales/
-    max_colorscale: null       # set to null for automatic maximum
+    colorscale: "blues"       # Heatmap colorscale, see https://plotly.com/python/builtin-colorscales/
+    max_colorscale: null      # set to null for automatic maximum
     
 qc:
   use_cds_subset:
