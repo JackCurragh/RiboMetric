@@ -107,7 +107,7 @@ def parse_bam(bam_file,
               num_reads,
               batch_size=10000000,
               num_processes=4
-              ) -> tuple[pd.DataFrame, dict, dict]:
+              ) -> tuple:
     """
     Read in the bam file at the provided path and return parsed read and
     sequence data
