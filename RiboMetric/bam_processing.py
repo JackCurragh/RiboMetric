@@ -61,8 +61,6 @@ def ox_parse_reads(bam_file: str,
                                   counts,
                                   pattern_length))
 
-        print(f"> {split_num}: pattern length {pattern_length}, "
-              "done in {datetime.now()-t1}")
     return (batch_df, sequence_data)
 
 
