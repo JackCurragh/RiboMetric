@@ -161,7 +161,7 @@ def plot_ligation_bias_distribution(
         count += 1
         # Set colors according to the value
         color = ["#636efa" if value > 0 else "#da5325"
-                for value in ligation_bias_dict[current_target].values()]
+                 for value in ligation_bias_dict[current_target].values()]
         fig.add_trace(
             go.Bar(
                 x=list(ligation_bias_dict[current_target].keys()),
@@ -185,6 +185,13 @@ def plot_ligation_bias_distribution(
         ),
         showlegend=False,
     )
+    distance = 0.2
+    for prime in ligation_bias_dict:
+        for bias in ligation_bias_dict[prime].values():
+            if abs(bias) > distance:
+                distance = abs(bias)
+    max_range = [-distance, distance]
+    fig.update_yaxes(range=max_range)
     if columns > 1:
         fig.update_layout(
             xaxis=dict(
@@ -617,7 +624,7 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
                         inner_value if inner_value is not None else 0
                     )
         n = 0
-        color = [(x % 3) for x in metagene_dict.keys()]
+        color = [(int(x) % 3) for x in metagene_dict.keys()]
         for i in color:
             color[n] = frame_colors[i]
             n += 1
@@ -788,10 +795,13 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     height = 320
     fig = go.Figure(
         data=go.Scatterpolar(
-            # first value is appended to the end so that the radar plot closes properly
-            r=list(metrics_dict.values()) + [(list(metrics_dict.values())[0])],
+            # first value is appended to the end so that the radar plot closes
+            # properly
+            r=(list(metrics_dict.values())
+               + [(list(metrics_dict.values())[0])]),
             theta=[metric.replace("_", " ") for metric in
-                   (list(metrics_dict.keys()) + [list(metrics_dict.keys())[0]])],
+                   (list(metrics_dict.keys())
+                    + [list(metrics_dict.keys())[0]])],
             fill='toself',
             hovertemplate='<b>%{theta}</b>: %{r}<extra></extra>'
         )
@@ -812,10 +822,11 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     from 0 to 1.",
             "fig_html": pio.to_html(fig, full_html=False),
             "fig_image": plotly_to_image(fig,
-                                        width,
-                                        height),
+                                         width,
+                                         height),
         },
         "metrics":
-            [{"name":k.replace("_", " ").capitalize(), "score":round(v,3)} for k,v in metrics_dict.items()]
+            [{"name": k.replace("_", " ").capitalize(), "score": round(v, 3)}
+             for k, v in metrics_dict.items()]
     }
     return plot_metrics_summary_dict

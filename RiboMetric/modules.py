@@ -139,8 +139,8 @@ def normalise_ligation_bias(
     """
     ligation_bias_dict_norm = ligation_bias_dict
     expected_distribution = {
-        "five_prime": sequence_background[pattern_length]["5_prime_bg"],
-        "three_prime": sequence_background[pattern_length]["3_prime_bg"],
+        "five_prime": sequence_background["5_prime_bg"],
+        "three_prime": sequence_background["3_prime_bg"],
         }
 
     for prime in ligation_bias_dict_norm:
@@ -538,7 +538,7 @@ def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict():
     dinucleotides = []
     for read in read_df["sequence"].drop_duplicates():
         for i in range(len(read) - 1):
-            dinucleotides.append(read[i : i + 2])
+            dinucleotides.append(read[i: i + 2])
 
     observed_freq = Counter(dinucleotides)
     total_count = sum(observed_freq.values())

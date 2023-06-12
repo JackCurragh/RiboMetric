@@ -31,10 +31,15 @@ def argument_parser():
 
     # create the parser for the "run" command
     run_parser = subparsers.add_parser(
-        "run", help="run RiboMetric in normal mode"
+        "run",
+        help="run RiboMetric in normal mode"
     )
-    run_parser.add_argument(
-        "-b", "--bam", type=str, required=True, help="Path to bam file"
+    group_run_parser = run_parser.add_mutually_exclusive_group(required=True)
+    group_run_parser.add_argument(
+        "-b",
+        "--bam",
+        type=str,
+        help="Path to bam file"
     )
     run_parser.add_argument(
         "-a",
@@ -44,7 +49,11 @@ def argument_parser():
         help="Path to RiboMetric annotation file",
     )
     run_parser.add_argument(
-        "-g", "--gff", type=str, required=False, help="Path to gff file"
+        "-g",
+        "--gff",
+        type=str,
+        required=False,
+        help="Path to gff file"
     )
     run_parser.add_argument(
         "-f",
@@ -53,12 +62,24 @@ def argument_parser():
         required=False,
         help="Path to the transcriptome fasta file",
     )
+    group_run_parser.add_argument(
+        "-j",
+        "--json-in",
+        type=str,
+        help="Path to json input file"
+    )
+    run_parser.add_argument(
+        "--json-config",
+        action="store_true",
+        default=False,
+        help="Use JSON config instead of active config for generating plots",
+    )
     run_parser.add_argument(
         "-n",
         "--name",
         type=str,
         required=False,
-        help="""Name of the sample being analysed
+        help="""Name of the sample being analysed for output files
             (default: filename of bam file)""",
     )
     run_parser.add_argument(
@@ -66,26 +87,28 @@ def argument_parser():
         "--output",
         type=str,
         required=False,
-        default=".",
-        help="""Path to the output directory
-            (default: current directory)""",
+        help="Path to the output directory",
     )
     run_parser.add_argument(
         "-S",
         "--subsample",
         type=int,
         required=False,
-        default=1000000,
-        help="""Number of reads to subsample from the bam file
-            (default: 10000000)""",
+        help="Number of reads to subsample from the bam file",
     )
     run_parser.add_argument(
         "-T",
         "--transcripts",
         type=int,
         required=False,
-        default=100000,
-        help="Number of transcripts to consider (default: 100000)",
+        help="Number of transcripts to consider",
+    )
+    run_parser.add_argument(
+        "-p",
+        "--threads",
+        type=int,
+        required=False,
+        help="Number of threads used by RiboMetric",
     )
     run_parser.add_argument(
         "-c",
@@ -111,7 +134,7 @@ def argument_parser():
         "--pdf",
         action="store_true",
         default=False,
-        help="Output the results as a pdf file (default)",
+        help="Output the results as a pdf file",
     )
     run_parser.add_argument(
         "--csv",
@@ -134,14 +157,6 @@ def argument_parser():
         "-g", "--gff", type=str, required=True, help="Path to gff file"
     )
     prepare_parser.add_argument(
-        "-T",
-        "--transcripts",
-        type=int,
-        required=False,
-        default=10000000000,
-        help="Number of transcripts to consider (default: 100000)",
-    )
-    prepare_parser.add_argument(
         "-o",
         "--output",
         type=str,
@@ -149,6 +164,20 @@ def argument_parser():
         default=".",
         help="""Path to the output directory
             (default: current directory)""",
+    )
+    prepare_parser.add_argument(
+        "-T",
+        "--transcripts",
+        type=int,
+        required=False,
+        help="Number of transcripts to consider",
+    )
+    prepare_parser.add_argument(
+        "-p",
+        "--threads",
+        type=int,
+        required=False,
+        help="Number of threads used by RiboMetric",
     )
     prepare_parser.add_argument(
         "-c",
@@ -193,7 +222,7 @@ def open_config(args) -> dict:
         args.csv = True
 
     for arg in vars(args):
-        if getattr(args, arg) is not False:
+        if getattr(args, arg) is not False and getattr(args, arg) is not None:
             config["argument"][arg] = getattr(args, arg)
 
     return config

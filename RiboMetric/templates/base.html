@@ -95,7 +95,8 @@
         <div class="flex-container">
             <div class="flex-child">
                 <h1>RiboMetric Report</h1>
-                <h5>Results from your RiboMetric analysis, completed at {{completion_time}}</h5>
+                <h5>Results from your RiboMetric analysis of {{file_names.bam}}{% if 'annotation' in file_names %} with {{file_names.annotation}} as annotation{% endif %},
+                    completed at {{completion_time}}</h5>
                 <h2>Summary Report</h2>
                 <div>
                     <table>
