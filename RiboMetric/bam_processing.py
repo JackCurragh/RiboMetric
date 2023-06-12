@@ -13,7 +13,7 @@ from .bam_splitting import split_bam
 def ox_parse_reads(bam_file: str,
                    split_num: int,
                    reference_df: pd.DataFrame,
-                   tempdir: str) -> tuple[pd.DataFrame, dict]:
+                   tempdir: str) -> tuple:
     """
     Splits a bam files using generated bed files, uses oxbow to process these
     batches of reads directly into a data frame and then processes the data
