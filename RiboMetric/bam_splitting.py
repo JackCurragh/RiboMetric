@@ -37,7 +37,7 @@ def run_samtools_idxstats(bam_file: str) -> pd.DataFrame:
 
 def split_idxstats_df(idxstats_df: pd.DataFrame,
                       max_reads: int,
-                      num_reads: int) -> list[pd.DataFrame]:
+                      num_reads: int) -> list:
     """
     Split the idxstats data frame into a list of data frames limited to
     the max read count while also preparing the dataframe for conversion to
