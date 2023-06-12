@@ -20,7 +20,6 @@ from .modules import (
     nucleotide_composition,
     read_frame_distribution,
     mRNA_distribution,
-    sequence_slice,
     metagene_profile,
 )
 
@@ -90,7 +89,7 @@ def annotation_mode(
     )
     results_dict["metrics"]["ligation_bias_distribution_metric"] = lbd_metric(
         results_dict["ligation_bias_distribution"],
-        sequence_background[2]["5_prime_bg"],
+        sequence_background["5_prime_bg"],
     )
     if config["plots"]["ligation_bias_distribution"]["background_freq"]:
         results_dict["ligation_bias_distribution"] = normalise_ligation_bias(
@@ -103,7 +102,7 @@ def annotation_mode(
 
     print("> nucleotide_composition")
     results_dict["nucleotide_composition"] = nucleotide_composition(
-        sequence_data[1])
+        sequence_data)
 
     print("> read_frame_distribution")
     read_frame_dist = (

@@ -4,54 +4,99 @@ This script contains processing steps used to parse bam files.
 import pandas as pd
 import numpy as np
 import itertools
+import oxbow as ox
+import io
+import pyarrow.ipc
+from .bam_splitting import split_bam
 
 
-def process_reads(reads):
+def ox_parse_reads(bam_file: str,
+                   split_num: int,
+                   reference_df: pd.DataFrame,
+                   tempdir: str) -> tuple[pd.DataFrame, dict]:
+    """
+    Splits a bam files using generated bed files, uses oxbow to process these
+    batches of reads directly into a data frame and then processes the data
+    from this generated dataframe into read and sequence data
+
+    Args:
+        bam_file: Path to the BAM file
+        split_num: Number of the split
+        reference_df: Reference dataframe, generated from samtools idxstats
+        tempdir: Path to the temporary directory
+
+    Returns:
+        tuple: A tuple containing:
+            batch_df: Dataframe containing a processed batch of reads
+            sequence_data: Dictionary containing the processed sequence data
+    """
+    print(f"> splitting file {split_num}")
+    tmp_bam = split_bam(bam_file,
+                        split_num,
+                        reference_df,
+                        tempdir)
+    print(f"> oxbow parse {split_num}")
+    arrow_ipc = ox.read_bam(tmp_bam)
+    oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
+    del arrow_ipc
+    print(f"> Creating read df {split_num}")
+    batch_df = process_reads(oxbow_df)
+    print(f"> Creating sequence_data {split_num}")
+    sequence_data = {1: [], 2: []}
+    sequence_list = oxbow_df["seq"].tolist()
+    count_list = batch_df["count"].tolist()
+    size = 10000
+    if len(sequence_list) < size and len(sequence_list) != 0:
+        size = len(sequence_list)
+    for pattern_length in sequence_data:
+        count = -1
+        for i in range(0, len(sequence_list), size):
+            count += 1
+            if count % 10 != 0:
+                continue
+            section = sequence_list[i:i+size]
+            counts = count_list[i:i+size]
+            sequence_data[pattern_length].append(
+                process_sequences(section,
+                                  counts,
+                                  pattern_length))
+
+        print(f"> {split_num}: pattern length {pattern_length}, "
+              "done in {datetime.now()-t1}")
+    return (batch_df, sequence_data)
+
+
+def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     """
     Process batches of reads from parse_bam, retrieving the data of interest
     and putting it in a dataframe.
     Ensure category columns are set to category type for memory efficiency.
 
     Inputs:
-        reads: List of read contents from bam files, returned by pysam
+        oxbow_df: List of read contents from bam files, returned by pysam
 
     Outputs:
         batch_df: Dataframe containing a processed batch of reads
     """
-    read_list = []
-    for read in reads:
-        if "_x" in read[0]:
-            count = int(read[0].split("_x")[-1])
-        else:
-            count = 1
-        read_list.append(
-            [
-                len(read[9]),      # read_length
-                read[2],           # reference_name
-                int(read[3]),      # reference_start
-                read[9][0:2],      # first dinucleotide
-                read[9][-2:],      # last dinucleotide
-                count,             # count
-            ]
-        )
-    batch_df = pd.DataFrame(read_list, columns=['read_length',
-                                                'reference_name',
-                                                'reference_start',
-                                                'first_dinucleotide',
-                                                'last_dinucleotide',
-                                                'count'])
-
-    batch_df["first_dinucleotide"] = (batch_df["first_dinucleotide"]
+    batch_df = pd.DataFrame()
+    batch_df["read_length"] = pd.Series(oxbow_df["end"] - oxbow_df["pos"] + 1,
+                                        dtype="category")
+    batch_df["reference_name"] = oxbow_df["rname"].astype("category")
+    batch_df["reference_start"] = oxbow_df["pos"]
+    batch_df["first_dinucleotide"] = (oxbow_df["seq"].str.slice(stop=2)
                                       .astype("category"))
-    batch_df["last_dinucleotide"] = (batch_df["last_dinucleotide"]
+    batch_df["last_dinucleotide"] = (oxbow_df["seq"].str.slice(stop=-3,
+                                                               step=-1)
                                      .astype("category"))
-    batch_df["reference_name"] = (batch_df["reference_name"]
-                                  .astype("category"))
+    batch_df["count"] = pd.Series([int(query.split("_x")[-1]) if "_x" in query
+                                   else 1 for query in oxbow_df["qname"]],
+                                  dtype="category")
 
     return batch_df
 
 
-def process_sequences(sequences_counts: list,
+def process_sequences(sequences: list,
+                      counts: list,
                       pattern_length: int = 1,
                       max_sequence_length: int = None,
                       ) -> dict:
@@ -74,17 +119,9 @@ def process_sequences(sequences_counts: list,
         later for joining of background frequencies)
     """
     # Create the counts array
-    read_names = [sequences[0] for sequences in sequences_counts]
-    counts_array = []
-    for read in read_names:
-        if "_x" in read:
-            counts_array.append(int(read.split("_x")[-1]))
-        else:
-            counts_array.append(1)
-    counts_array = np.array(counts_array)
+    counts_array = np.array(counts)
 
     # Set sequences and calculate array dimensions
-    sequences = [sequences[1] for sequences in sequences_counts]
     num_sequences = len(sequences)
     if max_sequence_length is None:
         max_sequence_length = max(len(seq) for seq in sequences)
@@ -103,33 +140,38 @@ def process_sequences(sequences_counts: list,
             index = pattern_to_index(pattern)
             if index != -1:
                 sequence_array[i, j, index] = 1
+    if pattern_length == 2:
+        # Calculate background frequencies
+        three_prime_bg = calculate_background(sequence_array,
+                                              sequences,
+                                              pattern_length,
+                                              five_prime=False)
+        five_prime_bg = calculate_background(sequence_array,
+                                             sequences,
+                                             pattern_length,
+                                             five_prime=True)
 
-    # Calculate background frequencies
-    three_prime_bg = calculate_background(sequence_array,
-                                          sequences,
-                                          pattern_length,
-                                          five_prime=False)
-    five_prime_bg = calculate_background(sequence_array,
-                                         sequences,
-                                         pattern_length,
-                                         five_prime=True)
-
-    # Perform element-wise multiplication of sequence array and counts array
-    result_array = sequence_array * counts_array[:, None, None]
-    # Create the condensed 2D arrays for each nucleotide
     condensed_arrays = {}
-    nucleotides = ["".join(nt) for nt in
-                   itertools.product('ACGT', repeat=pattern_length)]
-    for nucleotide in nucleotides:
-        nucleotide_counts = np.sum(result_array[:, :,
-                                                pattern_to_index(nucleotide)],
-                                   axis=0)
-        condensed_arrays[nucleotide] = nucleotide_counts
+
+    if pattern_length == 1:
+        # Perform element-wise multiplication of sequence array
+        # and counts array
+        result_array = sequence_array * counts_array[:, None, None]
+        # Create the condensed 2D arrays for each nucleotide
+
+        nucleotides = ["".join(nt) for nt in
+                       itertools.product('ACGT', repeat=pattern_length)]
+        for nucleotide in nucleotides:
+            nucleotide_counts = np.sum(
+                result_array[:, :, pattern_to_index(nucleotide)],
+                axis=0)
+            condensed_arrays[nucleotide] = nucleotide_counts
 
     # Add backgrounds and sequence_number to output dictionary
-    condensed_arrays["3_prime_bg"] = three_prime_bg
-    condensed_arrays["5_prime_bg"] = five_prime_bg
-    condensed_arrays["sequence_number"] = num_sequences
+    if pattern_length == 2:
+        condensed_arrays["3_prime_bg"] = three_prime_bg
+        condensed_arrays["5_prime_bg"] = five_prime_bg
+        condensed_arrays["sequence_number"] = num_sequences
 
     return condensed_arrays
 
@@ -199,7 +241,7 @@ def calculate_background(sequence_array: np.array,
     return sequence_bg
 
 
-def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
+def join_batches(bam_batches: list) -> tuple:
     """
     Get and join the data returned from multiprocessed_batches
 
@@ -222,68 +264,66 @@ def join_batches(read_batches: list, full_sequence_batches: dict) -> tuple:
     """
     print("\nGetting data from async objects..")
     read_batches, background_batches, sequence_batches = \
-        get_batch_data(read_batches, full_sequence_batches)
+        get_batch_data(bam_batches)
 
     print("Joining batch files..")
     # Joining reads
     read_df_pre = pd.concat(read_batches, ignore_index=True)
-    category_columns = ["reference_name",
+    category_columns = ["read_length",
+                        "reference_name",
                         "first_dinucleotide",
-                        "last_dinucleotide"]
+                        "last_dinucleotide",
+                        "count"]
     read_df_pre[category_columns] = (read_df_pre[category_columns]
                                      .astype("category"))
     # Joining sequence data
     sequence_data = {}
-    for pattern_length in sequence_batches:
-        sequence_data[pattern_length] = {}
-        for pattern in sequence_batches[pattern_length]:
-            # Determine the maximum length among the arrays
-            max_length = max(len(arr) for arr in
-                             sequence_batches[pattern_length][pattern])
 
-            # Pad the arrays with zeros to match the maximum length
-            padded_arrays = [np.pad(arr, (0, max_length - len(arr)),
-                                    mode='constant') for arr in
-                             sequence_batches[pattern_length][pattern]]
+    for pattern in sequence_batches:
+        # Determine the maximum length among the arrays
+        max_length = max(len(arr) for arr in
+                         sequence_batches[pattern])
 
-            sequence_data[pattern_length][pattern] = np.sum(padded_arrays,
-                                                            axis=0)
+        # Pad the arrays with zeros to match the maximum length
+        padded_arrays = [np.pad(arr, (0, max_length - len(arr)),
+                                mode='constant') for arr in
+                         sequence_batches[pattern]]
+
+        sequence_data[pattern] = np.sum(padded_arrays,
+                                        axis=0)
     # Joining sequence backgrounds
     sequence_background = {}
-    for pattern_length in background_batches:
-        sequence_background[pattern_length] = {}
-        # Iterate over the patterns in the dictionaries
-        for background in background_batches[pattern_length].keys():
-            if background == "sequence_number":
-                continue
 
-            sequence_background[pattern_length][background] = {}
-            iterable = background_batches[pattern_length][
-                background][0].keys()
-            for pattern in iterable:
-                total_weighted_sum = 0
-                total_count = 0
+    for background in background_batches.keys():
+        if background == "sequence_number":
+            continue
 
-            # Calculate the weighted sum for the current pattern
-                sum_iter = background_batches[pattern_length][background]
-                for i, dictionary in enumerate(sum_iter):
-                    proportion = dictionary[pattern]
-                    count = background_batches[pattern_length][
-                        "sequence_number"][i]
-                    weighted_sum = proportion * count
-                    total_weighted_sum += weighted_sum
-                    total_count += count
+        sequence_background[background] = {}
+        iterable = background_batches[
+            background][0].keys()
+        for pattern in iterable:
+            total_weighted_sum = 0
+            total_count = 0
 
-                # Calculate the weighted average for the current key
-                sequence_background[pattern_length][background][pattern] = \
-                    total_weighted_sum / total_count
+        # Calculate the weighted sum for the current pattern
+            sum_iter = background_batches[background]
+            for i, dictionary in enumerate(sum_iter):
+                proportion = dictionary[pattern]
+                count = background_batches[
+                    "sequence_number"][i]
+                weighted_sum = proportion * count
+                total_weighted_sum += weighted_sum
+                total_count += count
+
+            # Calculate the weighted average for the current key
+            sequence_background[background][pattern] = \
+                total_weighted_sum / total_count
 
     return (read_df_pre, sequence_data, sequence_background)
 
 
 def get_batch_data(
-        read_batches: list,
-        full_sequence_batches: dict
+        bam_batches: list
         ) -> tuple:
     """
     Return readable data from the multiprocessed pools, separating the
@@ -302,28 +342,31 @@ def get_batch_data(
             background_batches: Dictionary containing background data
             sequence_batches: Dictionary containing sequence data
     """
-    read_batches = [result.get() for result in read_batches]
+    bam_tuples = [result.get() for result in bam_batches]
+
+    read_batches = [data[0] for data in bam_tuples]
+    full_sequence_batches = [data[1] for data in bam_tuples]
 
     background_batches, sequence_batches = {}, {}
-    for pattern_length in full_sequence_batches:
-        background_batches[pattern_length] = {}
-        sequence_batches[pattern_length] = {}
+    for pattern_length in full_sequence_batches[0].keys():
 
-        for result in full_sequence_batches[pattern_length]:
-            result_dict = result.get()
+        for full_batch in full_sequence_batches:
 
-            for pattern, array in result_dict.items():
-                if "bg" in pattern or "sequence" in pattern:
-                    if pattern not in background_batches[pattern_length]:
-                        background_batches[pattern_length][pattern] = [array]
+            for result in full_batch[pattern_length]:
+                result_dict = result
+
+                for pattern, array in result_dict.items():
+                    if "bg" in pattern or "sequence" in pattern:
+                        if pattern not in background_batches:
+                            background_batches[pattern] = [array]
+                        else:
+                            (background_batches[pattern]
+                             .append(array))
                     else:
-                        (background_batches[pattern_length][pattern]
-                         .append(array))
-                else:
-                    if pattern not in sequence_batches[pattern_length]:
-                        sequence_batches[pattern_length][pattern] = [array]
-                    else:
-                        (sequence_batches[pattern_length][pattern]
-                         .append(array))
+                        if pattern not in sequence_batches:
+                            sequence_batches[pattern] = [array]
+                        else:
+                            (sequence_batches[pattern]
+                             .append(array))
 
     return read_batches, background_batches, sequence_batches
