@@ -111,7 +111,7 @@ def int_keys_hook(data):
     return data
 
 
-def parse_json_input(json_path: str) -> tuple[dict, dict]:
+def parse_json_input(json_path: str) -> tuple:
     """
     Parse json input from a previous RiboMetric run for use in generating plots
 
