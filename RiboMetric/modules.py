@@ -490,11 +490,13 @@ removing boundaries..."
         for y in range(min_length, max_length):
             if y not in [x[0] for x in list(pre_metaprofile_dict.keys())]:
                 pre_metaprofile_dict[(y, 0)] = None
+
         min_distance = min([x[1] for x in list(pre_metaprofile_dict.keys())])
         max_distance = max([x[1] for x in list(pre_metaprofile_dict.keys())])
         for z in range(min_distance, max_distance):
             if z not in [x[1] for x in list(pre_metaprofile_dict.keys())]:
                 pre_metaprofile_dict[(min_length, z)] = None
+
         for key, value in pre_metaprofile_dict.items():
             if key[0] not in metagene_profile_dict[current_target]:
                 metagene_profile_dict[current_target][key[0]] = {}
