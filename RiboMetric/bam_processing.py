@@ -91,6 +91,7 @@ def ox_server_parse_reads(bam_file: str,
     oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
     del arrow_ipc
     read_df = process_reads(oxbow_df)
+    print("retrieving sequence data")
     sequence_data = {1: [], 2: []}
     sequence_list = oxbow_df["seq"].tolist()
     count_list = read_df["count"].tolist()
@@ -402,7 +403,6 @@ def get_batch_data(
         full_sequence_batches = [sequence_data]
         for pattern_length in bam_batches[1].keys():
             sequence_data[pattern_length] = [result.get() for result in bam_batches[1][pattern_length]]
-            print(full_sequence_batches)
 
     else:
         bam_tuples = [result.get() for result in bam_batches]
