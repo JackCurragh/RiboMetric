@@ -484,23 +484,27 @@ removing boundaries..."
                 .size()
                 .to_dict()
             )
-        # Fill empty read length and distance keys with None
+        # Fill empty read lengths with 0
         min_length = min([x[0] for x in list(pre_metaprofile_dict.keys())])
         max_length = max([x[0] for x in list(pre_metaprofile_dict.keys())])
         for y in range(min_length, max_length):
             if y not in [x[0] for x in list(pre_metaprofile_dict.keys())]:
-                pre_metaprofile_dict[(y, 0)] = None
+                pre_metaprofile_dict[(y, 0)] = 0
 
-        min_distance = min([x[1] for x in list(pre_metaprofile_dict.keys())])
-        max_distance = max([x[1] for x in list(pre_metaprofile_dict.keys())])
-        for z in range(min_distance, max_distance):
-            if z not in [x[1] for x in list(pre_metaprofile_dict.keys())]:
-                pre_metaprofile_dict[(min_length, z)] = None
+        neg_distance = min([x[1] for x in list(pre_metaprofile_dict.keys())])
+        pos_distance = max([x[1] for x in list(pre_metaprofile_dict.keys())])
+        position_range = range(neg_distance, pos_distance+1)
 
         for key, value in pre_metaprofile_dict.items():
             if key[0] not in metagene_profile_dict[current_target]:
                 metagene_profile_dict[current_target][key[0]] = {}
             metagene_profile_dict[current_target][key[0]][key[1]] = value
+
+        # Fill empty distances with 0
+        for position_dict in metagene_profile_dict[current_target].values():
+            for position in position_range:
+                position_dict.setdefault(position, 0)
+
     return metagene_profile_dict
 
 
