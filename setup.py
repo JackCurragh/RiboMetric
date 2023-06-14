@@ -3,6 +3,7 @@
 """The setup script."""
 
 from setuptools import setup, find_packages
+from pathlib import Path
 
 with open("README.rst") as readme_file:
     readme = readme_file.read()
@@ -10,7 +11,12 @@ with open("README.rst") as readme_file:
 with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
-requirements = []
+# Get the path to the requirements.txt file
+requirements_path = Path(__file__).parent / 'requirements_dev.txt'
+
+# Read the contents of the requirements file
+with open(requirements_path) as f:
+    requirements = f.read().splitlines()
 
 test_requirements = [
     "pytest>=3",
@@ -51,6 +57,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/JackCurragh/RiboMetric",
-    version="0.1.2",
+    version="0.1.5",
     zip_safe=False,
 )
