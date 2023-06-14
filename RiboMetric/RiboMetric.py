@@ -208,7 +208,8 @@ def main(args):
             bam_results = parse_bam(
                 bam_file=config["argument"]["bam"],
                 num_reads=read_limit,
-                num_processes=config["argument"]["threads"],)
+                num_processes=config["argument"]["threads"],
+                server_mode=config["argument"]["server"])
 
             read_df_pre = bam_results[0]
             sequence_data = bam_results[1]
@@ -283,7 +284,7 @@ def main(args):
                 filename = filename.split('.')[:-1]
 
         elif config["argument"]["json_in"]:
-
+            print("JSON input provided")
             filename = config["argument"]["json_in"].split('/')[-1]
             if "." in filename:
                 filename = filename.split('.')[:-1]
