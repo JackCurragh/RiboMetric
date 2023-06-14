@@ -45,9 +45,9 @@ plots:
   metagene_profile:
     distance_target: "both"   # Options: ["start", "stop", "both"]
     shared_yaxis: False       # For the metagene profile barplot, controls whether the start and stop distance share a y-axis or not
-    distance_range: [-30,30]
+    distance_range: [-30,30]  # Set the max distance to count reads from the target(s)
     colorscale: "electric"    # Heatmap colorscale, see https://plotly.com/python/builtin-colorscales/
-    max_colorscale: null       # set to null for automatic maximum
+    max_colorscale: null      # if set to null, the plot will generate with relative counts (0 to 1)
     
 qc:
   use_cds_subset:
