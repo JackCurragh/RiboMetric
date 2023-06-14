@@ -173,10 +173,17 @@ def plot_ligation_bias_distribution(
             row=1,
             col=count,
         )
+
         fig.add_hline(y=0)
+
+        fig.update_xaxes(
+            title_text="Read Start",
+            row=1,
+            col=count,
+            title_font=dict(size=18)
+        )
     fig.update_layout(
         title="Ligation Bias Distribution",
-        xaxis_title="Read Start",
         yaxis_title="Proportion",
         font=dict(
             family=config["plots"]["font_family"],
@@ -641,10 +648,16 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
             row=1,
             col=count,
         )
+        fig.update_xaxes(
+            title_text="Relative position (nt)",
+            row=1,
+            col=count,
+            title_font=dict(size=18),
+            range=config["plots"]["metagene_profile"]["distance_range"]
+        )
 
     fig.update_layout(
         title="Metagene Profile",
-        xaxis_title="Relative position",
         yaxis_title="Read Count",
         font=dict(
             family=config["plots"]["font_family"],
