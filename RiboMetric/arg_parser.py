@@ -75,6 +75,12 @@ def argument_parser():
         help="Use JSON config instead of active config for generating plots",
     )
     run_parser.add_argument(
+        "--server",
+        action="store_true",
+        default=False,
+        help="Runs RiboMetric in 'server' mode, higher speed at cost of memory efficiency",
+    )
+    run_parser.add_argument(
         "-n",
         "--name",
         type=str,
@@ -211,9 +217,6 @@ def open_config(args) -> dict:
 
         with open(config_file_path, "r") as yml:
             config = yaml.load(yml, Loader=yaml.Loader)
-
-    for arg in vars(args):
-        print(f"{arg}: {getattr(args, arg)}")
 
     if args.command == "run" and args.all:
         args.json = True

@@ -6,6 +6,7 @@ argument:
   fasta: null                 # Filepath for fasta
   json_in: null               # Filepath for JSON input
   json_config: False          # Use JSON config instead of this config for generating plots
+  server: False               # If true, runs 'server' mode, uses more memory, but runs faster
   name: null                  # Sets the name for the reports and/or data output, when set to None, uses bam filename
   output: "."                 # Sets the output directory for the reports and/or data output
   threads: 8                  # Number of threads used by RiboMetric
