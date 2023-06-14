@@ -151,6 +151,7 @@ def parse_bam(bam_file: str,
             parsed_bam = join_batches(bam_batches)
 
     else:
+        print("Warning: The server option is not working as intended. Regular runs are recommended.")
         bam_batches = ox_server_parse_reads(bam_file)
         parsed_bam = join_batches(bam_batches)
 
