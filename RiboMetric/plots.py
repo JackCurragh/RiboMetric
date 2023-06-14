@@ -729,6 +729,9 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
                 y_data.append(k1)
                 z_data.append(v2)
 
+        if config["plots"]["metagene_profile"]["max_colorscale"] is None:
+            z_data = [z/max(z_data) for z in z_data]
+
         fig.add_trace(
             go.Heatmap(
                 x=x_data,
@@ -741,12 +744,15 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
             row=1,
             col=count,
         )
-    fig.update_xaxes(
-        range=config["plots"]["metagene_profile"]["distance_range"]
-    )
+        fig.update_xaxes(
+            title_text="Relative position (nt)",
+            row=1,
+            col=count,
+            title_font=dict(size=18),
+            range=config["plots"]["metagene_profile"]["distance_range"]
+        )
     fig.update_layout(
         title="Metagene Heatmap",
-        xaxis_title="Relative position (nt)",
         yaxis_title="Read length",
         font=dict(
             family=config["plots"]["font_family"],
