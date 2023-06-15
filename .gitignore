@@ -118,6 +118,7 @@ bak*
 *.json
 *.pdf
 !example-reports/*
+!test.json
 
 sample_data/transcriptome_collapsed.bam
 sample_data/transcriptome_collapsed.bam.bai
