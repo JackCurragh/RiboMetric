@@ -1,5 +1,5 @@
-# Arguments, overwritten when called in the command-line
 argument:
+  # Arguments, config values are overwritten when called in the command-line
   bam: null                   # Filepath for bam
   annotation: null            # Filepath for annotation
   gff: null                   # Filepath for gff
