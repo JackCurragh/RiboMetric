@@ -130,6 +130,11 @@ def parse_bam(bam_file: str,
                                 frequency of nucleotide patterns for five and
                                 three prime
     """
+    batch_size = int((num_reads/num_processes)*1.02)
+    # Small percentage increase to ensure remaining reads aren't
+    # in separate batch
+
+    print(f"Splitting BAM into {batch_size} reads")
     if server_mode is False:
         pool = Pool(processes=num_processes)
         bam_batches = []
