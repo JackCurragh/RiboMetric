@@ -8,24 +8,26 @@ import oxbow as ox
 import io
 import pyarrow.ipc
 from .bam_splitting import split_bam
+from multiprocessing import Pool
 
 
 def ox_parse_reads(bam_file: str,
                    split_num: int,
                    reference_df: pd.DataFrame,
-                   tempdir: str) -> tuple:
+                   tempdir: str
+) -> tuple:
     """
     Splits a bam files using generated bed files, uses oxbow to process these
     batches of reads directly into a data frame and then processes the data
     from this generated dataframe into read and sequence data
 
-    Args:
+    Inputs:
         bam_file: Path to the BAM file
         split_num: Number of the split
         reference_df: Reference dataframe, generated from samtools idxstats
         tempdir: Path to the temporary directory
 
-    Returns:
+    Outputs:
         tuple: A tuple containing:
             batch_df: Dataframe containing a processed batch of reads
             sequence_data: Dictionary containing the processed sequence data
@@ -45,6 +47,7 @@ def ox_parse_reads(bam_file: str,
     sequence_data = {1: [], 2: []}
     sequence_list = oxbow_df["seq"].tolist()
     count_list = batch_df["count"].tolist()
+    # sequence_list batch size
     size = 10000
     if len(sequence_list) < size and len(sequence_list) != 0:
         size = len(sequence_list)
@@ -62,6 +65,60 @@ def ox_parse_reads(bam_file: str,
                                   pattern_length))
 
     return (batch_df, sequence_data)
+
+
+def ox_server_parse_reads(bam_file: str,
+                          num_processes: int= 4
+) -> tuple:
+    """
+    Functionally the same as ox_parse_reads,
+    but without splitting the bam file.
+
+    Inputs:
+        bam_file: Path to the BAM file
+        pool: Multiprocessing pool
+
+    Outputs:
+        tuple: A tuple containing:
+            batch_df: Dataframe containing a processed batch of reads
+            sequence_data: Dictionary containing the processed sequence data
+    """
+    pool = Pool(processes=num_processes)
+    print("Running in server mode")
+    print("Generating pyarrow object")
+    arrow_ipc = ox.read_bam(bam_file)
+    print("Transforming to pandas df")
+    oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
+    del arrow_ipc
+    read_df = process_reads(oxbow_df)
+    print("retrieving sequence data")
+    sequence_data = {1: [], 2: []}
+    sequence_list = oxbow_df["seq"].tolist()
+    count_list = read_df["count"].tolist()
+    del oxbow_df
+    # sequence_list batch size
+    size = 10000
+    if len(sequence_list) < size and len(sequence_list) != 0:
+        size = len(sequence_list)
+    for pattern_length in sequence_data:
+        count = -1
+        for i in range(0, len(sequence_list), size):
+            count += 1
+            if count % 10 != 0:
+                continue
+            section = sequence_list[i:i+size]
+            counts = count_list[i:i+size]
+            sequence_data[pattern_length].append(
+                pool.apply_async(
+                    process_sequences,
+                    [section, counts, pattern_length]
+                    )
+                )
+            
+    pool.close()
+    pool.join()
+
+    return (read_df, sequence_data)
 
 
 def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
@@ -340,10 +397,18 @@ def get_batch_data(
             background_batches: Dictionary containing background data
             sequence_batches: Dictionary containing sequence data
     """
-    bam_tuples = [result.get() for result in bam_batches]
+    if type(bam_batches[0]) == pd.DataFrame:
+        read_batches = [bam_batches[0]]
+        sequence_data = {}
+        full_sequence_batches = [sequence_data]
+        for pattern_length in bam_batches[1].keys():
+            sequence_data[pattern_length] = [result.get() for result in bam_batches[1][pattern_length]]
 
-    read_batches = [data[0] for data in bam_tuples]
-    full_sequence_batches = [data[1] for data in bam_tuples]
+    else:
+        bam_tuples = [result.get() for result in bam_batches]
+
+        read_batches = [data[0] for data in bam_tuples]
+        full_sequence_batches = [data[1] for data in bam_tuples]
 
     background_batches, sequence_batches = {}, {}
     for pattern_length in full_sequence_batches[0].keys():

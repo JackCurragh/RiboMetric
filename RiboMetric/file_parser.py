@@ -15,7 +15,7 @@ from multiprocessing import Pool
 from tempfile import TemporaryDirectory
 
 
-from .bam_processing import join_batches, ox_parse_reads
+from .bam_processing import join_batches, ox_parse_reads, ox_server_parse_reads
 from .bam_splitting import run_samtools_idxstats, split_idxstats_df
 
 
@@ -103,10 +103,11 @@ def flagstat_bam(bam_path: str) -> dict:
     return flagstat_dict
 
 
-def parse_bam(bam_file,
-              num_reads,
-              batch_size=10000000,
-              num_processes=4
+def parse_bam(bam_file: str,
+              num_reads: int,
+              batch_size: int=10000000,
+              num_processes: int=4,
+              server_mode: bool=False,
               ) -> tuple:
     """
     Read in the bam file at the provided path and return parsed read and
@@ -129,23 +130,36 @@ def parse_bam(bam_file,
                                 frequency of nucleotide patterns for five and
                                 three prime
     """
-    pool = Pool(processes=num_processes)
-    bam_batches = []
-    with TemporaryDirectory() as tempdir:
-        idxstats_df = run_samtools_idxstats(bam_file)
-        reference_dfs = split_idxstats_df(idxstats_df,
-                                          batch_size,
-                                          num_reads)
-        for split_num, reference_df in enumerate(reference_dfs):
-            bam_batches.append(pool.apply_async(ox_parse_reads,
-                                                [bam_file,
-                                                 split_num,
-                                                 reference_df,
-                                                 tempdir]))
-        pool.close()
-        pool.join()
+    batch_size = int((num_reads/num_processes)*1.02)
+    # Small percentage increase to ensure remaining reads aren't
+    # in separate batch
 
-    parsed_bam = join_batches(bam_batches)
+    print(f"Splitting BAM into {batch_size} reads")
+    if server_mode is False:
+        pool = Pool(processes=num_processes)
+        bam_batches = []
+        with TemporaryDirectory() as tempdir:
+            idxstats_df = run_samtools_idxstats(bam_file)
+            reference_dfs = split_idxstats_df(idxstats_df,
+                                            batch_size,
+                                            num_reads)
+            for split_num, reference_df in enumerate(reference_dfs):
+                bam_batches.append(pool.apply_async(ox_parse_reads,
+                                                    [bam_file,
+                                                    split_num,
+                                                    reference_df,
+                                                    tempdir]))
+
+            pool.close()
+            pool.join()
+
+            parsed_bam = join_batches(bam_batches)
+
+    else:
+        print("Warning: The server option is not working as intended. Regular runs are recommended.")
+        bam_batches = ox_server_parse_reads(bam_file)
+        parsed_bam = join_batches(bam_batches)
+
 
     return parsed_bam
 
