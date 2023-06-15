@@ -36,7 +36,7 @@ def run_samtools_idxstats(bam_file: str) -> pd.DataFrame:
 
 
 def split_idxstats_df(idxstats_df: pd.DataFrame,
-                      max_reads: int,
+                      batch_size: int,
                       num_reads: int) -> list:
     """
     Split the idxstats data frame into a list of data frames limited to
@@ -45,7 +45,7 @@ def split_idxstats_df(idxstats_df: pd.DataFrame,
 
     Inputs:
         idxstats_df: Results from samtools idxstats
-        max_reads: Maximum number of reads in a batch
+        batch_size: Maximum number of reads in a batch
         num_reads: Number of reads to parse
 
     Outputs:
@@ -63,9 +63,9 @@ def split_idxstats_df(idxstats_df: pd.DataFrame,
 
     for i in range(len(mapped_reads)):
         reads = mapped_reads[i] + unmapped_reads[i]
-        if current_sum + reads <= max_reads:
+        if current_sum + reads <= batch_size:
             current_sum += reads
-            if (current_sum + (split_num * max_reads)) > num_reads:
+            if (current_sum + (split_num * batch_size)) > num_reads:
                 break
         else:
             current_df = idxstats_df.iloc[last_index:i, [0, 1]].copy()

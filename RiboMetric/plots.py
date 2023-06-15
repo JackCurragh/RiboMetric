@@ -173,10 +173,17 @@ def plot_ligation_bias_distribution(
             row=1,
             col=count,
         )
+
         fig.add_hline(y=0)
+
+        fig.update_xaxes(
+            title_text="Read Start",
+            row=1,
+            col=count,
+            title_font=dict(size=18)
+        )
     fig.update_layout(
         title="Ligation Bias Distribution",
-        xaxis_title="Read Start",
         yaxis_title="Proportion",
         font=dict(
             family=config["plots"]["font_family"],
@@ -641,10 +648,16 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
             row=1,
             col=count,
         )
+        fig.update_xaxes(
+            title_text="Relative position (nt)",
+            row=1,
+            col=count,
+            title_font=dict(size=18),
+            range=config["plots"]["metagene_profile"]["distance_range"]
+        )
 
     fig.update_layout(
         title="Metagene Profile",
-        xaxis_title="Relative position",
         yaxis_title="Read Count",
         font=dict(
             family=config["plots"]["font_family"],
@@ -729,6 +742,10 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
                 y_data.append(k1)
                 z_data.append(v2)
 
+        if config["plots"]["metagene_profile"]["max_colorscale"] is None:
+            z_max = max(z_data)
+            z_data = [z/z_max for z in z_data]
+
         fig.add_trace(
             go.Heatmap(
                 x=x_data,
@@ -741,12 +758,15 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
             row=1,
             col=count,
         )
-    fig.update_xaxes(
-        range=config["plots"]["metagene_profile"]["distance_range"]
-    )
+        fig.update_xaxes(
+            title_text="Relative position (nt)",
+            row=1,
+            col=count,
+            title_font=dict(size=18),
+            range=config["plots"]["metagene_profile"]["distance_range"]
+        )
     fig.update_layout(
         title="Metagene Heatmap",
-        xaxis_title="Relative position (nt)",
         yaxis_title="Read length",
         font=dict(
             family=config["plots"]["font_family"],

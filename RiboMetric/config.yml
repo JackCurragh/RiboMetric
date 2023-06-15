@@ -1,11 +1,12 @@
-# Arguments, overwritten when called in the command-line
 argument:
+  # Arguments, config values are overwritten when called in the command-line
   bam: null                   # Filepath for bam
   annotation: null            # Filepath for annotation
   gff: null                   # Filepath for gff
   fasta: null                 # Filepath for fasta
   json_in: null               # Filepath for JSON input
   json_config: False          # Use JSON config instead of this config for generating plots
+  server: False               # If true, runs 'server' mode, uses more memory, but runs faster
   name: null                  # Sets the name for the reports and/or data output, when set to None, uses bam filename
   output: "."                 # Sets the output directory for the reports and/or data output
   threads: 8                  # Number of threads used by RiboMetric
@@ -45,9 +46,9 @@ plots:
   metagene_profile:
     distance_target: "both"   # Options: ["start", "stop", "both"]
     shared_yaxis: False       # For the metagene profile barplot, controls whether the start and stop distance share a y-axis or not
-    distance_range: [-30,30]
+    distance_range: [-30,30]  # Set the max distance to count reads from the target(s)
     colorscale: "electric"    # Heatmap colorscale, see https://plotly.com/python/builtin-colorscales/
-    max_colorscale: null       # set to null for automatic maximum
+    max_colorscale: null      # if set to null, the plot will generate with relative counts (0 to 1)
     
 qc:
   use_cds_subset:
