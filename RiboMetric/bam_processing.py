@@ -15,7 +15,7 @@ def ox_parse_reads(bam_file: str,
                    split_num: int,
                    reference_df: pd.DataFrame,
                    tempdir: str
-) -> tuple:
+                   ) -> tuple:
     """
     Splits a bam files using generated bed files, uses oxbow to process these
     batches of reads directly into a data frame and then processes the data
@@ -68,8 +68,8 @@ def ox_parse_reads(bam_file: str,
 
 
 def ox_server_parse_reads(bam_file: str,
-                          num_processes: int= 4
-) -> tuple:
+                          num_processes: int = 4
+                          ) -> tuple:
     """
     Functionally the same as ox_parse_reads,
     but without splitting the bam file.
@@ -114,7 +114,7 @@ def ox_server_parse_reads(bam_file: str,
                     [section, counts, pattern_length]
                     )
                 )
-            
+
     pool.close()
     pool.join()
 
@@ -402,7 +402,9 @@ def get_batch_data(
         sequence_data = {}
         full_sequence_batches = [sequence_data]
         for pattern_length in bam_batches[1].keys():
-            sequence_data[pattern_length] = [result.get() for result in bam_batches[1][pattern_length]]
+            sequence_data[pattern_length] = [result.get() for result
+                                             in bam_batches[1][pattern_length]
+                                             ]
 
     else:
         bam_tuples = [result.get() for result in bam_batches]
