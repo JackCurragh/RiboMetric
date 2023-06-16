@@ -485,14 +485,18 @@ removing boundaries..."
                 .to_dict()
             )
         # Fill empty read lengths with 0
-        min_length = int(min([x[0] for x in list(pre_metaprofile_dict.keys())]))
-        max_length = int(max([x[0] for x in list(pre_metaprofile_dict.keys())]))
+        min_length = int(min([x[0] for x
+                              in list(pre_metaprofile_dict.keys())]))
+        max_length = int(max([x[0] for x
+                              in list(pre_metaprofile_dict.keys())]))
         for y in range(min_length, max_length):
             if y not in [x[0] for x in list(pre_metaprofile_dict.keys())]:
                 pre_metaprofile_dict[(y, 0)] = 0
 
-        neg_distance = int(min([x[1] for x in list(pre_metaprofile_dict.keys())]))
-        pos_distance = int(max([x[1] for x in list(pre_metaprofile_dict.keys())]))
+        neg_distance = int(min([x[1] for x
+                                in list(pre_metaprofile_dict.keys())]))
+        pos_distance = int(max([x[1] for x
+                                in list(pre_metaprofile_dict.keys())]))
         position_range = range(neg_distance, pos_distance+1)
 
         for key, value in pre_metaprofile_dict.items():

@@ -78,7 +78,8 @@ def argument_parser():
         "--server",
         action="store_true",
         default=False,
-        help="Runs RiboMetric in 'server' mode, higher speed at cost of memory efficiency",
+        help=("Runs RiboMetric in 'server' mode, higher speed at cost of ",
+              "memory efficiency")
     )
     run_parser.add_argument(
         "-n",
