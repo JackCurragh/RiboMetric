@@ -130,6 +130,7 @@ tests/test_data/test_RiboMetric.html
 
 
 # Lukasdev
+playground.ipynb
 test_files/
 RiboMetric_report.*
 1000_entry_RibosomeProfiler.tsv
