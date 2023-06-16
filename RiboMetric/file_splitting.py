@@ -131,3 +131,41 @@ def split_bam(bam_file: str,
                     outfile))
 
     return outfile
+
+def split_gff_file(input_file, outdir, num_files) -> list:
+    with open(input_file, 'r') as f:
+        gff_lines = f.readlines()
+
+    num_lines = len(gff_lines)
+    lines_per_split = num_lines // num_files
+
+    split_indices = [0]
+    line_number = 0
+    for i in range(num_lines):
+        line_number += 1
+        line = gff_lines[i]
+        if line_number >= lines_per_split:
+            if line.startswith("#"):
+                continue
+            if line.split('\t')[2] == "gene":
+                split_indices.append(i)
+                line_number = 0
+
+    split_indices.append(num_lines)
+    # print(split_indices)
+
+    split_gffs = []
+    for i in range(len(split_indices)-1):
+        start_index = split_indices[i]
+        end_index = split_indices[i + 1]
+        file_lines = gff_lines[start_index:end_index]
+
+        output_file = f"{outdir}/temp_gff_{i + 1}.gff"
+        with open(output_file, 'w') as f_out:
+            f_out.writelines(file_lines)
+
+        # print(f"Created file: {output_file}")
+
+        split_gffs.append(output_file)
+
+    return split_gffs
