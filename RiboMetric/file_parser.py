@@ -278,6 +278,13 @@ def prepare_annotation(
         pool.join()
 
     print("\n"*(split_num // 4))
+    results = [batch.get() for batch in gff_batches]
+
+    total_len = 0
+    for result in results:
+        print(len(result))
+        total_len += len(result)
+    print(total_len)
 
     exit("WIP")
 
