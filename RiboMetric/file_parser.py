@@ -237,7 +237,7 @@ def gff_df_to_cds_df(
         counter += 1
         if counter % 100 == 0:
             prop = counter / len(transcript_list)
-            print(f"Processing transcript ({prop*100}%)", end="\r")
+            print(f"Processing transcript ({round(prop*100, 3)}%)", end="\r")
         if group_name in transcript_list:
             transcript_start = group_df["start"].min()
 
