@@ -10,7 +10,10 @@ import gffpandas.gffpandas as gffpd
 
 import pandas as pd
 import numpy as np
+import tempfile
+import gzip
 import os
+
 from multiprocessing import Pool
 from tempfile import TemporaryDirectory
 
@@ -302,6 +305,22 @@ def check_annotation(file_path: str) -> bool:
     else:
         return False
 
+def is_gzipped(file_path):
+    """
+    Checks whether the file is gzipped or not
+    """
+    try:
+        with open(file_path, 'rb') as f:
+            # Read the first two bytes of the file
+            header = f.read(2)
+        
+        # Check if the file starts with the gzip magic number (0x1f 0x8b)
+        return header == b'\x1f\x8b'
+    
+    except IOError:
+        # File not found or unable to open
+        return False
+
 
 def parse_gff(gff_path: str) -> pd.DataFrame:
     """
@@ -313,8 +332,21 @@ def parse_gff(gff_path: str) -> pd.DataFrame:
     Outputs:
         gff_df: Dataframe containing the gff information
     """
-    return gffpd.read_gff3(gff_path).df
+    if is_gzipped(gff_path):
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_filepath = temp_file.name
+            with gzip.open(gff_path, 'rt') as f:
+                for line in f:
+                    temp_file.write(line.encode())
 
+        gff_df = gffpd.read_gff3(temp_filepath).df
+
+        os.remove(temp_filepath)
+
+    else:
+        gff_df =  gffpd.read_gff3(gff_path).df
+
+    return gff_df
 
 def prepare_annotation(
         gff_path: str,
