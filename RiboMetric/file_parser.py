@@ -108,9 +108,9 @@ def flagstat_bam(bam_path: str) -> dict:
 
 def parse_bam(bam_file: str,
               num_reads: int,
-              batch_size: int=10000000,
-              num_processes: int=4,
-              server_mode: bool=False,
+              batch_size: int = 10000000,
+              num_processes: int = 4,
+              server_mode: bool = False,
               ) -> tuple:
     """
     Read in the bam file at the provided path and return parsed read and
@@ -144,14 +144,14 @@ def parse_bam(bam_file: str,
         with TemporaryDirectory() as tempdir:
             idxstats_df = run_samtools_idxstats(bam_file)
             reference_dfs = split_idxstats_df(idxstats_df,
-                                            batch_size,
-                                            num_reads)
+                                              batch_size,
+                                              num_reads)
             for split_num, reference_df in enumerate(reference_dfs):
                 bam_batches.append(pool.apply_async(ox_parse_reads,
                                                     [bam_file,
-                                                    split_num,
-                                                    reference_df,
-                                                    tempdir]))
+                                                     split_num,
+                                                     reference_df,
+                                                     tempdir]))
 
             pool.close()
             pool.join()
@@ -159,10 +159,10 @@ def parse_bam(bam_file: str,
             parsed_bam = join_batches(bam_batches)
 
     else:
-        print("Warning: The server option is not working as intended. Regular runs are recommended.")
+        print("Warning: The server option is not working as intended.",
+              "Regular runs are recommended.")
         bam_batches = ox_server_parse_reads(bam_file)
         parsed_bam = join_batches(bam_batches)
-
 
     return parsed_bam
 
@@ -305,18 +305,25 @@ def check_annotation(file_path: str) -> bool:
     else:
         return False
 
-def is_gzipped(file_path):
+
+def is_gzipped(file_path: str) -> bool:
     """
     Checks whether the file is gzipped or not
+
+    Inputs:
+        file_path: Path to the file to be checked
+
+    Outputs:
+        True if gzipped, otherwise False
     """
     try:
         with open(file_path, 'rb') as f:
             # Read the first two bytes of the file
             header = f.read(2)
-        
+
         # Check if the file starts with the gzip magic number (0x1f 0x8b)
         return header == b'\x1f\x8b'
-    
+
     except IOError:
         # File not found or unable to open
         return False
@@ -344,9 +351,10 @@ def parse_gff(gff_path: str) -> pd.DataFrame:
         os.remove(temp_filepath)
 
     else:
-        gff_df =  gffpd.read_gff3(gff_path).df
+        gff_df = gffpd.read_gff3(gff_path).df
 
     return gff_df
+
 
 def prepare_annotation(
         gff_path: str,
