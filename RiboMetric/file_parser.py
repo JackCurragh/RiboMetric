@@ -264,10 +264,21 @@ def prepare_annotation(
     gff_df, coding_tx_ids = parse_gff(gff_path, num_transcripts)
     split_length = (len(gff_df) // num_processes) + 1
 
+    prev_offset, offset = 0, 0
     split_df_list = []
     for split in range(num_processes):
-        
-        split_df_list.append(gff_df.iloc[split_length * split : split_length * (split + 1)])
+        lower_limit = split_length * split
+        upper_limit = split_length * (split + 1)
+        last_transcript_id = gff_df["transcript_id"][upper_limit]
+        next_transcript_id = gff_df["transcript_id"][upper_limit + 1]
+        print(last_transcript_id, next_transcript_id)
+        exit()
+        offset +=1
+
+        split_df = gff_df.iloc[lower_limit + prev_offset
+                               : upper_limit + offset]
+        prev_offset = offset
+        split_df_list.append()
 
 
     print(split_df_list[0].iloc[-10:])
