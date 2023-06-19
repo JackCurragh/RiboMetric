@@ -104,7 +104,10 @@ def print_table_run(args, config: dict, console, mode):
     Inputs.add_column("Values")
     if config["argument"]["bam"]:
         Inputs.add_row("Bam File:", config["argument"]["bam"])
-        Inputs.add_row("Gff File:", config["argument"]["gff"])
+        if config["argument"]["annotation"]:
+            Inputs.add_row("Annotation File:", config["argument"]["annotation"])
+        else:
+            Inputs.add_row("Gff File:", config["argument"]["gff"])
         Inputs.add_row("Transcriptome File:", config["argument"]["fasta"])
     elif config["argument"]["json_in"]:
         Inputs.add_row("JSON File:", config["argument"]["json_in"])
