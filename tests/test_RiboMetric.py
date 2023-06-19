@@ -19,6 +19,7 @@ def test_main_prepare():
         transcripts=1000,
         output=f"{file_path}",
         config=f"{file_path}/../../config.yml",
+        threads=2,
     )
 
     # Redirect stdout to a StringIO object to capture output
