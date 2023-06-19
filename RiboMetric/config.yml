@@ -54,7 +54,7 @@ qc:
   use_cds_subset:
   # Defines which modules use only reads that are on cds
   # If False, uses all reads
-    read_frame_distribution: False
+    read_frame_distribution: True
   read_frame_distribution:
     3nt_count_cutoff: 0.05
   cds_coverage:
