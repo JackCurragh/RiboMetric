@@ -7,7 +7,7 @@ import itertools
 import oxbow as ox
 import io
 import pyarrow.ipc
-from .bam_splitting import split_bam
+from .file_splitting import split_bam
 from multiprocessing import Pool
 
 
