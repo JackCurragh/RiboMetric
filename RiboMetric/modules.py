@@ -28,7 +28,7 @@ def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
     return cds_read_df
 
 
-def a_site_calculation(read_df: pd.DataFrame, offset=15) -> pd.DataFrame:
+def a_site_calculation(read_df: pd.DataFrame, offset=12) -> pd.DataFrame:
     """
     Adds a column to the read_df containing the A-site for the reads
 
