@@ -131,3 +131,96 @@ def split_bam(bam_file: str,
                     outfile))
 
     return outfile
+
+
+def split_gff_file(input_file, outdir, num_files) -> list:
+    with open(input_file, 'r') as f:
+        gff_lines = f.readlines()
+
+    num_lines = len(gff_lines)
+    lines_per_split = num_lines // num_files
+
+    split_indices = [0]
+    line_number = 0
+    for i in range(num_lines):
+        line_number += 1
+        line = gff_lines[i]
+        if line_number >= lines_per_split:
+            if line.startswith("#"):
+                continue
+            if line.split('\t')[2] == "gene":
+                split_indices.append(i)
+                line_number = 0
+
+    split_indices.append(num_lines)
+    # print(split_indices)
+
+    split_gffs = []
+    for i in range(len(split_indices)-1):
+        start_index = split_indices[i]
+        end_index = split_indices[i + 1]
+        file_lines = gff_lines[start_index:end_index]
+
+        output_file = f"{outdir}/temp_gff_{i + 1}.gff"
+        with open(output_file, 'w') as f_out:
+            f_out.writelines(file_lines)
+
+        # print(f"Created file: {output_file}")
+
+        split_gffs.append(output_file)
+
+    return split_gffs
+
+
+def split_gff_df(gff_df, split_num):
+    """
+
+    """
+    df_length = len(gff_df)
+    split_length = (df_length // split_num) + 1
+
+    prev_offset, offset = 0, 0
+    split_df_list = []
+    for split in range(split_num):
+
+        lower_limit = (split_length * split)
+        upper_limit = (split_length * (split + 1))
+
+        if upper_limit + offset > df_length:
+            split_df = gff_df.iloc[lower_limit + prev_offset:
+                                   df_length]
+            split_df_list.append(split_df)
+            print("limit reached outside loop")
+            return split_df_list
+
+        last_transcript_id = gff_df["transcript_id"].iloc[upper_limit
+                                                          - 1
+                                                          + offset]
+        next_transcript_id = gff_df["transcript_id"].iloc[upper_limit
+                                                          + offset]
+
+        while last_transcript_id == next_transcript_id:
+
+            if upper_limit + offset + 1 > df_length:
+                split_df = gff_df.iloc[lower_limit + prev_offset:
+                                       df_length]
+                split_df_list.append(split_df)
+                print("limit reached inside loop")
+                return split_df_list
+
+            offset += 1
+            last_transcript_id = gff_df["transcript_id"].iloc[upper_limit
+                                                              - 1
+                                                              + offset]
+            next_transcript_id = gff_df["transcript_id"].iloc[upper_limit
+                                                              + offset]
+
+        # print("="*50)
+        # print(last_transcript_id, next_transcript_id, offset)
+
+        split_df = gff_df.iloc[lower_limit + prev_offset:
+                               upper_limit + offset]
+        prev_offset = offset
+        split_df_list.append(split_df)
+
+    return split_df_list
