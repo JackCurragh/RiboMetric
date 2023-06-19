@@ -278,7 +278,7 @@ def prepare_annotation(
     annotation_df = pd.concat(results, ignore_index=True)
 
     basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
-    output_name = f"{basename}_RiboMetric_multiprocessed.tsv"
+    output_name = f"{basename}_RiboMetric.tsv"
     annotation_df.to_csv(
         os.path.join(outdir, output_name),
         sep="\t",
