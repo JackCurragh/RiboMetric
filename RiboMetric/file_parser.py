@@ -19,7 +19,7 @@ from tempfile import TemporaryDirectory
 
 
 from .bam_processing import join_batches, ox_parse_reads, ox_server_parse_reads
-from .file_splitting import split_gff_file
+from .file_splitting import split_gff_df
 from .file_splitting import run_samtools_idxstats, split_idxstats_df
 
 
@@ -236,7 +236,6 @@ def check_annotation(file_path: str) -> bool:
         return False
 
 
-
 def prepare_annotation(
         gff_path: str,
         outdir: str,
@@ -260,33 +259,25 @@ def prepare_annotation(
     """
     pool = Pool(processes=num_processes)
 
-    print("Splitting gff..")
-    with TemporaryDirectory() as tempdir:
-        gff_list = split_gff_file(gff_path,
-                                  tempdir,
-                                  num_processes)
-        
-        print("Parsing gff..")
-        gff_batches = []
-        print("Progress:")
-        for split_num, split_path in enumerate(gff_list):
-            # formatted_num = f"{split_num+1:02d}"
-            # print("\n"*(split_num // 4),"\033[20C"*(split_num % 4),f"thread {formatted_num}: 01.12% | ", "\033[1A"*(split_num // 4), end="\r", flush=False, sep="")
-            gff_batches.append(pool.apply_async(parse_gff,[split_path, num_transcripts, split_num]))
-        
-        pool.close()
-        pool.join()
+    print("Parsing gff..")
+    gff_df, coding_tx_ids = parse_gff(gff_path, num_transcripts)
+    split_df_list = split_gff_df(gff_df, num_processes)
+
+    annotation_batches = []
+    print("Subsetting CDS regions, Progress:")
+    for split_num, split_df in enumerate(split_df_list):
+        annotation_batches.append(pool.apply_async(gff_df_to_cds_df,
+                                                   [split_df,
+                                                    coding_tx_ids,
+                                                    split_num]))
+
+    pool.close()
+    pool.join()
 
     print("\n"*(split_num // 4))
-    results = [batch.get() for batch in gff_batches]
+    results = [batch.get() for batch in annotation_batches]
 
-    total_len = 0
-    for result in results:
-        print(len(result))
-        total_len += len(result)
-    print(total_len)
-
-    exit("WIP")
+    annotation_df = pd.concat(results, ignore_index=True)
 
     basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
     output_name = f"{basename}_RiboMetric.tsv"
@@ -321,7 +312,7 @@ def is_gzipped(file_path: str) -> bool:
         return False
 
 
-def parse_gff(gff_path: str, num_transcripts: int, split_num: int) -> pd.DataFrame:
+def parse_gff(gff_path: str, num_transcripts: int) -> pd.DataFrame:
     """
     Read in the gff file at the provided path and return a dataframe
 
@@ -352,10 +343,13 @@ def parse_gff(gff_path: str, num_transcripts: int, split_num: int) -> pd.DataFra
     cds_df = gff_df[gff_df["type"] == "CDS"]
     coding_tx_ids = cds_df["transcript_id"].unique()[:num_transcripts]
 
-    # print("Subsetting CDS regions..")
-    annotation_df = gff_df_to_cds_df(gff_df, coding_tx_ids, split_num)
+    # subset GFF DataFrame to only include transcripts in the transcript_list
+    gff_df = gff_df[gff_df["transcript_id"].isin(coding_tx_ids)]
 
-    return annotation_df
+    # Sort GFF DataFrame by transcript ID
+    gff_df = gff_df.sort_values("transcript_id")
+
+    return gff_df, coding_tx_ids
 
 
 def gff_df_to_cds_df(
@@ -375,6 +369,9 @@ def gff_df_to_cds_df(
         cds_df: Dataframe containing the CDS information
                 columns: transcript_id, cds_start, cds_end
     """
+    # Format split_num for print
+    formatted_num = f"{split_num+1:02d}"
+
     # Extract transcript ID from "attributes" column using regular expression
     rows = {
         "transcript_id": [],
@@ -385,24 +382,19 @@ def gff_df_to_cds_df(
         "genomic_cds_ends": [],
     }
 
-    # Sort GFF DataFrame by transcript ID
-    gff_df = gff_df.sort_values("transcript_id")
-
-    # subset GFF DataFrame to only include transcripts in the transcript_list
-    gff_df = gff_df[gff_df["transcript_id"].isin(transcript_list)]
-
     counter = 0
     for group_name, group_df in gff_df.groupby("transcript_id"):
         counter += 1
-        if counter % 100 == 0:
-            progress = format_progress((counter / len(transcript_list))*100)
-            formatted_num = f"{split_num+1:02d}"
+        if counter % 200 == 0:
+            progress = format_progress((counter
+                                        / len(gff_df["transcript_id"]
+                                              .unique()))*100)
             print("\n"*(split_num // 4),
                   "\033[20C"*(split_num % 4),
                   f"thread {formatted_num}: {progress} | ",
                   "\033[1A"*(split_num // 4),
                   end="\r", flush=False, sep="")
-        
+
         if group_name in transcript_list:
             transcript_start = group_df["start"].min()
 
@@ -410,7 +402,6 @@ def gff_df_to_cds_df(
             cds_start_end_tuple_list = sorted(
                 zip(cds_df_tx["start"], cds_df_tx["end"])
                 )
-
             cds_tx_start = cds_start_end_tuple_list[0][0] - transcript_start
             cds_tx_end = cds_start_end_tuple_list[-1][1] - transcript_start
 
@@ -433,11 +424,17 @@ def gff_df_to_cds_df(
             rows["genomic_cds_starts"].append(genomic_cds_starts)
             rows["genomic_cds_ends"].append(genomic_cds_ends)
 
+    progress = format_progress((1)*100)
+    print("\n"*(split_num // 4),
+          "\033[20C"*(split_num % 4),
+          f"thread {formatted_num}: {progress} | ",
+          "\033[1A"*(split_num // 4),
+          end="\r", flush=False, sep="")
     return pd.DataFrame(rows)
 
 
 def format_progress(percentage):
-    percentage = round(percentage,3)
+    percentage = round(percentage, 3)
     formatted_percentage = "{:.3f}%".format(percentage)
     if len(formatted_percentage) > 7:
         formatted_percentage = "{:.1f}%".format(percentage)
