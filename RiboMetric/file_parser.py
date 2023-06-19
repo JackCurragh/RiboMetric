@@ -260,25 +260,33 @@ def prepare_annotation(
     """
     pool = Pool(processes=num_processes)
 
-    print("Splitting gff..")
-    with TemporaryDirectory() as tempdir:
-        gff_list = split_gff_file(gff_path,
-                                  tempdir,
-                                  num_processes)
+    print("Parsing gff..")
+    gff_df, coding_tx_ids = parse_gff(gff_path, num_transcripts)
+    split_length = (len(gff_df) // num_processes) + 1
+
+    split_df_list = []
+    for split in range(num_processes):
         
-        print("Parsing gff..")
-        gff_batches = []
-        print("Progress:")
-        for split_num, split_path in enumerate(gff_list):
-            # formatted_num = f"{split_num+1:02d}"
-            # print("\n"*(split_num // 4),"\033[20C"*(split_num % 4),f"thread {formatted_num}: 01.12% | ", "\033[1A"*(split_num // 4), end="\r", flush=False, sep="")
-            gff_batches.append(pool.apply_async(parse_gff,[split_path, num_transcripts, split_num]))
-        
-        pool.close()
-        pool.join()
+        split_df_list.append(gff_df.iloc[split_length * split : split_length * (split + 1)])
+
+
+    print(split_df_list[0].iloc[-10:])
+    print("="*20)
+    print(split_df_list[1].iloc[0:10])
+    exit()
+    annotation_batches = []
+    print("Subsetting CDS regions, Progress:")
+    for split_num, split_df in enumerate(split_df_list):
+        annotation_batches.append(gff_df_to_cds_df(split_df, coding_tx_ids, split_num))
+        # annotation_batches.append(pool.apply_async(gff_df_to_cds_df,[split_df, coding_tx_ids, split_num]))
+
+    pool.close()
+    pool.join()
 
     print("\n"*(split_num // 4))
-    results = [batch.get() for batch in gff_batches]
+    results = [batch.get() for batch in annotation_batches]
+
+    print([len(df) for df in results])
 
     total_len = 0
     for result in results:
@@ -321,7 +329,7 @@ def is_gzipped(file_path: str) -> bool:
         return False
 
 
-def parse_gff(gff_path: str, num_transcripts: int, split_num: int) -> pd.DataFrame:
+def parse_gff(gff_path: str, num_transcripts: int) -> pd.DataFrame:
     """
     Read in the gff file at the provided path and return a dataframe
 
@@ -352,10 +360,13 @@ def parse_gff(gff_path: str, num_transcripts: int, split_num: int) -> pd.DataFra
     cds_df = gff_df[gff_df["type"] == "CDS"]
     coding_tx_ids = cds_df["transcript_id"].unique()[:num_transcripts]
 
-    # print("Subsetting CDS regions..")
-    annotation_df = gff_df_to_cds_df(gff_df, coding_tx_ids, split_num)
+    # subset GFF DataFrame to only include transcripts in the transcript_list
+    gff_df = gff_df[gff_df["transcript_id"].isin(coding_tx_ids)]
 
-    return annotation_df
+    # Sort GFF DataFrame by transcript ID
+    gff_df = gff_df.sort_values("transcript_id")
+
+    return gff_df, coding_tx_ids
 
 
 def gff_df_to_cds_df(
@@ -385,32 +396,26 @@ def gff_df_to_cds_df(
         "genomic_cds_ends": [],
     }
 
-    # Sort GFF DataFrame by transcript ID
-    gff_df = gff_df.sort_values("transcript_id")
-
-    # subset GFF DataFrame to only include transcripts in the transcript_list
-    gff_df = gff_df[gff_df["transcript_id"].isin(transcript_list)]
-
     counter = 0
     for group_name, group_df in gff_df.groupby("transcript_id"):
         counter += 1
         if counter % 100 == 0:
             progress = format_progress((counter / len(transcript_list))*100)
             formatted_num = f"{split_num+1:02d}"
-            print("\n"*(split_num // 4),
-                  "\033[20C"*(split_num % 4),
-                  f"thread {formatted_num}: {progress} | ",
-                  "\033[1A"*(split_num // 4),
-                  end="\r", flush=False, sep="")
+            # print("\n"*(split_num // 4),
+            #       "\033[20C"*(split_num % 4),
+            #       f"thread {formatted_num}: {progress} | ",
+            #       "\033[1A"*(split_num // 4),
+            #       end="\r", flush=False, sep="")
         
         if group_name in transcript_list:
+            print(group_df)
             transcript_start = group_df["start"].min()
 
             cds_df_tx = group_df[group_df["type"] == "CDS"]
             cds_start_end_tuple_list = sorted(
                 zip(cds_df_tx["start"], cds_df_tx["end"])
                 )
-
             cds_tx_start = cds_start_end_tuple_list[0][0] - transcript_start
             cds_tx_end = cds_start_end_tuple_list[-1][1] - transcript_start
 
