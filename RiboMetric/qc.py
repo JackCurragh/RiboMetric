@@ -109,7 +109,7 @@ def annotation_mode(
         read_frame_distribution(cds_read_df)
         if config["qc"]["use_cds_subset"]["read_frame_distribution"]
         and annotation
-        else read_frame_distribution(read_df)
+        else read_frame_distribution(annotated_read_df)
         )
     frame_info_content_dict = rfd_metric(read_frame_dist)
     results_dict["read_frame_distribution"] = read_frame_dist
