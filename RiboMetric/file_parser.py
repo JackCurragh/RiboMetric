@@ -157,6 +157,8 @@ def parse_bam(bam_file: str,
             pool.close()
             pool.join()
 
+            print("\n"*(split_num // 4))
+
             parsed_bam = join_batches(bam_batches)
 
     else:

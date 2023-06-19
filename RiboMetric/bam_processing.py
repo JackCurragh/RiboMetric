@@ -32,21 +32,50 @@ def ox_parse_reads(bam_file: str,
             batch_df: Dataframe containing a processed batch of reads
             sequence_data: Dictionary containing the processed sequence data
     """
-    print(f"> splitting file {split_num}")
+    formatted_num = f"{split_num+1:02d}"
+
+    print("\n"*(split_num // 4),
+        "\033[25C"*(split_num % 4),
+        f"thread {formatted_num}: splitting.. | ",
+        "\033[1A"*(split_num // 4),
+        end="\r", flush=False, sep="")
+    
     tmp_bam = split_bam(bam_file,
                         split_num,
                         reference_df,
                         tempdir)
-    print(f"> oxbow parse {split_num}")
+
+    # print(f"> oxbow parse {split_num}")
+    print("\n"*(split_num // 4),
+        "\033[25C"*(split_num % 4),
+        f"thread {formatted_num}: parsing..   | ",
+        "\033[1A"*(split_num // 4),
+        end="\r", flush=False, sep="")
+    
     arrow_ipc = ox.read_bam(tmp_bam)
     oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
     del arrow_ipc
-    print(f"> Creating read df {split_num}")
+
+    # print(f"> Creating read df {split_num}")
+    print("\n"*(split_num // 4),
+        "\033[25C"*(split_num % 4),
+        f"thread {formatted_num}: to pandas.. | ",
+        "\033[1A"*(split_num // 4),
+        end="\r", flush=False, sep="")
+
     batch_df = process_reads(oxbow_df)
-    print(f"> Creating sequence_data {split_num}")
+
+    # print(f"> Creating sequence_data {split_num}")
+    print("\n"*(split_num // 4),
+        "\033[25C"*(split_num % 4),
+        f"thread {formatted_num}: sequencing..| ",
+        "\033[1A"*(split_num // 4),
+        end="\r", flush=False, sep="")
+
     sequence_data = {1: [], 2: []}
     sequence_list = oxbow_df["seq"].tolist()
     count_list = batch_df["count"].tolist()
+    
     # sequence_list batch size
     size = 10000
     if len(sequence_list) < size and len(sequence_list) != 0:
@@ -63,6 +92,12 @@ def ox_parse_reads(bam_file: str,
                 process_sequences(section,
                                   counts,
                                   pattern_length))
+
+    print("\n"*(split_num // 4),
+        "\033[25C"*(split_num % 4),
+        f"thread {formatted_num}: Parsed!     | ",
+        "\033[1A"*(split_num // 4),
+        end="\r", flush=False, sep="")
 
     return (batch_df, sequence_data)
 
