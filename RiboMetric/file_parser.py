@@ -19,7 +19,7 @@ from tempfile import TemporaryDirectory
 
 
 from .bam_processing import join_batches, ox_parse_reads, ox_server_parse_reads
-from .file_splitting import split_gff_file
+from .file_splitting import split_gff_df
 from .file_splitting import run_samtools_idxstats, split_idxstats_df
 
 
@@ -262,34 +262,12 @@ def prepare_annotation(
 
     print("Parsing gff..")
     gff_df, coding_tx_ids = parse_gff(gff_path, num_transcripts)
-    split_length = (len(gff_df) // num_processes) + 1
+    split_df_list = split_gff_df(gff_df, num_processes)
 
-    prev_offset, offset = 0, 0
-    split_df_list = []
-    for split in range(num_processes):
-        lower_limit = split_length * split
-        upper_limit = split_length * (split + 1)
-        last_transcript_id = gff_df["transcript_id"][upper_limit]
-        next_transcript_id = gff_df["transcript_id"][upper_limit + 1]
-        print(last_transcript_id, next_transcript_id)
-        exit()
-        offset +=1
-
-        split_df = gff_df.iloc[lower_limit + prev_offset
-                               : upper_limit + offset]
-        prev_offset = offset
-        split_df_list.append()
-
-
-    print(split_df_list[0].iloc[-10:])
-    print("="*20)
-    print(split_df_list[1].iloc[0:10])
-    exit()
     annotation_batches = []
     print("Subsetting CDS regions, Progress:")
     for split_num, split_df in enumerate(split_df_list):
-        annotation_batches.append(gff_df_to_cds_df(split_df, coding_tx_ids, split_num))
-        # annotation_batches.append(pool.apply_async(gff_df_to_cds_df,[split_df, coding_tx_ids, split_num]))
+        annotation_batches.append(pool.apply_async(gff_df_to_cds_df,[split_df, coding_tx_ids, split_num]))
 
     pool.close()
     pool.join()
@@ -297,18 +275,10 @@ def prepare_annotation(
     print("\n"*(split_num // 4))
     results = [batch.get() for batch in annotation_batches]
 
-    print([len(df) for df in results])
-
-    total_len = 0
-    for result in results:
-        print(len(result))
-        total_len += len(result)
-    print(total_len)
-
-    exit("WIP")
+    annotation_df = pd.concat(results, ignore_index=True)
 
     basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
-    output_name = f"{basename}_RiboMetric.tsv"
+    output_name = f"{basename}_RiboMetric_multiprocessed.tsv"
     annotation_df.to_csv(
         os.path.join(outdir, output_name),
         sep="\t",
@@ -397,6 +367,9 @@ def gff_df_to_cds_df(
         cds_df: Dataframe containing the CDS information
                 columns: transcript_id, cds_start, cds_end
     """
+    # Format split_num for print
+    formatted_num = f"{split_num+1:02d}"
+
     # Extract transcript ID from "attributes" column using regular expression
     rows = {
         "transcript_id": [],
@@ -410,17 +383,15 @@ def gff_df_to_cds_df(
     counter = 0
     for group_name, group_df in gff_df.groupby("transcript_id"):
         counter += 1
-        if counter % 100 == 0:
-            progress = format_progress((counter / len(transcript_list))*100)
-            formatted_num = f"{split_num+1:02d}"
-            # print("\n"*(split_num // 4),
-            #       "\033[20C"*(split_num % 4),
-            #       f"thread {formatted_num}: {progress} | ",
-            #       "\033[1A"*(split_num // 4),
-            #       end="\r", flush=False, sep="")
+        if counter % 200 == 0:
+            progress = format_progress((counter / len(gff_df["transcript_id"].unique()))*100)
+            print("\n"*(split_num // 4),
+                  "\033[20C"*(split_num % 4),
+                  f"thread {formatted_num}: {progress} | ",
+                  "\033[1A"*(split_num // 4),
+                  end="\r", flush=False, sep="")
         
         if group_name in transcript_list:
-            print(group_df)
             transcript_start = group_df["start"].min()
 
             cds_df_tx = group_df[group_df["type"] == "CDS"]
@@ -449,6 +420,12 @@ def gff_df_to_cds_df(
             rows["genomic_cds_starts"].append(genomic_cds_starts)
             rows["genomic_cds_ends"].append(genomic_cds_ends)
 
+    progress = format_progress((1)*100)
+    print("\n"*(split_num // 4),
+            "\033[20C"*(split_num % 4),
+            f"thread {formatted_num}: {progress} | ",
+            "\033[1A"*(split_num // 4),
+            end="\r", flush=False, sep="")
     return pd.DataFrame(rows)
 
 
