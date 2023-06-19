@@ -251,33 +251,33 @@ def read_frame_score(read_frame_dict: dict) -> dict:
     return scored_read_frame_dict
 
 
-# def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
-#     """
-#     Calculate the distribution of the reading frame over the dataset
+def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
+    """
+    Calculate the distribution of the reading frame over the dataset
 
-#     Inputs:
-#         a_site_df: Dataframe containing the read information with an added
-#         column for the a-site location
+    Inputs:
+        a_site_df: Dataframe containing the read information with an added
+        column for the a-site location
 
-#     Outputs:
-#         read_frame_dict: Nested dictionary containing counts for every reading
-#         frame at the different read lengths
-#     """
-#     frame_df = (
-#         a_site_df.assign(read_frame=a_site_df.a_site.mod(3))
-#         .groupby(["read_length", "read_frame"])
-#         .size()
-#     )
-#     read_frame_dict = {}
-#     for index, value in frame_df.items():
-#         read_length, read_frame = index
-#         if read_length not in read_frame_dict:
-#             read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
-#         read_frame_dict[read_length][read_frame] = value
-#     return read_frame_dict
+    Outputs:
+        read_frame_dict: Nested dictionary containing counts for every reading
+        frame at the different read lengths
+    """
+    frame_df = (
+        a_site_df.assign(read_frame=a_site_df.a_site.mod(3))
+        .groupby(["read_length", "read_frame"])
+        .size()
+    )
+    read_frame_dict = {}
+    for index, value in frame_df.items():
+        read_length, read_frame = index
+        if read_length not in read_frame_dict:
+            read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
+        read_frame_dict[read_length][read_frame] = value
+    return read_frame_dict
 
 
-def read_frame_distribution(annotated_read_df: pd.DataFrame) -> dict:
+def read_frame_distribution_annotated(annotated_read_df: pd.DataFrame) -> dict:
     """
     Calculate the distribution of the reading frame over the dataset
 
