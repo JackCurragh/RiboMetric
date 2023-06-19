@@ -236,7 +236,6 @@ def check_annotation(file_path: str) -> bool:
         return False
 
 
-
 def prepare_annotation(
         gff_path: str,
         outdir: str,
@@ -267,7 +266,10 @@ def prepare_annotation(
     annotation_batches = []
     print("Subsetting CDS regions, Progress:")
     for split_num, split_df in enumerate(split_df_list):
-        annotation_batches.append(pool.apply_async(gff_df_to_cds_df,[split_df, coding_tx_ids, split_num]))
+        annotation_batches.append(pool.apply_async(gff_df_to_cds_df,
+                                                   [split_df,
+                                                    coding_tx_ids,
+                                                    split_num]))
 
     pool.close()
     pool.join()
@@ -384,13 +386,15 @@ def gff_df_to_cds_df(
     for group_name, group_df in gff_df.groupby("transcript_id"):
         counter += 1
         if counter % 200 == 0:
-            progress = format_progress((counter / len(gff_df["transcript_id"].unique()))*100)
+            progress = format_progress((counter
+                                        / len(gff_df["transcript_id"]
+                                              .unique()))*100)
             print("\n"*(split_num // 4),
                   "\033[20C"*(split_num % 4),
                   f"thread {formatted_num}: {progress} | ",
                   "\033[1A"*(split_num // 4),
                   end="\r", flush=False, sep="")
-        
+
         if group_name in transcript_list:
             transcript_start = group_df["start"].min()
 
@@ -422,15 +426,15 @@ def gff_df_to_cds_df(
 
     progress = format_progress((1)*100)
     print("\n"*(split_num // 4),
-            "\033[20C"*(split_num % 4),
-            f"thread {formatted_num}: {progress} | ",
-            "\033[1A"*(split_num // 4),
-            end="\r", flush=False, sep="")
+          "\033[20C"*(split_num % 4),
+          f"thread {formatted_num}: {progress} | ",
+          "\033[1A"*(split_num // 4),
+          end="\r", flush=False, sep="")
     return pd.DataFrame(rows)
 
 
 def format_progress(percentage):
-    percentage = round(percentage,3)
+    percentage = round(percentage, 3)
     formatted_percentage = "{:.3f}%".format(percentage)
     if len(formatted_percentage) > 7:
         formatted_percentage = "{:.1f}%".format(percentage)
