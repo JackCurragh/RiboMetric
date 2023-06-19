@@ -289,8 +289,9 @@ def read_frame_distribution(annotated_read_df: pd.DataFrame) -> dict:
         read_frame_dict: Nested dictionary containing counts for every reading
         frame at the different read lengths
     """
+    df_slice = annotated_read_df[annotated_read_df["cds_start"] != 0]
     frame_df = (
-        annotated_read_df.assign(read_frame=(annotated_read_df.a_site-annotated_read_df.cds_start).mod(3))
+        df_slice.assign(read_frame=(df_slice.a_site-df_slice.cds_start).mod(3))
         .groupby(["read_length", "read_frame"])
         .size()
     )
