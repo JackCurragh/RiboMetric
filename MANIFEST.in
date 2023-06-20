@@ -5,7 +5,9 @@ include LICENSE
 include README.rst
 include RiboMetric/config.yml
 
+
 recursive-include tests *
+recursive-include RiboMetric *
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
 recursive-exclude sample_data *
