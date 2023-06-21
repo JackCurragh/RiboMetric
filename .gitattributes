@@ -3,3 +3,4 @@
 *.py              linguist-language=Python
 example_reports/* linguist-generated
 docs/*            linguist-documentation
+*.html            linguist-vendored
