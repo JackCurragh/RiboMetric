@@ -299,7 +299,7 @@ def annotate_reads(
     ).merge(annotation_df, on="transcript_id")
     annotated_read_df["transcript_id"] = (annotated_read_df["transcript_id"]
                                           .astype("category"))
-    return annotated_read_df.drop(["reference_name"], axis=1)
+    return annotated_read_df#.drop(["reference_name"], axis=1)
 
 
 def assign_mRNA_category(annotated_read_df) -> str:
