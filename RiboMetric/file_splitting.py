@@ -226,3 +226,18 @@ def split_gff_df(gff_df, split_num):
         split_df_list.append(split_df)
 
     return split_df_list
+
+
+def format_progress(percentage):
+    round_percentage = round(percentage, 3)
+    formatted_percentage = "{:.3f}%".format(round_percentage)
+
+    if len(formatted_percentage) > 7:
+        round_percentage = round(percentage, 1)
+        formatted_percentage = "{:.1f}%".format(round_percentage)
+    
+    elif len(formatted_percentage) > 6:
+        round_percentage = round(percentage, 2)
+        formatted_percentage = "{:.2f}%".format(round_percentage)
+
+    return formatted_percentage

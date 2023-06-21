@@ -19,8 +19,10 @@ from tempfile import TemporaryDirectory
 
 
 from .bam_processing import join_batches, ox_parse_reads, ox_server_parse_reads
-from .file_splitting import split_gff_df
-from .file_splitting import run_samtools_idxstats, split_idxstats_df
+from .file_splitting import (split_gff_df,
+                            run_samtools_idxstats,
+                            split_idxstats_df,
+                            format_progress)
 
 
 def parse_annotation(annotation_path: str) -> pd.DataFrame:
@@ -433,14 +435,3 @@ def gff_df_to_cds_df(
           "\033[1A"*(split_num // 4),
           end="\r", flush=False, sep="")
     return pd.DataFrame(rows)
-
-
-def format_progress(percentage):
-    percentage = round(percentage, 3)
-    formatted_percentage = "{:.3f}%".format(percentage)
-    if len(formatted_percentage) > 7:
-        formatted_percentage = "{:.1f}%".format(percentage)
-    elif len(formatted_percentage) > 6:
-        formatted_percentage = "{:.2f}%".format(percentage)
-
-    return formatted_percentage
