@@ -28,7 +28,7 @@ def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
     return cds_read_df
 
 
-def a_site_calculation(read_df: pd.DataFrame, offset=15) -> pd.DataFrame:
+def a_site_calculation(read_df: pd.DataFrame, offset=12) -> pd.DataFrame:
     """
     Adds a column to the read_df containing the A-site for the reads
 
@@ -265,6 +265,33 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     """
     frame_df = (
         a_site_df.assign(read_frame=a_site_df.a_site.mod(3))
+        .groupby(["read_length", "read_frame"])
+        .size()
+    )
+    read_frame_dict = {}
+    for index, value in frame_df.items():
+        read_length, read_frame = index
+        if read_length not in read_frame_dict:
+            read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
+        read_frame_dict[read_length][read_frame] = value
+    return read_frame_dict
+
+
+def read_frame_distribution_annotated(annotated_read_df: pd.DataFrame) -> dict:
+    """
+    Calculate the distribution of the reading frame over the dataset
+
+    Inputs:
+        a_site_df: Dataframe containing the read information with an added
+        column for the a-site location
+
+    Outputs:
+        read_frame_dict: Nested dictionary containing counts for every reading
+        frame at the different read lengths
+    """
+    df_slice = annotated_read_df[annotated_read_df["cds_start"] != 0]
+    frame_df = (
+        df_slice.assign(read_frame=(df_slice.a_site-df_slice.cds_start).mod(3))
         .groupby(["read_length", "read_frame"])
         .size()
     )
