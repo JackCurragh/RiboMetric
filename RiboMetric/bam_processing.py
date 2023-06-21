@@ -7,7 +7,7 @@ import itertools
 import oxbow as ox
 import io
 import pyarrow.ipc
-from .file_splitting import split_bam
+from .file_splitting import split_bam, format_progress
 from multiprocessing import Pool
 
 
@@ -78,10 +78,15 @@ def ox_parse_reads(bam_file: str,
     
     # sequence_list batch size
     size = 10000
-    if len(sequence_list) < size and len(sequence_list) != 0:
-        size = len(sequence_list)
+    list_length = len(sequence_list)
+
+    if list_length < size and list_length != 0:
+        size = list_length
+
     for pattern_length in sequence_data:
         count = -1
+        progress = 0
+
         for i in range(0, len(sequence_list), size):
             count += 1
             if count % 10 != 0:
@@ -92,6 +97,16 @@ def ox_parse_reads(bam_file: str,
                 process_sequences(section,
                                   counts,
                                   pattern_length))
+            
+            progress += size
+            formatted_progress = (format_progress((progress/list_length)*1000)
+                                  if (progress/list_length)*1000 < 100
+                                  else format_progress(100))
+            print("\n"*(split_num // 4),
+                "\033[25C"*(split_num % 4),
+                f"thread {formatted_num}: {pattern_length}: {formatted_progress}  | ",
+                "\033[1A"*(split_num // 4),
+                end="\r", flush=False, sep="")
 
     print("\n"*(split_num // 4),
         "\033[25C"*(split_num % 4),
