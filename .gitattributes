@@ -1,7 +1,7 @@
 # Linguist configuration
 RiboMetric/*.py              linguist-detectable
 RiboMetric/*.py              linguist-language=Python
-RiboMetric/templates/*.html  linguist-language=HTML
+RiboMetric/*.html            linguist-language=HTML
 Makefile                     linguist-language=makefile
 example_reports/*            linguist-generated
 docs/*                       linguist-documentation
