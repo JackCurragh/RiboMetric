@@ -6,8 +6,9 @@ import numpy as np
 import itertools
 import oxbow as ox
 import io
+import os
 import pyarrow.ipc
-from .file_splitting import split_bam
+from .file_splitting import split_bam, format_progress
 from multiprocessing import Pool
 
 
@@ -32,27 +33,65 @@ def ox_parse_reads(bam_file: str,
             batch_df: Dataframe containing a processed batch of reads
             sequence_data: Dictionary containing the processed sequence data
     """
-    print(f"> splitting file {split_num}")
+    formatted_num = f"{split_num+1:02d}"
+    try:
+        print_columns = os.get_terminal_size().columns // 25
+    except:
+        print_columns = 4
+
+    print("\n"*(split_num // print_columns),
+        "\033[25C"*(split_num % print_columns),
+        f"thread {formatted_num}: splitting.. | ",
+        "\033[1A"*(split_num // print_columns),
+        end="\r", flush=False, sep="")
+    
     tmp_bam = split_bam(bam_file,
                         split_num,
                         reference_df,
                         tempdir)
-    print(f"> oxbow parse {split_num}")
+
+    # print(f"> oxbow parse {split_num}")
+    print("\n"*(split_num // print_columns),
+        "\033[25C"*(split_num % print_columns),
+        f"thread {formatted_num}: parsing..   | ",
+        "\033[1A"*(split_num // print_columns),
+        end="\r", flush=False, sep="")
+    
     arrow_ipc = ox.read_bam(tmp_bam)
     oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
     del arrow_ipc
-    print(f"> Creating read df {split_num}")
+
+    # print(f"> Creating read df {split_num}")
+    print("\n"*(split_num // print_columns),
+        "\033[25C"*(split_num % print_columns),
+        f"thread {formatted_num}: to pandas.. | ",
+        "\033[1A"*(split_num // print_columns),
+        end="\r", flush=False, sep="")
+
     batch_df = process_reads(oxbow_df)
-    print(f"> Creating sequence_data {split_num}")
+
+    # print(f"> Creating sequence_data {split_num}")
+    print("\n"*(split_num // print_columns),
+        "\033[25C"*(split_num % print_columns),
+        f"thread {formatted_num}: sequencing..| ",
+        "\033[1A"*(split_num // print_columns),
+        end="\r", flush=False, sep="")
+
     sequence_data = {1: [], 2: []}
     sequence_list = oxbow_df["seq"].tolist()
     count_list = batch_df["count"].tolist()
+    
     # sequence_list batch size
     size = 10000
-    if len(sequence_list) < size and len(sequence_list) != 0:
-        size = len(sequence_list)
+    list_length = len(sequence_list)
+
+    if list_length < size and list_length != 0:
+        size = list_length
+
     for pattern_length in sequence_data:
         count = -1
+        progress = 0
+
         for i in range(0, len(sequence_list), size):
             count += 1
             if count % 10 != 0:
@@ -63,6 +102,22 @@ def ox_parse_reads(bam_file: str,
                 process_sequences(section,
                                   counts,
                                   pattern_length))
+            
+            progress += size
+            formatted_progress = (format_progress((progress/list_length)*1000)
+                                  if (progress/list_length)*1000 < 100
+                                  else format_progress(100))
+            print("\n"*(split_num // print_columns),
+                "\033[25C"*(split_num % print_columns),
+                f"thread {formatted_num}: {pattern_length}: {formatted_progress}  | ",
+                "\033[1A"*(split_num // print_columns),
+                end="\r", flush=False, sep="")
+
+    print("\n"*(split_num // print_columns),
+        "\033[25C"*(split_num % print_columns),
+        f"thread {formatted_num}: Parsed!     | ",
+        "\033[1A"*(split_num // print_columns),
+        end="\r", flush=False, sep="")
 
     return (batch_df, sequence_data)
 

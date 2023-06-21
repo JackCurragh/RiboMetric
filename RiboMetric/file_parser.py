@@ -19,8 +19,10 @@ from tempfile import TemporaryDirectory
 
 
 from .bam_processing import join_batches, ox_parse_reads, ox_server_parse_reads
-from .file_splitting import split_gff_df
-from .file_splitting import run_samtools_idxstats, split_idxstats_df
+from .file_splitting import (split_gff_df,
+                            run_samtools_idxstats,
+                            split_idxstats_df,
+                            format_progress)
 
 
 def parse_annotation(annotation_path: str) -> pd.DataFrame:
@@ -156,6 +158,8 @@ def parse_bam(bam_file: str,
 
             pool.close()
             pool.join()
+
+            print("\n"*(split_num // 4))
 
             parsed_bam = join_batches(bam_batches)
 
@@ -371,6 +375,10 @@ def gff_df_to_cds_df(
     """
     # Format split_num for print
     formatted_num = f"{split_num+1:02d}"
+    try:
+        print_columns = os.get_terminal_size().columns // 20
+    except:
+        print_columns = 4
 
     # Extract transcript ID from "attributes" column using regular expression
     rows = {
@@ -389,10 +397,10 @@ def gff_df_to_cds_df(
             progress = format_progress((counter
                                         / len(gff_df["transcript_id"]
                                               .unique()))*100)
-            print("\n"*(split_num // 4),
-                  "\033[20C"*(split_num % 4),
+            print("\n"*(split_num // print_columns),
+                  "\033[20C"*(split_num % print_columns),
                   f"thread {formatted_num}: {progress} | ",
-                  "\033[1A"*(split_num // 4),
+                  "\033[1A"*(split_num // print_columns),
                   end="\r", flush=False, sep="")
 
         if group_name in transcript_list:
@@ -425,20 +433,9 @@ def gff_df_to_cds_df(
             rows["genomic_cds_ends"].append(genomic_cds_ends)
 
     progress = format_progress((1)*100)
-    print("\n"*(split_num // 4),
-          "\033[20C"*(split_num % 4),
+    print("\n"*(split_num // print_columns),
+          "\033[20C"*(split_num % print_columns),
           f"thread {formatted_num}: {progress} | ",
-          "\033[1A"*(split_num // 4),
+          "\033[1A"*(split_num // print_columns),
           end="\r", flush=False, sep="")
     return pd.DataFrame(rows)
-
-
-def format_progress(percentage):
-    percentage = round(percentage, 3)
-    formatted_percentage = "{:.3f}%".format(percentage)
-    if len(formatted_percentage) > 7:
-        formatted_percentage = "{:.1f}%".format(percentage)
-    elif len(formatted_percentage) > 6:
-        formatted_percentage = "{:.2f}%".format(percentage)
-
-    return formatted_percentage
