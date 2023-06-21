@@ -118,13 +118,15 @@ def split_bam(bam_file: str,
                                 bedfile,
                                 bam_file),
                                stdout=subprocess.PIPE)
-    subprocess.run(('samtools',
-                    'sort',
-                    '-O',
-                    'bam',
-                    '-o',
-                    outfile),
-                   stdin=samview.stdout)
+    with open("/dev/null", "w") as stderr:
+        subprocess.run(('samtools',
+                        'sort',
+                        '-O',
+                        'bam',
+                        '-o',
+                        outfile),
+                    stdin=samview.stdout,
+                    stderr=stderr)
     samview.wait()
     subprocess.run(('samtools',
                     'index',
