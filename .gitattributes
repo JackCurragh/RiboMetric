@@ -1,6 +1,6 @@
-# Files ignored for language statistics
-*.py              linguist-detectable
-*.py              linguist-language=Python
-example_reports/* linguist-generated
-docs/*            linguist-documentation
-*.html            linguist-language=Python
+# Linguist configuration
+RiboMetric/*.py              linguist-detectable
+RiboMetric/*.py              linguist-language=Python
+example_reports/*            linguist-generated
+docs/*                       linguist-documentation
+RiboMetric/*.html            linguist-language=HTML
