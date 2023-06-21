@@ -192,7 +192,7 @@ def split_gff_df(gff_df, split_num):
             split_df = gff_df.iloc[lower_limit + prev_offset:
                                    df_length]
             split_df_list.append(split_df)
-            print("limit reached outside loop")
+            # print("limit reached outside loop")
             return split_df_list
 
         last_transcript_id = gff_df["transcript_id"].iloc[upper_limit
@@ -207,7 +207,7 @@ def split_gff_df(gff_df, split_num):
                 split_df = gff_df.iloc[lower_limit + prev_offset:
                                        df_length]
                 split_df_list.append(split_df)
-                print("limit reached inside loop")
+                # print("limit reached inside loop")
                 return split_df_list
 
             offset += 1
