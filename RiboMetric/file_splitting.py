@@ -118,13 +118,15 @@ def split_bam(bam_file: str,
                                 bedfile,
                                 bam_file),
                                stdout=subprocess.PIPE)
-    subprocess.run(('samtools',
-                    'sort',
-                    '-O',
-                    'bam',
-                    '-o',
-                    outfile),
-                   stdin=samview.stdout)
+    with open("/dev/null", "w") as stderr:
+        subprocess.run(('samtools',
+                        'sort',
+                        '-O',
+                        'bam',
+                        '-o',
+                        outfile),
+                    stdin=samview.stdout,
+                    stderr=stderr)
     samview.wait()
     subprocess.run(('samtools',
                     'index',
@@ -190,7 +192,7 @@ def split_gff_df(gff_df, split_num):
             split_df = gff_df.iloc[lower_limit + prev_offset:
                                    df_length]
             split_df_list.append(split_df)
-            print("limit reached outside loop")
+            # print("limit reached outside loop")
             return split_df_list
 
         last_transcript_id = gff_df["transcript_id"].iloc[upper_limit
@@ -205,7 +207,7 @@ def split_gff_df(gff_df, split_num):
                 split_df = gff_df.iloc[lower_limit + prev_offset:
                                        df_length]
                 split_df_list.append(split_df)
-                print("limit reached inside loop")
+                # print("limit reached inside loop")
                 return split_df_list
 
             offset += 1
@@ -224,3 +226,18 @@ def split_gff_df(gff_df, split_num):
         split_df_list.append(split_df)
 
     return split_df_list
+
+
+def format_progress(percentage):
+    round_percentage = round(percentage, 3)
+    formatted_percentage = "{:.3f}%".format(round_percentage)
+
+    if len(formatted_percentage) > 7:
+        round_percentage = round(percentage, 1)
+        formatted_percentage = "{:.1f}%".format(round_percentage)
+    
+    elif len(formatted_percentage) > 6:
+        round_percentage = round(percentage, 2)
+        formatted_percentage = "{:.2f}%".format(round_percentage)
+
+    return formatted_percentage
