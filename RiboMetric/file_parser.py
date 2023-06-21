@@ -192,34 +192,6 @@ def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
     return count_sorted_df.index[:num_transcripts].tolist()
 
 
-def subset_gff(gff_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Subset the gff dataframe to only include the CDS features
-
-    Inputs:
-        gff_df: Dataframe containing the gff information
-
-    Outputs:
-        gff_df: Dataframe containing the gff information
-    """
-    return gff_df[gff_df["feature"] == "CDS"]
-
-
-def extract_transcript_id(attr_str):
-    for attr in attr_str.split(";"):
-        # Ensembl GFF3 support
-        if attr.startswith("Parent=transcript:") \
-                or attr.startswith("ID=transcript:"):
-            return attr.split(":")[1]
-        # Gencode GFF3 support
-        elif attr.startswith("transcript_id="):
-            return attr.split("=")[1]
-        # Ensembl GTF support
-        elif attr.startswith(" transcript_id "):
-            return attr.split(" ")[2].replace('"', "")
-    return np.nan
-
-
 def check_annotation(file_path: str) -> bool:
     """
     Checks whether an annotation file exists and is in the right format
@@ -354,6 +326,21 @@ def parse_gff(gff_path: str, num_transcripts: int) -> pd.DataFrame:
     gff_df = gff_df.sort_values("transcript_id")
 
     return gff_df, coding_tx_ids
+
+
+def extract_transcript_id(attr_str):
+    for attr in attr_str.split(";"):
+        # Ensembl GFF3 support
+        if attr.startswith("Parent=transcript:") \
+                or attr.startswith("ID=transcript:"):
+            return attr.split(":")[1]
+        # Gencode GFF3 support
+        elif attr.startswith("transcript_id="):
+            return attr.split("=")[1]
+        # Ensembl GTF support
+        elif attr.startswith(" transcript_id "):
+            return attr.split(" ")[2].replace('"', "")
+    return np.nan
 
 
 def gff_df_to_cds_df(
