@@ -375,6 +375,10 @@ def gff_df_to_cds_df(
     """
     # Format split_num for print
     formatted_num = f"{split_num+1:02d}"
+    try:
+        print_columns = os.get_terminal_size().columns // 20
+    except:
+        print_columns = 4
 
     # Extract transcript ID from "attributes" column using regular expression
     rows = {
@@ -393,10 +397,10 @@ def gff_df_to_cds_df(
             progress = format_progress((counter
                                         / len(gff_df["transcript_id"]
                                               .unique()))*100)
-            print("\n"*(split_num // 4),
-                  "\033[20C"*(split_num % 4),
+            print("\n"*(split_num // print_columns),
+                  "\033[20C"*(split_num % print_columns),
                   f"thread {formatted_num}: {progress} | ",
-                  "\033[1A"*(split_num // 4),
+                  "\033[1A"*(split_num // print_columns),
                   end="\r", flush=False, sep="")
 
         if group_name in transcript_list:
@@ -429,9 +433,9 @@ def gff_df_to_cds_df(
             rows["genomic_cds_ends"].append(genomic_cds_ends)
 
     progress = format_progress((1)*100)
-    print("\n"*(split_num // 4),
-          "\033[20C"*(split_num % 4),
+    print("\n"*(split_num // print_columns),
+          "\033[20C"*(split_num % print_columns),
           f"thread {formatted_num}: {progress} | ",
-          "\033[1A"*(split_num // 4),
+          "\033[1A"*(split_num // print_columns),
           end="\r", flush=False, sep="")
     return pd.DataFrame(rows)
