@@ -233,7 +233,7 @@ def main(args):
                 print("Dataframe expanded")
 
             del read_df_pre
-            print("Calculating A site information")
+            print("Calculating A site information...")
             read_df = a_site_calculation(read_df)
 
             if (config["argument"]["gff"] is None and
