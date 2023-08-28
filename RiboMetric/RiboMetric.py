@@ -246,7 +246,7 @@ def main(args):
             else:
                 if (config["argument"]["annotation"] is not None and
                         config["argument"]["gff"] is not None):
-                    print("Both annotation and gff provided, using annotation mode ")
+                    print("Both annotation and gff provided, using annotation mode")
                     annotation_df = parse_annotation(
                         config["argument"]["annotation"]
                         )
