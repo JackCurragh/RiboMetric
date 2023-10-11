@@ -19,6 +19,7 @@ from .modules import (
     normalise_ligation_bias,
     nucleotide_composition,
     read_frame_distribution,
+    read_frame_distribution_annotated,
     mRNA_distribution,
     metagene_profile,
     reading_frame_triangle,
@@ -111,12 +112,16 @@ def annotation_mode(
         sequence_data)
 
     print("> read_frame_distribution")
-    read_frame_dist = (
-        read_frame_distribution(cds_read_df)
-        if config["qc"]["use_cds_subset"]["read_frame_distribution"]
-        and annotation
-        else read_frame_distribution(read_df)
-        )
+    if annotation:
+        read_frame_dist = (
+            read_frame_distribution_annotated(cds_read_df)
+            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
+            and annotation
+            else read_frame_distribution_annotated(annotated_read_df)
+            )
+    else:
+        read_frame_dist = (read_frame_distribution(a_site_df))
+        
     frame_info_content_dict = rfd_metric(read_frame_dist)
     results_dict["read_frame_distribution"] = read_frame_dist
     # results_dict["metrics"]["read_frame_distribution_metric"] =\
