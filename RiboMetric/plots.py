@@ -62,6 +62,9 @@ def generate_plots(results_dict: dict, config: dict) -> list:
             plot_read_length_distribution(
                 results_dict["read_length_distribution"], config
             ),
+            plot_read_frame_triangle(
+                results_dict["reading_frame_triangle"], config
+            ),
             ])
 
     return plots_list
@@ -850,3 +853,44 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
              for k, v in metrics_dict.items()]
     }
     return plot_metrics_summary_dict
+
+
+def plot_read_frame_triangle(
+        read_frame_triangle_dict: dict, config: dict) -> dict:
+    '''
+    Generate the triangle plot of the read frame distribution
+
+    Inputs:
+        read_frame_triangle_dict: Dictionary containing the read frame
+        distribution
+        config: Dictionary containing the configuration information
+
+    '''
+    import plotly.express as px
+    import pandas as pd
+
+    data = [[k, v[0], v[1], v[2]] for k, v in read_frame_triangle_dict.items()]
+    df = pd.DataFrame(data, columns=['Transcript', 'F1', 'F2', 'F3'])
+    print(df)
+    fig = px.scatter_ternary(df, a="F1", b="F2", c="F3", hover_name="Transcript")
+
+    fig.update_layout(
+        title="Read Frame Triangle",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
+        ),
+    )
+    plot_read_frame_triangle_dict = {
+        "name": "Read Frame Triangle",
+        "description": "Triangle plot showing the distribution of read frames \
+for the full dataset",
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": plotly_to_image(fig,
+                                     config["plots"]["image_size"][0],
+                                     config["plots"]["image_size"][1]),
+    }
+
+    fig.write_html("read_frame_triangle.html")
+    return plot_read_frame_triangle_dict

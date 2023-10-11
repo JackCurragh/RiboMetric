@@ -512,6 +512,70 @@ removing boundaries..."
     return metagene_profile_dict
 
 
+def proportion_of_kmer(
+    annotated_read_df: pd.DataFrame,
+) -> dict:
+    '''
+    get proportion of reads with predicted a-sites in each frame for sequence of length k
+
+    Inputs:
+        annotated_read_df: Dataframe containing the read information
+        with an added column for the a-site location along with data from
+        the annotation file
+
+    '''
+    f1 = annotated_read_df[annotated_read_df['a_site'] % 3 == 0]
+    f2 = annotated_read_df[annotated_read_df['a_site'] % 3 == 1]
+    f3 = annotated_read_df[annotated_read_df['a_site'] % 3 == 2]
+
+    return [len(f1), len(f2), len(f3)]
+
+
+def get_cart_point(ternary_point, vertices=[[0.0, 0.0], [1.0, 0.0], [0.5, 1]]):
+    '''
+    Get the cartesian coordinates of a point in ternary space
+
+    Inputs:
+        ternary_point: Point in ternary space
+        vertices: Vertices of the triangle
+
+    Outputs:
+        cartesian_point: Point in cartesian space
+    '''
+    point = np.array(ternary_point)
+    verts= np.array(vertices)
+
+    return np.dot(point, verts)
+
+
+def reading_frame_triangle(
+        annotated_read_df: pd.DataFrame,
+) -> dict:
+    '''
+    Get the cartesian coordinates of the triangle plot for the reading frame
+
+    Inputs:
+        annotated_read_df: Dataframe containing the read information
+        with an added column for the a-site location along with data from
+        the annotation file
+
+    Outputs:
+        triangle_dict: Dictionary containing the cartesian coordinates
+        of the triangle plot for the reading frame
+    '''
+    triangle_dict = {}
+    for transcript, df in annotated_read_df.groupby('transcript_id'):
+        # Get the proportion of reads with predicted a-sites in each frame
+        proportion = proportion_of_kmer(df)
+        if len(proportion) < 3:
+            continue
+
+        # triangle_dict[transcript] = get_cart_point(proportion[0])
+        triangle_dict[transcript] = proportion
+
+    return triangle_dict
+
+
 def sequence_slice(
     read_df: pd.DataFrame, nt_start: int = 0, nt_count: int = 15
 ) -> dict:
