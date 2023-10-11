@@ -21,6 +21,7 @@ from .modules import (
     read_frame_distribution,
     mRNA_distribution,
     metagene_profile,
+    reading_frame_triangle,
 )
 
 from .metrics import (
@@ -99,6 +100,11 @@ def annotation_mode(
                 "nucleotide_count"
             ],
         )
+
+    print("> reading_frame_proportions")
+    results_dict["reading_frame_triangle"] = reading_frame_triangle(
+        annotated_read_df
+    )
 
     print("> nucleotide_composition")
     results_dict["nucleotide_composition"] = nucleotide_composition(
