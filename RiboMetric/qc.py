@@ -12,6 +12,7 @@ Three main modes:
 import pandas as pd
 from .modules import (
     annotate_reads,
+    chunked_annotate_reads,
     assign_mRNA_category,
     read_length_distribution,
     read_df_to_cds_read_df,
@@ -60,7 +61,8 @@ def annotation_mode(
     if len(annotation_df) > 0:
         annotation = True
         print("Merging annotation and reads")
-        annotated_read_df = annotate_reads(read_df, annotation_df)
+        annotated_read_df = chunked_annotate_reads(read_df, annotation_df)
+
         print("assigning mRNA categories")
         annotated_read_df = assign_mRNA_category(annotated_read_df)
         print("Subsetting to CDS reads")
@@ -120,8 +122,8 @@ def annotation_mode(
             else read_frame_distribution_annotated(annotated_read_df)
             )
     else:
-        read_frame_dist = (read_frame_distribution(a_site_df))
-        
+        read_frame_dist = (read_frame_distribution(read_df))
+
     frame_info_content_dict = rfd_metric(read_frame_dist)
     results_dict["read_frame_distribution"] = read_frame_dist
     # results_dict["metrics"]["read_frame_distribution_metric"] =\

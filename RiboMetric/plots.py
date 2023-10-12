@@ -9,6 +9,10 @@ from .modules import read_frame_cull, read_frame_score, sum_mRNA_distribution
 import plotly.io as pio
 import base64
 
+import plotly.express as px
+import pandas as pd
+import numpy as np
+
 
 def generate_plots(results_dict: dict, config: dict) -> list:
     """
@@ -866,13 +870,15 @@ def plot_read_frame_triangle(
         config: Dictionary containing the configuration information
 
     '''
-    import plotly.express as px
-    import pandas as pd
-
     data = [[k, v[0], v[1], v[2]] for k, v in read_frame_triangle_dict.items()]
     df = pd.DataFrame(data, columns=['Transcript', 'F1', 'F2', 'F3'])
-    print(df)
-    fig = px.scatter_ternary(df, a="F1", b="F2", c="F3", hover_name="Transcript")
+    fig = px.scatter_ternary(
+        df,
+        a="F1",
+        b="F2",
+        c="F3",
+        hover_name="Transcript"
+        )
 
     fig.update_layout(
         title="Read Frame Triangle",

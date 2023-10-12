@@ -329,6 +329,47 @@ def annotate_reads(
     return annotated_read_df.drop(["reference_name"], axis=1)
 
 
+def chunked_annotate_reads(a_site_df: pd.DataFrame, annotation_df: pd.DataFrame, chunk_size: int = 10000000) -> pd.DataFrame:
+    """
+    Merges the annotation dataframe with the read dataframe in smaller chunks.
+
+    Inputs:
+        a_site_df: DataFrame containing the read information with an added
+        column for the a-site location.
+        annotation_df: DataFrame containing the CDS start/stop
+        and transcript id from a gff file.
+        chunk_size: Size of each processing chunk.
+
+    Outputs:
+        annotated_read_df: DataFrame containing the read information
+        with an added column for the a-site location along
+        with the columns from the gff file.
+    """
+    # Initialize an empty list to store processed chunks
+    processed_chunks = []
+
+    # Split a_site_df into chunks
+    num_chunks = len(a_site_df) // chunk_size + 1
+    for i in range(num_chunks):
+        start_idx = i * chunk_size
+        end_idx = min((i + 1) * chunk_size, len(a_site_df))
+        chunk = a_site_df.iloc[start_idx:end_idx]
+
+        # Process the chunk
+        chunk.loc[:, "transcript_id"] = chunk.reference_name.str.split("|").str[0]
+        chunk = chunk.drop(["reference_name"], axis=1)
+        chunk = chunk.merge(annotation_df, on="transcript_id")
+        chunk["transcript_id"] = chunk["transcript_id"].astype("category")
+
+        # Append the processed chunk to the list
+        processed_chunks.append(chunk)
+
+    # Concatenate the processed chunks
+    annotated_read_df = pd.concat(processed_chunks)
+
+    return annotated_read_df
+
+
 def assign_mRNA_category(annotated_read_df) -> str:
 
     """
