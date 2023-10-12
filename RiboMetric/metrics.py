@@ -200,7 +200,7 @@ def read_frame_information_content(
 
         probabilities = []
         for frame, count in read_frame_distribution[read_length].items():
-            prob = (count + pseudocount) / total_count
+            prob = (count + pseudocount) / (total_count + pseudocount)
             probabilities.append(prob)
 
         score = calculate_3nt_periodicity_score(probabilities)
