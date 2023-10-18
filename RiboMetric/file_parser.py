@@ -14,11 +14,15 @@ import tempfile
 import gzip
 import os
 
-from multiprocessing import Pool
+from multiprocessing import Pool, Manager
+import traceback
 from tempfile import TemporaryDirectory
 
 
-from .bam_processing import join_batches, ox_parse_reads, ox_server_parse_reads
+from .bam_processing import (join_batches,
+                             ox_parse_reads,
+                             ox_server_parse_reads,
+                             validate_bam)
 from .file_splitting import (split_gff_df,
                             run_samtools_idxstats,
                             split_idxstats_df,
@@ -140,6 +144,7 @@ def parse_bam(bam_file: str,
     # Small percentage increase to ensure remaining reads aren't
     # in separate batch
 
+    validate_bam(bam_file)
     print(f"Splitting BAM into {batch_size} reads")
     if server_mode is False:
         pool = Pool(processes=num_processes)
