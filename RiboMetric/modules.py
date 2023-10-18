@@ -243,6 +243,8 @@ def read_frame_score(read_frame_dict: dict) -> dict:
 
     for k, inner_dict in read_frame_dict.items():
         top_two_values = sorted(inner_dict.values(), reverse=True)[:2]
+        if 0 in top_two_values:
+            raise Exception("ERR - Read Frame Score: insufficient aligned reads")
         highest_peak_sum += top_two_values[0]
         second_peak_sum += top_two_values[1]
         scored_read_frame_dict[k] = 1 - top_two_values[1] / top_two_values[0]
