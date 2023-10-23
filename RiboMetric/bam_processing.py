@@ -72,15 +72,15 @@ def ox_parse_reads(bam_file: str,
 
     # print(f"> Creating sequence_data {split_num}")
     print("\n"*(split_num // print_columns),
-        "\033[25C"*(split_num % print_columns),
-        f"thread {formatted_num}: sequencing..| ",
-        "\033[1A"*(split_num // print_columns),
-        end="\r", flush=False, sep="")
+          "\033[25C"*(split_num % print_columns),
+          f"thread {formatted_num}: sequencing..| ",
+          "\033[1A"*(split_num // print_columns),
+          end="\r", flush=False, sep="")
 
     sequence_data = {1: [], 2: []}
     sequence_list = oxbow_df["seq"].tolist()
     count_list = batch_df["count"].tolist()
-    
+
     # sequence_list batch size
     size = 10000
     list_length = len(sequence_list)
