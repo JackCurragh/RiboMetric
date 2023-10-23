@@ -12,6 +12,28 @@ from .file_splitting import split_bam, format_progress
 from multiprocessing import Pool
 
 
+def validate_bam(bam_file: str) -> None:
+    """
+    Validate a bam file using samtools quickcheck
+
+    Inputs:
+        bam_file: Path to the BAM file
+
+    Outputs:
+        None
+    """
+    print("Validating bam file..")
+    try:
+        ox.read_bam(bam_file)
+    except Exception as e:
+        if "InvalidReferenceSequenceName" in str(e):
+            raise Exception("InvalidReferenceSequenceName - \
+                            Likely an invalid character in sequence name \
+                            eg. ), or ( ")
+        else:
+            raise Exception("Invalid bam file")
+
+
 def ox_parse_reads(bam_file: str,
                    split_num: int,
                    reference_df: pd.DataFrame,
@@ -36,15 +58,15 @@ def ox_parse_reads(bam_file: str,
     formatted_num = f"{split_num+1:02d}"
     try:
         print_columns = os.get_terminal_size().columns // 25
-    except:
+    except Exception:
         print_columns = 4
 
     print("\n"*(split_num // print_columns),
-        "\033[25C"*(split_num % print_columns),
-        f"thread {formatted_num}: splitting.. | ",
-        "\033[1A"*(split_num // print_columns),
-        end="\r", flush=False, sep="")
-    
+          "\033[25C"*(split_num % print_columns),
+          f"thread {formatted_num}: splitting.. | ",
+          "\033[1A"*(split_num // print_columns),
+          end="\r", flush=False, sep="")
+
     tmp_bam = split_bam(bam_file,
                         split_num,
                         reference_df,
@@ -52,12 +74,19 @@ def ox_parse_reads(bam_file: str,
 
     # print(f"> oxbow parse {split_num}")
     print("\n"*(split_num // print_columns),
-        "\033[25C"*(split_num % print_columns),
-        f"thread {formatted_num}: parsing..   | ",
-        "\033[1A"*(split_num // print_columns),
-        end="\r", flush=False, sep="")
-    
-    arrow_ipc = ox.read_bam(tmp_bam)
+          "\033[25C"*(split_num % print_columns),
+          f"thread {formatted_num}: parsing..   | ",
+          "\033[1A"*(split_num // print_columns),
+          end="\r", flush=False, sep="")
+
+    try:
+        arrow_ipc = ox.read_bam(tmp_bam)
+    except Exception as e:
+        if "InvalidReferenceSequenceName" in str(e):
+            raise Exception("InvalidReferenceSequenceName - \
+                            Likely an invalid character in sequence name \
+                            eg. ), or ( ")
+
     oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
     del arrow_ipc
 
