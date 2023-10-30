@@ -8,15 +8,6 @@ import pandas as pd
 import numpy as np
 from xhtml2pdf import pisa
 from collections import Counter
-import warnings
-
-def handle_exceptions_as_warnings(func):
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            warnings.warn(str(e), category=UserWarning)
-    return wrapper
 
 
 def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:

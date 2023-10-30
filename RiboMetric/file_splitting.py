@@ -188,7 +188,7 @@ def split_gff_df(gff_df, split_num):
         lower_limit = (split_length * split)
         upper_limit = (split_length * (split + 1))
 
-        if upper_limit + offset > df_length:
+        if upper_limit + offset >= df_length:
             split_df = gff_df.iloc[lower_limit + prev_offset:
                                    df_length]
             split_df_list.append(split_df)
