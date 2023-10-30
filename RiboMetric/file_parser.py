@@ -246,19 +246,20 @@ def prepare_annotation(
 
     annotation_batches = []
     print("Subsetting CDS regions, Progress:")
-    for split_num, split_df in enumerate(split_df_list):
-        annotation_batches.append(pool.apply_async(gff_df_to_cds_df,
-                                                   [split_df,
-                                                    coding_tx_ids,
-                                                    split_num]))
+    # for split_num, split_df in enumerate(split_df_list):
+    #     annotation_batches.append(pool.apply_async(gff_df_to_cds_df,
+    #                                                [split_df,
+    #                                                 coding_tx_ids,
+    #                                                 split_num]))
 
-    pool.close()
-    pool.join()
+    # pool.close()
+    # pool.join()
 
-    print("\n"*(split_num // 4))
-    results = [batch.get() for batch in annotation_batches]
 
-    annotation_df = pd.concat(results, ignore_index=True)
+    # results = [batch.get() for batch in annotation_batches]
+
+    # annotation_df = pd.concat(results, ignore_index=True)
+    annotation_df = gff_df_to_cds_df(gff_df, coding_tx_ids, 0)
 
     basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
     output_name = f"{basename}_RiboMetric.tsv"
@@ -365,13 +366,6 @@ def gff_df_to_cds_df(
         cds_df: Dataframe containing the CDS information
                 columns: transcript_id, cds_start, cds_end
     """
-    # Format split_num for print
-    formatted_num = f"{split_num+1:02d}"
-    try:
-        print_columns = os.get_terminal_size().columns // 20
-    except:
-        print_columns = 4
-
     # Extract transcript ID from "attributes" column using regular expression
     rows = {
         "transcript_id": [],
@@ -382,19 +376,7 @@ def gff_df_to_cds_df(
         "genomic_cds_ends": [],
     }
 
-    counter = 0
     for group_name, group_df in gff_df.groupby("transcript_id"):
-        counter += 1
-        if counter % 200 == 0:
-            progress = format_progress((counter
-                                        / len(gff_df["transcript_id"]
-                                              .unique()))*100)
-            print("\n"*(split_num // print_columns),
-                  "\033[20C"*(split_num % print_columns),
-                  f"thread {formatted_num}: {progress} | ",
-                  "\033[1A"*(split_num // print_columns),
-                  end="\r", flush=False, sep="")
-
         if group_name in transcript_list:
             transcript_start = group_df["start"].min()
 
@@ -424,10 +406,4 @@ def gff_df_to_cds_df(
             rows["genomic_cds_starts"].append(genomic_cds_starts)
             rows["genomic_cds_ends"].append(genomic_cds_ends)
 
-    progress = format_progress((1)*100)
-    print("\n"*(split_num // print_columns),
-          "\033[20C"*(split_num % print_columns),
-          f"thread {formatted_num}: {progress} | ",
-          "\033[1A"*(split_num // print_columns),
-          end="\r", flush=False, sep="")
     return pd.DataFrame(rows)
