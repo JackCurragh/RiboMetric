@@ -246,20 +246,21 @@ def prepare_annotation(
 
     annotation_batches = []
     print("Subsetting CDS regions, Progress:")
-    # for split_num, split_df in enumerate(split_df_list):
-    #     annotation_batches.append(pool.apply_async(gff_df_to_cds_df,
-    #                                                [split_df,
-    #                                                 coding_tx_ids,
-    #                                                 split_num]))
+    for split_num, split_df in enumerate(split_df_list):
+        a = pool.apply_async(gff_df_to_cds_df,
+                             [split_df,
+                              coding_tx_ids,
+                              split_num])
+        annotation_batches.append(a)
 
-    # pool.close()
-    # pool.join()
+    pool.close()
+    pool.join()
 
+    results = [batch.get() for batch in annotation_batches]
 
-    # results = [batch.get() for batch in annotation_batches]
-
-    # annotation_df = pd.concat(results, ignore_index=True)
-    annotation_df = gff_df_to_cds_df(gff_df, coding_tx_ids, 0)
+    print("Combining results..")
+    annotation_df = pd.concat(results, ignore_index=True)
+    print("Done")
 
     basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
     output_name = f"{basename}_RiboMetric.tsv"
