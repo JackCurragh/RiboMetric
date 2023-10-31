@@ -105,7 +105,9 @@ def print_table_run(args, config: dict, console, mode):
     if config["argument"]["bam"]:
         Inputs.add_row("Bam File:", config["argument"]["bam"])
         if config["argument"]["annotation"]:
-            Inputs.add_row("Annotation File:", config["argument"]["annotation"])
+            Inputs.add_row(
+                "Annotation File:", config["argument"]["annotation"]
+                )
         else:
             Inputs.add_row("GFF File:", config["argument"]["gff"])
         Inputs.add_row("Transcriptome File:", config["argument"]["fasta"])
@@ -191,7 +193,7 @@ def main(args):
                 To create an index for a BAM file, run:
                 samtools index <bam_file>
                 """)
-
+            print(config["argument"]["annotation"])
             if config["argument"]["annotation"] is not None:
                 if not check_annotation(config["argument"]["annotation"]):
                     raise Exception("""
@@ -246,7 +248,7 @@ def main(args):
             else:
                 if (config["argument"]["annotation"] is not None and
                         config["argument"]["gff"] is not None):
-                    print("Both annotation and gff provided, using annotation mode")
+                    print("Running annotation mode")
                     annotation_df = parse_annotation(
                         config["argument"]["annotation"]
                         )
@@ -314,7 +316,7 @@ def main(args):
             report_export = "pdf"
         else:
             report_export = None
-
+        print("FESD", results_dict)
         if report_export is not None:
             plots_list = generate_plots(results_dict, config)
             generate_report(plots_list,

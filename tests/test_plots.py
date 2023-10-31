@@ -42,7 +42,7 @@ def test_plots():
     ].reset_index(drop=True)
     categories = ["first_dinucleotide", "last_dinucleotide"]
     read_df[categories] = read_df[categories].astype("category")
-    sequence_data_single = {"A":[5,2,3,1],"T":[0,2,1,2]}
+    sequence_data_single = {"A": [5, 2, 3, 1], "T": [0, 2, 1, 2]}
     if (
         "<div>" not in plot_read_length_distribution(
             read_length_distribution(read_df),

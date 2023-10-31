@@ -14,19 +14,19 @@ import tempfile
 import gzip
 import os
 
-from multiprocessing import Pool, Manager
-import traceback
+from multiprocessing import Pool
 from tempfile import TemporaryDirectory
 
 
 from .bam_processing import (join_batches,
                              ox_parse_reads,
                              ox_server_parse_reads,
-                             validate_bam)
+                             validate_bam,
+                             )
 from .file_splitting import (split_gff_df,
-                            run_samtools_idxstats,
-                            split_idxstats_df,
-                            format_progress)
+                             run_samtools_idxstats,
+                             split_idxstats_df,
+                             )
 
 
 def parse_annotation(annotation_path: str) -> pd.DataFrame:
@@ -209,7 +209,7 @@ def check_annotation(file_path: str) -> bool:
     """
     if os.path.exists(file_path):
         with open(file_path) as f:
-            if "transcript_id" in str(f.readline()):
+            if len(str(f.readline()).split()) == 4:
                 return True
             else:
                 return False
@@ -246,13 +246,15 @@ def prepare_annotation(
     del gff_df
     basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
     output_name = f"{basename}_RiboMetric.tsv"
-    open(f"{outdir}/{output_name}", "w").close()
+    open(f"{outdir}/{output_name}", "w").write(
+        "transcript_id\tcds_start\tcds_end\ttranscript_length\n")
     annotation_batches = []
     print("Subsetting CDS regions, Progress:")
     for split_df in split_df_list:
-        annotation_batches.append(pool.apply_async(gff_df_to_cds_df,
-                                                   [split_df,
-                                                    output_name]))
+        annotation_batches.append(pool.apply_async(
+                gff_df_to_cds_df,
+                [split_df, f"{outdir}/{output_name}"]
+            ))
 
     pool.close()
     pool.join()

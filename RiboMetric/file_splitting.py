@@ -125,8 +125,8 @@ def split_bam(bam_file: str,
                         'bam',
                         '-o',
                         outfile),
-                    stdin=samview.stdout,
-                    stderr=stderr)
+                       stdin=samview.stdout,
+                       stderr=stderr)
     samview.wait()
     subprocess.run(('samtools',
                     'index',
@@ -155,8 +155,6 @@ def split_gff_file(input_file, outdir, num_files) -> list:
                 line_number = 0
 
     split_indices.append(num_lines)
-    # print(split_indices)
-
     split_gffs = []
     for i in range(len(split_indices)-1):
         start_index = split_indices[i]
@@ -167,16 +165,21 @@ def split_gff_file(input_file, outdir, num_files) -> list:
         with open(output_file, 'w') as f_out:
             f_out.writelines(file_lines)
 
-        # print(f"Created file: {output_file}")
-
         split_gffs.append(output_file)
 
     return split_gffs
 
 
-def split_gff_df(gff_df, split_num):
+def split_gff_df(gff_df: pd.DataFrame, split_num: int) -> list:
     """
+    Split the gff dataframe into a list of dataframes limited to the max
 
+    Inputs:
+        gff_df: Dataframe containing the gff data
+        split_num: Number of splits
+
+    Outputs:
+        split_df_list: List of dataframes
     """
     df_length = len(gff_df)
     split_length = (df_length // split_num) + 1
@@ -235,7 +238,7 @@ def format_progress(percentage):
     if len(formatted_percentage) > 7:
         round_percentage = round(percentage, 1)
         formatted_percentage = "{:.1f}%".format(round_percentage)
-    
+
     elif len(formatted_percentage) > 6:
         round_percentage = round(percentage, 2)
         formatted_percentage = "{:.2f}%".format(round_percentage)

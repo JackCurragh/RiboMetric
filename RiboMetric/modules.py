@@ -240,16 +240,24 @@ def read_frame_score(read_frame_dict: dict) -> dict:
     """
     scored_read_frame_dict = {}
     highest_peak_sum, second_peak_sum = 0, 0
-
     for k, inner_dict in read_frame_dict.items():
         top_two_values = sorted(inner_dict.values(), reverse=True)[:2]
-        if 0 in top_two_values:
-            raise Exception("ERR - Read Frame Score: insufficient aligned reads")
-        highest_peak_sum += top_two_values[0]
-        second_peak_sum += top_two_values[1]
-        scored_read_frame_dict[k] = 1 - top_two_values[1] / top_two_values[0]
+        if top_two_values[0] == 0:
+            scored_read_frame_dict[k] = 0
+            continue
+        elif top_two_values[1] == 0:
+            scored_read_frame_dict[k] = 1
+        else:
+            highest_peak_sum += top_two_values[0]
+            second_peak_sum += top_two_values[1]
+            scored_read_frame_dict[k] = 1 -\
+                top_two_values[1] / top_two_values[0]
 
-    scored_read_frame_dict["global"] = 1 - second_peak_sum / highest_peak_sum
+    if highest_peak_sum == 0:
+        scored_read_frame_dict["global"] = 0
+    else:
+        scored_read_frame_dict["global"] = 1 -\
+            second_peak_sum / highest_peak_sum
     return scored_read_frame_dict
 
 
@@ -331,7 +339,9 @@ def annotate_reads(
     return annotated_read_df.drop(["reference_name"], axis=1)
 
 
-def chunked_annotate_reads(a_site_df: pd.DataFrame, annotation_df: pd.DataFrame, chunk_size: int = 10000000) -> pd.DataFrame:
+def chunked_annotate_reads(a_site_df: pd.DataFrame,
+                           annotation_df: pd.DataFrame,
+                           chunk_size: int = 10000000) -> pd.DataFrame:
     """
     Merges the annotation dataframe with the read dataframe in smaller chunks.
 
@@ -358,7 +368,9 @@ def chunked_annotate_reads(a_site_df: pd.DataFrame, annotation_df: pd.DataFrame,
         chunk = a_site_df.iloc[start_idx:end_idx]
 
         # Process the chunk
-        chunk.loc[:, "transcript_id"] = chunk.reference_name.str.split("|").str[0]
+        chunk.loc[:, "transcript_id"] = chunk.reference_name.str.split(
+            "|").str[0]
+
         chunk = chunk.drop(["reference_name"], axis=1)
         chunk = chunk.merge(annotation_df, on="transcript_id")
         chunk["transcript_id"] = chunk["transcript_id"].astype("category")
@@ -586,7 +598,8 @@ def proportion_of_kmer(
     annotated_read_df: pd.DataFrame,
 ) -> dict:
     '''
-    get proportion of reads with predicted a-sites in each frame for sequence of length k
+    get proportion of reads with predicted a-sites in each frame for
+    sequence of length k
 
     Inputs:
         annotated_read_df: Dataframe containing the read information
@@ -613,7 +626,7 @@ def get_cart_point(ternary_point, vertices=[[0.0, 0.0], [1.0, 0.0], [0.5, 1]]):
         cartesian_point: Point in cartesian space
     '''
     point = np.array(ternary_point)
-    verts= np.array(vertices)
+    verts = np.array(vertices)
 
     return np.dot(point, verts)
 
