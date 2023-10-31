@@ -10,6 +10,7 @@ Three main modes:
 """
 
 import pandas as pd
+import warnings
 from .modules import (
     annotate_reads,
     chunked_annotate_reads,
