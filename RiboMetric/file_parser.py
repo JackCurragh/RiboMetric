@@ -354,40 +354,41 @@ def gff_df_to_cds_df(gff_df, outpath=None):
     }
 
     for group_name, group_df in gff_df.groupby("transcript_id"):
-        cds_start = group_df[group_df["type"] == "CDS"]["start"].min()
-        cds_end = group_df[group_df["type"] == "CDS"]["end"].max()
+        if group_df.iloc[0]["strand"] == "+":
+            cds_start = group_df[group_df["type"] == "CDS"]["start"].min()
+            cds_end = group_df[group_df["type"] == "CDS"]["end"].max()
+        else:
+            cds_start = group_df[group_df["type"] == "CDS"]["end"].max()
+            cds_end = group_df[group_df["type"] == "CDS"]["start"].min()
 
         leader_length, trailer_length, transcript_length = 0, 0, 0
 
-        for idx, exon in group_df[group_df["type"] == "exon"].sort_values("start", ascending=False).iterrows():
+        for idx, exon in group_df[group_df["type"] == "exon"].sort_values(
+            "start", ascending=False
+                ).iterrows():
             if group_df.iloc[0]["strand"] == "+":
-                if exon['start'] > cds_end:
+                if exon['end'] <= cds_start:
                     leader_length += exon['end'] - exon['start']
-                elif exon['end'] > cds_end:
-                    leader_length += exon['end'] - cds_end
-                elif exon['end'] < cds_start:
+                elif exon['start'] <= cds_start:
+                    leader_length += cds_start - exon['start']
+                elif exon['end'] >= cds_end:
+                    trailer_length += exon['end'] - cds_end
+                elif exon['start'] >= cds_end:
                     trailer_length += exon['end'] - exon['start']
-                elif exon['start'] < cds_start:
-                    trailer_length += cds_start - exon['start']
 
             elif group_df.iloc[0]["strand"] == "-":
-                if exon['end'] < cds_start:
+                if exon['start'] >= cds_start:
                     leader_length += exon['end'] - exon['start']
-                elif exon['start'] < cds_start:
-                    leader_length += cds_start - exon['start']
-                elif exon['start'] > cds_end:
+                elif exon['end'] >= cds_start:
+                    leader_length += exon['end'] - cds_start
+                elif exon['end'] <= cds_end:
                     trailer_length += exon['end'] - exon['start']
-                elif exon['end'] > cds_end:
-                    trailer_length += exon['end'] - cds_end
-
+                elif exon['start'] <= cds_end:
+                    trailer_length += cds_end - exon['start']
             transcript_length += exon['end'] - exon['start']
 
-        if group_df.iloc[0]["strand"] == "+":
-            cds_start_transcript = leader_length
-            cds_end_transcript = leader_length + cds_end - cds_start
-        elif group_df.iloc[0]["strand"] == "-":
-            cds_start_transcript = transcript_length - trailer_length
-            cds_end_transcript = transcript_length - trailer_length + cds_end - cds_start
+        cds_start_transcript = leader_length
+        cds_end_transcript = transcript_length - trailer_length
 
         if outpath is None:
             rows["transcript_id"].append(group_name)
