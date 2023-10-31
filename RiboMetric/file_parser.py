@@ -367,14 +367,16 @@ def gff_df_to_cds_df(gff_df, outpath=None):
             "start", ascending=False
                 ).iterrows():
             if group_df.iloc[0]["strand"] == "+":
+                if group_name == "ENST00000635248.1":
+                    print(leader_length, trailer_length, transcript_length)
                 if exon['end'] <= cds_start:
                     leader_length += exon['end'] - exon['start']
                 elif exon['start'] <= cds_start:
                     leader_length += cds_start - exon['start']
-                elif exon['end'] >= cds_end:
-                    trailer_length += exon['end'] - cds_end
-                elif exon['start'] >= cds_end:
+                elif exon['start'] >= cds_end and exon['end'] >= cds_end:
                     trailer_length += exon['end'] - exon['start']
+                elif exon['end'] >= cds_end and exon['start'] <= cds_end:
+                    trailer_length += exon['end'] - cds_end
 
             elif group_df.iloc[0]["strand"] == "-":
                 if exon['start'] >= cds_start:
