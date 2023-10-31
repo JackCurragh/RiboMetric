@@ -243,31 +243,28 @@ def prepare_annotation(
     print("Parsing gff..")
     gff_df, coding_tx_ids = parse_gff(gff_path, num_transcripts)
     split_df_list = split_gff_df(gff_df, num_processes)
-
+    del gff_df
+    basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
+    output_name = f"{basename}_RiboMetric.tsv"
+    open(f"{outdir}/{output_name}", "w").close()
     annotation_batches = []
     print("Subsetting CDS regions, Progress:")
-    for split_num, split_df in enumerate(split_df_list):
+    for split_df in split_df_list:
         annotation_batches.append(pool.apply_async(gff_df_to_cds_df,
                                                    [split_df,
-                                                    coding_tx_ids,
-                                                    split_num]))
+                                                    output_name]))
 
     pool.close()
     pool.join()
 
-    print("\n"*(split_num // 4))
     results = [batch.get() for batch in annotation_batches]
 
-    annotation_df = pd.concat(results, ignore_index=True)
+    if all(isinstance(result, pd.DataFrame) for result in results):
+        print("Combining results..")
+        annotation_df = pd.concat(results, ignore_index=True)
+        print("Done")
 
-    basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
-    output_name = f"{basename}_RiboMetric.tsv"
-    annotation_df.to_csv(
-        os.path.join(outdir, output_name),
-        sep="\t",
-        index=False
-        )
-    return annotation_df
+        return annotation_df
 
 
 def is_gzipped(file_path: str) -> bool:
@@ -348,86 +345,61 @@ def extract_transcript_id(attr_str):
     return np.nan
 
 
-def gff_df_to_cds_df(
-        gff_df: pd.DataFrame,
-        transcript_list: list,
-        split_num: int,
-        ) -> pd.DataFrame:
-    """
-    Subset the gff dataframe to only include the CDS features
-    with tx coordinates for a specific list of transcripts.
-
-    Inputs:
-        gff_df: Dataframe containing the gff information
-        transcript_list: List of transcripts to subset
-
-    Outputs:
-        cds_df: Dataframe containing the CDS information
-                columns: transcript_id, cds_start, cds_end
-    """
-    # Format split_num for print
-    formatted_num = f"{split_num+1:02d}"
-    try:
-        print_columns = os.get_terminal_size().columns // 20
-    except:
-        print_columns = 4
-
-    # Extract transcript ID from "attributes" column using regular expression
+def gff_df_to_cds_df(gff_df, outpath=None):
     rows = {
         "transcript_id": [],
         "cds_start": [],
         "cds_end": [],
         "transcript_length": [],
-        "genomic_cds_starts": [],
-        "genomic_cds_ends": [],
     }
 
-    counter = 0
     for group_name, group_df in gff_df.groupby("transcript_id"):
-        counter += 1
-        if counter % 200 == 0:
-            progress = format_progress((counter
-                                        / len(gff_df["transcript_id"]
-                                              .unique()))*100)
-            print("\n"*(split_num // print_columns),
-                  "\033[20C"*(split_num % print_columns),
-                  f"thread {formatted_num}: {progress} | ",
-                  "\033[1A"*(split_num // print_columns),
-                  end="\r", flush=False, sep="")
+        if group_df.iloc[0]["strand"] == "+":
+            cds_start = group_df[group_df["type"] == "CDS"]["start"].min()
+            cds_end = group_df[group_df["type"] == "CDS"]["end"].max()
+        else:
+            cds_start = group_df[group_df["type"] == "CDS"]["end"].max()
+            cds_end = group_df[group_df["type"] == "CDS"]["start"].min()
 
-        if group_name in transcript_list:
-            transcript_start = group_df["start"].min()
+        leader_length, trailer_length, transcript_length = 0, 0, 0
 
-            cds_df_tx = group_df[group_df["type"] == "CDS"]
-            cds_start_end_tuple_list = sorted(
-                zip(cds_df_tx["start"], cds_df_tx["end"])
-                )
-            cds_tx_start = cds_start_end_tuple_list[0][0] - transcript_start
-            cds_tx_end = cds_start_end_tuple_list[-1][1] - transcript_start
+        for idx, exon in group_df[group_df["type"] == "exon"].sort_values(
+            "start", ascending=False
+                ).iterrows():
+            if group_df.iloc[0]["strand"] == "+":
+                if group_name == "ENST00000635248.1":
+                    print(leader_length, trailer_length, transcript_length)
+                if exon['end'] <= cds_start:
+                    leader_length += exon['end'] - exon['start']
+                elif exon['start'] <= cds_start:
+                    leader_length += cds_start - exon['start']
+                elif exon['start'] >= cds_end and exon['end'] >= cds_end:
+                    trailer_length += exon['end'] - exon['start']
+                elif exon['end'] >= cds_end and exon['start'] <= cds_end:
+                    trailer_length += exon['end'] - cds_end
 
-            for cds in cds_start_end_tuple_list:
-                cds_length = cds[1] - cds[0]
-                cds_tx_end += cds_length
+            elif group_df.iloc[0]["strand"] == "-":
+                if exon['start'] >= cds_start:
+                    leader_length += exon['end'] - exon['start']
+                elif exon['end'] >= cds_start:
+                    leader_length += exon['end'] - cds_start
+                elif exon['end'] <= cds_end:
+                    trailer_length += exon['end'] - exon['start']
+                elif exon['start'] <= cds_end:
+                    trailer_length += cds_end - exon['start']
+            transcript_length += exon['end'] - exon['start']
 
-            genomic_cds_starts = ",".join(
-                [str(x[0]) for x in cds_start_end_tuple_list]
-                )
+        cds_start_transcript = leader_length
+        cds_end_transcript = transcript_length - trailer_length
 
-            genomic_cds_ends = ",".join(
-                [str(x[1]) for x in cds_start_end_tuple_list]
-                )
-
+        if outpath is None:
             rows["transcript_id"].append(group_name)
-            rows["cds_start"].append(cds_tx_start)
-            rows["cds_end"].append(cds_tx_end)
-            rows["transcript_length"].append(cds_tx_end - cds_tx_start)
-            rows["genomic_cds_starts"].append(genomic_cds_starts)
-            rows["genomic_cds_ends"].append(genomic_cds_ends)
+            rows["cds_start"].append(cds_start_transcript)
+            rows["cds_end"].append(cds_end_transcript)
+            rows["transcript_length"].append(transcript_length)
+        else:
+            with open(outpath, "a") as f:
+                f.write(f"{group_name}\t{cds_start_transcript}\t{cds_end_transcript}\t{transcript_length}\t{group_df.iloc[0]['strand']}\n")
 
-    progress = format_progress((1)*100)
-    print("\n"*(split_num // print_columns),
-          "\033[20C"*(split_num % print_columns),
-          f"thread {formatted_num}: {progress} | ",
-          "\033[1A"*(split_num // print_columns),
-          end="\r", flush=False, sep="")
-    return pd.DataFrame(rows)
+    if outpath is None:
+        return pd.DataFrame(rows)
