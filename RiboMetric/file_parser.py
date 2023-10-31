@@ -399,7 +399,8 @@ def gff_df_to_cds_df(gff_df, outpath=None):
             rows["transcript_length"].append(transcript_length)
         else:
             with open(outpath, "a") as f:
-                f.write(f"{group_name}\t{cds_start_transcript}\t{cds_end_transcript}\t{transcript_length}\t{group_df.iloc[0]['strand']}\n")
+                f.write(f"{group_name}\t{cds_start_transcript}\t"
+                        f"{cds_end_transcript}\t{transcript_length}\n")
 
     if outpath is None:
         return pd.DataFrame(rows)
