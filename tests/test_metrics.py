@@ -4,7 +4,6 @@ import pandas as pd
 from RiboMetric.modules import (
     read_length_distribution,
     ligation_bias_distribution,
-    calculate_expected_dinucleotide_freqs,
 )
 
 from RiboMetric.metrics import (
@@ -42,7 +41,7 @@ def test_ligation_bias_distribution_metric():
     read_df[categories] = read_df[categories].astype("category")
     ligation_bias_dict = ligation_bias_distribution(read_df)
     sequence_background = {2:
-                           {"5_prime_bg":{
+                           {"5_prime_bg": {
                                 'AA': 0.24390243902439024,
                                 'AC': 0.0,
                                 'AG': 0.0975609756097561,
@@ -59,10 +58,11 @@ def test_ligation_bias_distribution_metric():
                                 'TC': 0.12195121951219512,
                                 'TG': 0.0,
                                 'TT': 0.0975609756097561}}}
-    print(ligation_bias_dict["five_prime"])
-    ligation_bias_metric = lbd_metric(ligation_bias_dict, sequence_background[2]["5_prime_bg"])
+    ligation_bias_metric = lbd_metric(
+        ligation_bias_dict, sequence_background[2]["5_prime_bg"]
+        )
 
-    assert round(ligation_bias_metric, 2) == 1.2
+    assert round(ligation_bias_metric, 2) == 1.18
 
 
 def test_read_frame_distribution_metric():

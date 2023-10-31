@@ -10,9 +10,7 @@ Three main modes:
 """
 
 import pandas as pd
-import warnings
 from .modules import (
-    annotate_reads,
     chunked_annotate_reads,
     assign_mRNA_category,
     read_length_distribution,
@@ -32,8 +30,8 @@ from .metrics import (
     ligation_bias_distribution_metric as lbd_metric,
     read_frame_information_content as rfd_metric,
     triplet_periodicity_weighted_score,
-    triplet_periodicity_best_read_length_score as tpbrl_metric,
-    information_metric_cutoff,
+    # triplet_periodicity_best_read_length_score as tpbrl_metric,
+    # information_metric_cutoff,
     triplet_periodicity_weighted_score_best_3_read_lengths as tpw3rl_metric,
     cds_coverage_metric
 )
@@ -105,11 +103,6 @@ def annotation_mode(
             ],
         )
 
-    print("> reading_frame_proportions")
-    results_dict["reading_frame_triangle"] = reading_frame_triangle(
-        annotated_read_df
-    )
-
     print("> nucleotide_composition")
     results_dict["nucleotide_composition"] = nucleotide_composition(
         sequence_data)
@@ -122,6 +115,11 @@ def annotation_mode(
             and annotation
             else read_frame_distribution_annotated(annotated_read_df)
             )
+        print("> reading_frame_proportions")
+        results_dict["reading_frame_triangle"] = reading_frame_triangle(
+                annotated_read_df
+            )
+
     else:
         read_frame_dist = (read_frame_distribution(read_df))
 

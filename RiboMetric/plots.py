@@ -11,7 +11,6 @@ import base64
 
 import plotly.express as px
 import pandas as pd
-import numpy as np
 
 
 def generate_plots(results_dict: dict, config: dict) -> list:
@@ -43,7 +42,8 @@ def generate_plots(results_dict: dict, config: dict) -> list:
                     config,
                 ),
                 plot_metagene_heatmap(
-                    results_dict["metagene_profile"], config
+                    results_dict["metagene_profile"],
+                    config
                 ),
                 plot_mRNA_distribution(
                     results_dict["mRNA_distribution"],
@@ -52,6 +52,10 @@ def generate_plots(results_dict: dict, config: dict) -> list:
                 plot_mRNA_read_breakdown(
                     results_dict["mRNA_distribution"],
                     config,
+                ),
+                plot_read_frame_triangle(
+                    results_dict["reading_frame_triangle"],
+                    config
                 ),
             ]
         )
@@ -65,9 +69,6 @@ def generate_plots(results_dict: dict, config: dict) -> list:
             ),
             plot_read_length_distribution(
                 results_dict["read_length_distribution"], config
-            ),
-            plot_read_frame_triangle(
-                results_dict["reading_frame_triangle"], config
             ),
             ])
 
@@ -898,5 +899,4 @@ for the full dataset",
                                      config["plots"]["image_size"][1]),
     }
 
-    fig.write_html("read_frame_triangle.html")
     return plot_read_frame_triangle_dict

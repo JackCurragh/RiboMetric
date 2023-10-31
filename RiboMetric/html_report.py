@@ -126,5 +126,4 @@ def parse_json_input(json_path: str) -> tuple:
         json_dict = json.load(json_file, object_hook=int_keys_hook)
     result_dict = json_dict["results"]
     json_config = json_dict["config"]
-
     return (result_dict, json_config)
