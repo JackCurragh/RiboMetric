@@ -185,7 +185,7 @@ def split_gff_df(gff_df: pd.DataFrame, split_num: int) -> list:
 
     if df_length < split_num:
         split_num = 1
-        
+
     split_length = (df_length // split_num) + 1
     prev_offset, offset = 0, 0
     split_df_list = []
