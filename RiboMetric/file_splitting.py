@@ -182,8 +182,11 @@ def split_gff_df(gff_df: pd.DataFrame, split_num: int) -> list:
         split_df_list: List of dataframes
     """
     df_length = len(gff_df)
-    split_length = (df_length // split_num) + 1
 
+    if df_length < split_num:
+        split_num = 1
+        
+    split_length = (df_length // split_num) + 1
     prev_offset, offset = 0, 0
     split_df_list = []
     for split in range(split_num):
@@ -195,7 +198,6 @@ def split_gff_df(gff_df: pd.DataFrame, split_num: int) -> list:
             split_df = gff_df.iloc[lower_limit + prev_offset:
                                    df_length]
             split_df_list.append(split_df)
-            # print("limit reached outside loop")
             return split_df_list
 
         last_transcript_id = gff_df["transcript_id"].iloc[upper_limit
@@ -210,7 +212,6 @@ def split_gff_df(gff_df: pd.DataFrame, split_num: int) -> list:
                 split_df = gff_df.iloc[lower_limit + prev_offset:
                                        df_length]
                 split_df_list.append(split_df)
-                # print("limit reached inside loop")
                 return split_df_list
 
             offset += 1
