@@ -126,6 +126,7 @@ def ox_parse_reads(bam_file: str,
             if count % 10 != 0:
                 continue
             section = sequence_list[i:i+size]
+            print(section)
             counts = count_list[i:i+size]
             sequence_data[pattern_length].append(
                 process_sequences(section,
@@ -191,7 +192,6 @@ def ox_server_parse_reads(bam_file: str,
             if count % 10 != 0:
                 continue
             section = sequence_list[i:i+size]
-            raise Exception(section)
             counts = count_list[i:i+size]
             sequence_data[pattern_length].append(
                 pool.apply_async(
