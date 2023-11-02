@@ -83,29 +83,30 @@ def annotation_mode(
         results_dict["read_length_distribution"]
     )
 
-    print("> ligation_bias_distribution")
-    results_dict["ligation_bias_distribution"] = ligation_bias_distribution(
-        read_df,
-        pattern_length=config["plots"]["ligation_bias_distribution"][
-            "nucleotide_count"
-        ]
-    )
-    results_dict["metrics"]["ligation_bias_distribution_metric"] = lbd_metric(
-        results_dict["ligation_bias_distribution"],
-        sequence_background["5_prime_bg"],
-    )
-    if config["plots"]["ligation_bias_distribution"]["background_freq"]:
-        results_dict["ligation_bias_distribution"] = normalise_ligation_bias(
-            results_dict["ligation_bias_distribution"],
-            sequence_background=sequence_background,
+    if sequence_background:
+        print("> ligation_bias_distribution")
+        results_dict["ligation_bias_distribution"] = ligation_bias_distribution(
+            read_df,
             pattern_length=config["plots"]["ligation_bias_distribution"][
                 "nucleotide_count"
-            ],
+            ]
         )
+        results_dict["metrics"]["ligation_bias_distribution_metric"] = lbd_metric(
+            results_dict["ligation_bias_distribution"],
+            sequence_background["5_prime_bg"],
+        )
+        if config["plots"]["ligation_bias_distribution"]["background_freq"]:
+            results_dict["ligation_bias_distribution"] = normalise_ligation_bias(
+                results_dict["ligation_bias_distribution"],
+                sequence_background=sequence_background,
+                pattern_length=config["plots"]["ligation_bias_distribution"][
+                    "nucleotide_count"
+                ],
+            )
 
-    print("> nucleotide_composition")
-    results_dict["nucleotide_composition"] = nucleotide_composition(
-        sequence_data)
+        print("> nucleotide_composition")
+        results_dict["nucleotide_composition"] = nucleotide_composition(
+            sequence_data)
 
     print("> read_frame_distribution")
     if annotation:

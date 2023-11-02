@@ -72,7 +72,6 @@ def ox_parse_reads(bam_file: str,
                         reference_df,
                         tempdir)
 
-    # print(f"> oxbow parse {split_num}")
     print("\n"*(split_num // print_columns),
           "\033[25C"*(split_num % print_columns),
           f"thread {formatted_num}: parsing..   | ",
@@ -90,7 +89,6 @@ def ox_parse_reads(bam_file: str,
     oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
     del arrow_ipc
 
-    # print(f"> Creating read df {split_num}")
     print("\n"*(split_num // print_columns),
         "\033[25C"*(split_num % print_columns),
         f"thread {formatted_num}: to pandas.. | ",
@@ -99,7 +97,6 @@ def ox_parse_reads(bam_file: str,
 
     batch_df = process_reads(oxbow_df)
 
-    # print(f"> Creating sequence_data {split_num}")
     print("\n"*(split_num // print_columns),
           "\033[25C"*(split_num % print_columns),
           f"thread {formatted_num}: sequencing..| ",
@@ -126,13 +123,12 @@ def ox_parse_reads(bam_file: str,
             if count % 10 != 0:
                 continue
             section = sequence_list[i:i+size]
-            print(section)
             counts = count_list[i:i+size]
             sequence_data[pattern_length].append(
                 process_sequences(section,
                                   counts,
                                   pattern_length))
-            
+
             progress += size
             formatted_progress = (format_progress((progress/list_length)*1000)
                                   if (progress/list_length)*1000 < 100
@@ -265,6 +261,9 @@ def process_sequences(sequences: list,
     num_sequences = len(sequences)
     if max_sequence_length is None:
         max_sequence_length = max(len(seq) for seq in sequences)
+
+    if max_sequence_length < pattern_length:
+        return {}
 
     # Create the 3D numpy array with zeros
     sequence_array = np.zeros((num_sequences,

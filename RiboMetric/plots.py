@@ -59,14 +59,16 @@ def generate_plots(results_dict: dict, config: dict) -> list:
                 ),
             ]
         )
-
+    if "nucleotide_composition" in results_dict:
+        plots_list.extend([
+                plot_ligation_bias_distribution(
+                    results_dict["ligation_bias_distribution"], config
+                ),
+                plot_nucleotide_composition(
+                    results_dict["nucleotide_composition"], config
+                ),
+        ])
     plots_list.extend([
-            plot_ligation_bias_distribution(
-                results_dict["ligation_bias_distribution"], config
-            ),
-            plot_nucleotide_composition(
-                results_dict["nucleotide_composition"], config
-            ),
             plot_read_length_distribution(
                 results_dict["read_length_distribution"], config
             ),
