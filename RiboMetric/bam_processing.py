@@ -137,10 +137,10 @@ def ox_parse_reads(bam_file: str,
                                   if (progress/list_length)*1000 < 100
                                   else format_progress(100))
             print("\n"*(split_num // print_columns),
-                "\033[25C"*(split_num % print_columns),
-                f"thread {formatted_num}: {pattern_length}: {formatted_progress}  | ",
-                "\033[1A"*(split_num // print_columns),
-                end="\r", flush=False, sep="")
+                  "\033[25C"*(split_num % print_columns),
+                  f"thread {formatted_num}: {pattern_length}: {formatted_progress}  | ",
+                  "\033[1A"*(split_num // print_columns),
+                  end="\r", flush=False, sep="")
 
     print("\n"*(split_num // print_columns),
         "\033[25C"*(split_num % print_columns),
@@ -191,6 +191,7 @@ def ox_server_parse_reads(bam_file: str,
             if count % 10 != 0:
                 continue
             section = sequence_list[i:i+size]
+            raise Exception(section)
             counts = count_list[i:i+size]
             sequence_data[pattern_length].append(
                 pool.apply_async(
