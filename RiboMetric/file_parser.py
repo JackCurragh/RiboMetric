@@ -77,7 +77,7 @@ def parse_fasta(fasta_path: str) -> dict:
 
 def check_bam(bam_path: str) -> bool:
     """
-    Check whether the bam file and its index exists at the provided path
+    Check whether the bam file exists. Index the bam file if it exists
     Return True if both files exist, False otherwise
 
     Inputs:
@@ -86,8 +86,12 @@ def check_bam(bam_path: str) -> bool:
     Outputs:
         bool: True if the bam file and its index exist, False otherwise
     """
-    if os.path.exists(bam_path) and os.path.exists(bam_path + ".bai"):
-        return True
+    if os.path.exists(bam_path):
+        if os.path.exists(bam_path + ".bai"):
+            return True
+        else:
+            os.system(f"samtools index {bam_path}")
+            return True
     else:
         return False
 
@@ -369,8 +373,6 @@ def gff_df_to_cds_df(gff_df, outpath=None):
             "start", ascending=False
                 ).iterrows():
             if group_df.iloc[0]["strand"] == "+":
-                if group_name == "ENST00000635248.1":
-                    print(leader_length, trailer_length, transcript_length)
                 if exon['end'] <= cds_start:
                     leader_length += exon['end'] - exon['start']
                 elif exon['start'] <= cds_start:
