@@ -316,7 +316,7 @@ def main(args):
             report_export = "pdf"
         else:
             report_export = None
-        print("FESD", results_dict)
+
         if report_export is not None:
             plots_list = generate_plots(results_dict, config)
             generate_report(plots_list,

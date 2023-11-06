@@ -91,6 +91,11 @@ def check_bam(bam_path: str) -> bool:
             return True
         else:
             os.system(f"samtools index {bam_path}")
+            if not os.path.exists(bam_path + ".bai"):
+                raise Exception("""
+                        Indexing failed - Ensure bam is sorted by coordinate
+                            samtools sort -o {bam_path} {bam_path}
+                                """)
             return True
     else:
         return False
@@ -148,7 +153,6 @@ def parse_bam(bam_file: str,
     # Small percentage increase to ensure remaining reads aren't
     # in separate batch
 
-    validate_bam(bam_file)
     print(f"Splitting BAM into {batch_size} reads")
     if server_mode is False:
         pool = Pool(processes=num_processes)

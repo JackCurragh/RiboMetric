@@ -22,7 +22,6 @@ def validate_bam(bam_file: str) -> None:
     Outputs:
         None
     """
-    print("Validating bam file..")
     try:
         ox.read_bam(bam_file)
     except Exception as e:
@@ -71,6 +70,8 @@ def ox_parse_reads(bam_file: str,
                         split_num,
                         reference_df,
                         tempdir)
+
+    validate_bam(tmp_bam)
 
     print("\n"*(split_num // print_columns),
           "\033[25C"*(split_num % print_columns),
