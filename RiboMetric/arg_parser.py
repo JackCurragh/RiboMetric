@@ -20,7 +20,6 @@ def argument_parser():
                         of comprehensive reports on the quality of ribosome
                         profiling (Ribo-Seq) datasets""",
         epilog=f"""
-
             Made with {Emoji('heart')} in LAPTI lab at University College Cork.
             For more information, please visit:
             https://RiboMetric.readthedocs.io/en/latest/
@@ -28,7 +27,6 @@ def argument_parser():
     )
 
     subparsers = parser.add_subparsers(dest="command", title="subcommands")
-
     # create the parser for the "run" command
     run_parser = subparsers.add_parser(
         "run",
@@ -40,6 +38,12 @@ def argument_parser():
         "--bam",
         type=str,
         help="Path to bam file"
+    )
+    group_run_parser.add_argument(
+        "-j",
+        "--json-in",
+        type=str,
+        help="Path to json input file"
     )
     run_parser.add_argument(
         "-a",
@@ -62,12 +66,6 @@ def argument_parser():
         required=False,
         help="Path to the transcriptome fasta file",
     )
-    group_run_parser.add_argument(
-        "-j",
-        "--json-in",
-        type=str,
-        help="Path to json input file"
-    )
     run_parser.add_argument(
         "--json-config",
         action="store_true",
@@ -78,8 +76,8 @@ def argument_parser():
         "--server",
         action="store_true",
         default=False,
-        help=("Runs RiboMetric in 'server' mode, higher speed at cost of ",
-              "memory efficiency")
+        help="""Runs RiboMetric in 'server' mode, higher speed at 
+                cost of memory efficiency""",
     )
     run_parser.add_argument(
         "-n",
