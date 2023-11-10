@@ -71,8 +71,13 @@ def generate_csv(
         output = output_directory + "/" + name + ".csv"
 
     columns = ["metric", "score"]
-    metrics_dict = [{"metric": key, "score": value} for key, value
-                    in results_dict["metrics"].items()]
+    metrics_dict = []
+    for key, value in results_dict["metrics"].items():
+        if isinstance(value, float) or isinstance(value, int):
+            metrics_dict.append({"metric": key, "score": value})
+        elif isinstance(value, dict):
+            for k, v in value.items():
+                metrics_dict.append({"metric": f"{key}_{k}", "score": v})
 
     with open(output, "w") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=columns)

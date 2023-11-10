@@ -307,3 +307,26 @@ def triplet_periodicity_weighted_score_best_3_read_lengths(
         weighted_scores.append(weighted_score)
 
     return sum(weighted_scores) / total_reads
+
+
+def frame_bias_metric(
+        read_df: pd.DataFrame,
+        ) -> dict:
+    """
+    Calculate the frame bias metric. This metric is the proportion 
+    of reads in each frame
+
+    Inputs:
+        read_df: Dataframe containing the reads
+
+    Outputs:
+        frame_bias_dict: Dictionary containing the frame bias metric
+    """
+    frame_bias_dict = {}
+    total_reads = len(read_df)
+
+    for frame in range(3):
+        frame_reads = len(read_df[read_df["a_site"] % 3 == frame])
+        frame_bias_dict[frame] = frame_reads / total_reads
+
+    return frame_bias_dict

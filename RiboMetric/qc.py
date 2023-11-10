@@ -23,6 +23,8 @@ from .modules import (
     mRNA_distribution,
     metagene_profile,
     reading_frame_triangle,
+    read_frame_score,
+    read_frame_cull,
 )
 
 from .metrics import (
@@ -30,8 +32,8 @@ from .metrics import (
     ligation_bias_distribution_metric as lbd_metric,
     read_frame_information_content as rfd_metric,
     triplet_periodicity_weighted_score,
-    # triplet_periodicity_best_read_length_score as tpbrl_metric,
-    # information_metric_cutoff,
+    triplet_periodicity_best_read_length_score as tpbrl_metric,
+    information_metric_cutoff,
     triplet_periodicity_weighted_score_best_3_read_lengths as tpw3rl_metric,
     cds_coverage_metric
 )
@@ -126,11 +128,16 @@ def annotation_mode(
 
     frame_info_content_dict = rfd_metric(read_frame_dist)
     results_dict["read_frame_distribution"] = read_frame_dist
-    # results_dict["metrics"]["read_frame_distribution_metric"] =\
-    #     information_metric_cutoff(
-    #         frame_info_content_dict,
-    #         config['qc']['read_frame_distribution']['3nt_count_cutoff']
-    #     )
+    results_dict["metrics"]["read_frame_information_metric"] =\
+        information_metric_cutoff(
+            frame_info_content_dict,
+            config['qc']['read_frame_distribution']['3nt_count_cutoff']
+        )
+
+    culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
+    results_dict["metrics"]["read_frame_score"] = read_frame_score(
+        culled_read_frame_dict)
+
     results_dict["metrics"]["3nt_weighted_score"] = \
         triplet_periodicity_weighted_score(
             frame_info_content_dict,
@@ -139,9 +146,9 @@ def annotation_mode(
         tpw3rl_metric(
             frame_info_content_dict,
     )
-    # results_dict["metrics"]["3nt_best_read_length_score"] = tpbrl_metric(
-    #     frame_info_content_dict,
-    # )
+    results_dict["metrics"]["3nt_best_read_length_score"] = tpbrl_metric(
+        frame_info_content_dict,
+    )
 
     if annotation:
         print("> mRNA_distribution")
