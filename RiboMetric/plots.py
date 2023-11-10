@@ -857,7 +857,7 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
         },
         "metrics":
             [{"name": k.replace("_", " ").capitalize(), "score": round(v, 3)}
-             for k, v in metrics_dict.items()]
+             for k, v in metrics_dict.items() if v is float]
     }
     return plot_metrics_summary_dict
 
