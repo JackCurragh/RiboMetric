@@ -812,53 +812,35 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
 
 
 def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
-    """
-    Generate a radar plot that summarizes the scoring metrics of the reads
+    # Convert the metrics_dict to a DataFrame for easier plotting
+    df = pd.DataFrame(list(metrics_dict.items()), columns=['Metric', 'Score'])
 
-    Inputs:
-
-
-    Outputs:
-
-    """
     width = 750
     height = 320
-    fig = go.Figure(
-        data=go.Scatterpolar(
-            # first value is appended to the end so that the radar plot closes
-            # properly
-            r=(list(metrics_dict.values())
-               + [(list(metrics_dict.values())[0])]),
-            theta=[metric.replace("_", " ") for metric in
-                   (list(metrics_dict.keys())
-                    + [list(metrics_dict.keys())[0]])],
-            fill='toself',
-            hovertemplate='<b>%{theta}</b>: %{r}<extra></extra>'
-        )
-    )
-    fig.update_layout(
-        title="Summary Scores",
-        polar=dict(
-            radialaxis=dict(visible=False),
-            radialaxis_range=[0, 1],
-            angularaxis_thetaunit="radians"
-        ),
-        showlegend=False,
-    )
+    # Create a bar chart using Plotly Express
+    fig = px.bar(df, x='Metric', y='Score', title="Summary Scores",
+                 labels={'Score': 'Score'},
+                 hover_data={'Metric': True, 'Score': ':.3f'},
+                 height=400)
+
+    # Customize the layout if needed
+    fig.update_layout(showlegend=False)
+
+    # Convert the plot to HTML or an image as needed
+    fig_html = pio.to_html(fig, full_html=False)
+    fig_image = plotly_to_image(fig, width, height)
+
     plot_metrics_summary_dict = {
         "plot": {
             "name": "Summary of Metrics",
-            "description": "Radar plot showing the difference scores ranging \
-    from 0 to 1.",
-            "fig_html": pio.to_html(fig, full_html=False),
-            "fig_image": plotly_to_image(fig,
-                                         width,
-                                         height),
+            "description": "Bar chart showing the difference scores ranging from 0 to 1.",
+            "fig_html": fig_html,
+            "fig_image": fig_image,
         },
-        "metrics":
-            [{"name": k.replace("_", " ").capitalize(), "score": round(v, 3)}
-             for k, v in metrics_dict.items() if v is float]
+        "metrics": [{"name": k.replace("_", " ").capitalize(), "score": round(v, 3)}
+                    for k, v in metrics_dict.items() if isinstance(v, float)]
     }
+
     return plot_metrics_summary_dict
 
 

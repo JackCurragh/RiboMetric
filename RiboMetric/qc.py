@@ -135,7 +135,7 @@ def annotation_mode(
         )
 
     culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
-    results_dict["metrics"]["read_frame_score"] = read_frame_score(
+    results_dict["metrics"]["read_frame_bias"] = read_frame_score(
         culled_read_frame_dict)
 
     results_dict["metrics"]["3nt_weighted_score"] = \
