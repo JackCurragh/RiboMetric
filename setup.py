@@ -35,6 +35,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.10",
     ],
     description="A python command-line utility for the generation of comprehensive reports on the quality of ribosome profiling (Ribo-Seq) datasets",
     entry_points={
@@ -57,6 +58,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/JackCurragh/RiboMetric",
-    version="0.1.8",
+    version="0.1.9",
     zip_safe=False,
 )
