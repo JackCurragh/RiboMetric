@@ -210,16 +210,11 @@ def main(args):
                 read_limit = flagstat['mapped_reads']
             else:
                 read_limit = config["argument"]["subsample"]
-            bam_results = parse_bam(
+            read_df_pre, sequence_data, sequence_background = parse_bam(
                 bam_file=config["argument"]["bam"],
                 num_reads=read_limit,
                 num_processes=config["argument"]["threads"],
                 server_mode=config["argument"]["server"])
-
-            read_df_pre = bam_results[0]
-            sequence_data = bam_results[1]
-            sequence_background = bam_results[2]
-
             print("Reads parsed")
 
             # Expand the dataframe to have one row per read
