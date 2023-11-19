@@ -174,6 +174,7 @@ def main(args):
     config = open_config(args)
     export = config["argument"].copy()
 
+    # Handle inputs and run modes appropriately
     if args.command == "prepare":
         print_table_prepare(args, config, console, "Prepare Mode")
         prepare_annotation(config["argument"]["gff"],
@@ -203,13 +204,17 @@ def main(args):
                     RiboMetric prepare -g <gff_file>
                     """)
 
+            # To Do:
+            # Ensure Flagstat is written to the report
             flagstat = flagstat_bam(config["argument"]["bam"])
             if (config["argument"]["subsample"] is None
-                    or flagstat['mapped_reads'] <
-                    config["argument"]["subsample"]):
+                    or flagstat['mapped_reads'] < config[
+                        "argument"]["subsample"]):
                 read_limit = flagstat['mapped_reads']
             else:
                 read_limit = config["argument"]["subsample"]
+
+            # Parse the bam file
             read_df_pre, sequence_data, sequence_background = parse_bam(
                 bam_file=config["argument"]["bam"],
                 num_reads=read_limit,
@@ -218,6 +223,7 @@ def main(args):
             print("Reads parsed")
 
             # Expand the dataframe to have one row per read
+            # This makes calculations on reads easier but uses more memory
             if "count" not in read_df_pre.columns:
                 read_df_pre["count"] = 1
                 read_df = read_df_pre
@@ -297,6 +303,7 @@ def main(args):
             if config["argument"]["json_config"]:
                 config["plots"] = json_config["plots"]
 
+        # Indentify output requirements
         if export["name"] is not None:
             filename = export["name"]
 
@@ -312,6 +319,7 @@ def main(args):
         else:
             report_export = None
 
+        # Write out the specified output files
         if report_export is not None:
             plots_list = generate_plots(results_dict, config)
             generate_report(plots_list,
