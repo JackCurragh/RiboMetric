@@ -237,7 +237,9 @@ def main(args):
 
             del read_df_pre
             print("Calculating A site information...")
+            read_df.to_csv("read_df_pre.csv")
             read_df = a_site_calculation(read_df)
+            read_df.to_csv("read_df_post_asite.csv")
 
             if (config["argument"]["gff"] is None and
                     config["argument"]["annotation"] is None):
