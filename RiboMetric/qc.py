@@ -124,9 +124,11 @@ def annotation_mode(
             )
 
     else:
-        read_frame_dist = (read_frame_distribution(read_df))
+        read_frame_dist = read_frame_distribution(read_df)
+    print(read_frame_dist)
 
     frame_info_content_dict = rfd_metric(read_frame_dist)
+    print(frame_info_content_dict)
     results_dict["read_frame_distribution"] = read_frame_dist
     results_dict["metrics"]["read_frame_information_metric"] =\
         information_metric_cutoff(
