@@ -112,6 +112,10 @@ def annotation_mode(
 
     print("> read_frame_distribution")
     if annotation:
+        print("Annotation")
+        print(config["qc"]["use_cds_subset"]["read_frame_distribution"])
+        print(cds_read_df)
+        print(annotated_read_df)
         read_frame_dist = (
             read_frame_distribution_annotated(cds_read_df)
             if config["qc"]["use_cds_subset"]["read_frame_distribution"]
