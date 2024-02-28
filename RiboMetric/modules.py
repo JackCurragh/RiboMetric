@@ -273,11 +273,15 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
         read_frame_dict: Nested dictionary containing counts for every reading
         frame at the different read lengths
     """
+    print("asite_df", a_site_df)
+    print(a_site_df.assign(read_frame=a_site_df.a_site.mod(3))
+        .groupby(["read_length", "read_frame"]))
     frame_df = (
         a_site_df.assign(read_frame=a_site_df.a_site.mod(3))
         .groupby(["read_length", "read_frame"])
         .size()
     )
+    print(frame_df)
     read_frame_dict = {}
     for index, value in frame_df.items():
         read_length, read_frame = index
