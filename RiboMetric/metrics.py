@@ -267,7 +267,6 @@ def triplet_periodicity_weighted_score(
     Returns:
         result (float): The triplet periodicity score.
     '''
-    print("frame_info_content_dict", frame_info_content_dict)
     total_reads = sum(
         frame_info_content_dict[key][1]
         for key in frame_info_content_dict
@@ -276,7 +275,6 @@ def triplet_periodicity_weighted_score(
     for _, score in frame_info_content_dict.items():
         weighted_score = score[0] * score[1]
         weighted_scores.append(weighted_score)
-    print(total_reads)
 
     return sum(weighted_scores) / total_reads
 
