@@ -330,3 +330,32 @@ def frame_bias_metric(
         frame_bias_dict[frame] = frame_reads / total_reads
 
     return frame_bias_dict
+
+
+def leader_cds_ratio_metric(
+        mRNA_distribution: dict,
+        read_length_range: tuple = (20, 40),
+        ) -> dict:
+    """
+    Calculate the leader cds ratio metric. This metric is the ratio of
+    reads in 5' leader relative to the CDS.
+
+    Inputs:
+        mRNA_distribution: Dictionary containing the output of the
+                mRNA_distribution module
+        read_length_range: Tuple containing the minimum and maximum read
+                length to consider for the metric
+
+    Outputs:
+        leader_cds_ratio: Dictionary containing the leader cds ratio metric
+    """
+    leader_cds_ratio = {}
+
+    read_lengths = [i for i in range(
+        read_length_range[0], read_length_range[1]
+        )]
+    for read_len in mRNA_distribution:
+        if read_len in read_lengths:
+            leader_cds_ratio[read_len] = mRNA_distribution[
+                read_len]["five_leader"] / mRNA_distribution[read_len]["CDS"]
+    return leader_cds_ratio

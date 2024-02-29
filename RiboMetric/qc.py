@@ -35,8 +35,10 @@ from .metrics import (
     triplet_periodicity_best_read_length_score as tpbrl_metric,
     information_metric_cutoff,
     triplet_periodicity_weighted_score_best_3_read_lengths as tpw3rl_metric,
-    cds_coverage_metric
+    cds_coverage_metric,
+    leader_cds_ratio_metric
 )
+from typing import Any, Dict
 
 
 def annotation_mode(
@@ -72,11 +74,11 @@ def annotation_mode(
         annotation = False
     print("Running modules")
 
-    results_dict = {}
-    results_dict["mode"] = ("annotation"
-                            if annotation
-                            else "annotation_free")
-    results_dict["metrics"] = {}
+    results_dict: Dict[str, Any] = {
+        "mode": ("annotation" if annotation else "annotation_free"),
+        "metrics": {}
+    }
+
     print("> read_length_distribution")
     results_dict["read_length_distribution"] = read_length_distribution(
         read_df
@@ -87,18 +89,24 @@ def annotation_mode(
 
     if sequence_background:
         print("> ligation_bias_distribution")
-        results_dict["ligation_bias_distribution"] = ligation_bias_distribution(
+        results_dict[
+            "ligation_bias_distribution"
+            ] = ligation_bias_distribution(
             read_df,
             pattern_length=config["plots"]["ligation_bias_distribution"][
                 "nucleotide_count"
             ]
         )
-        results_dict["metrics"]["ligation_bias_distribution_metric"] = lbd_metric(
+        results_dict["metrics"][
+            "ligation_bias_distribution_metric"
+            ] = lbd_metric(
             results_dict["ligation_bias_distribution"],
             sequence_background["5_prime_bg"],
         )
         if config["plots"]["ligation_bias_distribution"]["background_freq"]:
-            results_dict["ligation_bias_distribution"] = normalise_ligation_bias(
+            results_dict[
+                "ligation_bias_distribution"
+                ] = normalise_ligation_bias(
                 results_dict["ligation_bias_distribution"],
                 sequence_background=sequence_background,
                 pattern_length=config["plots"]["ligation_bias_distribution"][
@@ -135,7 +143,10 @@ def annotation_mode(
                 annotated_read_df
             )
         read_frame_dist_28_to_32 = (
-            read_frame_distribution_annotated(cds_read_df, read_length_range=(28, 32))
+            read_frame_distribution_annotated(
+                cds_read_df,
+                read_length_range=(28, 32)
+                )
             if config["qc"]["use_cds_subset"]["read_frame_distribution"]
             and annotation
             else read_frame_distribution_annotated(annotated_read_df)
@@ -207,6 +218,16 @@ def annotation_mode(
             cds_read_df,
             minimum_reads=1,
             in_frame_coverage=config["qc"]["cds_coverage"]["in_frame_coverage"]
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_not_inframe"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=1,
+            in_frame_coverage=False
+            )
+        results_dict["metrics"]["leader_cds_ratio"] = leader_cds_ratio_metric(
+            mRNA_distribution=results_dict["mRNA_distribution"]
             )
     return results_dict
 
