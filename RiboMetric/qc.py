@@ -118,6 +118,18 @@ def annotation_mode(
             and annotation
             else read_frame_distribution_annotated(annotated_read_df)
             )
+        read_frame_dist_exclude_15 = (
+            read_frame_distribution_annotated(cds_read_df, exclusion_length=15)
+            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
+            and annotation
+            else read_frame_distribution_annotated(annotated_read_df)
+            )
+        read_frame_dist_exclude_60 = (
+            read_frame_distribution_annotated(cds_read_df, exclusion_length=60)
+            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
+            and annotation
+            else read_frame_distribution_annotated(annotated_read_df)
+            )
         print("> reading_frame_proportions")
         results_dict["reading_frame_triangle"] = reading_frame_triangle(
                 annotated_read_df
@@ -125,17 +137,28 @@ def annotation_mode(
 
     else:
         read_frame_dist = read_frame_distribution(read_df)
-    print(read_frame_dist)
 
     frame_info_content_dict = rfd_metric(read_frame_dist)
-    print(frame_info_content_dict)
     results_dict["read_frame_distribution"] = read_frame_dist
     results_dict["metrics"]["read_frame_information_metric"] =\
         information_metric_cutoff(
             frame_info_content_dict,
             config['qc']['read_frame_distribution']['3nt_count_cutoff']
         )
-
+    frame_info_content_dict_exclude_15 = rfd_metric(read_frame_dist_exclude_15)
+    results_dict["read_frame_distribution"] = read_frame_dist_exclude_15
+    results_dict["metrics"]["read_frame_information_metric_exclude_15"] =\
+        information_metric_cutoff(
+            frame_info_content_dict_exclude_15,
+            config['qc']['read_frame_distribution']['3nt_count_cutoff']
+        )
+    frame_info_content_dict_exclude_60 = rfd_metric(read_frame_dist_exclude_60)
+    results_dict["read_frame_distribution"] = read_frame_dist_exclude_60
+    results_dict["metrics"]["read_frame_information_metric_exclude_60"] =\
+        information_metric_cutoff(
+            frame_info_content_dict_exclude_60,
+            config['qc']['read_frame_distribution']['3nt_count_cutoff']
+        )
     culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
     results_dict["metrics"]["read_frame_bias"] = read_frame_score(
         culled_read_frame_dict)

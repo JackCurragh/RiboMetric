@@ -287,7 +287,10 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     return read_frame_dict
 
 
-def read_frame_distribution_annotated(annotated_read_df: pd.DataFrame) -> dict:
+def read_frame_distribution_annotated(
+        annotated_read_df: pd.DataFrame,
+        exclusion_length: int = 0
+        ) -> dict:
     """
     Calculate the distribution of the reading frame over the dataset
 
@@ -300,7 +303,10 @@ def read_frame_distribution_annotated(annotated_read_df: pd.DataFrame) -> dict:
         frame at the different read lengths
     """
     df_slice = annotated_read_df[annotated_read_df["cds_start"] != 0]
-    print(df_slice)
+    df_slice = df_slice[
+        df_slice["a_site"] > df_slice["cds_start"] + exclusion_length and
+        df_slice["a_site"] < df_slice["cds_end"] - exclusion_length
+    ]
     frame_df = (
         df_slice.assign(read_frame=(df_slice.a_site-df_slice.cds_start).mod(3))
         .groupby(["read_length", "read_frame"])
