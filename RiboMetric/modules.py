@@ -303,7 +303,7 @@ def read_frame_distribution_annotated(
         read_frame_dict: Nested dictionary containing counts for every reading
         frame at the different read lengths
     """
-    read_lengths = [i for i in range(read_length_range[0], read_length_range[1])
+    read_lengths = [i for i in range(read_length_range[0], read_length_range[1])]
 
     df_slice = annotated_read_df[annotated_read_df["cds_start"] != 0]
     df_slice = df_slice[
