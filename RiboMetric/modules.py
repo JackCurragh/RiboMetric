@@ -304,8 +304,8 @@ def read_frame_distribution_annotated(
     """
     df_slice = annotated_read_df[annotated_read_df["cds_start"] != 0]
     df_slice = df_slice[
-        df_slice["a_site"] > df_slice["cds_start"] + exclusion_length and
-        df_slice["a_site"] < df_slice["cds_end"] - exclusion_length
+        (df_slice["a_site"] > df_slice["cds_start"] + exclusion_length) &
+        (df_slice["a_site"] < df_slice["cds_end"] - exclusion_length)
     ]
     frame_df = (
         df_slice.assign(read_frame=(df_slice.a_site-df_slice.cds_start).mod(3))
