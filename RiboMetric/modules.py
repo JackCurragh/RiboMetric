@@ -289,7 +289,8 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
 
 def read_frame_distribution_annotated(
         annotated_read_df: pd.DataFrame,
-        exclusion_length: int = 0
+        exclusion_length: int = 0,
+        read_length_range: tuple = (20, 40)
         ) -> dict:
     """
     Calculate the distribution of the reading frame over the dataset
@@ -302,6 +303,8 @@ def read_frame_distribution_annotated(
         read_frame_dict: Nested dictionary containing counts for every reading
         frame at the different read lengths
     """
+    read_lengths = [i for i in range(read_length_range[0], read_length_range[1])
+
     df_slice = annotated_read_df[annotated_read_df["cds_start"] != 0]
     df_slice = df_slice[
         (df_slice["a_site"] > df_slice["cds_start"] + exclusion_length) &
@@ -315,9 +318,10 @@ def read_frame_distribution_annotated(
     read_frame_dict = {}
     for index, value in frame_df.items():
         read_length, read_frame = index
-        if read_length not in read_frame_dict:
-            read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
-        read_frame_dict[read_length][read_frame] = value
+        if read_length in read_lengths:
+            if read_length not in read_frame_dict:
+                read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
+            read_frame_dict[read_length][read_frame] = value
     return read_frame_dict
 
 

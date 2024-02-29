@@ -134,6 +134,12 @@ def annotation_mode(
         results_dict["reading_frame_triangle"] = reading_frame_triangle(
                 annotated_read_df
             )
+        read_frame_dist_28_to_32 = (
+            read_frame_distribution_annotated(cds_read_df, read_length_range=(28, 32))
+            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
+            and annotation
+            else read_frame_distribution_annotated(annotated_read_df)
+            )
 
     else:
         read_frame_dist = read_frame_distribution(read_df)
@@ -159,6 +165,15 @@ def annotation_mode(
             frame_info_content_dict_exclude_60,
             config['qc']['read_frame_distribution']['3nt_count_cutoff']
         )
+
+    frame_info_content_dict_28_to_32 = rfd_metric(read_frame_dist_28_to_32)
+    results_dict["read_frame_distribution_28_to_32"] = read_frame_dist_28_to_32
+    results_dict["metrics"]["read_frame_information_metric_28_to_32"] =\
+        information_metric_cutoff(
+            frame_info_content_dict_28_to_32,
+            config['qc']['read_frame_distribution']['3nt_count_cutoff']
+        )
+
     culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
     results_dict["metrics"]["read_frame_bias"] = read_frame_score(
         culled_read_frame_dict)
