@@ -737,7 +737,7 @@ def change_point_analysis(
     max_shift_position = None
     print(read_counts)
     print(read_counts.keys())
-    for i in range(surrounding_range[0], surrounding_range[1]):
+    for i in range(surrounding_range[0] - 3, surrounding_range[1] + 5):
         print([read_counts[i] for i in range(i-3, i+1)])
         print([read_counts.get(i, 0) for i in range(i-3, i+1)])
         print([read_counts.get(i, 0) for i in range(i+1, i+5)])
