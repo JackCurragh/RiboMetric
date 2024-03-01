@@ -735,6 +735,7 @@ def change_point_analysis(
     max_shift = 0
     max_shift_position = None
 
+    print(read_counts)
     for i in range(-30, 11):
         mean_left = sum(read_counts.get(i, 0) for i in range(i-3, i+1)) / 4
         mean_right = sum(read_counts.get(i, 0) for i in range(i+1, i+5)) / 4
