@@ -714,3 +714,65 @@ def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict():
         expected_dinucleotide_freqs[dinucleotide] = count / total_count
 
     return expected_dinucleotide_freqs
+
+
+def change_point_analysis(
+        read_counts: dict,
+        surrounding_range: tuple = (-30, 10),
+        ) -> int:
+    """
+    Calculate the change point for the metagene profile
+    This should reflect where the cds starts and as a result the 
+    offset to apply to get a-site
+
+    Inputs: 
+        read_counts: Dictionary containing the read counts for each position
+        surrounding_range: tuple of start and stop for change point analysis
+
+    Outputs:
+        max_shift_position: The position of the change point
+    """
+    max_shift = 0
+    max_shift_position = None
+
+    for i in range(-30, 11):
+        mean_left = sum(read_counts.get(i, 0) for i in range(i-3, i+1)) / 4
+        mean_right = sum(read_counts.get(i, 0) for i in range(i+1, i+5)) / 4
+        shift = abs(mean_right - mean_left)
+        if shift > max_shift:
+            max_shift = shift
+            max_shift_position = i
+
+    return max_shift_position
+
+def asite_calculation_per_readlength(
+        annotated_read_df: pd.DataFrame,
+        offset_range: tuple = (10,15),
+) -> dict:
+    """
+    Calculate offset values per read length for the A-site
+    Shoelaces based method using metagene counts 
+
+    Input:
+        annotated_read_df: Dataframe containing the read information
+        with an cds info added
+        offset_range: Range of offsets to test
+
+    Output:
+        offset_dict: Dictionary containing the offset values for each read length
+    """
+    offset_dict = {}
+
+    for read_length in annotated_read_df["read_length"].unique():
+        offset_dict[read_length] = {}
+        read_length_metagene = metagene_profile(
+            annotated_read_df[annotated_read_df["read_length"] == read_length],
+            target="start",
+            distance_range=[-30, 10],
+        )
+
+        offset_dict[read_length] = change_point_analysis(
+            read_length_metagene["start"],
+        )
+    print(offset_dict)
+    return offset_dict
