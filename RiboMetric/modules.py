@@ -567,8 +567,7 @@ def metagene_profile(
             .size()
             .to_dict()
         )
-        print("PreMetad")
-        print(pre_metaprofile_dict)
+
         if pre_metaprofile_dict == {}:
             print(
                 "ERR - Metagene Profile: No reads found in specified range, \
@@ -738,10 +737,11 @@ def change_point_analysis(
     max_shift_position = None
 
     for i in range(surrounding_range[0], surrounding_range[1]):
+        print([read_counts.get(i, 0) for i in range(i-3, i+1)])
+        print([read_counts.get(i, 0) for i in range(i+1, i+5)])
         mean_left = sum(read_counts.get(i, 0) for i in range(i-3, i+1)) / 4
         mean_right = sum(read_counts.get(i, 0) for i in range(i+1, i+5)) / 4
         shift = abs(mean_right - mean_left)
-        print(i, mean_left, mean_right, shift)
         if shift > max_shift:
             max_shift = shift
             max_shift_position = i
@@ -762,7 +762,7 @@ def asite_calculation_per_readlength(
         offset_range: Range of offsets to test
 
     Output:
-        offset_dict: Dictionary containing the offset values for each read length
+        offset_dict: Dictionary containing the offset values for each read len
     """
     offset_dict = {}
 
