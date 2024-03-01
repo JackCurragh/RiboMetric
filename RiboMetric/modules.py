@@ -737,7 +737,7 @@ def change_point_analysis(
 
     print(read_counts)
     for i in range(-30, 11):
-        mean_left = sum(read_counts.get(i, 0) for i in range(i-3, i+1)) / 4
+        mean_left = sum(read_counts.ge for i in range(i-3, i+1)) / 4
         mean_right = sum(read_counts.get(i, 0) for i in range(i+1, i+5)) / 4
         shift = abs(mean_right - mean_left)
         print(i, mean_left, mean_right, shift)
@@ -773,7 +773,7 @@ def asite_calculation_per_readlength(
         )
 
         offset_dict[read_length] = change_point_analysis(
-            read_length_metagene["start"],
+            read_length_metagene["start"][read_length],
         )
     print(offset_dict)
     return offset_dict
