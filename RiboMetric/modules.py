@@ -757,6 +757,8 @@ def change_point_analysis(
         if shift > max_shift:
             max_shift = shift
             max_shift_position = i
+    if not max_shift_position:
+        return 0
     return 15 - max_shift_position
 
 
