@@ -757,7 +757,7 @@ def change_point_analysis(
         if shift > max_shift:
             max_shift = shift
             max_shift_position = i
-    return max_shift_position
+    return 15 - max_shift_position
 
 
 def asite_calculation_per_readlength(
