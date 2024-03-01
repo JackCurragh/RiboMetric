@@ -537,6 +537,7 @@ def metagene_profile(
     annotated_read_df: pd.DataFrame,
     target: str = "both",
     distance_range: list = [-50, 50],
+    position: str = "a_site",
 ) -> dict:
     """
     Groups the reads by read_length and distance to a target and counts them
@@ -735,12 +736,9 @@ def change_point_analysis(
     """
     max_shift = 0
     max_shift_position = None
-    print(read_counts)
-    print(read_counts.keys())
-    for i in range(surrounding_range[0] - 3, surrounding_range[1] + 5):
+
+    for i in range(surrounding_range[0], surrounding_range[1]):
         print([read_counts[i] for i in range(i-3, i+1)])
-        print([read_counts.get(i, 0) for i in range(i-3, i+1)])
-        print([read_counts.get(i, 0) for i in range(i+1, i+5)])
         mean_left = sum(read_counts.get(i, 0) for i in range(i-3, i+1)) / 4
         mean_right = sum(read_counts.get(i, 0) for i in range(i+1, i+5)) / 4
         shift = abs(mean_right - mean_left)
@@ -778,6 +776,7 @@ def asite_calculation_per_readlength(
 
         offset_dict[read_length] = change_point_analysis(
             read_length_metagene["start"][read_length],
+            surrounding_range=[-26, 5]
         )
     print(offset_dict)
     return offset_dict
