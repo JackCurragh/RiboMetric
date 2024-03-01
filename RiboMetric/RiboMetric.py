@@ -237,8 +237,8 @@ def main(args):
 
             del read_df_pre
             print("Calculating A site information...")
+            
             read_df = a_site_calculation(read_df)
-
             if (config["argument"]["gff"] is None and
                     config["argument"]["annotation"] is None):
                 results_dict = annotation_mode(read_df,

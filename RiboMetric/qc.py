@@ -26,6 +26,7 @@ from .modules import (
     read_frame_score,
     read_frame_cull,
     asite_calculation_per_readlength,
+    a_site_calculation_variable_offset
 )
 
 from .metrics import (
@@ -69,9 +70,14 @@ def annotation_mode(
 
         print("assigning mRNA categories")
         annotated_read_df = assign_mRNA_category(annotated_read_df)
+        offsets = asite_calculation_per_readlength(annotated_read_df)
+        annotated_read_df = a_site_calculation_variable_offset(
+            annotated_read_df, offsets
+            )
         print("Subsetting to CDS reads")
         cds_read_df = read_df_to_cds_read_df(annotated_read_df)
-        asite_calculation_per_readlength(annotated_read_df)
+
+
     else:
         annotation = False
     print("Running modules")

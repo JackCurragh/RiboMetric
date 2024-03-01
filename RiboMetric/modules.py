@@ -44,6 +44,34 @@ def a_site_calculation(read_df: pd.DataFrame, offset=12) -> pd.DataFrame:
     return a_site_df
 
 
+def a_site_calculation_variable_offset(read_df: pd.DataFrame, offset_dict: dict) -> pd.DataFrame:
+    """
+    Adds a column to the read_df containing the A-site for the reads
+
+    Inputs:
+        read_df: Dataframe containing the read information
+        offset_dict: Dictionary containing offsets for each read length
+                     Keys: read_length, Values: offset
+                     If offset_dict is None, a default offset of 15 is used for all read lengths.
+
+    Outputs:
+        asite_df: Dataframe containing the read information with an added
+                    column for the A-site
+    """
+    # If offset_dict is not provided, use default offset of 15 for all read lengths
+    if offset_dict is None:
+        offset = 15
+    else:
+        # Create a mapping from read_length to offset
+        offset_mapping = {length: offset_dict.get(length, 15) for length in read_df['read_length'].unique()}
+        # Map offsets to corresponding read lengths
+        read_df['offset'] = read_df['read_length'].map(offset_mapping)
+
+    # Calculate A-site based on offset for each read
+    a_site_df = read_df.assign(a_site=read_df.reference_start.add(read_df.offset))
+
+    return a_site_df
+
 def read_length_distribution(read_df: pd.DataFrame) -> dict:
     """
     Calculate the read length distribution for the full dataset
@@ -758,7 +786,7 @@ def change_point_analysis(
             max_shift = shift
             max_shift_position = i
     if not max_shift_position:
-        return 0
+        return 15
     return 15 - max_shift_position
 
 
@@ -770,8 +798,7 @@ def asite_calculation_per_readlength(
     Calculate offset values per read length for the A-site
     Shoelaces based method using metagene counts 
 
-    Input:
-        annotated_read_df: Dataframe containing the read information
+    Input:read_counts.get(i, 0) for i in range(i+1, i+5)
         with an cds info added
         offset_range: Range of offsets to test
 
@@ -792,5 +819,4 @@ def asite_calculation_per_readlength(
             read_length_metagene["start"][read_length],
             surrounding_range=[-26, 5]
         )
-    print(offset_dict)
     return offset_dict
