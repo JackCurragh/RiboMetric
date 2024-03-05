@@ -92,7 +92,7 @@ def split_idxstats_df(idxstats_df: pd.DataFrame,
 
 def split_bam(bam_file: str,
               split_num: int,
-              reference_df: list,
+              reference_df: pd.DataFrame,
               tempdir: str
               ) -> str:
     """

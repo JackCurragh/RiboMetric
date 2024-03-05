@@ -42,6 +42,7 @@ from .metrics import (
     cds_coverage_metric,
     leader_cds_ratio_metric,
     read_length_distribution_prop_at_peak_metric as rldpp_metric,
+    autocorrelation
 )
 from typing import Any, Dict
 
@@ -255,6 +256,15 @@ def annotation_mode(
             config["plots"]["metagene_profile"]["distance_target"],
             config["plots"]["metagene_profile"]["distance_range"],
         )
+        results_dict["metrics"]["autocorrelation"] = autocorrelation(
+            metagene_profile(
+                annotated_read_df,
+                target="start",
+                distance_range=[15, 100],
+
+            )
+        )
+
         print("> cds_coverage_metric")
         results_dict["metrics"]["CDS_coverage_metric"] = cds_coverage_metric(
             cds_read_df,
