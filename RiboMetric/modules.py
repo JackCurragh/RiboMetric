@@ -584,8 +584,8 @@ def metagene_profile(
     target_loop = [target] if target != "both" else ["start", "stop"]
     metagene_profile_dict = {"start": {}, "stop": {}}
     for current_target in target_loop:
-        annotated_read_df.loc[:, "metagene_info"] = metagene_distance(
-            annotated_read_df, current_target
+        annotated_read_df = annotated_read_df.assign(
+            metagene_info=metagene_distance(annotated_read_df, current_target)
         )
         pre_metaprofile_dict = (
             annotated_read_df[
