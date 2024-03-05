@@ -30,7 +30,7 @@ from .modules import (
 )
 
 from .metrics import (
-    read_length_distribution_metric as rld_metric,
+    read_length_distribution_spread_metric as rld_metric,
     ligation_bias_distribution_metric as lbd_metric,
     ligation_bias_max_proportion_metric as lbmp_metric,
     read_frame_information_content as rfd_metric,

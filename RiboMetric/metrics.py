@@ -21,7 +21,7 @@ def find_category_by_cumulative_percentage(df, percentage):
     return read_length
 
 
-def read_length_distribution_metric(
+def read_length_distribution_spread_metric(
         rld_dict: dict,
         ) -> pd.DataFrame:
     """
@@ -52,6 +52,36 @@ def read_length_distribution_metric(
         - find_category_by_cumulative_percentage(rld_df, 0.1)
 
     return 1 - (inter_quartile_range / max_range)
+
+
+def read_length_distribution_variation_metric(
+        rld_dict: dict,
+        ) -> pd.DataFrame:
+    """
+    Calculate the read length distribution metric from the output of
+    the read_length_distribution module.
+
+    This metric is the coefficient of variation of the read length
+    distribution and is calculated as the standard deviation of the
+    read length distribution divided by the mean of the read length
+    distribution
+
+    Inputs:
+        rld_dict: Dictionary containing the output of the
+                read_length_distribution module
+
+    Outputs:
+        rld_df: Dataframe containing the read length distribution metric
+    """
+    rld_df = pd.DataFrame.from_dict(rld_dict, orient="index")
+    rld_df = rld_df.reset_index()
+    rld_df.columns = ["read_length", "read_count"]
+
+    mean = (rld_df["read_length"] * rld_df["read_count"]).sum()\
+        / rld_df["read_count"].sum()
+    variance = ((rld_df["read_length"] - mean)**2 * rld_df["read_count"]).sum()\
+        / rld_df["read_count"].sum()
+    return math.sqrt(variance) / mean
 
 
 def ligation_bias_distribution_metric(
@@ -86,8 +116,7 @@ def ligation_bias_distribution_metric(
         kl_divergence += observed_prob * math.log2(
                                             observed_prob / expected_prob
                                             )
-
-    return kl_divergence
+    return 1 - kl_divergence
 
 
 def ligation_bias_max_proportion_metric(
