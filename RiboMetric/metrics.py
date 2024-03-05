@@ -99,7 +99,7 @@ def read_length_distribution_prop_at_peak_metric(
     Outputs:
         prop_at_peak (float): The proportion of reads in the most frequent
     """
-    max_count = sum(sorted(rld_dict.values())[:num_top_readlens])
+    max_count = sum(sorted(rld_dict.values(), reverse=True)[:num_top_readlens])
     total_count = sum(rld_dict.values())
     print(num_top_readlens, max_count, total_count, sorted(rld_dict.values()))
     return max_count / total_count
@@ -202,8 +202,12 @@ def cds_coverage_metric(
                                    ).astype("category")
 
     print(cds_coverage_df.head())
-    top_transcripts = cds_coverage_df["transcript_id"].value_counts().index[:1000]
-    cds_coverage_df = cds_coverage_df["transcript_id"].isin(top_transcripts)
+    top_transcripts = cds_coverage_df[
+        "transcript_id"
+        ].value_counts().index[:1000]
+    cds_coverage_df = cds_coverage_df[
+        cds_coverage_df["transcript_id"].isin(top_transcripts)]
+
     # Calculate the total combined length of the CDS of transcripts that have
     # reads aligned to them
     cds_transcripts = cds_coverage_df[~cds_coverage_df["transcript_id"]
