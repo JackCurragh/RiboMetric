@@ -66,6 +66,9 @@ def annotation_mode(
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
     """
+    most_frequent_txs = read_df['transcript_id'].value_counts().index.tolist()
+    # subset to the top 100 transcripts
+    read_df = read_df[read_df['transcript_id'].isin(most_frequent_txs[:100])]
     if len(annotation_df) > 0:
         annotation = True
         print("Merging annotation and reads")
