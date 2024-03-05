@@ -101,7 +101,7 @@ def read_length_distribution_prop_at_peak_metric(
     """
     max_count = sum(sorted(rld_dict.values(), reverse=True)[:num_top_readlens])
     total_count = sum(rld_dict.values())
-    print(num_top_readlens, max_count, total_count, sorted(rld_dict.values()))
+
     return max_count / total_count
 
 
@@ -201,10 +201,9 @@ def cds_coverage_metric(
                                    .astype(str)
                                    ).astype("category")
 
-    print(cds_coverage_df.head())
     top_transcripts = cds_coverage_df[
         "transcript_id"
-        ].value_counts().index[:1000]
+        ].value_counts().index[:100]
     cds_coverage_df = cds_coverage_df[
         cds_coverage_df["transcript_id"].isin(top_transcripts)]
 
@@ -216,7 +215,6 @@ def cds_coverage_metric(
                                      .apply(lambda x: x['cds_end']
                                             - x['cds_start'],
                                             axis=1))
-    print(cds_transcripts.head())
     cds_length_total = cds_transcripts["cds_length"].sum()
     del cds_transcripts
 
@@ -232,7 +230,7 @@ def cds_coverage_metric(
     # Calculate the count of nucleotides covered by the reads after filtering
     cds_reads_count = sum(cds_coverage_df.value_counts("name_pos")
                           > minimum_reads)
-
+    print(cds_coverage_df.value_counts("name_pos"))
     return cds_reads_count/cds_length_total
 
 
