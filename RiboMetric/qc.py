@@ -31,6 +31,7 @@ from .modules import (
 
 from .metrics import (
     read_length_distribution_spread_metric as rld_metric,
+    read_length_distribution_variation_metric as rldv_metric,
     ligation_bias_distribution_metric as lbd_metric,
     ligation_bias_max_proportion_metric as lbmp_metric,
     read_frame_information_content as rfd_metric,
@@ -95,6 +96,10 @@ def annotation_mode(
     results_dict["metrics"]["read_length_distribution_metric"] = rld_metric(
         results_dict["read_length_distribution"]
     )
+    results_dict["metrics"]["read_length_distribution_variation_metric"] =\
+        rldv_metric(
+            results_dict["read_length_distribution"]
+        )
     results_dict["metrics"]["rld_prop_top_1_metric"] = rldpp_metric(
         results_dict["read_length_distribution"],
         num_top_readlens=1
@@ -262,6 +267,33 @@ def annotation_mode(
             minimum_reads=1,
             in_frame_coverage=False
             )
+        results_dict["metrics"][
+            "CDS_coverage_metric_top_10"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=1,
+            in_frame_coverage=True,
+            num_transcripts=10
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_top_100"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=1,
+            in_frame_coverage=True,
+            num_transcripts=100
+            )
+
+        results_dict["metrics"][
+            "CDS_coverage_metric_top_500"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=1,
+            in_frame_coverage=True,
+            num_transcripts=500
+            )
+
+            
         results_dict["metrics"]["leader_cds_ratio"] = leader_cds_ratio_metric(
             mRNA_distribution=results_dict["mRNA_distribution"]
             )

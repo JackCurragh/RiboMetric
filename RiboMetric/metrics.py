@@ -172,7 +172,8 @@ def ligation_bias_max_proportion_metric(
 def cds_coverage_metric(
         cds_read_df: pd.DataFrame,
         minimum_reads: int = 1,
-        in_frame_coverage: bool = True
+        in_frame_coverage: bool = True,
+        num_transcripts: int = 100,
         ) -> float:
     """
     Calculates the proportion of CDS covered by ribosomal protected fragments
@@ -203,7 +204,7 @@ def cds_coverage_metric(
 
     top_transcripts = cds_coverage_df[
         "transcript_id"
-        ].value_counts().index[:100]
+        ].value_counts().index[:num_transcripts]
     cds_coverage_df = cds_coverage_df[
         cds_coverage_df["transcript_id"].isin(top_transcripts)]
 
@@ -230,7 +231,6 @@ def cds_coverage_metric(
     # Calculate the count of nucleotides covered by the reads after filtering
     cds_reads_count = sum(cds_coverage_df.value_counts("name_pos")
                           > minimum_reads)
-    print(cds_coverage_df.value_counts("name_pos"))
     return cds_reads_count/cds_length_total
 
 
