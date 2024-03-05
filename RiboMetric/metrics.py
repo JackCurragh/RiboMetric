@@ -56,7 +56,7 @@ def read_length_distribution_spread_metric(
 
 def read_length_distribution_variation_metric(
         rld_dict: dict,
-        ) -> pd.DataFrame:
+        ) -> float:
     """
     Calculate the read length distribution metric from the output of
     the read_length_distribution module.
@@ -71,7 +71,7 @@ def read_length_distribution_variation_metric(
                 read_length_distribution module
 
     Outputs:
-        rld_df: Dataframe containing the read length distribution metric
+        variaion_metric (float): The coefficient of variation of the read
     """
     rld_df = pd.DataFrame.from_dict(rld_dict, orient="index")
     rld_df = rld_df.reset_index()
@@ -82,6 +82,27 @@ def read_length_distribution_variation_metric(
     variance = ((rld_df["read_length"] - mean)**2 * rld_df["read_count"]).sum()\
         / rld_df["read_count"].sum()
     return math.sqrt(variance) / mean
+
+
+def read_length_distribution_prop_at_peak_metric(
+        rld_dict: dict,
+        num_top_readlens: int = 1,
+        ) -> float:
+    """
+    Calculate the proportion of reads in the most frequent read length
+
+    Inputs:
+        rld_dict: Dictionary containing the output of the
+                read_length_distribution module
+        num_top_readlens: The number of top read lengths to consider
+
+    Outputs:
+        prop_at_peak (float): The proportion of reads in the most frequent
+    """
+    max_count = sum(sorted(rld_dict.values())[:num_top_readlens])
+    total_count = sum(rld_dict.values())
+
+    return max_count / total_count
 
 
 def ligation_bias_distribution_metric(
@@ -408,14 +429,18 @@ def leader_cds_ratio_metric(
         leader_cds_ratio: Dictionary containing the leader cds ratio metric
     """
     leader_cds_ratio = {}
-
+    five_prime_total, cds_total = 0, 0
     read_lengths = [i for i in range(
         read_length_range[0], read_length_range[1]
         )]
     for read_len in mRNA_distribution:
         if read_len in read_lengths:
+            five_prime_total += mRNA_distribution[read_len]["five_leader"]
+            cds_total += mRNA_distribution[read_len]["CDS"]
             leader_cds_ratio[read_len] = 1 - (
                 mRNA_distribution[
                     read_len]["five_leader"] / mRNA_distribution[
                         read_len]["CDS"])
+
+    leader_cds_ratio["total"] = 1 - (five_prime_total / cds_total)
     return leader_cds_ratio
