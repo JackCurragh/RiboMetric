@@ -90,6 +90,35 @@ def ligation_bias_distribution_metric(
     return kl_divergence
 
 
+def ligation_bias_max_proportion_metric(
+        observed_freq: dict,
+        expected_freq: dict,
+        prime: str = "five_prime",
+        ) -> float:
+    """
+    Calculate the ligation bias metric from the output of
+    the ligation_bias_distribution module.
+
+    This metric is the maximum difference in observed and expected
+    frequencies of dinucleotides
+
+    Inputs:
+        observed_freq: Dictionary containing the output of the
+                ligation_bias_distribution module
+        expected_freq: Dictionary containing the expected frequencies
+
+    Outputs:
+        lbd_df: Dataframe containing the ligation bias metric in bits
+    """
+    scores = {}
+    for dinucleotide, observed_prob in observed_freq[prime].items():
+        expected_prob = expected_freq[dinucleotide]
+        scores[dinucleotide] = abs(
+            observed_prob - expected_prob)
+
+    return max(scores.values())
+
+
 def cds_coverage_metric(
         cds_read_df: pd.DataFrame,
         minimum_reads: int = 1,

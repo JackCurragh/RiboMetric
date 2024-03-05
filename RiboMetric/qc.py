@@ -32,6 +32,7 @@ from .modules import (
 from .metrics import (
     read_length_distribution_metric as rld_metric,
     ligation_bias_distribution_metric as lbd_metric,
+    ligation_bias_max_proportion_metric as lbmp_metric,
     read_frame_information_content as rfd_metric,
     triplet_periodicity_weighted_score,
     triplet_periodicity_best_read_length_score as tpbrl_metric,
@@ -109,6 +110,20 @@ def annotation_mode(
             ] = lbd_metric(
             results_dict["ligation_bias_distribution"],
             sequence_background["5_prime_bg"],
+        )
+        results_dict["metrics"][
+            "ligation_bias_max_proportion_metric_5_prime"
+            ] = lbmp_metric(
+            results_dict["ligation_bias_distribution"],
+            sequence_background["5_prime_bg"],
+            prime="five_prime",
+        )
+        results_dict["metrics"][
+            "ligation_bias_max_proportion_metric_3_prime"
+            ] = lbmp_metric(
+            results_dict["ligation_bias_distribution"],
+            sequence_background["3_prime_bg"],
+            prime="three_prime",
         )
         if config["plots"]["ligation_bias_distribution"]["background_freq"]:
             results_dict[
