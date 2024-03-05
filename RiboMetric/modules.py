@@ -407,8 +407,9 @@ def chunked_annotate_reads(a_site_df: pd.DataFrame,
         chunk = a_site_df.iloc[start_idx:end_idx]
 
         # Process the chunk
-        chunk.loc[:, "transcript_id"] = chunk.reference_name.str.split(
-            "|").str[0]
+        chunk = chunk.assign(
+            transcript_id=chunk.reference_name.str.split("|").str[0]
+        )
 
         chunk = chunk.drop(["reference_name"], axis=1)
         chunk = chunk.merge(annotation_df, on="transcript_id")
@@ -597,11 +598,7 @@ def metagene_profile(
             .to_dict()
         )
 
-        if pre_metaprofile_dict == {}:
-            print(
-                "ERR - Metagene Profile: No reads found in specified range, \
-removing boundaries..."
-            )
+        if pre_metaprofile_dict == {}:  # If no reads in range
             pre_metaprofile_dict = (
                 annotated_read_df.groupby(["read_length", "metagene_info"])
                 .size()
