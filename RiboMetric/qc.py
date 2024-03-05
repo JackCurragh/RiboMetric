@@ -39,7 +39,8 @@ from .metrics import (
     information_metric_cutoff,
     triplet_periodicity_weighted_score_best_3_read_lengths as tpw3rl_metric,
     cds_coverage_metric,
-    leader_cds_ratio_metric
+    leader_cds_ratio_metric,
+    read_length_distribution_prop_at_peak_metric as rldpp_metric,
 )
 from typing import Any, Dict
 
@@ -94,6 +95,19 @@ def annotation_mode(
     results_dict["metrics"]["read_length_distribution_metric"] = rld_metric(
         results_dict["read_length_distribution"]
     )
+    results_dict["metrics"]["rld_prop_top_1_metric"] = rldpp_metric(
+        results_dict["read_length_distribution"],
+        num_top_readlens=1
+    )
+    results_dict["metrics"]["rld_prop_top_3_metric"] = rldpp_metric(
+        results_dict["read_length_distribution"],
+        num_top_readlens=3
+    )
+    results_dict["metrics"]["rld_prop_top_5_metric"] = rldpp_metric(
+        results_dict["read_length_distribution"],
+        num_top_readlens=5
+    )
+
 
     if sequence_background:
         print("> ligation_bias_distribution")

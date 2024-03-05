@@ -220,9 +220,6 @@ def main(args):
                 num_reads=read_limit,
                 num_processes=config["argument"]["threads"],
                 server_mode=config["argument"]["server"])
-            
-            print(sequence_background)
-            print(sequence_data)
             print("Reads parsed")
 
             # Expand the dataframe to have one row per read
