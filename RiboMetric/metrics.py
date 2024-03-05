@@ -101,7 +101,7 @@ def read_length_distribution_prop_at_peak_metric(
     """
     max_count = sum(sorted(rld_dict.values())[:num_top_readlens])
     total_count = sum(rld_dict.values())
-
+    print(num_top_readlens, max_count, total_count, sum(sorted(rld_dict.values())))
     return max_count / total_count
 
 
