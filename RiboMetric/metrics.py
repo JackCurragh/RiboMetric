@@ -511,7 +511,7 @@ def autocorrelate_counts(metagene_profile: dict, lag: int) -> dict:
     return read_length_scores
 
 
-def autocorrelation(metagene_profile: dict, lag: int) -> dict:
+def autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
     """
     Computes the autocorrelation of the ribosome counts at a given lag.
 
