@@ -116,7 +116,7 @@ def ligation_bias_max_proportion_metric(
         scores[dinucleotide] = abs(
             observed_prob - expected_prob)
 
-    return max(scores.values())
+    return 1 - max(scores.values())
 
 
 def cds_coverage_metric(
