@@ -450,3 +450,83 @@ def leader_cds_ratio_metric(
 
     leader_cds_ratio["total"] = 1 - (five_prime_total / cds_total)
     return leader_cds_ratio
+
+
+def prepare_metagene(metagene_profile: dict) -> dict:
+    """
+    Prepares a metagene profile for autocorrelation analysis.
+
+    Parameters:
+    -----------
+    metagene_profile: dict
+        The metagene profile to prepare.
+
+    Returns:    
+    --------    
+    metagene_profile: dict
+        The prepared metagene profile.
+    """
+    for read_length in metagene_profile:
+        # ensure that the signal starts in frame 
+        for position in sorted(metagene_profile[read_length].keys()):
+            if position % 3 != 0:
+                del metagene_profile[read_length][position]
+            else: 
+                break
+
+        # ensure that 0 counts are added 
+        for position in range(
+            min(metagene_profile[read_length].keys()),
+            max(metagene_profile[read_length].keys())
+            ):
+            if position not in metagene_profile[read_length]:
+                metagene_profile[read_length][position] = 0
+    return metagene_profile
+
+
+def autocorrelate_counts(metagene_profile: dict, lag: int) -> dict:
+    """
+    Computes the autocorrelation of the ribosome counts at a given lag.
+
+    Parameters:
+    -----------
+    metagene_profile: dict
+        The metagene profile to compute the autocorrelation of.
+
+    lag: int
+        The lag to compute the autocorrelation at.
+
+    Returns:
+    --------
+    read_length_scores: dict
+        The autocorrelation scores at the given lag.
+    """
+    read_length_scores = {}
+    for read_length in metagene_profile:
+        count_list = np.array(list(metagene_profile[read_length].values()))
+        if count_list[0] != None:
+            read_length_scores[read_length] = autocorrelation(count_list, lag)
+        else:
+            read_length_scores[read_length] = 0
+    return read_length_scores
+
+
+def autocorrelation(metagene_profile: dict, lag: int) -> dict:
+    """
+    Computes the autocorrelation of the ribosome counts at a given lag.
+
+    Parameters:
+    -----------
+    metagene_profile: dict
+        The metagene profile to compute the autocorrelation of.
+
+    lag: int
+        The lag to compute the autocorrelation at.
+
+    Returns:
+    --------
+    read_length_scores: dict
+        The autocorrelation scores at the given lag.
+    """
+    updated_metagene_profile = prepare_metagene(metagene_profile)
+    return autocorrelate_counts(updated_metagene_profile, lag)
