@@ -113,6 +113,7 @@ def split_bam(bam_file: str,
     outfile = f"{tempdir}/split_sorted_{split_num}.bam"
     samview = subprocess.Popen(('samtools',
                                 'view',
+                                '-F 256',
                                 '-h',
                                 '-L',
                                 bedfile,
