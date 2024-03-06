@@ -461,8 +461,8 @@ def prepare_metagene(metagene_profile: dict) -> dict:
     metagene_profile: dict
         The metagene profile to prepare.
 
-    Returns:    
-    --------    
+    Returns:
+    --------
     metagene_profile: dict
         The prepared metagene profile.
     """
@@ -471,14 +471,14 @@ def prepare_metagene(metagene_profile: dict) -> dict:
         for position in sorted(metagene_profile[read_length].keys()):
             if position % 3 != 0:
                 del metagene_profile[read_length][position]
-            else: 
+            else:
                 break
 
-        # ensure that 0 counts are added 
+        # ensure that 0 counts are added
         for position in range(
             min(metagene_profile[read_length].keys()),
             max(metagene_profile[read_length].keys())
-            ):
+        ):
             if position not in metagene_profile[read_length]:
                 metagene_profile[read_length][position] = 0
     return metagene_profile
@@ -528,5 +528,5 @@ def autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
     read_length_scores: dict
         The autocorrelation scores at the given lag.
     """
-    updated_metagene_profile = prepare_metagene(metagene_profile)
-    return autocorrelate_counts(updated_metagene_profile, lag)
+    # updated_metagene_profile = prepare_metagene(metagene_profile)
+    return autocorrelate_counts(metagene_profile, lag)
