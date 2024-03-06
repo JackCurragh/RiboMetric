@@ -530,4 +530,4 @@ def autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
         The autocorrelation scores at the given lag.
     """
     # updated_metagene_profile = prepare_metagene(metagene_profile)
-    return autocorrelate_counts(metagene_profile, lag)
+    return autocorrelate_counts(metagene_profile['start'], lag)
