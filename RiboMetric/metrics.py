@@ -399,7 +399,7 @@ def frame_bias_metric(
         read_df: pd.DataFrame,
         ) -> dict:
     """
-    Calculate the frame bias metric. This metric is the proportion 
+    Calculate the frame bias metric. This metric is the proportion
     of reads in each frame
 
     Inputs:
@@ -453,54 +453,20 @@ def leader_cds_ratio_metric(
     return leader_cds_ratio
 
 
-def prepare_metagene(metagene_profile: dict) -> dict:
-    """
-    Prepares a metagene profile for autocorrelation analysis.
-
-    Parameters:
-    -----------
-    metagene_profile: dict
-        The metagene profile to prepare.
-
-    Returns:
-    --------
-    metagene_profile: dict
-        The prepared metagene profile.
-    """
-    for read_length in metagene_profile:
-        # ensure that the signal starts in frame 
-        for position in sorted(metagene_profile[read_length].keys()):
-            if position % 3 != 0:
-                del metagene_profile[read_length][position]
-            else:
-                break
-
-        # ensure that 0 counts are added
-        for position in range(
-            min(metagene_profile[read_length].keys()),
-            max(metagene_profile[read_length].keys())
-        ):
-            if position not in metagene_profile[read_length]:
-                metagene_profile[read_length][position] = 0
-    return metagene_profile
-
-
 def autocorrelate(signal: np.array, lag: int) -> float:
     """
     Computes the autocorrelation of a signal at a given lag.
 
-    Parameters:
-    -----------
-    signal: np.array
-        The signal to compute the autocorrelation of.
+    Inputs:
+        signal: np.array
+            The signal to compute the autocorrelation of.
 
-    lag: int
-        The lag to compute the autocorrelation at.
+        lag: int
+            The lag to compute the autocorrelation at.
 
     Returns:
-    --------
-    correlation_score: float
-        The autocorrelation score at the given lag.
+        correlation_score: float
+            The autocorrelation score at the given lag.
     """
     autocorr = np.correlate(signal, signal, mode='full')
     autocorr = autocorr[len(signal)-1:].astype(float)
@@ -539,19 +505,15 @@ def autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
     """
     Computes the autocorrelation of the ribosome counts at a given lag.
 
-    Parameters:
-    -----------
-    metagene_profile: dict
-        The metagene profile to compute the autocorrelation of.
+    Inputs:
+        metagene_profile: dict
+            The metagene profile to compute the autocorrelation of.
 
-    lag: int
-        The lag to compute the autocorrelation at.
+        lag: int
+            The lag to compute the autocorrelation at.
 
     Returns:
-    --------
-    read_length_scores: dict
-        The autocorrelation scores at the given lag.
+        read_length_scores: dict
+            The autocorrelation scores at the given lag.
     """
-    # updated_metagene_profile = prepare_metagene(metagene_profile)
-    print(metagene_profile)
     return autocorrelate_counts(metagene_profile['start'], lag)
