@@ -517,3 +517,29 @@ def autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
             The autocorrelation scores at the given lag.
     """
     return autocorrelate_counts(metagene_profile['start'], lag)
+
+
+def uniformity(metagene_profile: dict) -> dict:
+    """
+    Computes the uniformity of the metagene profile.
+
+    Inputs:
+        metagene_profile: dict
+            The metagene profile to compute the uniformity of.
+
+    Returns:
+        read_length_scores: dict
+            The uniformity scores for each read length.
+    """
+    read_len_uniformity = {}
+    for read_len in metagene_profile:
+        total_counts = sum(metagene_profile[read_len].values())
+        entropy = 0.0
+        for count in metagene_profile[read_len].values():
+            if count > 0:
+                probability = count / total_counts
+                entropy -= probability * math.log(probability, 2)
+        max_entropy = math.log(len(metagene_profile[read_len]), 2)
+        uniformity = entropy / max_entropy
+        read_len_uniformity[read_len] = uniformity
+    return read_len_uniformity

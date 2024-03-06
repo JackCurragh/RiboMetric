@@ -42,7 +42,8 @@ from .metrics import (
     cds_coverage_metric,
     leader_cds_ratio_metric,
     read_length_distribution_prop_at_peak_metric as rldpp_metric,
-    autocorrelation
+    autocorrelation,
+    uniformity,
 )
 from typing import Any, Dict
 
@@ -261,7 +262,13 @@ def annotation_mode(
                 annotated_read_df,
                 target="start",
                 distance_range=[15, 100],
-
+            )
+        )
+        results_dict["metrics"]["uniformity"] = uniformity(
+            metagene_profile(
+                annotated_read_df,
+                target="start",
+                distance_range=[15, 100],
             )
         )
 
