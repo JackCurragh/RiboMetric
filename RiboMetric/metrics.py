@@ -8,6 +8,7 @@ respective modules
 
 import pandas as pd
 import math
+import numpy as np
 
 
 def find_category_by_cumulative_percentage(df, percentage):
