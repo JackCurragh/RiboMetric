@@ -532,14 +532,14 @@ def uniformity(metagene_profile: dict) -> dict:
             The uniformity scores for each read length.
     """
     read_len_uniformity = {}
-    for read_len in metagene_profile:
-        total_counts = sum(metagene_profile[read_len].values())
+    for read_len in metagene_profile['start']:
+        total_counts = sum(metagene_profile['start'][read_len].values())
         entropy = 0.0
-        for count in metagene_profile[read_len].values():
+        for count in metagene_profile['start'][read_len].values():
             if count > 0:
                 probability = count / total_counts
                 entropy -= probability * math.log(probability, 2)
-        max_entropy = math.log(len(metagene_profile[read_len]), 2)
+        max_entropy = math.log(len(metagene_profile['start'][read_len]), 2)
         uniformity = entropy / max_entropy
         read_len_uniformity[read_len] = uniformity
     return read_len_uniformity
