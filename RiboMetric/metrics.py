@@ -485,6 +485,29 @@ def prepare_metagene(metagene_profile: dict) -> dict:
     return metagene_profile
 
 
+def autocorrelate(signal: np.array, lag: int) -> float:
+    """
+    Computes the autocorrelation of a signal at a given lag.
+
+    Parameters:
+    -----------
+    signal: np.array
+        The signal to compute the autocorrelation of.
+
+    lag: int
+        The lag to compute the autocorrelation at.
+
+    Returns:
+    --------
+    correlation_score: float
+        The autocorrelation score at the given lag.
+    """
+    autocorr = np.correlate(signal, signal, mode='full')
+    autocorr = autocorr[len(signal)-1:].astype(float)
+    autocorr /= autocorr[0]
+    return autocorr[lag]
+
+
 def autocorrelate_counts(metagene_profile: dict, lag: int) -> dict:
     """
     Computes the autocorrelation of the ribosome counts at a given lag.
@@ -505,8 +528,8 @@ def autocorrelate_counts(metagene_profile: dict, lag: int) -> dict:
     read_length_scores = {}
     for read_length in metagene_profile:
         count_list = np.array(list(metagene_profile[read_length].values()))
-        if count_list[0] != None:
-            read_length_scores[read_length] = autocorrelation(count_list, lag)
+        if count_list[0] is not None:
+            read_length_scores[read_length] = autocorrelate(count_list, lag)
         else:
             read_length_scores[read_length] = 0
     return read_length_scores
@@ -529,6 +552,6 @@ def autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
     read_length_scores: dict
         The autocorrelation scores at the given lag.
     """
-    # updated_metagene_profile = prepare_metagene(metagene_profile)
+    updated_metagene_profile = prepare_metagene(metagene_profile)
     print(metagene_profile)
     return autocorrelate_counts(metagene_profile['start'], lag)
