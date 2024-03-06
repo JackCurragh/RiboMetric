@@ -8,9 +8,6 @@ from pathlib import Path
 with open("README.rst") as readme_file:
     readme = readme_file.read()
 
-with open("HISTORY.rst") as history_file:
-    history = history_file.read()
-
 # Get the path to the requirements.txt file
 requirements_path = Path(__file__).parent / 'requirements_dev.txt'
 
