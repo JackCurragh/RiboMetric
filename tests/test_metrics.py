@@ -7,7 +7,7 @@ from RiboMetric.modules import (
 )
 
 from RiboMetric.metrics import (
-    read_length_distribution_metric as rld_metric,
+    read_length_distribution_spread_metric as rld_metric,
     ligation_bias_distribution_metric as lbd_metric,
     read_frame_information_content as rfd_metric,
     triplet_periodicity_weighted_score,
@@ -62,7 +62,7 @@ def test_ligation_bias_distribution_metric():
         ligation_bias_dict, sequence_background[2]["5_prime_bg"]
         )
 
-    assert round(ligation_bias_metric, 2) == 1.18
+    assert round(ligation_bias_metric, 2) == -0.18
 
 
 def test_read_frame_distribution_metric():
