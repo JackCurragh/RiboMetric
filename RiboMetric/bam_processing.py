@@ -14,7 +14,7 @@ from multiprocessing import Pool
 
 def validate_bam(bam_file: str) -> None:
     """
-    Validate a bam file using samtools quickcheck
+    Validate a bam file by attempting to read it with oxbow
 
     Inputs:
         bam_file: Path to the BAM file
@@ -70,7 +70,8 @@ def ox_parse_reads(bam_file: str,
                         split_num,
                         reference_df,
                         tempdir)
-    print("TMP BAM: ", tmp_bam)
+    print()
+    print("TMP BAM: ", tmp_bam, split_num, reference_df)
     validate_bam(tmp_bam)
 
     print("\n"*(split_num // print_columns),
