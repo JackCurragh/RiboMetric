@@ -70,7 +70,7 @@ def ox_parse_reads(bam_file: str,
                         split_num,
                         reference_df,
                         tempdir)
-
+    print("TMP BAM: ", tmp_bam)
     validate_bam(tmp_bam)
 
     print("\n"*(split_num // print_columns),
@@ -86,9 +86,10 @@ def ox_parse_reads(bam_file: str,
             raise Exception("InvalidReferenceSequenceName - \
                             Likely an invalid character in sequence name \
                             eg. ), or ( ")
+        else:
+            raise Exception(f"Invalid bam file {e}")
 
     oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
-    print("OXBOW DF OX PARSE BAM: ", oxbow_df)
     del arrow_ipc
 
     print("\n"*(split_num // print_columns),
