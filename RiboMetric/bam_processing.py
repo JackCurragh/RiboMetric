@@ -71,8 +71,6 @@ def ox_parse_reads(bam_file: str,
                         reference_df,
                         tempdir)
     
-    print()
-    print("TMP BAM: ", tmp_bam, split_num, reference_df)
     validate_bam(tmp_bam)
 
     print("\n"*(split_num // print_columns),
@@ -83,7 +81,6 @@ def ox_parse_reads(bam_file: str,
 
     try:
         arrow_ipc = ox.read_bam(tmp_bam)
-        print("ARROW IPC: ", pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas())
     except Exception as e:
         if "InvalidReferenceSequenceName" in str(e):
             raise Exception("InvalidReferenceSequenceName - \
@@ -220,7 +217,6 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     Outputs:
         batch_df: Dataframe containing a processed batch of reads
     """
-    print("OXBOW DF- BAM PROCESSING: ", oxbow_df)
     batch_df = pd.DataFrame()
     batch_df["read_length"] = pd.Series(oxbow_df["end"] - oxbow_df["pos"] + 1,
                                         dtype="category")
@@ -235,7 +231,6 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
                                    else 1 for query in oxbow_df["qname"]],
                                   dtype="category")
     print('\n\n\n')
-    print("BATCH DF- BAM PROCESSING: ", batch_df)
     return batch_df
 
 

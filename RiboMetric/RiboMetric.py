@@ -221,14 +221,13 @@ def main(args):
                 num_reads=read_limit,
                 num_processes=config["argument"]["threads"],
                 server_mode=config["argument"]["server"])
-            print("Reads parsed")
-            print("READ DF PRE - RIBOMETRIC: ", read_df_pre, type(read_df_pre))
             if read_df_pre.empty:
                 raise Exception("""
                 No reads found in the given bam file.
 
                 Please check the file and try again.
                 """)
+            print("Reads parsed")
 
             # Expand the dataframe to have one row per read
             # This makes calculations on reads easier but uses more memory
