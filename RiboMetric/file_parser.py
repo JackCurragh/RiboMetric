@@ -159,7 +159,6 @@ def parse_bam(bam_file: str,
         bam_batches = []
         with TemporaryDirectory() as tempdir:
             idxstats_df = run_samtools_idxstats(bam_file)
-            print("IDX STATS FILE PARSER: ", idxstats_df)
             reference_dfs = split_idxstats_df(idxstats_df,
                                               batch_size,
                                               num_reads)
