@@ -73,6 +73,7 @@ def annotation_mode(
         annotation = True
         print("Merging annotation and reads")
         annotated_read_df = chunked_annotate_reads(read_df, annotation_df)
+        print(annotated_read_df.head())
 
         print("assigning mRNA categories")
         annotated_read_df = assign_mRNA_category(annotated_read_df)
@@ -82,7 +83,9 @@ def annotation_mode(
             )
         print("Subsetting to CDS reads")
         cds_read_df = read_df_to_cds_read_df(annotated_read_df)
-        print(cds_read_df.head())
+        if cds_read_df.empty:
+            print("No CDS reads found")
+            annotation = False
 
     else:
         annotation = False
