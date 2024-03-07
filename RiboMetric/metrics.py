@@ -41,9 +41,7 @@ def read_length_distribution_spread_metric(
     Outputs:
         rld_df: Dataframe containing the read length distribution metric
     """
-    print(rld_dict)
     rld_df = pd.DataFrame.from_dict(rld_dict, orient="index")
-    print(rld_df)
     rld_df = rld_df.reset_index()
     rld_df.columns = ["read_length", "read_count"]
 
