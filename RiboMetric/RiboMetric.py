@@ -49,6 +49,7 @@ from rich.text import Text
 from rich.table import Table
 
 import numpy as np
+import pandas as pd
 
 from .file_parser import (
     parse_bam,
@@ -221,6 +222,13 @@ def main(args):
                 num_processes=config["argument"]["threads"],
                 server_mode=config["argument"]["server"])
             print("Reads parsed")
+            print(read_df_pre)
+            if read_df_pre == pd.DataFrame():
+                raise Exception("""
+                No reads found in the given bam file.
+
+                Please check the file and try again.
+                """)
 
             # Expand the dataframe to have one row per read
             # This makes calculations on reads easier but uses more memory
