@@ -229,7 +229,7 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
                                    else 1 for query in oxbow_df["qname"]],
                                   dtype="category")
     print('\n\n\n')
-    print(batch_df)
+    print("BATCH DF- BAM PROCESSING: ", batch_df)
     return batch_df
 
 

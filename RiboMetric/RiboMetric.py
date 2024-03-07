@@ -222,7 +222,7 @@ def main(args):
                 num_processes=config["argument"]["threads"],
                 server_mode=config["argument"]["server"])
             print("Reads parsed")
-            print(read_df_pre, type(read_df_pre))
+            print("READ DF PRE - RIBOMETRIC: ", read_df_pre, type(read_df_pre))
             if read_df_pre.empty:
                 raise Exception("""
                 No reads found in the given bam file.
