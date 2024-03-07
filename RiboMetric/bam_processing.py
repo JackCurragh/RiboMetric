@@ -70,6 +70,7 @@ def ox_parse_reads(bam_file: str,
                         split_num,
                         reference_df,
                         tempdir)
+    
     print()
     print("TMP BAM: ", tmp_bam, split_num, reference_df)
     validate_bam(tmp_bam)
@@ -82,6 +83,7 @@ def ox_parse_reads(bam_file: str,
 
     try:
         arrow_ipc = ox.read_bam(tmp_bam)
+        print("ARROW IPC: ", arrow_ipc)
     except Exception as e:
         if "InvalidReferenceSequenceName" in str(e):
             raise Exception("InvalidReferenceSequenceName - \
