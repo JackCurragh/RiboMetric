@@ -88,6 +88,7 @@ def ox_parse_reads(bam_file: str,
                             eg. ), or ( ")
 
     oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
+    print("OXBOW DF OX PARSE BAM: ", oxbow_df)
     del arrow_ipc
 
     print("\n"*(split_num // print_columns),
@@ -215,6 +216,7 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     Outputs:
         batch_df: Dataframe containing a processed batch of reads
     """
+    print("OXBOW DF- BAM PROCESSING: ", oxbow_df)
     batch_df = pd.DataFrame()
     batch_df["read_length"] = pd.Series(oxbow_df["end"] - oxbow_df["pos"] + 1,
                                         dtype="category")
