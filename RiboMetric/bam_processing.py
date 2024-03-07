@@ -219,7 +219,7 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     batch_df["read_length"] = pd.Series(oxbow_df["end"] - oxbow_df["pos"] + 1,
                                         dtype="category")
     batch_df["reference_name"] = oxbow_df["rname"].astype("category")
-    batch_df["reference_start"] = oxbow_df["pos"]
+    batch_df["reference_start"] = oxbow_df["pos"].astype("int")
     batch_df["first_dinucleotide"] = (oxbow_df["seq"].str.slice(stop=2)
                                       .astype("category"))
     batch_df["last_dinucleotide"] = (oxbow_df["seq"].str.slice(stop=-3,
