@@ -223,7 +223,7 @@ def main(args):
                 server_mode=config["argument"]["server"])
             print("Reads parsed")
             print(read_df_pre, type(read_df_pre))
-            if read_df_pre == pd.DataFrame():
+            if read_df_pre.empty:
                 raise Exception("""
                 No reads found in the given bam file.
 
