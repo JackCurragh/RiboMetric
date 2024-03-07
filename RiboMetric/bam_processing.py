@@ -83,7 +83,7 @@ def ox_parse_reads(bam_file: str,
 
     try:
         arrow_ipc = ox.read_bam(tmp_bam)
-        print("ARROW IPC: ", arrow_ipc)
+        print("ARROW IPC: ", pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas())
     except Exception as e:
         if "InvalidReferenceSequenceName" in str(e):
             raise Exception("InvalidReferenceSequenceName - \
