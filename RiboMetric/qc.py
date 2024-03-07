@@ -82,6 +82,7 @@ def annotation_mode(
             )
         print("Subsetting to CDS reads")
         cds_read_df = read_df_to_cds_read_df(annotated_read_df)
+        print(cds_read_df.head())
 
     else:
         annotation = False
