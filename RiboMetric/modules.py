@@ -66,11 +66,10 @@ def a_site_calculation_variable_offset(read_df: pd.DataFrame, offset_dict: dict 
         offset_mapping = {length: offset_dict.get(length, 15) for length in read_df['read_length'].unique()}
         # Map offsets to corresponding read lengths
         read_df['offset'] = read_df['read_length'].map(offset_mapping)
+        read_df['offset'] = read_df['offset'].astype('int64')
         offset = read_df['offset']
 
-    print(read_df['reference_start'].dtype)
     read_df['reference_start'] = read_df['reference_start'].astype(int)
-    print(read_df['reference_start'].dtype)
 
     # Calculate A-site based on offset for each read
     a_site_df = read_df.assign(a_site=read_df['reference_start'] + offset)
