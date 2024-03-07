@@ -517,7 +517,8 @@ def autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
             The autocorrelation scores at the given lag.
     """
     for read_len in metagene_profile['start']:
-        for i in range(0, max(metagene_profile['start'][read_len])):
+        print(max(metagene_profile['start'][read_len]))
+        for i in range(0, int(max(metagene_profile['start'][read_len]))):
             if i not in metagene_profile['start'][read_len]:
                 metagene_profile['start'][read_len][i] = 0
     return autocorrelate_counts(metagene_profile['start'], lag)
