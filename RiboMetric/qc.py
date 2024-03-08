@@ -74,7 +74,6 @@ def annotation_mode(
         annotation = True
         print("Merging annotation and reads")
         annotated_read_df = chunked_annotate_reads(read_df, annotation_df)
-        print(annotated_read_df.head())
 
         print("assigning mRNA categories")
         annotated_read_df = assign_mRNA_category(annotated_read_df)
