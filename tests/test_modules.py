@@ -158,4 +158,4 @@ def test_metagene_profile():
     a_site_df = a_site_calculation(read_df)
     annotated_read_df = annotate_reads(a_site_df, annotation_df)
     metagene_profile_dict = metagene_profile(annotated_read_df)
-    assert metagene_profile_dict["stop"][21][1] == 30
+    assert metagene_profile_dict["stop"][21]['1'] == 30

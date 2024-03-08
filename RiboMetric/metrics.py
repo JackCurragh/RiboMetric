@@ -10,6 +10,8 @@ import pandas as pd
 import math
 import numpy as np
 
+from typing import Dict
+
 
 def find_category_by_cumulative_percentage(df, percentage):
     """
@@ -437,7 +439,7 @@ def leader_cds_ratio_metric(
     Outputs:
         leader_cds_ratio: Dictionary containing the leader cds ratio metric
     """
-    leader_cds_ratio = {}
+    leader_cds_ratio: Dict[str, float] = {}
     five_prime_total, cds_total = 0, 0
     read_lengths = [i for i in range(
         read_length_range[0], read_length_range[1]
@@ -473,9 +475,11 @@ def autocorrelate(signal: np.array, lag: int) -> float:
         correlation_score: float
             The autocorrelation score at the given lag.
     """
+    np.seterr(divide='ignore', invalid='ignore')  # ignore divide by zero here
     autocorr = np.correlate(signal, signal, mode='full')
     autocorr = autocorr[len(signal)-1:].astype(float)
     autocorr /= autocorr[0]
+    np.seterr(divide='warn', invalid='warn')  # reset to default
     return autocorr[lag]
 
 
