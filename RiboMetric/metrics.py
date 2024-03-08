@@ -446,10 +446,13 @@ def leader_cds_ratio_metric(
         if read_len in read_lengths:
             five_prime_total += mRNA_distribution[read_len]["five_leader"]
             cds_total += mRNA_distribution[read_len]["CDS"]
-            leader_cds_ratio[read_len] = 1 - (
-                mRNA_distribution[
-                    read_len]["five_leader"] / mRNA_distribution[
-                        read_len]["CDS"])
+            if mRNA_distribution[read_len]["CDS"] == 0:
+                leader_cds_ratio[read_len] = 0
+            else:
+                leader_cds_ratio[read_len] = 1 - (
+                    mRNA_distribution[
+                        read_len]["five_leader"] / mRNA_distribution[
+                            read_len]["CDS"])
 
     leader_cds_ratio["total"] = 1 - (five_prime_total / cds_total)
     return leader_cds_ratio

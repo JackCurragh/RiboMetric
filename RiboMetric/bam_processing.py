@@ -423,7 +423,7 @@ def join_batches(bam_batches: list) -> tuple:
         sequence_data[pattern] = np.sum(padded_arrays,
                                         axis=0)
     # Joining sequence backgrounds
-    sequence_background = {}
+    sequence_background: Dict = {}
 
     for background in background_batches.keys():
         if background == "sequence_number":
@@ -473,9 +473,9 @@ def get_batch_data(
             background_batches: Dictionary containing background data
             sequence_batches: Dictionary containing sequence data
     """
-    if type(bam_batches[0]) == pd.DataFrame:
+    if type(bam_batches[0]) is pd.DataFrame:
         read_batches = [bam_batches[0]]
-        sequence_data = {}
+        sequence_data: Dict = {}
         full_sequence_batches = [sequence_data]
         for pattern_length in bam_batches[1].keys():
             sequence_data[pattern_length] = [result.get() for result
