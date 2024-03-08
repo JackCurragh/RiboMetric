@@ -10,6 +10,7 @@ import os
 import pyarrow.ipc
 from .file_splitting import split_bam, format_progress
 from multiprocessing import Pool
+from typing import Dict
 
 
 def validate_bam(bam_file: str) -> None:
@@ -93,10 +94,10 @@ def ox_parse_reads(bam_file: str,
     del arrow_ipc
 
     print("\n"*(split_num // print_columns),
-        "\033[25C"*(split_num % print_columns),
-        f"thread {formatted_num}: to pandas.. | ",
-        "\033[1A"*(split_num // print_columns),
-        end="\r", flush=False, sep="")
+          "\033[25C"*(split_num % print_columns),
+          f"thread {formatted_num}: to pandas.. | ",
+          "\033[1A"*(split_num // print_columns),
+          end="\r", flush=False, sep="")
 
     batch_df = process_reads(oxbow_df)
 
@@ -106,7 +107,7 @@ def ox_parse_reads(bam_file: str,
           "\033[1A"*(split_num // print_columns),
           end="\r", flush=False, sep="")
 
-    sequence_data = {1: [], 2: []}
+    sequence_data: Dict[int, list] = {1: [], 2: []}
     sequence_list = oxbow_df["seq"].tolist()
     count_list = batch_df["count"].tolist()
 
@@ -136,17 +137,18 @@ def ox_parse_reads(bam_file: str,
             formatted_progress = (format_progress((progress/list_length)*1000)
                                   if (progress/list_length)*1000 < 100
                                   else format_progress(100))
-            print("\n"*(split_num // print_columns),
-                  "\033[25C"*(split_num % print_columns),
-                  f"thread {formatted_num}: {pattern_length}: {formatted_progress}  | ",
-                  "\033[1A"*(split_num // print_columns),
-                  end="\r", flush=False, sep="")
+            print(
+                "\n"*(split_num // print_columns),
+                "\033[25C"*(split_num % print_columns),
+                f"thread {formatted_num}: {pattern_length}: {formatted_progress}  | ",
+                "\033[1A"*(split_num // print_columns),
+                end="\r", flush=False, sep="")
 
     print("\n"*(split_num // print_columns),
-        "\033[25C"*(split_num % print_columns),
-        f"thread {formatted_num}: Parsed!     | ",
-        "\033[1A"*(split_num // print_columns),
-        end="\r", flush=False, sep="")
+          "\033[25C"*(split_num % print_columns),
+          f"thread {formatted_num}: Parsed!     | ",
+          "\033[1A"*(split_num // print_columns),
+          end="\r", flush=False, sep="")
 
     return (batch_df, sequence_data)
 
@@ -176,7 +178,7 @@ def ox_server_parse_reads(bam_file: str,
     del arrow_ipc
     read_df = process_reads(oxbow_df)
     print("retrieving sequence data")
-    sequence_data = {1: [], 2: []}
+    sequence_data: Dict[int, list] = {1: [], 2: []}
     sequence_list = oxbow_df["seq"].tolist()
     count_list = read_df["count"].tolist()
     del oxbow_df
@@ -236,7 +238,7 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
 def process_sequences(sequences: list,
                       counts: list,
                       pattern_length: int = 1,
-                      max_sequence_length: int = None,
+                      max_sequence_length: int = -1,
                       ) -> dict:
     """
     Calculate the occurence of nucleotides patterns in the sequences from
@@ -261,7 +263,7 @@ def process_sequences(sequences: list,
 
     # Set sequences and calculate array dimensions
     num_sequences = len(sequences)
-    if max_sequence_length is None:
+    if max_sequence_length == -1:
         max_sequence_length = max(len(seq) for seq in sequences)
 
     if max_sequence_length < pattern_length:
@@ -354,19 +356,7 @@ def calculate_background(sequence_array: np.array,
         sequence_bg: A dictionary with the nucleotide pattern as keys and
         their background proportion as values
     """
-    condensed_arrays = {}
-    sequence_bg = np.copy(sequence_array)
-    if not five_prime:
-        # Flip array so 3' is at the start
-        flipped_arr = np.flip(sequence_bg, axis=1)
-
-        # Move rows containing only zeros to the end of each matrix
-        nonzero_mask = np.any(flipped_arr != 0, axis=2)
-        sequence_bg = np.zeros_like(flipped_arr)
-        for i in range(flipped_arr.shape[0]):
-            nonzeros = flipped_arr[i, nonzero_mask[i]]
-            zeros = flipped_arr[i, ~nonzero_mask[i]]
-            sequence_bg[i] = np.concatenate((nonzeros, zeros), axis=0)
+    sequence_bg: np.array = np.copy(sequence_array)
 
     for i, sequence in enumerate(sequences):
         sequence_bg[i, 0, :] = 0

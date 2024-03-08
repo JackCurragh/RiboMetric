@@ -444,7 +444,7 @@ def chunked_annotate_reads(a_site_df: pd.DataFrame,
     return annotated_read_df
 
 
-def assign_mRNA_category(annotated_read_df) -> str:
+def assign_mRNA_category(annotated_read_df) -> pd.DataFrame:
 
     """
     Adds the mRNA category column to the annotated_read_df, labelling the read
