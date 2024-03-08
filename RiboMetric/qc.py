@@ -10,6 +10,7 @@ Three main modes:
 """
 
 import pandas as pd
+
 from .modules import (
     chunked_annotate_reads,
     assign_mRNA_category,
@@ -119,7 +120,6 @@ def annotation_mode(
         results_dict["read_length_distribution"],
         num_top_readlens=5
     )
-
 
     if sequence_background:
         print("> ligation_bias_distribution")
@@ -315,7 +315,6 @@ def annotation_mode(
             num_transcripts=500
             )
 
-            
         results_dict["metrics"]["leader_cds_ratio"] = leader_cds_ratio_metric(
             mRNA_distribution=results_dict["mRNA_distribution"]
             )

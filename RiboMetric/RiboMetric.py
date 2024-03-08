@@ -49,7 +49,6 @@ from rich.text import Text
 from rich.table import Table
 
 import numpy as np
-import pandas as pd
 
 from .file_parser import (
     parse_bam,

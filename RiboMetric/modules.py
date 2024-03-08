@@ -9,6 +9,8 @@ import numpy as np
 from xhtml2pdf import pisa
 from collections import Counter
 
+from typing import List, Tuple, Dict
+
 
 def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -44,7 +46,10 @@ def a_site_calculation(read_df: pd.DataFrame, offset=12) -> pd.DataFrame:
     return a_site_df
 
 
-def a_site_calculation_variable_offset(read_df: pd.DataFrame, offset_dict: dict = None) -> pd.DataFrame:
+def a_site_calculation_variable_offset(
+        read_df: pd.DataFrame,
+        offset_dict: dict = {},
+        ) -> pd.DataFrame:
     """
     Adds a column to the read_df containing the A-site for the reads
 
@@ -52,18 +57,23 @@ def a_site_calculation_variable_offset(read_df: pd.DataFrame, offset_dict: dict 
         read_df: Dataframe containing the read information
         offset_dict: Dictionary containing offsets for each read length
                      Keys: read_length, Values: offset
-                     If offset_dict is None, a default offset of 15 is used for all read lengths.
+                     If offset_dict is None, a default offset of 15 is
+                     used for all read lengths.
 
     Outputs:
         asite_df: Dataframe containing the read information with an added
                     column for the A-site
     """
-    # If offset_dict is not provided, use default offset of 15 for all read lengths
+    # If offset_dict is not provided, use default offset of
+    # 15 for all read lengths
     if offset_dict is None:
         offset = 15
     else:
         # Create a mapping from read_length to offset
-        offset_mapping = {length: offset_dict.get(length, 15) for length in read_df['read_length'].unique()}
+        offset_mapping = {
+            length: offset_dict.get(length, 15)
+            for length in read_df['read_length'].unique()
+            }
         # Map offsets to corresponding read lengths
         read_df['offset'] = read_df['read_length'].map(offset_mapping)
         read_df['offset'] = read_df['offset'].astype('int64')
@@ -73,8 +83,9 @@ def a_site_calculation_variable_offset(read_df: pd.DataFrame, offset_dict: dict 
 
     # Calculate A-site based on offset for each read
     a_site_df = read_df.assign(a_site=read_df['reference_start'] + offset)
-
+    a_site_df.to_csv('a_site_df_offsets.csv')
     return a_site_df
+
 
 def read_length_distribution(read_df: pd.DataFrame) -> dict:
     """
@@ -112,8 +123,11 @@ def ligation_bias_distribution(
         ligation_bias_dict: Dictionary containing the distribution of the
         first pattern of nucleotides in the reads
     """
-    ligation_bias_dict = ({target: {}} if target != "both"
-                          else {"five_prime": {}, "three_prime": {}})
+    ligation_bias_dict: dict = (
+        {target: {}} if target != "both" else {
+            "five_prime": {}, "three_prime": {}
+            }
+                          )
 
     total_counts = len(read_df)
     prime_counts = {
@@ -185,7 +199,7 @@ def normalise_ligation_bias(
     return ligation_bias_dict_norm
 
 
-def slicer_vectorized(array: np.array, start: int, end: int):
+def slicer_vectorized(array: np.ndarray, start: int, end: int):
     """
     String slicer for numpy arrays
 
@@ -200,7 +214,7 @@ def slicer_vectorized(array: np.array, start: int, end: int):
         sliced_array: An array consisting of only the selected characters
         from the input string array
     """
-    sliced_array = array.view((str, 1)).reshape(len(array), -1)[:, start:end]
+    sliced_array = array.view(str).reshape(len(array), -1)[:, start:end]
     return np.frombuffer(sliced_array.tobytes(), dtype=(str, end-start))
 
 
@@ -217,7 +231,7 @@ def nucleotide_composition(sequence_data_single: dict) -> dict:
         for single nucleotides on each read position
     """
     read_length = len(sequence_data_single["A"])
-    nucleotide_composition_dict = {nt: [] for nt in ["A", "C", "G", "T"]}
+    nucleotide_composition_dict: dict = {nt: [] for nt in ["A", "C", "G", "T"]}
     for position in range(read_length):
         position_count = 0
         for nt in sequence_data_single:
@@ -270,7 +284,7 @@ def read_frame_score(read_frame_dict: dict) -> dict:
     scored_read_frame_dict: dictionary containing read frame distribution
                             scores for each read length and a global score
     """
-    scored_read_frame_dict = {}
+    scored_read_frame_dict: Dict[str, float] = {}
     highest_peak_sum, second_peak_sum = 0, 0
     for k, inner_dict in read_frame_dict.items():
         top_two_values = sorted(inner_dict.values(), reverse=True)[:2]
@@ -286,7 +300,7 @@ def read_frame_score(read_frame_dict: dict) -> dict:
                 top_two_values[1] / top_two_values[0]
 
     if highest_peak_sum == 0:
-        scored_read_frame_dict["global"] = 0
+        scored_read_frame_dict["global"] = 0.0
     else:
         scored_read_frame_dict["global"] = 1 -\
             second_peak_sum / highest_peak_sum
@@ -310,7 +324,7 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
         .groupby(["read_length", "read_frame"])
         .size()
     )
-    read_frame_dict = {}
+    read_frame_dict: Dict[int, dict] = {}
     for index, value in frame_df.items():
         read_length, read_frame = index
         if read_length not in read_frame_dict:
@@ -335,7 +349,9 @@ def read_frame_distribution_annotated(
         read_frame_dict: Nested dictionary containing counts for every reading
         frame at the different read lengths
     """
-    read_lengths = [i for i in range(read_length_range[0], read_length_range[1])]
+    read_lengths = [
+        i for i in range(read_length_range[0], read_length_range[1])
+        ]
 
     df_slice = annotated_read_df[annotated_read_df["cds_start"] != 0]
     df_slice = df_slice[
@@ -498,7 +514,7 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         .sort_index()
     )
     # Creating mRNA_distribution_dict from annotated_read_df
-    mRNA_distribution_dict = {}
+    mRNA_distribution_dict: dict = {}
     for index, value in annotated_read_df.items():
         read_length, mRNA_category = index
         if read_length not in mRNA_distribution_dict:
@@ -529,7 +545,7 @@ def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
         read_frame_dict: Nested dictionary containing counts for every reading
         frame at the different read lengths
     """
-    sum_mRNA_dict = {}
+    sum_mRNA_dict: dict = {}
     for inner_dict in mRNA_distribution_dict.values():
         for k, v in inner_dict.items():
             if k in sum_mRNA_dict:
@@ -587,7 +603,9 @@ def metagene_profile(
         the read and distance to the target as keys and the counts as values
     """
     target_loop = [target] if target != "both" else ["start", "stop"]
-    metagene_profile_dict = {"start": {}, "stop": {}}
+    metagene_profile_dict: dict[str, dict[str, dict]] = {
+        "start": {}, "stop": {}
+        }
     for current_target in target_loop:
         annotated_read_df = annotated_read_df.assign(
             metagene_info=metagene_distance(annotated_read_df, current_target)
@@ -626,19 +644,19 @@ def metagene_profile(
         for key, value in pre_metaprofile_dict.items():
             if key[0] not in metagene_profile_dict[current_target]:
                 metagene_profile_dict[current_target][key[0]] = {}
-            metagene_profile_dict[current_target][key[0]][key[1]] = value
+            metagene_profile_dict[current_target][key[0]][str(key[1])] = value
 
         # Fill empty distances with 0
         for position_dict in metagene_profile_dict[current_target].values():
             for position in position_range:
-                position_dict.setdefault(position, 0)
+                position_dict.setdefault(str(position), 0)
 
     return metagene_profile_dict
 
 
 def proportion_of_kmer(
     annotated_read_df: pd.DataFrame,
-) -> dict:
+) -> list:
     '''
     get proportion of reads with predicted a-sites in each frame for
     sequence of length k
@@ -720,7 +738,7 @@ def convert_html_to_pdf(source_html, output_filename):
 
 
 # Deprecated
-def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict():
+def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict:
     """
     Calculate the expected dinucleotide frequencies based on the
     nucleotide frequencies in the aligned reads
@@ -753,10 +771,10 @@ def change_point_analysis(
         ) -> int:
     """
     Calculate the change point for the metagene profile
-    This should reflect where the cds starts and as a result the 
+    This should reflect where the cds starts and as a result the
     offset to apply to get a-site
 
-    Inputs: 
+    Inputs:
         read_counts: Dictionary containing the read counts for each position
         surrounding_range: tuple of start and stop for change point analysis
 
@@ -793,11 +811,11 @@ def change_point_analysis(
 
 def asite_calculation_per_readlength(
         annotated_read_df: pd.DataFrame,
-        offset_range: tuple = (10,15),
+        offset_range: tuple = (10, 15),
 ) -> dict:
     """
     Calculate offset values per read length for the A-site
-    Shoelaces based method using metagene counts 
+    Shoelaces based method using metagene counts
 
     Input:read_counts.get(i, 0) for i in range(i+1, i+5)
         with an cds info added
@@ -806,7 +824,7 @@ def asite_calculation_per_readlength(
     Output:
         offset_dict: Dictionary containing the offset values for each read len
     """
-    offset_dict = {}
+    offset_dict: dict = {}
 
     for read_length in annotated_read_df["read_length"].unique():
         offset_dict[read_length] = {}
@@ -818,6 +836,6 @@ def asite_calculation_per_readlength(
 
         offset_dict[read_length] = change_point_analysis(
             read_length_metagene["start"][read_length],
-            surrounding_range=[-26, 5]
+            surrounding_range=(-26, 5)
         )
     return offset_dict

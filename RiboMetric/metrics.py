@@ -43,7 +43,7 @@ def read_length_distribution_spread_metric(
     """
     rld_df = pd.DataFrame.from_dict(rld_dict, orient="index")
     rld_df = rld_df.reset_index()
-    rld_df.columns = ["read_length", "read_count"]
+    rld_df.columns = pd.Index(["read_length", "read_count"])
 
     Q3 = find_category_by_cumulative_percentage(rld_df, 0.75)
     Q1 = find_category_by_cumulative_percentage(rld_df, 0.25)
@@ -72,15 +72,17 @@ def read_length_distribution_variation_metric(
                 read_length_distribution module
 
     Outputs:
-        variaion_metric (float): The coefficient of variation of the read
+        variation_metric (float): The coefficient of variation of the read
     """
     rld_df = pd.DataFrame.from_dict(rld_dict, orient="index")
     rld_df = rld_df.reset_index()
-    rld_df.columns = ["read_length", "read_count"]
+    rld_df.columns = pd.Index(["read_length", "read_count"])
 
     mean = (rld_df["read_length"] * rld_df["read_count"]).sum()\
         / rld_df["read_count"].sum()
-    variance = ((rld_df["read_length"] - mean)**2 * rld_df["read_count"]).sum()\
+    variance = (
+        (rld_df["read_length"] - mean)**2 * rld_df["read_count"]
+        ).sum()\
         / rld_df["read_count"].sum()
     return math.sqrt(variance) / mean
 
