@@ -230,7 +230,6 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     batch_df["count"] = pd.Series([int(query.split("_x")[-1]) if "_x" in query
                                    else 1 for query in oxbow_df["qname"]],
                                   dtype="category")
-    print('\n\n\n')
     return batch_df
 
 
