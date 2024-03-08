@@ -356,7 +356,8 @@ def calculate_background(sequence_array: np.array,
         sequence_bg: A dictionary with the nucleotide pattern as keys and
         their background proportion as values
     """
-    sequence_bg: np.array = np.copy(sequence_array)
+    condensed_arrays = {}
+    sequence_bg = np.copy(sequence_array)
 
     for i, sequence in enumerate(sequences):
         sequence_bg[i, 0, :] = 0
@@ -368,8 +369,7 @@ def calculate_background(sequence_array: np.array,
                                                pattern_to_index(nucleotide)])
         condensed_arrays[nucleotide] = nucleotide_counts
     total_bg_counts = sum(condensed_arrays.values())
-    sequence_bg = {k: v/total_bg_counts for k, v in condensed_arrays.items()}
-    return sequence_bg
+    return {k: v/total_bg_counts for k, v in condensed_arrays.items()}
 
 
 def join_batches(bam_batches: list) -> tuple:
