@@ -466,63 +466,6 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
         description and plotly figure for html and pdf export
     """
     sum_mRNA_dict = sum_mRNA_distribution(mRNA_distribution_dict, config)
-    plot_data = []
-    for k, v in sum_mRNA_dict.items():
-        plot_data.append(
-            go.Bar(
-                name=k.replace("_", " ").title(),
-                x=[v],
-                y=[""],
-                width=[0.3],
-                hovertemplate="Proportion: %{x:.2%}"
-                if not config["plots"]["mRNA_distribution"]["absolute_counts"]
-                else "Count: %{x}",
-                orientation="h",
-            )
-        )
-
-    fig = go.Figure(plot_data)
-    fig.update_layout(
-        barmode="stack",
-        title="mRNA Reads Breakdown",
-        xaxis_title="Proportion"
-        if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
-        else "Counts",
-        yaxis_title="",
-        font=dict(
-            family=config["plots"]["font_family"],
-            size=18,
-            color=config["plots"]["base_color"],
-        ),
-        legend={"traceorder": "normal"},
-    )
-    fig.update_xaxes(range=[0, 1])
-    plot_mRNA_distribution_dict = {
-        "name": "mRNA Reads Breakdown",
-        "description": "Shows the proportion of the different transcript \
-regions represented in the reads",
-        "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig,
-                                     config["plots"]["image_size"][0],
-                                     config["plots"]["image_size"][1]),
-    }
-    return plot_mRNA_distribution_dict
-
-
-def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
-    """
-    Generate a bar plot of the mRNA distribution
-
-    Inputs:
-        mRNA_distribution_dict: Dictionary containing the mRNA distribution
-        over the read lengths
-        config: Dictionary containing the configuration information
-
-    Outputs:
-        plot_mRNA_distribution_dict: Dictionary containing the plot name,
-        description and plotly figure for html and pdf export
-    """
-    sum_mRNA_dict = sum_mRNA_distribution(mRNA_distribution_dict, config)
     plotting_order = config["plots"]["mRNA_read_breakdown"]["plotting_order"]
     plot_data = []
 
@@ -569,6 +512,87 @@ regions represented in the reads",
                                      config["plots"]["image_size"][1]),
     }
     return plot_mRNA_distribution_dict
+
+def plot_mRNA_read_breakdown(
+    mRNA_distribution_dict: dict, config: dict
+) -> dict:
+    """
+    Generate a line plot of the mRNA distribution over the read lengths
+
+    Inputs:
+        mRNA_distribution_dict: Dictionary containing the mRNA distribution
+        over the read lengths
+        config: Dictionary containing the configuration information
+
+    Outputs:
+        plot_mRNA_distribution_dict: Dictionary containing the plot name,
+        description and plotly figure for html and pdf export
+    """
+    plot_data = {}
+    for read_length in mRNA_distribution_dict.values():
+        for category, count in read_length.items():
+            if category not in plot_data:
+                plot_data[category] = []
+            plot_data[category].append(count)
+    if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]:
+        sum_data = {k: sum(v) for k, v in plot_data.items()}
+        plot_data = {
+            k: [x / sum(sum_data.values()) for x in v]
+            for k, v in plot_data.items()
+        }
+
+    plotting_order = config["plots"]["mRNA_read_breakdown"]["plotting_order"]
+    fig = go.Figure()
+    for region in plotting_order:
+        if region in plot_data:
+            fig.add_trace(
+                go.Scatter(
+                    name=region,
+                    x=list(mRNA_distribution_dict.keys()),
+                    y=,
+                    hovertemplate="Proportion: %{y:.2%}"
+                    if not config["plots"]["mRNA_read_breakdown"][
+                        "absolute_counts"
+                    ]
+                    else "Count: %{x}",
+                )
+            )
+
+    fig.update_layout(
+        title="Nucleotide Distribution",
+        xaxis_title="Position (nucleotides)",
+        yaxis_title="Proportion"
+        if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
+        else "Counts",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
+        ),
+    )
+    fig.update_layout(
+        title="Nucleotide Distribution",
+        xaxis_title="Read length",
+        yaxis_title="Proportion"
+        if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
+        else "Counts",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
+        ),
+        legend={"traceorder": "normal"},
+    )
+    plot_mRNA_read_breakdown_dict = {
+        "name": "mRNA Reads Breakdown over Read Length",
+        "description": "Shows the proportion of the different transcript \
+regions represented in the reads over the different read lengths.",
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": plotly_to_image(fig,
+                                     config["plots"]["image_size"][0],
+                                     config["plots"]["image_size"][1]),
+    }
+    return plot_mRNA_read_breakdown_dict
 
 
 def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
