@@ -746,11 +746,16 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
         x_data = []
         y_data = []
         z_data = []
+        print(current_target, metagene_profile_dict[current_target].items())
+        print()
         for k1, v1 in metagene_profile_dict[current_target].items():
+            print(k1, v1, v1.items())
             for k2, v2 in v1.items():
                 x_data.append(k2)
                 y_data.append(k1)
                 z_data.append(v2)
+        print()
+        print(max(x_data), min(x_data), len(x_data))
 
         if config["plots"]["metagene_profile"]["max_colorscale"] is None:
             z_max = max(z_data)
@@ -768,16 +773,16 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
             row=1,
             col=count,
         )
-        print(fig.layout)
+
         fig.update_xaxes(
             title_text="Relative position (nt)",
             row=1,
             col=count,
             title_font=dict(size=18),
-            range=[-100, 100]
+            range=[-50, 50],
+            constrain="domain",
             # range=config["plots"]["metagene_profile"]["distance_range"]
         )
-        print(fig.layout)
 
     fig.update_layout(
         title="Metagene Heatmap",
@@ -790,8 +795,6 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
         legend={"traceorder": "normal"},
         showlegend=False,
     )
-    print(fig.layout)
-
 
     # This was supposed to ensure that each plot gets the same x-axis range
     # But I suspect it doesn't make a difference. This may be another 
@@ -809,7 +812,6 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
     #     fig.update_layout(
     #         xaxis=dict(domain=[0, 1], zeroline=False),
     #     )
-    pio.write_image(fig, 'test_plot.png')
 
     plot_metagene_heatmap = {
         "name": "Metagene Heatmap",
