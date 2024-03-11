@@ -327,9 +327,7 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
         # Assign frame numbers based on sorted order per transcript
         # The most frequent frame is assigned 0, the second most frequent is assigned 1, and the least frequent is assigned 2
         frame_count_dict = {idx: count for idx, count in enumerate(sorted(frame_counts.values(), reverse=True))}
-        print(frame_counts)
-        print(frame_count_dict)
-        print()
+
         if read_length not in read_frame_dict:
             read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
 
