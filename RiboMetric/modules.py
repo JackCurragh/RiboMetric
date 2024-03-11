@@ -260,11 +260,11 @@ def read_frame_cull(read_frame_dict: dict, config: dict) -> dict:
     cull_list = list(culled_read_frame_dict.keys())
     for k in cull_list:
         if (
-            int(k) > config["plots"]["read_frame_distribution"]["upper_limit"]
-            or int(k) < config[
-                "plots"]["read_frame_distribution"]["lower_limit"]
+            k > config["plots"]["read_frame_distribution"]["upper_limit"]
+            or k < config["plots"]["read_frame_distribution"]["lower_limit"]
         ):
             del culled_read_frame_dict[k]
+
     return culled_read_frame_dict
 
 
@@ -335,12 +335,13 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
         frame_count_dict = {
             str(frame): idx for idx, frame in enumerate(sorted(frame_counts.keys()))
             }
-        if read_length not in read_frame_dict:
+        if str(read_length) not in read_frame_dict:
             read_frame_dict[str(read_length)] = {
                 "0": 0, "1": 0, "2": 0
                 }
-        for frame, count in frame_count_dict.items():
-            read_frame_dict[str(read_length)][str(frame)] = count
+        for frame, count in frame_counts.items():
+            read_frame_dict[str(read_length)][frame_count_dict[frame]] += count
+
     return read_frame_dict
 
 
