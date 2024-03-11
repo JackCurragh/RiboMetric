@@ -537,20 +537,22 @@ def plot_mRNA_read_breakdown(
             for k, v in plot_data.items()
         }
 
+    plotting_order = config["plots"]["mRNA_read_breakdown"]["plotting_order"]
     fig = go.Figure()
-    for k, v in plot_data.items():
-        fig.add_trace(
-            go.Scatter(
-                name=k,
-                x=list(mRNA_distribution_dict.keys()),
-                y=v,
-                hovertemplate="Proportion: %{y:.2%}"
-                if not config["plots"]["mRNA_read_breakdown"][
-                    "absolute_counts"
-                ]
-                else "Count: %{x}",
+    for region in plotting_order:
+        if region in plot_data:
+            fig.add_trace(
+                go.Scatter(
+                    name=region,
+                    x=list(mRNA_distribution_dict.keys()),
+                    y=plot_data[region],
+                    hovertemplate="Proportion: %{y:.2%}"
+                    if not config["plots"]["mRNA_read_breakdown"][
+                        "absolute_counts"
+                    ]
+                    else "Count: %{x}",
+                )
             )
-        )
 
     fig.update_layout(
         title="Nucleotide Distribution",

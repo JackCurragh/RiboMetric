@@ -39,6 +39,7 @@ plots:
     upper_limit: 50
     lower_limit: 10
     absolute_counts: False    # Options for both?
+    plotting_order: ["Five Leader", "Start Codon", "Cds", "Stop Codon", "Three Trailer"]
   mRNA_read_breakdown:
     upper_limit: 50
     lower_limit: 10
