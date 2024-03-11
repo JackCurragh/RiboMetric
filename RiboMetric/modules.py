@@ -517,22 +517,15 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         .reindex(idx, fill_value=0)
         .sort_index()
         .to_frame()  # Convert the resulting series to a DataFrame
+        .reset_index()  # Reset the index to a regular column
     )
 
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict: dict = {}
-    for (read_length, mRNA_category), value in annotated_read_df.items():
+    for read_length, mRNA_category, value in annotated_read_df.itertuples(index=False, name=None):
         if read_length not in mRNA_distribution_dict:
             mRNA_distribution_dict[read_length] = {}
-    mRNA_distribution_dict[read_length][mRNA_category] = value
-
-    # Setting order of categories 5' to 3'
-    for i in mRNA_distribution_dict:
-        mRNA_distribution_dict[i] = {
-            k: mRNA_distribution_dict[i][k]
-            for k in categories
-            if k in mRNA_distribution_dict[i]
-        }
+        mRNA_distribution_dict[read_length][mRNA_category] = value
 
     return mRNA_distribution_dict
 
