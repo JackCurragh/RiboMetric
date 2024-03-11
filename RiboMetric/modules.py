@@ -518,6 +518,7 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         .sort_index()
         .to_frame()  # Convert the resulting series to a DataFrame
     )
+    print("ANNOTATED READ DF: ", annotated_read_df)
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict: dict = {}
     for index, value in annotated_read_df.items():
