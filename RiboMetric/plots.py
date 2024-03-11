@@ -831,6 +831,24 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
 
 
 def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
+    '''
+    generate the metrics summary plot that is a bar chart of the metrics
+    found at the top of the report
+
+    Inputs:
+        metrics_dict: Dictionary containing the metrics and their scores
+        config: Dictionary containing the configuration information
+
+    Outputs:
+        plot_metrics_summary_dict: Dictionary containing the plot name,
+        description and plotly figure for html and pdf export
+    '''
+    # for any entry in metrics_dict with a dict as value get average of the
+    # values of that dict
+    for key, value in metrics_dict.items():
+        if isinstance(value, dict):
+            metrics_dict[key] = sum(value.values()) / len(value)
+
     # Convert the metrics_dict to a DataFrame for easier plotting
     df = pd.DataFrame(list(metrics_dict.items()), columns=['Metric', 'Score'])
     print(metrics_dict)
