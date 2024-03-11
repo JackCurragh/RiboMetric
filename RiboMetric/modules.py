@@ -332,9 +332,13 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
         # Assign frame numbers based on sorted order
         # This is for unannotated reads only. 
         # It calls the most translated frame the 0 frame
+        print(frame_counts)
+        print(sorted(frame_counts.keys()))
         frame_count_dict = {
             frame: idx for idx, frame in enumerate(sorted(frame_counts.keys()))
             }
+        print()
+        print(frame_count_dict)
         if read_length not in read_frame_dict:
             read_frame_dict[read_length] = {
                 0: 0, 1: 0, 2: 0

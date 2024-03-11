@@ -36,9 +36,8 @@ def generate_json(
         if output_directory.endswith("/") and output_directory != "":
             output_directory = output_directory[:-1]
         output = output_directory + "/" + name + ".json"
-    
+
     data = {"results": results_dict, "config": config}
-    print(data)
 
     with open(output, "w") as f:
         json.dump(data, f, indent=2)
