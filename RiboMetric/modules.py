@@ -332,7 +332,7 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     read_frame_dict = {}
     
     # Iterate over groups and assign frame numbers based on sorted order
-    for (transcript_id, read_length), group_df in frame_df.groupby(['transcript_id', 'read_length']):
+    for (transcript_id, read_length), group_df in frame_df.groupby(['reference_name', 'read_length']):
         frame_counts = group_df.groupby('read_frame')['count'].apply(list).to_dict()
         max_frame = max(frame_counts.keys())
         read_frame_dict[(transcript_id, read_length)] = {
