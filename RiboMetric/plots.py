@@ -468,7 +468,7 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
     sum_mRNA_dict = sum_mRNA_distribution(mRNA_distribution_dict, config)
     plotting_order = config["plots"]["mRNA_read_breakdown"]["plotting_order"]
     plot_data = []
-    print(sum_mRNA_dict.keys())
+    print(sum_mRNA_dict)
 
     for category in plotting_order:
         if category in sum_mRNA_dict:
