@@ -259,7 +259,6 @@ def read_frame_cull(read_frame_dict: dict, config: dict) -> dict:
     culled_read_frame_dict = read_frame_dict.copy()
     cull_list = list(culled_read_frame_dict.keys())
     for k in cull_list:
-        print(k)
         if (
             k > config["plots"]["read_frame_distribution"]["upper_limit"]
             or k < config["plots"]["read_frame_distribution"]["lower_limit"]
