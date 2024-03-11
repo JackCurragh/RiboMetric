@@ -729,7 +729,7 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
             columns = 2
     else:
         target_loop = ["stop"]
-
+    print(columns, target_loop)
     fig = make_subplots(
         rows=1,
         cols=columns,
