@@ -787,19 +787,19 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
         legend={"traceorder": "normal"},
         showlegend=False,
     )
-    if columns > 1:
-        fig.update_layout(
-            xaxis=dict(
-                domain=[0, 0.48], zeroline=False
-            ),  # Adjust domain and remove x-axis zeroline for subplot 1
-            xaxis2=dict(
-                domain=[0.52, 1], zeroline=False
-            ),  # Adjust domain and remove x-axis zeroline for subplot 2
-        )
-    else:
-        fig.update_layout(
-            xaxis=dict(domain=[0, 1], zeroline=False),
-        )
+    # if columns > 1:
+    #     fig.update_layout(
+    #         xaxis=dict(
+    #             domain=[0, 0.48], zeroline=False
+    #         ),  # Adjust domain and remove x-axis zeroline for subplot 1
+    #         xaxis2=dict(
+    #             domain=[0.52, 1], zeroline=False
+    #         ),  # Adjust domain and remove x-axis zeroline for subplot 2
+    #     )
+    # else:
+    #     fig.update_layout(
+    #         xaxis=dict(domain=[0, 1], zeroline=False),
+    #     )
     plot_metagene_heatmap = {
         "name": "Metagene Heatmap",
         "description": "Metagene heatmap showing the distance between the \
