@@ -368,7 +368,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
                     culled_read_frame_dict[x][y]
                     for x in culled_read_frame_dict
                     for y in culled_read_frame_dict[x]
-                    if y == i
+                    if y == str(i)
                 ],
             )
         )
