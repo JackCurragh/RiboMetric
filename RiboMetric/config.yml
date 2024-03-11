@@ -43,7 +43,7 @@ plots:
     upper_limit: 50
     lower_limit: 10
     absolute_counts: False
-    plotting_order: ["Five Leader", "Start Codon", "Cds", "Stop Codon", "Three Trailer"]
+    plotting_order: ['five_leader', 'start_codon', 'CDS', 'stop_codon', 'three_trailer']
   metagene_profile:
     distance_target: "both"   # Options: ["start", "stop", "both"]
     shared_yaxis: False       # For the metagene profile barplot, controls whether the start and stop distance share a y-axis or not
