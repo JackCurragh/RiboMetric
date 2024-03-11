@@ -471,9 +471,8 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
     print(sum_mRNA_dict.keys())
 
     for category in plotting_order:
-        category_key = category.replace(" ", "_").lower()
-        if category_key in sum_mRNA_dict:
-            value = sum_mRNA_dict[category_key]
+        if category in sum_mRNA_dict:
+            value = sum_mRNA_dict[category]
             plot_data.append(
                 go.Bar(
                     name=category,
