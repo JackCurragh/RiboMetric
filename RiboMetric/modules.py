@@ -329,10 +329,10 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
         frame_count_dict = {idx: count for idx, count in enumerate(sorted(frame_counts.values(), reverse=True))}
 
         if read_length not in read_frame_dict:
-            read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
+            read_frame_dict[int(read_length)] = {0: 0, 1: 0, 2: 0}
 
         for frame, count in frame_count_dict.items():
-            read_frame_dict[read_length][frame] += count
+            read_frame_dict[int(read_length)][frame] += count
 
     return read_frame_dict
 
