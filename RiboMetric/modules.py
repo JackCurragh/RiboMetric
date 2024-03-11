@@ -337,7 +337,7 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
             }
         if str(read_length) not in read_frame_dict:
             read_frame_dict[str(read_length)] = {
-                "0": 0, "1": 0, "2": 0
+                0: 0, 1: 0, 2: 0
                 }
         for frame, count in frame_counts.items():
             read_frame_dict[str(read_length)][frame_count_dict[frame]] += count
