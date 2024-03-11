@@ -241,6 +241,7 @@ def annotation_mode(
         )
     else:
         read_frame_dist = read_frame_distribution(read_df)
+        results_dict["read_frame_distribution"] = read_frame_dist
 
     culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
     results_dict["metrics"]["read_frame_bias"] = read_frame_score(
