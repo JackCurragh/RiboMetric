@@ -321,7 +321,7 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     """
     # Calculate the frame for each read
     a_site_df['read_frame'] = a_site_df['a_site'] % 3
-    
+    print(a_site_df)
     # Group by transcript_id, read_length, and read_frame, then calculate the size of each group
     frame_df = a_site_df.groupby(["transcript_id", "read_length", "read_frame"]).size().reset_index(name='count')
     
