@@ -35,11 +35,11 @@ from .metrics import (
     read_length_distribution_variation_metric as rldv_metric,
     ligation_bias_distribution_metric as lbd_metric,
     ligation_bias_max_proportion_metric as lbmp_metric,
-    read_frame_information_content as rfd_metric,
-    triplet_periodicity_weighted_score,
-    triplet_periodicity_best_read_length_score as tpbrl_metric,
+    read_frame_information_content as rf_info_metric,
+    read_frame_information_weighted_score,
+    read_frame_information_best_read_length_score as tpbrl_metric,
     information_metric_cutoff,
-    triplet_periodicity_weighted_score_best_3_read_lengths as tpw3rl_metric,
+    read_frame_information_weighted_score_best_3_read_lengths as tpw3rl_metric,
     cds_coverage_metric,
     leader_cds_ratio_metric,
     read_length_distribution_prop_at_peak_metric as rldpp_metric,
@@ -202,21 +202,21 @@ def annotation_mode(
     else:
         read_frame_dist = read_frame_distribution(read_df)
 
-    frame_info_content_dict = rfd_metric(read_frame_dist)
+    frame_info_content_dict = rf_info_metric(read_frame_dist)
     results_dict["read_frame_distribution"] = read_frame_dist
     results_dict["metrics"]["read_frame_information_metric"] =\
         information_metric_cutoff(
             frame_info_content_dict,
             config['qc']['read_frame_distribution']['3nt_count_cutoff']
         )
-    frame_info_content_dict_exclude_15 = rfd_metric(read_frame_dist_exclude_15)
+    frame_info_content_dict_exclude_15 = rf_info_metric(read_frame_dist_exclude_15)
     results_dict["read_frame_distribution"] = read_frame_dist_exclude_15
     results_dict["metrics"]["read_frame_information_metric_exclude_15"] =\
         information_metric_cutoff(
             frame_info_content_dict_exclude_15,
             config['qc']['read_frame_distribution']['3nt_count_cutoff']
         )
-    frame_info_content_dict_exclude_60 = rfd_metric(read_frame_dist_exclude_60)
+    frame_info_content_dict_exclude_60 = rf_info_metric(read_frame_dist_exclude_60)
     results_dict["read_frame_distribution"] = read_frame_dist_exclude_60
     results_dict["metrics"]["read_frame_information_metric_exclude_60"] =\
         information_metric_cutoff(
@@ -224,7 +224,7 @@ def annotation_mode(
             config['qc']['read_frame_distribution']['3nt_count_cutoff']
         )
 
-    frame_info_content_dict_28_to_32 = rfd_metric(read_frame_dist_28_to_32)
+    frame_info_content_dict_28_to_32 = rf_info_metric(read_frame_dist_28_to_32)
     results_dict["read_frame_distribution_28_to_32"] = read_frame_dist_28_to_32
     results_dict["metrics"]["read_frame_information_metric_28_to_32"] =\
         information_metric_cutoff(
@@ -234,10 +234,10 @@ def annotation_mode(
 
     culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
     results_dict["metrics"]["read_frame_bias"] = read_frame_score(
-        culled_read_frame_dict)
+        culled_read_frame_dict)["global"]
 
     results_dict["metrics"]["3nt_weighted_score"] = \
-        triplet_periodicity_weighted_score(
+        read_frame_information_weighted_score(
             frame_info_content_dict,
         )
     results_dict["metrics"]["3nt_weighted_score_best_3_read_lengths"] = \
@@ -313,7 +313,7 @@ def annotation_mode(
             num_transcripts=500
             )
 
-        results_dict["metrics"]["leader_cds_ratio"] = leader_cds_ratio_metric(
+        results_dict["metrics"]["ratio_cds:leader"] = leader_cds_ratio_metric(
             mRNA_distribution=results_dict["mRNA_distribution"]
             )
     return results_dict
