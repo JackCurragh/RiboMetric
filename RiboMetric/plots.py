@@ -751,7 +751,7 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
                 x_data.append(k2)
                 y_data.append(k1)
                 z_data.append(v2)
-        print(len(x_data), len(y_data), len(z_data), config["plots"]["metagene_profile"]["distance_range"])
+
         if config["plots"]["metagene_profile"]["max_colorscale"] is None:
             z_max = max(z_data)
             z_data = [z/z_max for z in z_data]
@@ -773,7 +773,8 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
             row=1,
             col=count,
             title_font=dict(size=18),
-            range=config["plots"]["metagene_profile"]["distance_range"]
+            range=[-100, 100]
+            # range=config["plots"]["metagene_profile"]["distance_range"]
         )
     fig.update_layout(
         title="Metagene Heatmap",
