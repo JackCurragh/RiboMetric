@@ -646,12 +646,12 @@ def metagene_profile(
         for key, value in pre_metaprofile_dict.items():
             if key[0] not in metagene_profile_dict[current_target]:
                 metagene_profile_dict[current_target][key[0]] = {}
-            metagene_profile_dict[current_target][key[0]][str(key[1])] = value
+            metagene_profile_dict[current_target][key[0]][int(key[1])] = value
 
         # Fill empty distances with 0
         for position_dict in metagene_profile_dict[current_target].values():
             for position in position_range:
-                position_dict.setdefault(str(position), 0)
+                position_dict.setdefault(int(position), 0)
 
     return metagene_profile_dict
 
