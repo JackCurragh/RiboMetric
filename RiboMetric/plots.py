@@ -778,8 +778,7 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
             title_font=dict(size=18),
             range=[-50, 50],
             constrain="domain",
-            domain=[0.2, 0.8],
-            anchor="y",
+            zeroline=False,
             # range=config["plots"]["metagene_profile"]["distance_range"]
         )
 
