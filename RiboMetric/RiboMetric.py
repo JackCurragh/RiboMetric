@@ -194,7 +194,7 @@ def main(args):
                 To create an index for a BAM file, run:
                 samtools index <bam_file>
                 """)
-            print(config["argument"]["annotation"])
+
             if config["argument"]["annotation"] is not None:
                 if not check_annotation(config["argument"]["annotation"]):
                     raise Exception("""
