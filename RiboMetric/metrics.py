@@ -599,6 +599,9 @@ def gini_index(profile):
     for read_len in profile['start']:
         counts = list(profile['start'][read_len].values())
         total_sum = sum(counts)
+        if total_sum == 0:
+            ginis[read_len] = 0
+            continue
         counts = [count / total_sum for count in counts]
         counts.sort()
 
