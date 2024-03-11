@@ -844,10 +844,10 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
         description and plotly figure for html and pdf export
     '''
     # for any entry in metrics_dict with a dict as value get average of the
-    # values of that dict
+    # top 3 values of that dict
     for key, value in metrics_dict.items():
         if isinstance(value, dict):
-            metrics_dict[key] = sum(value.values()) / len(value)
+            metrics_dict[key] = sum(sorted(value.values(), reverse=True)[:3])/3
 
     # Convert the metrics_dict to a DataFrame for easier plotting
     df = pd.DataFrame(list(metrics_dict.items()), columns=['Metric', 'Score'])
