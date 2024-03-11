@@ -521,7 +521,7 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict: dict = {}
     for index, value in annotated_read_df.items():
-        print(index, value)
+        print(value)
         read_length: int
         mRNA_category: str
         read_length, mRNA_category = index
