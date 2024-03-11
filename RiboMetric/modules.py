@@ -510,6 +510,7 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
     idx = pd.MultiIndex.from_product(
         [classes, categories], names=["class", "category"]
     )
+    print(annotated_read_df)
     # Group annotated_read_df
     annotated_read_df = (
         annotated_read_df.groupby(["read_length", "mRNA_category"])
