@@ -851,9 +851,7 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
 
     # Convert the metrics_dict to a DataFrame for easier plotting
     df = pd.DataFrame(list(metrics_dict.items()), columns=['Metric', 'Score'])
-    print(metrics_dict)
 
-    print(df)
     width = 750
     height = 320
     # Create a bar chart using Plotly Express
