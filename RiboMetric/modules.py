@@ -323,10 +323,10 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     a_site_df['read_frame'] = a_site_df['a_site'] % 3
     print(a_site_df)
     # Group by transcript_id, read_length, and read_frame, then calculate the size of each group
-    frame_df = a_site_df.groupby(["transcript_id", "read_length", "read_frame"]).size().reset_index(name='count')
+    frame_df = a_site_df.groupby(["reference_name", "read_length", "read_frame"]).size().reset_index(name='count')
     
     # Sort the counts for each frame within each group
-    frame_df = frame_df.sort_values(by=['transcript_id', 'read_length', 'read_frame', 'count'], ascending=[True, True, True, False])
+    frame_df = frame_df.sort_values(by=['reference_name', 'read_length', 'read_frame', 'count'], ascending=[True, True, True, False])
     
     # Initialize the nested dictionary to store results
     read_frame_dict = {}
