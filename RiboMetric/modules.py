@@ -510,7 +510,6 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
     idx = pd.MultiIndex.from_product(
         [classes, categories], names=["class", "category"]
     )
-    print(annotated_read_df)
     # Group annotated_read_df
     annotated_read_df = (
         annotated_read_df.groupby(["read_length", "mRNA_category"])
@@ -519,20 +518,13 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         .sort_index()
         .to_frame()  # Convert the resulting series to a DataFrame
     )
-    print("ANNOTATED READ DF: ", annotated_read_df)
+
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict: dict = {}
-    for index, value in annotated_read_df.items():
-        print("INDEX: ", index)
-        print()
-        print()
-        print("VALUE: ", value)
-        read_length: int
-        mRNA_category: str
-        read_length, mRNA_category = index
+    for (read_length, mRNA_category), value in annotated_read_df.items():
         if read_length not in mRNA_distribution_dict:
             mRNA_distribution_dict[read_length] = {}
-        mRNA_distribution_dict[read_length][mRNA_category] = value
+    mRNA_distribution_dict[read_length][mRNA_category] = value
 
     # Setting order of categories 5' to 3'
     for i in mRNA_distribution_dict:
