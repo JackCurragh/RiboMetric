@@ -522,7 +522,9 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
 
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict: dict = {}
-    for read_length, mRNA_category, value in annotated_read_df.itertuples(index=False, name=None):
+    for read_length, mRNA_category, value in annotated_read_df.itertuples(
+                                                                index=False,
+                                                                name=None):
         if read_length not in mRNA_distribution_dict:
             mRNA_distribution_dict[read_length] = {}
         mRNA_distribution_dict[read_length][mRNA_category] = value
