@@ -558,7 +558,7 @@ def uniformity(metagene_profile: dict) -> dict:
     return read_len_uniformity
 
 
-def theil_index(profile):
+def theil_index(profile, read_lengths=[28, 29, 30, 31, 32]):
     """
     Calculates the Theil index for a Ribo-Seq profile.
 
@@ -567,18 +567,21 @@ def theil_index(profile):
         and values represent counts.
 
     Returns:
-        float: The Theil index for the given profile.
+        dict: The Theil index for the given profile.
     """
+    theils = {}
+    for read_len in profile['start']:
+        total_sum = sum(profile['start'][read_len].values())
+        theil_sum = 0
 
-    total_sum = sum(profile.values())
-    theil_sum = 0
+        for count in profile['start'][read_len].values():
+            if count > 0:
+                proportion = count / total_sum
+                theil_sum += proportion * math.log(1 / proportion)
 
-    for count in profile.values():
-        if count > 0:
-            proportion = count / total_sum
-            theil_sum += proportion * math.log(1 / proportion)
+        theils[read_len] = theil_sum
 
-    return theil_sum
+    return theils
 
 
 def gini_index(profile):
@@ -590,18 +593,18 @@ def gini_index(profile):
         and values represent counts.
 
     Returns:
-        float: The Gini index for the given profile.
+        dict: The Gini index for the given profile.
     """
+    ginis = {}
+    for read_len in profile['start']:
+        counts = list(profile['start'][read_len].values())
+        total_sum = sum(counts)
+        counts = [count / total_sum for count in counts]
+        counts.sort()
 
-    counts = list(profile.values())
-    total_sum = sum(counts)
-    counts = [count / total_sum for count in counts]
-    counts.sort()
+        gini_sum = 0
+        for i, count in enumerate(counts):
+            gini_sum += count * (2 * i - len(counts) + 1)
 
-    gini_sum = 0
-    for i, count in enumerate(counts):
-        gini_sum += count * (2 * i - len(counts) + 1)
-
-    gini_index = gini_sum / (len(counts) - 1)
-
-    return gini_index
+        ginis[read_len] = gini_sum / (len(counts) - 1)
+    return ginis
