@@ -368,7 +368,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
                     culled_read_frame_dict[x][y]
                     for x in culled_read_frame_dict
                     for y in culled_read_frame_dict[x]
-                    if y == str(i)
+                    if y == i
                 ],
             )
         )
@@ -440,7 +440,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         if count_sum > y_buffer:
             upper_limit = (idx[1])
             break
-    fig.update_xaxes(range=[int(lower_limit)-0.5, int(upper_limit)+0.5])
+    fig.update_xaxes(range=[lower_limit-0.5, upper_limit+0.5])
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
         "description": "Frame distribution per read length",
