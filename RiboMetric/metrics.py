@@ -329,7 +329,7 @@ def information_metric_cutoff(
     return information_content_metric
 
 
-def triplet_periodicity_best_read_length_score(information_content_metric):
+def read_frame_information_best_read_length_score(information_content_metric):
     '''
     Produce a single metric for the triplet periodicity by taking the maximum
     score across all read lengths.
@@ -344,7 +344,7 @@ def triplet_periodicity_best_read_length_score(information_content_metric):
     return max(information_content_metric.values())
 
 
-def triplet_periodicity_weighted_score(
+def read_frame_information_weighted_score(
     frame_info_content_dict: dict,
         ):
     '''
@@ -369,7 +369,7 @@ def triplet_periodicity_weighted_score(
     return sum(weighted_scores) / total_reads
 
 
-def triplet_periodicity_weighted_score_best_3_read_lengths(
+def read_frame_information_weighted_score_best_3_read_lengths(
         frame_info_content_dict: dict,) -> float:
     """
     Produce a single metric for the triplet periodicity by taking the weighted

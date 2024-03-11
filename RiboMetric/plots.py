@@ -801,23 +801,6 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
         showlegend=False,
     )
 
-    # This was supposed to ensure that each plot gets the same x-axis range
-    # But I suspect it doesn't make a difference. This may be another 
-    # symptom of the same problem that causes the x-axis range to be ignored
-    # if columns > 1:
-    #     fig.update_layout(
-    #         xaxis=dict(
-    #             domain=[0, 0.48], zeroline=False
-    #         ),  # Adjust domain and remove x-axis zeroline for subplot 1
-    #         xaxis2=dict(
-    #             domain=[0.52, 1], zeroline=False
-    #         ),  # Adjust domain and remove x-axis zeroline for subplot 2
-    #     )
-    # else:
-    #     fig.update_layout(
-    #         xaxis=dict(domain=[0, 1], zeroline=False),
-    #     )
-
     plot_metagene_heatmap = {
         "name": "Metagene Heatmap",
         "description": "Metagene heatmap showing the distance between the \
@@ -843,8 +826,8 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
         plot_metrics_summary_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     '''
-    # for any entry in metrics_dict with a dict as value get average of the
-    # top 3 values of that dict
+    # for any entry in metrics_dict with a dict as value (these are where the
+    # metrics are per read length) get average of the top 3 values of that dict
     for key, value in metrics_dict.items():
         if isinstance(value, dict):
             metrics_dict[key] = sum(sorted(value.values(), reverse=True)[:3])/3
