@@ -768,6 +768,7 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
             row=1,
             col=count,
         )
+        print(fig.layout)
         fig.update_xaxes(
             title_text="Relative position (nt)",
             row=1,
@@ -776,6 +777,8 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
             range=[-100, 100]
             # range=config["plots"]["metagene_profile"]["distance_range"]
         )
+        print(fig.layout)
+
     fig.update_layout(
         title="Metagene Heatmap",
         yaxis_title="Read length",
@@ -787,19 +790,12 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
         legend={"traceorder": "normal"},
         showlegend=False,
     )
-    if columns > 1:
-        fig.update_layout(
-            xaxis=dict(
-                domain=[0, 0.45], zeroline=False
-            ),  # Adjust domain and remove x-axis zeroline for subplot 1
-            xaxis2=dict(
-                domain=[0.55, 1], zeroline=False
-            ),  # Adjust domain and remove x-axis zeroline for subplot 2
-        )
-    else:
-        fig.update_layout(
-            xaxis=dict(domain=[0, 1], zeroline=False),
-        )
+    print(fig.layout)
+
+
+    # This was supposed to ensure that each plot gets the same x-axis range
+    # But I suspect it doesn't make a difference. This may be another 
+    # symptom of the same problem that causes the x-axis range to be ignored
     # if columns > 1:
     #     fig.update_layout(
     #         xaxis=dict(
@@ -813,6 +809,8 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
     #     fig.update_layout(
     #         xaxis=dict(domain=[0, 1], zeroline=False),
     #     )
+    pio.write_image(fig, 'test_plot.png')
+
     plot_metagene_heatmap = {
         "name": "Metagene Heatmap",
         "description": "Metagene heatmap showing the distance between the \
