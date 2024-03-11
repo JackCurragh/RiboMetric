@@ -312,35 +312,25 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     Calculate the distribution of the reading frame over the dataset
 
     Inputs:
-        a_site_df: Dataframe containing the read information with an added
-        column for the a-site location
+    a_site_df: Dataframe containing the read information with an added column for the a-site location
 
     Outputs:
-        read_frame_dict: Nested dictionary containing counts for every reading
-        frame at the different read lengths
+    read_frame_dict: Nested dictionary containing counts for every reading frame at the different read lengths
     """
-    # Calculate the frame for each read
-    a_site_df['read_frame'] = a_site_df['a_site'] % 3
-    print(a_site_df)
-    # Group by transcript_id, read_length, and read_frame, then calculate the size of each group
-    frame_df = a_site_df.groupby(["reference_name", "read_length", "read_frame"]).size().reset_index(name='count')
-    
-    # Sort the counts for each frame within each group
-    frame_df = frame_df.sort_values(by=['reference_name', 'read_length', 'read_frame', 'count'], ascending=[True, True, True, False])
-    
-    # Initialize the nested dictionary to store results
     read_frame_dict = {}
-    
-    # Iterate over groups and assign frame numbers based on sorted order
-    for (transcript_id, read_length), group_df in frame_df.groupby(['reference_name', 'read_length']):
-        frame_counts = group_df.groupby('read_frame')['count'].apply(list).to_dict()
-        max_frame = max(frame_counts.keys())
-        read_frame_dict[(transcript_id, read_length)] = {
-            frame: idx for idx, frame in enumerate(range(max_frame + 1))
-        }
-    
-    return read_frame_dict
 
+    # Iterate over unique combinations of transcript_id and read_length
+    for (transcript_id, read_length), group in a_site_df.groupby(['reference_name', 'read_length']):
+        # Calculate the frame for each read in the group
+        group['read_frame'] = group['a_site'] % 3
+
+        # Count the number of reads in each frame
+        frame_counts = group['read_frame'].value_counts().sort_index().to_dict()
+
+        # Assign frame numbers based on sorted order
+        read_frame_dict[(transcript_id, read_length)] = {frame: idx for idx, frame in enumerate(sorted(frame_counts.keys()))}
+
+    return read_frame_dict
 
 def read_frame_distribution_annotated(
         annotated_read_df: pd.DataFrame,
