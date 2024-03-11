@@ -39,11 +39,11 @@ plots:
     upper_limit: 50
     lower_limit: 10
     absolute_counts: False    # Options for both?
-    plotting_order: ["Five Leader", "Start Codon", "Cds", "Stop Codon", "Three Trailer"]
   mRNA_read_breakdown:
     upper_limit: 50
     lower_limit: 10
     absolute_counts: False
+    plotting_order: ["Five Leader", "Start Codon", "Cds", "Stop Codon", "Three Trailer"]
   metagene_profile:
     distance_target: "both"   # Options: ["start", "stop", "both"]
     shared_yaxis: False       # For the metagene profile barplot, controls whether the start and stop distance share a y-axis or not
