@@ -468,7 +468,6 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
     sum_mRNA_dict = sum_mRNA_distribution(mRNA_distribution_dict, config)
     plotting_order = config["plots"]["mRNA_read_breakdown"]["plotting_order"]
     plot_data = []
-    print(sum_mRNA_dict)
 
     for category in plotting_order:
         if category in sum_mRNA_dict:
@@ -480,7 +479,10 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
                     y=[""],
                     width=[0.3],
                     hovertemplate="Proportion: %{x:.2%}"
-                    if not config["plots"]["mRNA_distribution"]["absolute_counts"]
+                    if not config[
+                        "plots"][
+                        "mRNA_distribution"][
+                        "absolute_counts"]
                     else "Count: %{x}",
                     orientation="h",
                 )
@@ -831,7 +833,9 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
 def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     # Convert the metrics_dict to a DataFrame for easier plotting
     df = pd.DataFrame(list(metrics_dict.items()), columns=['Metric', 'Score'])
+    print(metrics_dict)
 
+    print(df)
     width = 750
     height = 320
     # Create a bar chart using Plotly Express
