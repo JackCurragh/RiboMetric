@@ -319,19 +319,26 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
         read_frame_dict: Nested dictionary containing counts for every reading
         frame at the different read lengths
     """
-    frame_df = (
-        a_site_df.assign(read_frame=a_site_df.a_site.mod(3))
-        .groupby(["read_length", "read_frame"])
-        .size()
-    )
-    read_frame_dict: Dict[int, dict] = {}
-    for index, value in frame_df.items():
-        read_length: int
-        read_frame: int
-        read_length, read_frame = index
-        if read_length not in read_frame_dict:
-            read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
-        read_frame_dict[read_length][read_frame] = value
+    # Calculate the frame for each read
+    a_site_df['read_frame'] = a_site_df['a_site'] % 3
+    
+    # Group by transcript_id, read_length, and read_frame, then calculate the size of each group
+    frame_df = a_site_df.groupby(["transcript_id", "read_length", "read_frame"]).size().reset_index(name='count')
+    
+    # Sort the counts for each frame within each group
+    frame_df = frame_df.sort_values(by=['transcript_id', 'read_length', 'read_frame', 'count'], ascending=[True, True, True, False])
+    
+    # Initialize the nested dictionary to store results
+    read_frame_dict = {}
+    
+    # Iterate over groups and assign frame numbers based on sorted order
+    for (transcript_id, read_length), group_df in frame_df.groupby(['transcript_id', 'read_length']):
+        frame_counts = group_df.groupby('read_frame')['count'].apply(list).to_dict()
+        max_frame = max(frame_counts.keys())
+        read_frame_dict[(transcript_id, read_length)] = {
+            frame: idx for idx, frame in enumerate(range(max_frame + 1))
+        }
+    
     return read_frame_dict
 
 

@@ -117,7 +117,7 @@ def test_triplet_periodicity_weighted_score():
     }
     pre_scores = rfd_metric(read_frame_dict)
 
-    weighted_score = triplet_periodicity_weighted_score(
+    weighted_score = read_frame_information_weighted_score(
         pre_scores,
     )
     assert round(weighted_score, 2) == 0.38
