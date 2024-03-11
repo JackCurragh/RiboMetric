@@ -260,6 +260,8 @@ def annotation_mode(
             config["plots"]["metagene_profile"]["distance_target"],
             config["plots"]["metagene_profile"]["distance_range"],
         )
+        a = results_dict["metagene_profile"].copy()
+        print(results_dict["metagene_profile"])
         results_dict["metrics"]["autocorrelation"] = autocorrelation(
             metagene_profile(
                 annotated_read_df,
@@ -274,6 +276,8 @@ def annotation_mode(
                 distance_range=[15, 100],
             )
         )
+        print(results_dict["metagene_profile"])
+        print(results_dict["metagene_profile"] == a)
 
         print("> cds_coverage_metric")
         results_dict["metrics"]["CDS_coverage_metric"] = cds_coverage_metric(
