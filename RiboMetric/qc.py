@@ -45,6 +45,8 @@ from .metrics import (
     read_length_distribution_prop_at_peak_metric as rldpp_metric,
     autocorrelation,
     uniformity,
+    theil_index,
+    gini_index,
 )
 from typing import Any, Dict
 
@@ -239,6 +241,9 @@ def annotation_mode(
         results_dict["metrics"]["3nt_best_read_length_score"] = tpbrl_metric(
             frame_info_content_dict,
         )
+        read_frame_dist = read_frame_distribution(read_df)
+        results_dict[
+            "read_frame_distribution_best_frame_per_tx"] = read_frame_dist
     else:
         read_frame_dist = read_frame_distribution(read_df)
         results_dict["read_frame_distribution"] = read_frame_dist
@@ -267,6 +272,20 @@ def annotation_mode(
             )
         )
         results_dict["metrics"]["uniformity"] = uniformity(
+            metagene_profile(
+                annotated_read_df,
+                target="start",
+                distance_range=[15, 100],
+            )
+        )
+        results_dict["metrics"]["thiel_index"] = theil_index(
+            metagene_profile(
+                annotated_read_df,
+                target="start",
+                distance_range=[15, 100],
+            )
+        )
+        results_dict["metrics"]["gini_index"] = gini_index(
             metagene_profile(
                 annotated_read_df,
                 target="start",
