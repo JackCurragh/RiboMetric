@@ -741,31 +741,22 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
         else ["Distance from 3'"],
     )
 
-    fig = make_subplots(
-        rows=1, cols=columns,
-        shared_yaxes=True,
-        subplot_titles=["Distance from 5'", "Distance from 3'"] if len(target_loop) > 1 else ["Distance from 5'"] if target_loop == ["start"] else ["Distance from 3'"],
-        horizontal_spacing=0.1  # Add this line to adjust the spacing between subplots
-    )
-
     for current_target in target_loop:
         count += 1
         x_data = []
         y_data = []
         z_data = []
-        for k1, v1 in metagene_profile_dict[current_target].items():
-            for k2, v2 in v1.items():
-                x_data.append(k2)
-                y_data.append(k1)
-                z_data.append(v2)
+        for read_length, position_counts in metagene_profile_dict[
+                                                current_target
+                                                ].items():
+            for position, counts in position_counts.items():
+                x_data.append(int(position))
+                y_data.append(int(read_length))
+                z_data.append(int(counts))
+
         if config["plots"]["metagene_profile"]["max_colorscale"] is None:
             z_max = max(z_data)
-            z_data = [z / z_max for z in z_data]
-
-        # Calculate the x-axis range for each subplot
-        x_min = min(x_data)
-        x_max = max(x_data)
-        x_range = [x_min - (0 - x_min), x_max - (0 - x_min)]
+            z_data = [z/z_max for z in z_data]
 
         fig.add_trace(
             go.Heatmap(
@@ -776,13 +767,19 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
                 zmin=0,
                 zmax=config["plots"]["metagene_profile"]["max_colorscale"],
             ),
-            row=1, col=count,
+            row=1,
+            col=count,
         )
+
         fig.update_xaxes(
             title_text="Relative position (nt)",
-            row=1, col=count,
+            row=1,
+            col=count,
             title_font=dict(size=18),
-            range=x_range,  # Use the calculated x-axis range
+            range=[-50, 50],
+            constrain="domain",
+            zeroline=False,
+            # range=config["plots"]["metagene_profile"]["distance_range"]
         )
 
     fig.update_layout(
