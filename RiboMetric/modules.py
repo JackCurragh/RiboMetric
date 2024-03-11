@@ -320,17 +320,30 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     read_frame_dict = {}
 
     # Iterate over unique combinations of transcript_id and read_length
-    for (transcript_id, read_length), group in a_site_df.groupby(['reference_name', 'read_length']):
-        # Calculate the frame for each read in the group
+    for (transcript_id, read_length), group in a_site_df.groupby(
+                                                [
+                                                    'reference_name',
+                                                    'read_length'
+                                                    ]):
         group['read_frame'] = group['a_site'] % 3
-
-        # Count the number of reads in each frame
-        frame_counts = group['read_frame'].value_counts().sort_index().to_dict()
-
+        frame_counts = group[
+            'read_frame'
+            ].value_counts().sort_index().to_dict()
         # Assign frame numbers based on sorted order
-        read_frame_dict[(transcript_id, read_length)] = {frame: idx for idx, frame in enumerate(sorted(frame_counts.keys()))}
+        # This is for unannotated reads only. 
+        # It calls the most translated frame the 0 frame
+        frame_count_dict = {
+            frame: idx for idx, frame in enumerate(sorted(frame_counts.keys()))
+            }
+        if str(read_length) not in read_frame_dict:
+            read_frame_dict[str(read_length)] = {
+                "0": 0, "1": 0, "2": 0
+                }
+        for frame, count in frame_counts.items():
+            read_frame_dict[str(read_length)][frame_count_dict[frame]] += count
 
     return read_frame_dict
+
 
 def read_frame_distribution_annotated(
         annotated_read_df: pd.DataFrame,
