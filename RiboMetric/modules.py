@@ -9,7 +9,7 @@ import numpy as np
 from xhtml2pdf import pisa
 from collections import Counter
 
-from typing import List, Tuple, Dict
+from typing import List, Dict
 
 
 def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -326,6 +326,8 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     )
     read_frame_dict: Dict[int, dict] = {}
     for index, value in frame_df.items():
+        read_length: int
+        read_frame: int
         read_length, read_frame = index
         if read_length not in read_frame_dict:
             read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
@@ -349,7 +351,7 @@ def read_frame_distribution_annotated(
         read_frame_dict: Nested dictionary containing counts for every reading
         frame at the different read lengths
     """
-    read_lengths = [
+    read_lengths: List[int] = [
         i for i in range(read_length_range[0], read_length_range[1])
         ]
 
@@ -363,8 +365,10 @@ def read_frame_distribution_annotated(
         .groupby(["read_length", "read_frame"])
         .size()
     )
-    read_frame_dict = {}
+    read_frame_dict: Dict[int, Dict[int, int]] = {}
     for index, value in frame_df.items():
+        read_length: int
+        read_frame: int
         read_length, read_frame = index
         if read_length in read_lengths:
             if read_length not in read_frame_dict:
@@ -512,10 +516,13 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         .size()
         .reindex(idx, fill_value=0)
         .sort_index()
+        .to_frame()  # Convert the resulting series to a DataFrame
     )
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict: dict = {}
     for index, value in annotated_read_df.items():
+        read_length: int
+        mRNA_category: str
         read_length, mRNA_category = index
         if read_length not in mRNA_distribution_dict:
             mRNA_distribution_dict[read_length] = {}
@@ -580,6 +587,8 @@ def metagene_distance(
         return annotated_read_df["a_site"] - annotated_read_df["cds_start"]
     elif target == "stop":
         return annotated_read_df["a_site"] - annotated_read_df["cds_end"]
+    else:
+        raise ValueError("Target must be start or stop")
 
 
 def metagene_profile(
@@ -603,7 +612,7 @@ def metagene_profile(
         the read and distance to the target as keys and the counts as values
     """
     target_loop = [target] if target != "both" else ["start", "stop"]
-    metagene_profile_dict: dict[str, dict[str, dict]] = {
+    metagene_profile_dict: Dict[str, Dict[str, dict]] = {
         "start": {}, "stop": {}
         }
     for current_target in target_loop:

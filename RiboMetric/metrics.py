@@ -556,3 +556,52 @@ def uniformity(metagene_profile: dict) -> dict:
         uniformity = entropy / max_entropy
         read_len_uniformity[read_len] = uniformity
     return read_len_uniformity
+
+
+def theil_index(profile):
+    """
+    Calculates the Theil index for a Ribo-Seq profile.
+
+    Inputs:
+        profile (dict): A dictionary where keys represent positions,
+        and values represent counts.
+
+    Returns:
+        float: The Theil index for the given profile.
+    """
+
+    total_sum = sum(profile.values())
+    theil_sum = 0
+
+    for count in profile.values():
+        if count > 0:
+            proportion = count / total_sum
+            theil_sum += proportion * math.log(1 / proportion)
+
+    return theil_sum
+
+
+def gini_index(profile):
+    """
+    Calculates the Gini index for a Ribo-Seq profile.
+
+    Inputs:
+        profile (dict): A dictionary where keys represent positions,
+        and values represent counts.
+
+    Returns:
+        float: The Gini index for the given profile.
+    """
+
+    counts = list(profile.values())
+    total_sum = sum(counts)
+    counts = [count / total_sum for count in counts]
+    counts.sort()
+
+    gini_sum = 0
+    for i, count in enumerate(counts):
+        gini_sum += count * (2 * i - len(counts) + 1)
+
+    gini_index = gini_sum / (len(counts) - 1)
+
+    return gini_index
