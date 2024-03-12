@@ -130,13 +130,21 @@ def annotation_mode(
             read_df,
             pattern_length=config["plots"]["ligation_bias_distribution"][
                 "nucleotide_count"
-            ]
+            ],
         )
         results_dict["metrics"][
-            "ligation_bias_distribution_metric"
+            "ligation_bias_distribution_5_prime_metric"
             ] = lbd_metric(
             results_dict["ligation_bias_distribution"],
             sequence_background["5_prime_bg"],
+            prime="five_prime",
+        )
+        results_dict["metrics"][
+            "ligation_bias_distribution_3_prime_metric"
+            ] = lbd_metric(
+            results_dict["ligation_bias_distribution"],
+            sequence_background["3_prime_bg"],
+            prime="three_prime",
         )
         results_dict["metrics"][
             "ligation_bias_max_proportion_metric_5_prime"

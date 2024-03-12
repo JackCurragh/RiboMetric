@@ -113,6 +113,7 @@ def read_length_distribution_prop_at_peak_metric(
 def ligation_bias_distribution_metric(
         observed_freq: dict,
         expected_freq: dict,
+        prime: str = "five_prime",
         ) -> float:
     """
     Calculate the ligation bias metric from the output of
@@ -127,6 +128,7 @@ def ligation_bias_distribution_metric(
         observed_freq: Dictionary containing the output of the
                 ligation_bias_distribution module
         expected_freq: Dictionary containing the expected frequencies
+        prime: The prime end to consider
 
     Outputs:
         lbd_df: Dataframe containing the ligation bias metric in bits
@@ -137,7 +139,7 @@ def ligation_bias_distribution_metric(
     # at least once are used (needs to be changed in ligation bias)
     kl_divergence = 0.0
 
-    for dinucleotide, observed_prob in observed_freq["five_prime"].items():
+    for dinucleotide, observed_prob in observed_freq[prime].items():
         expected_prob = expected_freq[dinucleotide]
         kl_divergence += observed_prob * math.log2(
                                             observed_prob / expected_prob
