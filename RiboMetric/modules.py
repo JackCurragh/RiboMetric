@@ -268,7 +268,7 @@ def read_frame_cull(read_frame_dict: dict, config: dict) -> dict:
     return culled_read_frame_dict
 
 
-def read_frame_score(read_frame_dict: dict) -> dict:
+def read_frame_score_trips_viz(read_frame_dict: dict) -> dict:
     """
     Generates scores for each read_length separately as well as a global score
     Can be used after read_frame_cull to calculate the global score of the

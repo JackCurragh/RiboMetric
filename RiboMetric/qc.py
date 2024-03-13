@@ -24,7 +24,7 @@ from .modules import (
     mRNA_distribution,
     metagene_profile,
     reading_frame_triangle,
-    read_frame_score,
+    read_frame_score_trips_viz,
     read_frame_cull,
     asite_calculation_per_readlength,
     a_site_calculation_variable_offset
@@ -47,6 +47,10 @@ from .metrics import (
     uniformity,
     theil_index,
     gini_index,
+    read_frame_dominance,
+    fourier_transform,
+    multitaper,
+    wavelet_transform
 )
 from typing import Any, Dict
 
@@ -257,8 +261,11 @@ def annotation_mode(
         results_dict["read_frame_distribution"] = read_frame_dist
 
     culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
-    results_dict["metrics"]["read_frame_bias"] = read_frame_score(
+    results_dict["metrics"]["read_frame_score_trips-viz"] = read_frame_score_trips_viz(
         culled_read_frame_dict)["global"]
+    results_dict["metrics"]["read_frame_dominance"] = read_frame_dominance(
+        culled_read_frame_dict
+    )
 
     if annotation:
         print("> mRNA_distribution")
@@ -272,33 +279,32 @@ def annotation_mode(
             config["plots"]["metagene_profile"]["distance_target"],
             config["plots"]["metagene_profile"]["distance_range"],
         )
-        results_dict["metrics"]["autocorrelation"] = autocorrelation(
-            metagene_profile(
+
+        coding_metagene = metagene_profile(
                 annotated_read_df,
                 target="start",
                 distance_range=[15, 100],
             )
+        results_dict["metrics"]["autocorrelation"] = autocorrelation(
+            coding_metagene
         )
         results_dict["metrics"]["uniformity"] = uniformity(
-            metagene_profile(
-                annotated_read_df,
-                target="start",
-                distance_range=[15, 100],
-            )
+            coding_metagene
         )
         results_dict["metrics"]["thiel_index"] = theil_index(
-            metagene_profile(
-                annotated_read_df,
-                target="start",
-                distance_range=[15, 100],
-            )
+            coding_metagene
         )
         results_dict["metrics"]["gini_index"] = gini_index(
-            metagene_profile(
-                annotated_read_df,
-                target="start",
-                distance_range=[15, 100],
-            )
+            coding_metagene
+        )
+        results_dict["metrics"]["fourier"] = fourier_transform(
+            coding_metagene
+        )
+        results_dict["metrics"]["multitaper"] = multitaper(
+            coding_metagene
+        )
+        results_dict["metrics"]["wavelet"] = wavelet_transform(
+            coding_metagene
         )
         print("> cds_coverage_metric")
         results_dict["metrics"]["CDS_coverage_metric"] = cds_coverage_metric(
