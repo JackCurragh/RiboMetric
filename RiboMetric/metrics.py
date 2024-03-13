@@ -707,10 +707,20 @@ def multitaper(
                     )
                     ]
         counts = list(metagene_profile['start'][read_len].values())
-        multitaper_transform = signal.spectrogram(np.array(counts), window='hann', nperseg=256, noverlap=128)
+        multitaper_transform = signal.spectrogram(
+                                        np.array(counts),
+                                        window='hann',
+                                        nperseg=nperseg,
+                                        noverlap=noverlap
+                                        )
         multitaper_scores[read_len] = np.max(multitaper_transform[2])
 
-    global_multitaper_transform = signal.spectrogram(np.array(global_counts), window='hann', nperseg=256, noverlap=128)
+    global_multitaper_transform = signal.spectrogram(
+                                        np.array(global_counts),
+                                        window='hann',
+                                        nperseg=nperseg,
+                                        noverlap=noverlap
+                                        )
     multitaper_scores["global"] = np.max(global_multitaper_transform[2])
     return multitaper_scores
 
