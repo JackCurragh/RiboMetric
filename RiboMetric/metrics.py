@@ -660,7 +660,11 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
     return fourier_scores
 
 
-def multitaper(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
+def multitaper(
+        metagene_profile,
+        read_lengths=[28, 29, 30, 31, 32],
+        nperseg=8,
+        noverlap=4):
     """
     Calculate the multitaper transform of the metagene profile.
 
@@ -671,6 +675,12 @@ def multitaper(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
         read_lengths: list, optional
             The list of read lengths to calculate the multitaper transform for.
             Default is [28, 29, 30, 31, 32].
+        nperseg: int, optional
+            The length of the segments to use for the multitaper transform.
+            Default is 8.
+        noverlap: int, optional
+            The number of points of overlap between segments.
+            Default is 4.
 
     Returns:
         multitaper_scores: dict
