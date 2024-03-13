@@ -335,7 +335,7 @@ def main(args):
         print(results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
         # Write out the specified output files
         if report_export is not None:
-            plots_list = generate_plots(results_dict.copy(), config)
+            plots_list = generate_plots(results_dict, config)
             generate_report(plots_list,
                             config,
                             report_export,
