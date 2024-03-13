@@ -73,6 +73,7 @@ def generate_csv(
     columns = ["metric", "score"]
     metrics_dict = []
     for key, value in results_dict["metrics"].items():
+        print(key, value, type(value))
         if isinstance(value, float) or isinstance(value, int):
             metrics_dict.append({"metric": key, "score": value})
         elif isinstance(value, dict):
