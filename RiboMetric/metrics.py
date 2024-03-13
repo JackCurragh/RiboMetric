@@ -618,7 +618,6 @@ def read_frame_dominance(read_frame_dict):
         global_total += total_count
         global_max_frame += read_frame_dict[read_length][max_frame]
     read_frame_dominance["global"] = global_max_frame / global_total
-    print("READ FRAME DOMINANCE", read_frame_dominance)
     return read_frame_dominance
 
 
@@ -658,7 +657,6 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
     else:
         global_fourier_transform = np.fft.fft(global_counts)
         fourier_scores["global"] = np.abs(global_fourier_transform[1])
-    print("FOURIER SCORES", fourier_scores)
     return fourier_scores
 
 
@@ -724,8 +722,6 @@ def multitaper(
                                         noverlap=noverlap
                                         )
     multitaper_scores["global"] = np.max(global_multitaper_transform[2])
-
-    print("MULTITAPER SCORES", multitaper_scores)
     return multitaper_scores
 
 
@@ -759,5 +755,4 @@ def wavelet_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
 
     global_wavelet_transform = signal.cwt(np.array(global_counts), signal.ricker, [1])
     wavelet_scores["global"] = np.max(global_wavelet_transform)
-    print("WAVELET SCORES", wavelet_scores)
     return wavelet_scores
