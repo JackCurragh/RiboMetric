@@ -341,6 +341,9 @@ def main(args):
                           export["output"])
 
         if export["csv"]:
+            print()
+            print()
+            print(results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
             generate_csv(results_dict,
                          config,
                          report_prefix,
