@@ -636,6 +636,7 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
     fourier_scores = {}
     global_counts = []
     for read_len in read_lengths:
+        print(list(metagene_profile['start'][read_len].values()))
         global_counts = [
             i + j for i, j in zip(
                 global_counts,
@@ -649,6 +650,7 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
             fourier_transform = np.fft.fft(counts)
             fourier_scores[read_len] = np.abs(fourier_transform[1])
 
+    print(global_counts)
     global_fourier_transform = np.fft.fft(global_counts)
     fourier_scores["global"] = np.abs(global_fourier_transform[1])
     return fourier_scores
