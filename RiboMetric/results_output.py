@@ -72,9 +72,6 @@ def generate_csv(
 
     columns = ["metric", "score"]
     metrics_dict = []
-    print()
-    print()
-    print(results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
     for key, value in results_dict["metrics"].items():
         print(key, value, type(value))
         if isinstance(value, float) or isinstance(value, int):
