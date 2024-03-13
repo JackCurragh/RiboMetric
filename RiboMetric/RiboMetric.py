@@ -293,6 +293,9 @@ def main(args):
                     results_dict = sequence_mode(
                         results_dict, read_df, fasta_dict, config
                     )
+                    print()
+                    print()
+                    print("SEQ:", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
 
             filename = config["argument"]["bam"].split('/')[-1]
             if "." in filename:
@@ -338,12 +341,18 @@ def main(args):
                             report_export,
                             report_prefix,
                             export["output"])
+            print()
+            print()
+            print("PLOTS: ", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
 
         if export["json"]:
             generate_json(results_dict,
                           config,
                           report_prefix,
                           export["output"])
+            print()
+            print()
+            print("JSON",results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
 
         if export["csv"]:
             print()
