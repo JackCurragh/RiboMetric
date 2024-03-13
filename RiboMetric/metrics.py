@@ -652,7 +652,6 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
             fourier_transform = np.fft.fft(counts)
             fourier_scores[read_len] = np.abs(fourier_transform[1])
 
-    print(len(global_counts))
     if len(global_counts) < 2:
         fourier_scores["global"] = 0
     else:
@@ -688,17 +687,20 @@ def multitaper(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
     multitaper_scores = {}
     global_counts = []
     for read_len in read_lengths:
-        global_counts = [
-            i + j for i, j in zip(
-                global_counts,
-                list(metagene_profile['start'][read_len].values())
-                )
-                ]
+        if not global_counts:
+            global_counts = list(metagene_profile['start'][read_len].values())
+        else:
+            global_counts = [
+                i + j for i, j in zip(
+                    global_counts,
+                    list(metagene_profile['start'][read_len].values())
+                    )
+                    ]
         counts = list(metagene_profile['start'][read_len].values())
-        multitaper_transform = signal.spectrogram(counts, window='hann', nperseg=256, noverlap=128)
+        multitaper_transform = signal.spectrogram(np.array(counts), window='hann', nperseg=256, noverlap=128)
         multitaper_scores[read_len] = np.max(multitaper_transform[2])
 
-    global_multitaper_transform = signal.spectrogram(global_counts, window='hann', nperseg=256, noverlap=128)
+    global_multitaper_transform = signal.spectrogram(np.array(global_counts), window='hann', nperseg=256, noverlap=128)
     multitaper_scores["global"] = np.max(global_multitaper_transform[2])
     return multitaper_scores
 
@@ -718,16 +720,19 @@ def wavelet_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
     wavelet_scores = {}
     global_counts = []
     for read_len in read_lengths:
-        global_counts = [
-            i + j for i, j in zip(
-                global_counts,
-                list(metagene_profile['start'][read_len].values())
-                )
-                ]
+        if not global_counts:
+            global_counts = list(metagene_profile['start'][read_len].values())
+        else:
+            global_counts = [
+                i + j for i, j in zip(
+                    global_counts,
+                    list(metagene_profile['start'][read_len].values())
+                    )
+                    ]
         counts = list(metagene_profile['start'][read_len].values())
-        wavelet_transform = signal.cwt(counts, signal.ricker, [1])
+        wavelet_transform = signal.cwt(np.array(counts), signal.ricker, [1])
         wavelet_scores[read_len] = np.max(wavelet_transform)
 
-    global_wavelet_transform = signal.cwt(global_counts, signal.ricker, [1])
+    global_wavelet_transform = signal.cwt(np.array(global_counts), signal.ricker, [1])
     wavelet_scores["global"] = np.max(global_wavelet_transform)
     return wavelet_scores
