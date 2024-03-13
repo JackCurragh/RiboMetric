@@ -343,7 +343,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
     # Calculates the read frame scores if 'show_scores' option
     # in config is not 'none'
     scored_read_frame_dict = (
-        read_frame_score(culled_read_frame_dict)
+        read_frame_score_trips_viz(culled_read_frame_dict)
         if config["plots"]["read_frame_distribution"]["show_scores"] != "none"
         else None
     )
