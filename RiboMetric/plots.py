@@ -5,7 +5,7 @@ RiboMetric reports
 
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
-from .modules import read_frame_cull, read_frame_score, sum_mRNA_distribution
+from .modules import read_frame_cull, read_frame_score_trips_viz, sum_mRNA_distribution
 import plotly.io as pio
 import base64
 
