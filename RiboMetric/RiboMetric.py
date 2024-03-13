@@ -327,7 +327,9 @@ def main(args):
             report_export = "pdf"
         else:
             report_export = None
-
+        print()
+        print()
+        print(results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
         # Write out the specified output files
         if report_export is not None:
             plots_list = generate_plots(results_dict, config)
