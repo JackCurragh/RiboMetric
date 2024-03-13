@@ -300,6 +300,9 @@ def annotation_mode(
         results_dict["metrics"]["fourier"] = fourier_transform(
             coding_metagene
         )
+        print()
+        print()
+        print(type(fourier_transform(coding_metagene)))
         results_dict["metrics"]["multitaper"] = multitaper(
             coding_metagene
         )
