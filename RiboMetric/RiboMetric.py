@@ -284,6 +284,9 @@ def main(args):
                                                    sequence_background,
                                                    annotation_df,
                                                    config)
+                    print()
+                    print()
+                    print("Annotation: ", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
 
                 if config["argument"]["fasta"] is not None:
                     fasta_dict = parse_fasta(config["argument"]["fasta"])
@@ -343,7 +346,7 @@ def main(args):
         if export["csv"]:
             print()
             print()
-            print(results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
+            print("CSV", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
             generate_csv(results_dict,
                          config,
                          report_prefix,
