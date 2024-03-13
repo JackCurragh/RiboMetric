@@ -62,7 +62,7 @@ def test_ligation_bias_distribution_metric():
         ligation_bias_dict, sequence_background[2]["5_prime_bg"]
         )
 
-    assert round(ligation_bias_metric, 2) == -0.18
+    assert round(ligation_bias_metric, 2) == -1.18
 
 
 def test_read_frame_distribution_metric():

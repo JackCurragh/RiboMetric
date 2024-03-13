@@ -11,6 +11,8 @@ import math
 import numpy as np
 
 from typing import Dict
+import numpy as np
+import scipy.signal as signal
 
 
 def find_category_by_cumulative_percentage(df, percentage):
@@ -144,7 +146,7 @@ def ligation_bias_distribution_metric(
         kl_divergence += observed_prob * math.log2(
                                             observed_prob / expected_prob
                                             )
-    return 1 - kl_divergence
+    return -kl_divergence
 
 
 def ligation_bias_max_proportion_metric(
@@ -401,29 +403,6 @@ def read_frame_information_weighted_score_best_3_read_lengths(
     return sum(weighted_scores) / total_reads
 
 
-def frame_bias_metric(
-        read_df: pd.DataFrame,
-        ) -> dict:
-    """
-    Calculate the frame bias metric. This metric is the proportion
-    of reads in each frame
-
-    Inputs:
-        read_df: Dataframe containing the reads
-
-    Outputs:
-        frame_bias_dict: Dictionary containing the frame bias metric
-    """
-    frame_bias_dict = {}
-    total_reads = len(read_df)
-
-    for frame in range(3):
-        frame_reads = len(read_df[read_df["a_site"] % 3 == frame])
-        frame_bias_dict[frame] = frame_reads / total_reads
-
-    return frame_bias_dict
-
-
 def leader_cds_ratio_metric(
         mRNA_distribution: dict,
         read_length_range: tuple = (20, 40),
@@ -536,7 +515,7 @@ def autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
 
 def uniformity(metagene_profile: dict) -> dict:
     """
-    Computes the uniformity of the metagene profile.
+    Computes the uniformity of the metagene profile. Inspired by ORQAS
 
     Inputs:
         metagene_profile: dict
@@ -613,3 +592,132 @@ def gini_index(profile):
 
         ginis[read_len] = gini_sum / (len(counts) - 1)
     return ginis
+
+
+def read_frame_dominance(read_frame_dict):
+    """
+    Calculate the read frame dominance metric from the output of
+    the read_frame_distribution module.
+
+    This metric is the proportion of reads in the dominant frame
+
+    Inputs:
+        read_frame_dict: Dictionary containing the output of the
+                read_frame_distribution module
+
+    Outputs:
+        read_frame_dominance: Dictionary containing the read frame dominance
+    """
+    read_frame_dominance = {}
+    global_total = 0
+    global_max_frame = 0
+    for read_length in read_frame_dict:
+        total_count = sum(read_frame_dict[read_length].values())
+        max_frame = max(read_frame_dict[read_length], key=read_frame_dict[read_length].get)
+        read_frame_dominance[read_length] = read_frame_dict[read_length][max_frame] / total_count
+        global_total += total_count
+        global_max_frame += read_frame_dict[read_length][max_frame]
+    read_frame_dominance["global"] = global_max_frame / global_total
+    return read_frame_dominance
+
+
+def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
+    """
+    Calculate the Fourier transform of the metagene profile.
+
+    Inputs:
+        metagene_profile: dict
+            The metagene profile to compute the Fourier transform of.
+
+    Returns:
+        fourier_scores: dict
+            The Fourier transform scores for each read length.
+    """
+    fourier_scores = {}
+    global_counts = []
+    for read_len in read_lengths:
+        global_counts = [
+            i + j for i, j in zip(
+                global_counts,
+                list(metagene_profile['start'][read_len].values())
+                )
+                ]
+        counts = list(metagene_profile['start'][read_len].values())
+        fourier_transform = np.fft.fft(counts)
+        fourier_scores[read_len] = np.abs(fourier_transform[1])
+
+    global_fourier_transform = np.fft.fft(global_counts)
+    fourier_scores["global"] = np.abs(global_fourier_transform[1])
+    return fourier_scores
+
+
+def multitaper(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
+    """
+    Calculate the multitaper transform of the metagene profile.
+
+    Inputs:
+        metagene_profile: dict
+            The metagene profile to compute the multitaper transform of.
+
+        read_lengths: list, optional
+            The list of read lengths to calculate the multitaper transform for.
+            Default is [28, 29, 30, 31, 32].
+
+    Returns:
+        multitaper_scores: dict
+            The multitaper transform scores for each read length.
+
+    Explanation:
+        The multitaper transform is a spectral analysis technique that estimates
+        the power spectrum of a signal. In this case, the metagene profile is
+        transformed using the multitaper method for each specified read length.
+        The resulting scores represent the maximum power in the multitaper spectrum
+        for each read length, indicating the strength of periodicity in the metagene
+        profile at different read lengths.
+    """
+    multitaper_scores = {}
+    global_counts = []
+    for read_len in read_lengths:
+        global_counts = [
+            i + j for i, j in zip(
+                global_counts,
+                list(metagene_profile['start'][read_len].values())
+                )
+                ]
+        counts = list(metagene_profile['start'][read_len].values())
+        multitaper_transform = signal.spectrogram(counts, window='hann', nperseg=256, noverlap=128)
+        multitaper_scores[read_len] = np.max(multitaper_transform[2])
+
+    global_multitaper_transform = signal.spectrogram(global_counts, window='hann', nperseg=256, noverlap=128)
+    multitaper_scores["global"] = np.max(global_multitaper_transform[2])
+    return multitaper_scores
+
+
+def wavelet_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
+    """
+    Calculate the wavelet transform of the metagene profile.
+
+    Inputs:
+        metagene_profile: dict
+            The metagene profile to compute the wavelet transform of.
+
+    Returns:
+        wavelet_scores: dict
+            The wavelet transform scores for each read length.
+    """
+    wavelet_scores = {}
+    global_counts = []
+    for read_len in read_lengths:
+        global_counts = [
+            i + j for i, j in zip(
+                global_counts,
+                list(metagene_profile['start'][read_len].values())
+                )
+                ]
+        counts = list(metagene_profile['start'][read_len].values())
+        wavelet_transform = signal.cwt(counts, signal.ricker, [1])
+        wavelet_scores[read_len] = np.max(wavelet_transform)
+
+    global_wavelet_transform = signal.cwt(global_counts, signal.ricker, [1])
+    wavelet_scores["global"] = np.max(global_wavelet_transform)
+    return wavelet_scores
