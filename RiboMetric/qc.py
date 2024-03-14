@@ -327,14 +327,79 @@ def annotation_mode(
             in_frame_coverage=config["qc"]["cds_coverage"]["in_frame_coverage"]
             )
         results_dict["metrics"][
-            "CDS_coverage_metric_not_inframe"
+            "CDS_coverage_metric_not_inframe_1read_10tx"
             ] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=1,
-            in_frame_coverage=False
+            in_frame_coverage=False,
+            num_transcripts=10
             )
         results_dict["metrics"][
-            "CDS_coverage_metric_top_10"
+            "CDS_coverage_metric_not_inframe_1read_100tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=1,
+            in_frame_coverage=False,
+            num_transcripts=100
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_not_inframe_1read_1000tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=1,
+            in_frame_coverage=False,
+            num_transcripts=1000
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_not_inframe_10read_10tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=10,
+            in_frame_coverage=False,
+            num_transcripts=10
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_not_inframe_10read_100tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=10,
+            in_frame_coverage=False,
+            num_transcripts=100
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_not_inframe_10read_1000tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=10,
+            in_frame_coverage=False,
+            num_transcripts=1000
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_not_inframe_100read_10tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=100,
+            in_frame_coverage=False,
+            num_transcripts=10
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_not_inframe_100read_100tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=100,
+            in_frame_coverage=False,
+            num_transcripts=100
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_not_inframe_100read_1000tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=100,
+            in_frame_coverage=False,
+            num_transcripts=1000
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_inframe_1read_10tx"
             ] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=1,
@@ -342,23 +407,69 @@ def annotation_mode(
             num_transcripts=10
             )
         results_dict["metrics"][
-            "CDS_coverage_metric_top_100"
+            "CDS_coverage_metric_inframe_1read_100tx"
             ] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=1,
             in_frame_coverage=True,
             num_transcripts=100
             )
-
         results_dict["metrics"][
-            "CDS_coverage_metric_top_500"
+            "CDS_coverage_metric_inframe_1read_1000tx"
             ] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=1,
             in_frame_coverage=True,
-            num_transcripts=500
+            num_transcripts=1000
             )
-
+        results_dict["metrics"][
+            "CDS_coverage_metric_inframe_10read_10tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=10,
+            in_frame_coverage=True,
+            num_transcripts=10
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_inframe_10read_100tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=10,
+            in_frame_coverage=True,
+            num_transcripts=100
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_inframe_10read_1000tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=10,
+            in_frame_coverage=True,
+            num_transcripts=1000
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_inframe_100read_10tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=100,
+            in_frame_coverage=True,
+            num_transcripts=10
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_inframe_100read_100tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=100,
+            in_frame_coverage=True,
+            num_transcripts=100
+            )
+        results_dict["metrics"][
+            "CDS_coverage_metric_inframe_100read_1000tx"
+            ] = cds_coverage_metric(
+            cds_read_df,
+            minimum_reads=100,
+            in_frame_coverage=True,
+            num_transcripts=1000
+            )
         results_dict["metrics"]["ratio_cds:leader"] = leader_cds_ratio_metric(
             mRNA_distribution=results_dict["mRNA_distribution"]
             )
