@@ -296,34 +296,34 @@ def annotation_mode(
                 distance_range=[30, 117],
             )
         results_dict["metrics"]["autocorrelation"] = autocorrelation(
-            coding_metagene
+            coding_metagene.copy()
         )
         results_dict["metrics"]["uniformity"] = uniformity(
-            coding_metagene
+            coding_metagene.copy()
         )
         results_dict["metrics"]["theil_index"] = theil_index(
-            coding_metagene
+            coding_metagene.copy()
         )
         results_dict["metrics"]["thiel_index_triplet"] = theil_index_triplets(
-            coding_metagene
+            coding_metagene.copy()
         )
         results_dict["metrics"]["kurtosis"] = kurtosis(
-            coding_metagene
+            coding_metagene.copy()
         )
         results_dict["metrics"]["KS_test"] = KS_test(
-            coding_metagene
+            coding_metagene.copy()
         )
         results_dict["metrics"]["gini_index"] = gini_index(
-            coding_metagene
+            coding_metagene.copy()
         )
         results_dict["metrics"]["fourier"] = fourier_transform(
-            coding_metagene
+            coding_metagene.copy()
         )
         results_dict["metrics"]["multitaper"] = multitaper(
-            coding_metagene
+            coding_metagene.copy()
         )
         results_dict["metrics"]["wavelet"] = wavelet_transform(
-            coding_metagene
+            coding_metagene.copy()
         )
         print("> cds_coverage_metric")
         results_dict["metrics"]["CDS_coverage_metric"] = cds_coverage_metric(
