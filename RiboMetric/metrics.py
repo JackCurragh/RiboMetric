@@ -114,60 +114,6 @@ def bimodality_coefficient(data):
     return bimodality_coeff
 
 
-def dip_statistic_permuted(data):
-    """
-    Calculate the dip statistic for a permuted dataset.
-    Used to calculate the p-value for the dip statistic.
-
-    Args:
-        data (list or numpy.ndarray): The dataset to test for bimodality.
-
-    Returns:
-        float: The dip statistic.
-    """
-    permuted_data = np.random.permutation(data)
-
-    kde = gaussian_kde(permuted_data)
-    x_values = np.linspace(permuted_data.min(), permuted_data.max(), 1000)
-    pdf_values = kde(x_values)
-    n = len(permuted_data)
-    return 1 - np.max(pdf_values) / (np.sum(pdf_values) / (n - 1))
-
-
-def hartigans_dip_test(read_length_counts):
-    """
-    Calculate the dip statistic for the read length distribution.
-
-    Args:
-        read_length_counts (dict): A dictionary containing the read length
-            counts.
-
-    Returns:
-        float: The dip statistic.
-    """
-    print("> Dip Test")
-    read_lengths = np.array(list(read_length_counts.keys()))
-    counts = np.array(list(read_length_counts.values()))
-
-    data = np.repeat(read_lengths, counts)
-
-    kde = gaussian_kde(data)
-    x_values = np.linspace(data.min(), data.max(), 1000)
-    pdf_values = kde(x_values)
-
-    n = len(data)
-    dip_statistic = 1 - np.max(pdf_values) / (np.sum(pdf_values) / (n - 1))
-
-    B = 1  # originally set to 1000
-    dip_permuted = np.zeros(B)
-    for i in range(B):
-        print(f"> Permutation {i+1}/{B}")
-        dip_permuted[i] = dip_statistic_permuted(data)
-    p_value = np.sum(dip_permuted > dip_statistic) / B
-
-    return dip_statistic, p_value
-
-
 def read_length_distribution_prop_at_peak_metric(
         rld_dict: dict,
         num_top_readlens: int = 1,
@@ -833,7 +779,7 @@ def kurtosis(profile):
     """
     kurtoses = {}
     global_counts = []
-    print(profile)
+    print("Profile: ", profile)
     for read_len in profile['start']:
         if not global_counts:
             global_counts = list(profile['start'][read_len].values())
