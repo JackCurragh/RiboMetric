@@ -48,7 +48,7 @@ from .metrics import (
     theil_index,
     theil_index_triplets,
     gini_index,
-    kurtosis,
+    kurtosis_metric,
     KS_test,
     read_frame_dominance,
     fourier_transform,
@@ -307,7 +307,7 @@ def annotation_mode(
         results_dict["metrics"]["thiel_index_triplet"] = theil_index_triplets(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["kurtosis"] = kurtosis(
+        results_dict["metrics"]["kurtosis"] = kurtosis_metric(
             coding_metagene.copy()
         )
         results_dict["metrics"]["KS_test"] = KS_test(

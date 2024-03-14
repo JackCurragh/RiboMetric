@@ -769,7 +769,7 @@ def gini_index(profile):
     return ginis
 
 
-def kurtosis(profile):
+def kurtosis_metric(profile):
     """
     Calculates the kurtosis for a Ribo-Seq profile.
 
@@ -782,7 +782,6 @@ def kurtosis(profile):
     """
     kurtoses = {}
     global_counts = []
-    print("Profile: ", profile)
     for read_len in profile['start']:
         if not global_counts:
             global_counts = list(profile['start'][read_len].values())
