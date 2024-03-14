@@ -158,7 +158,7 @@ def hartigans_dip_test(read_length_counts):
     n = len(data)
     dip_statistic = 1 - np.max(pdf_values) / (np.sum(pdf_values) / (n - 1))
 
-    B = 10  # originally set to 1000
+    B = 1  # originally set to 1000
     dip_permuted = np.zeros(B)
     for i in range(B):
         print(f"> Permutation {i+1}/{B}")
@@ -833,7 +833,7 @@ def kurtosis(profile):
     """
     kurtoses = {}
     global_counts = []
-
+    print(profile)
     for read_len in profile['start']:
         if not global_counts:
             global_counts = list(profile['start'][read_len].values())
