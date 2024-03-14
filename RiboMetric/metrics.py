@@ -12,7 +12,7 @@ import numpy as np
 
 from typing import Dict
 import numpy as np
-from scipy.stats import skew, kurtosis, gaussian_kde
+from scipy.stats import skew, kurtosis
 import scipy.signal as signal
 
 
@@ -102,10 +102,10 @@ def bimodality_coefficient(data):
     Returns:
         float: The bimodality coefficient.
     """
-    print(data)
-    if len(data) < 3:
-        return 0
-    data = np.array(data)
+    read_lens = np.array(list(data.keys()))
+    counts = np.array(list(data.values()))
+
+    data = np.repeat(read_lens, counts)
     n = len(data)
     skew_value = skew(data)
     kurt_value = kurtosis(data)
