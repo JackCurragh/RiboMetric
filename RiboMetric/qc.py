@@ -300,9 +300,6 @@ def annotation_mode(
         results_dict["metrics"]["fourier"] = fourier_transform(
             coding_metagene
         )
-        print()
-        print()
-        print(type(fourier_transform(coding_metagene)))
         results_dict["metrics"]["multitaper"] = multitaper(
             coding_metagene
         )
@@ -351,9 +348,6 @@ def annotation_mode(
         results_dict["metrics"]["ratio_cds:leader"] = leader_cds_ratio_metric(
             mRNA_distribution=results_dict["mRNA_distribution"]
             )
-        print()
-        print()
-        print("QC:",results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
     return results_dict
 
 
