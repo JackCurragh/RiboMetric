@@ -12,6 +12,7 @@ import numpy as np
 
 from typing import Dict
 import numpy as np
+from scipy.stats import skew, kurtosis, gaussian_kde
 import scipy.signal as signal
 
 
@@ -89,6 +90,80 @@ def read_length_distribution_variation_metric(
         ).sum()\
         / rld_df["read_count"].sum()
     return math.sqrt(variance) / mean
+
+
+def bimodality_coefficient(data):
+    """
+    Calculate the bimodality coefficient for a given dataset.
+
+    Args:
+        data (list or numpy.ndarray): The dataset to test for bimodality.
+
+    Returns:
+        float: The bimodality coefficient.
+    """
+    data = np.array(data)
+    n = len(data)
+    skew_value = skew(data)
+    kurt_value = kurtosis(data)
+
+    numerator = (skew_value ** 2) + 1
+    denominator = kurt_value + (3 * ((n - 1) ** 2 / ((n - 2) * (n - 3))))
+    bimodality_coeff = numerator / denominator
+
+    return bimodality_coeff
+
+
+def dip_statistic_permuted(data):
+    """
+    Calculate the dip statistic for a permuted dataset.
+    Used to calculate the p-value for the dip statistic.
+
+    Args:
+        data (list or numpy.ndarray): The dataset to test for bimodality.
+
+    Returns:
+        float: The dip statistic.
+    """
+    permuted_data = np.random.permutation(data)
+
+    kde = gaussian_kde(permuted_data)
+    x_values = np.linspace(permuted_data.min(), permuted_data.max(), 1000)
+    pdf_values = kde(x_values)
+    n = len(permuted_data)
+    return 1 - np.max(pdf_values) / (np.sum(pdf_values) / (n - 1))
+
+
+def hartigans_dip_test(read_length_counts):
+    """
+    Calculate the dip statistic for the read length distribution.
+
+    Args:
+        read_length_counts (dict): A dictionary containing the read length
+            counts.
+
+    Returns:
+        float: The dip statistic.
+    """
+    read_lengths = np.array(list(read_length_counts.keys()))
+    counts = np.array(list(read_length_counts.values()))
+
+    data = np.repeat(read_lengths, counts)
+
+    kde = gaussian_kde(data)
+    x_values = np.linspace(data.min(), data.max(), 1000)
+    pdf_values = kde(x_values)
+
+    n = len(data)
+    dip_statistic = 1 - np.max(pdf_values) / (np.sum(pdf_values) / (n - 1))
+
+    B = 1000
+    dip_permuted = np.zeros(B)
+    for i in range(B):
+        dip_permuted[i] = dip_statistic_permuted(data)
+    p_value = np.sum(dip_permuted > dip_statistic) / B
+
+    return dip_statistic, p_value
 
 
 def read_length_distribution_prop_at_peak_metric(
@@ -773,19 +848,11 @@ def kurtosis(profile):
             kurtoses[read_len] = 0
             continue
         else:
-            mean = total_sum / len(counts)
-            kurtosis_sum = 0
-            for count in counts:
-                kurtosis_sum += (count - mean)**4
-            kurtoses[read_len] = kurtosis_sum / (total_sum * (total_sum - 1))
+            kurtoses[read_len] = kurtosis(counts)
 
     global_total_sum = sum(global_counts)
     global_counts = [count / global_total_sum for count in global_counts]
-    global_mean = global_total_sum / len(global_counts)
-    global_kurtosis_sum = 0
-    for count in global_counts:
-        global_kurtosis_sum += (count - global_mean)**4
-    kurtoses["global"] = global_kurtosis_sum / (global_total_sum * (global_total_sum - 1))
+    kurtoses["global"] = kurtosis(global_counts)
     return kurtoses
 
 

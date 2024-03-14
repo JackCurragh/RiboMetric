@@ -53,7 +53,8 @@ from .metrics import (
     read_frame_dominance,
     fourier_transform,
     multitaper,
-    wavelet_transform
+    wavelet_transform,
+    hartigans_dip_test,
 )
 from typing import Any, Dict
 
@@ -110,6 +111,9 @@ def annotation_mode(
         read_df
     )
     results_dict["metrics"]["read_length_distribution_metric"] = rld_metric(
+        results_dict["read_length_distribution"]
+    )
+    results_dict["metrics"]["dip_test_metric"] = hartigans_dip_test(
         results_dict["read_length_distribution"]
     )
     results_dict["metrics"]["read_length_distribution_variation_metric"] =\
