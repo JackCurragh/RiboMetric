@@ -12,7 +12,7 @@ import numpy as np
 
 from typing import Dict
 import numpy as np
-from scipy.stats import skew, kurtosis
+from scipy.stats import skew, kurtosis, normaltest
 import scipy.signal as signal
 
 
@@ -97,7 +97,7 @@ def bimodality_coefficient(data):
     Calculate the bimodality coefficient for a given dataset.
 
     Args:
-        data (list or numpy.ndarray): The dataset to test for bimodality.
+        data (dict): A dictionary containing the read length distribution.
 
     Returns:
         float: The bimodality coefficient.
@@ -115,6 +115,31 @@ def bimodality_coefficient(data):
     bimodality_coeff = numerator / denominator
 
     return bimodality_coeff
+
+
+def read_length_distribution_non_normality_metric(
+        rld_dict: dict,
+        ) -> float:
+    """
+    Calculate the read length distribution (non) normality metric from the output of
+    the read_length_distribution module.
+
+    This metric is normaltest statistic of the read length distribution
+
+    Inputs:
+        rld_dict: Dictionary containing the output of the
+                read_length_distribution module
+
+    Outputs:
+        non_normality_metric (float): The normaltest statistic of the read
+    """
+    read_lens = np.array(list(rld_dict.keys()))
+    counts = np.array(list(rld_dict.values()))
+
+    data = np.repeat(read_lens, counts)
+
+    res = normaltest(data)
+    return res.statistic
 
 
 def read_length_distribution_prop_at_peak_metric(
