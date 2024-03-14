@@ -26,7 +26,8 @@ def generate_plots(results_dict: dict, config: dict) -> list:
 
     """
     print("Generating plots")
-    plots_list = [plot_metrics_summary(results_dict["metrics"], config)]
+    print("0", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
+    plots_list = [plot_metrics_summary(results_dict["metrics"].copy(), config)]
     print()
     print()
     print("A", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
