@@ -103,7 +103,7 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     return dict(zip(read_lengths.tolist(), read_counts.tolist()))
 
 
-def ligation_bias_distribution(
+def termianl_nucleotide_bias_distribution(
     read_df: pd.DataFrame,
     pattern_length: int = 2,
     keep_N: bool = False,
@@ -120,10 +120,10 @@ def ligation_bias_distribution(
         target: Calculate ligation bias for 5', 3' or both
 
     Outputs:
-        ligation_bias_dict: Dictionary containing the distribution of the
+        termianl_nucleotide_bias_dict: Dictionary containing the distribution of the
         first pattern of nucleotides in the reads
     """
-    ligation_bias_dict: dict = (
+    termianl_nucleotide_bias_dict: dict = (
         {target: {}} if target != "both" else {
             "five_prime": {}, "three_prime": {}
             }
@@ -154,16 +154,16 @@ def ligation_bias_distribution(
             ]
 
     for pattern in pattern_list:
-        for prime in ligation_bias_dict:
+        for prime in termianl_nucleotide_bias_dict:
             if pattern in categories[prime]:
-                ligation_bias_dict[prime][pattern] = \
+                termianl_nucleotide_bias_dict[prime][pattern] = \
                     prime_counts[prime][pattern]/total_counts
 
-    return ligation_bias_dict
+    return termianl_nucleotide_bias_dict
 
 
 def normalise_ligation_bias(
-    ligation_bias_dict: dict,
+    termianl_nucleotide_bias_dict: dict,
     sequence_background: dict,
     pattern_length: int = 2,
 ) -> dict:
@@ -172,31 +172,31 @@ def normalise_ligation_bias(
     pattern at the start and end of the sequences.
 
     Inputs:
-        ligation_bias_dict: Dictionary containing observed proportions for 5'
+        termianl_nucleotide_bias_dict: Dictionary containing observed proportions for 5'
                             and 3' ends of the sequences
         sequence_background: Dictionary containing expected proportions for 5'
                             and 3' directions of sequences
         # pattern_length: Length of nucleotide pattern
 
     Outputs:
-        ligation_bias_dict_norm: Modified ligation_bias_dict to show the
+        termianl_nucleotide_bias_dict_norm: Modified termianl_nucleotide_bias_dict to show the
                                 difference between observed and expected
                                 distributions
     """
-    ligation_bias_dict_norm = ligation_bias_dict
+    termianl_nucleotide_bias_dict_norm = termianl_nucleotide_bias_dict
     expected_distribution = {
         "five_prime": sequence_background["5_prime_bg"],
         "three_prime": sequence_background["3_prime_bg"],
         }
 
-    for prime in ligation_bias_dict_norm:
-        for pattern in ligation_bias_dict_norm[prime]:
+    for prime in termianl_nucleotide_bias_dict_norm:
+        for pattern in termianl_nucleotide_bias_dict_norm[prime]:
 
             if pattern in expected_distribution[prime]:
-                ligation_bias_dict_norm[prime][pattern]\
+                termianl_nucleotide_bias_dict_norm[prime][pattern]\
                     -= expected_distribution[prime][pattern]
 
-    return ligation_bias_dict_norm
+    return termianl_nucleotide_bias_dict_norm
 
 
 def slicer_vectorized(array: np.ndarray, start: int, end: int):

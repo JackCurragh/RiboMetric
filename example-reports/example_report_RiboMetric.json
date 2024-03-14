@@ -3,7 +3,7 @@
     "mode": "annotation",
     "metrics": {
       "read_length_distribution_metric": 0.3125,
-      "ligation_bias_distribution_metric": 0.23122740461568003,
+      "termianl_nucleotide_bias_distribution_metric": 0.23122740461568003,
       "3nt_weighted_score": 0.0695475072141941,
       "3nt_weighted_score_best_3_read_lengths": 0.015420241716889245,
       "CDS_coverage_metric": 0.001017078514014742
@@ -44,7 +44,7 @@
       "47": 154552,
       "50": 3443626
     },
-    "ligation_bias_distribution": {
+    "termianl_nucleotide_bias_distribution": {
       "five_prime": {
         "AA": -0.003977924563508248,
         "AC": 0.06741112700522939,
@@ -5040,7 +5040,7 @@
         720,
         370
       ],
-      "ligation_bias_distribution": {
+      "termianl_nucleotide_bias_distribution": {
         "nucleotide_count": 2,
         "target": "both",
         "include_N": false,

@@ -3,12 +3,12 @@
 import pandas as pd
 from RiboMetric.modules import (
     read_length_distribution,
-    ligation_bias_distribution,
+    termianl_nucleotide_bias_distribution,
 )
 
 from RiboMetric.metrics import (
     read_length_distribution_spread_metric as rld_metric,
-    ligation_bias_distribution_metric as lbd_metric,
+    termianl_nucleotide_bias_distribution_metric as lbd_metric,
     read_frame_information_content as rfd_metric,
     read_frame_information_weighted_score,
     read_frame_information_best_read_length_score as tpbrl_metric,
@@ -29,7 +29,7 @@ def test_read_length_distribution_metric():
     assert round(read_length_metric, 3) == 0.333
 
 
-def test_ligation_bias_distribution_metric():
+def test_termianl_nucleotide_bias_distribution_metric():
     """
     Test the ligation bias distribution metric
     """
@@ -39,7 +39,7 @@ def test_ligation_bias_distribution_metric():
     ].reset_index(drop=True)
     categories = ["first_dinucleotide", "last_dinucleotide"]
     read_df[categories] = read_df[categories].astype("category")
-    ligation_bias_dict = ligation_bias_distribution(read_df)
+    termianl_nucleotide_bias_dict = termianl_nucleotide_bias_distribution(read_df)
     sequence_background = {2:
                            {"5_prime_bg": {
                                 'AA': 0.24390243902439024,
@@ -58,11 +58,11 @@ def test_ligation_bias_distribution_metric():
                                 'TC': 0.12195121951219512,
                                 'TG': 0.0,
                                 'TT': 0.0975609756097561}}}
-    ligation_bias_metric = lbd_metric(
-        ligation_bias_dict, sequence_background[2]["5_prime_bg"]
+    termianl_nucleotide_bias_metric = lbd_metric(
+        termianl_nucleotide_bias_dict, sequence_background[2]["5_prime_bg"]
         )
 
-    assert round(ligation_bias_metric, 2) == -1.18
+    assert round(termianl_nucleotide_bias_metric, 2) == -1.18
 
 
 def test_read_frame_distribution_metric():

@@ -4,7 +4,7 @@ This script contains tests for the different functions found in modules.py
 
 from RiboMetric.modules import (
     read_length_distribution,
-    ligation_bias_distribution,
+    termianl_nucleotide_bias_distribution,
     normalise_ligation_bias,
     nucleotide_composition,
     a_site_calculation,
@@ -46,10 +46,10 @@ def test_read_length_distribution():
     "test_input,expected",
     [
         ('AA_test', 0.5),
-        ('ligation_bias_dict_norm["three_prime"]["TC"]', 0.275),
+        ('termianl_nucleotide_bias_dict_norm["three_prime"]["TC"]', 0.275),
     ],
 )
-def test_ligation_bias_distribution(test_input, expected):
+def test_termianl_nucleotide_bias_distribution(test_input, expected):
     """
     Test ligation bias distribution calculation
     """
@@ -62,15 +62,15 @@ def test_ligation_bias_distribution(test_input, expected):
     sequence_background = {
         "5_prime_bg": {"AA": 0.25, "AG": 0.3, "TT": 0.45},
         "3_prime_bg": {"AA": 0.875, "TC": 0.125}}
-    ligation_bias_dict = ligation_bias_distribution(read_df)
-    AA_test = ligation_bias_dict["five_prime"]["AA"]
-    ligation_bias_dict_norm = normalise_ligation_bias(
-        ligation_bias_dict, sequence_background
+    termianl_nucleotide_bias_dict = termianl_nucleotide_bias_distribution(read_df)
+    AA_test = termianl_nucleotide_bias_dict["five_prime"]["AA"]
+    termianl_nucleotide_bias_dict_norm = normalise_ligation_bias(
+        termianl_nucleotide_bias_dict, sequence_background
     )
 
     # Just to satisfy the linter
     type(AA_test)
-    type(ligation_bias_dict_norm)
+    type(termianl_nucleotide_bias_dict_norm)
     assert eval(test_input) == expected
 
 
