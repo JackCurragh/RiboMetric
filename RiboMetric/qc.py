@@ -16,7 +16,7 @@ from .modules import (
     assign_mRNA_category,
     read_length_distribution,
     read_df_to_cds_read_df,
-    termianl_nucleotide_bias_distribution,
+    terminal_nucleotide_bias_distribution,
     normalise_ligation_bias,
     nucleotide_composition,
     read_frame_distribution,
@@ -33,8 +33,8 @@ from .modules import (
 from .metrics import (
     read_length_distribution_spread_metric as rld_metric,
     read_length_distribution_variation_metric as rldv_metric,
-    termianl_nucleotide_bias_distribution_metric as lbd_metric,
-    termianl_nucleotide_bias_max_proportion_metric as lbmp_metric,
+    terminal_nucleotide_bias_distribution_metric as lbd_metric,
+    terminal_nucleotide_bias_max_proportion_metric as lbmp_metric,
     read_frame_information_content as rf_info_metric,
     read_frame_information_weighted_score,
     read_frame_information_best_read_length_score as tpbrl_metric,
@@ -130,50 +130,50 @@ def annotation_mode(
     )
 
     if sequence_background:
-        print("> termianl_nucleotide_bias_distribution")
+        print("> terminal_nucleotide_bias_distribution")
         results_dict[
-            "termianl_nucleotide_bias_distribution"
-            ] = termianl_nucleotide_bias_distribution(
+            "terminal_nucleotide_bias_distribution"
+            ] = terminal_nucleotide_bias_distribution(
             read_df,
-            pattern_length=config["plots"]["termianl_nucleotide_bias_distribution"][
+            pattern_length=config["plots"]["terminal_nucleotide_bias_distribution"][
                 "nucleotide_count"
             ],
         )
         results_dict["metrics"][
-            "termianl_nucleotide_bias_distribution_5_prime_metric"
+            "terminal_nucleotide_bias_distribution_5_prime_metric"
             ] = lbd_metric(
-            results_dict["termianl_nucleotide_bias_distribution"],
+            results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["5_prime_bg"],
             prime="five_prime",
         )
         results_dict["metrics"][
-            "termianl_nucleotide_bias_distribution_3_prime_metric"
+            "terminal_nucleotide_bias_distribution_3_prime_metric"
             ] = lbd_metric(
-            results_dict["termianl_nucleotide_bias_distribution"],
+            results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["3_prime_bg"],
             prime="three_prime",
         )
         results_dict["metrics"][
-            "termianl_nucleotide_bias_max_proportion_metric_5_prime"
+            "terminal_nucleotide_bias_max_proportion_metric_5_prime"
             ] = lbmp_metric(
-            results_dict["termianl_nucleotide_bias_distribution"],
+            results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["5_prime_bg"],
             prime="five_prime",
         )
         results_dict["metrics"][
-            "termianl_nucleotide_bias_max_proportion_metric_3_prime"
+            "terminal_nucleotide_bias_max_proportion_metric_3_prime"
             ] = lbmp_metric(
-            results_dict["termianl_nucleotide_bias_distribution"],
+            results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["3_prime_bg"],
             prime="three_prime",
         )
-        if config["plots"]["termianl_nucleotide_bias_distribution"]["background_freq"]:
+        if config["plots"]["terminal_nucleotide_bias_distribution"]["background_freq"]:
             results_dict[
-                "termianl_nucleotide_bias_distribution"
+                "terminal_nucleotide_bias_distribution"
                 ] = normalise_ligation_bias(
-                results_dict["termianl_nucleotide_bias_distribution"],
+                results_dict["terminal_nucleotide_bias_distribution"],
                 sequence_background=sequence_background,
-                pattern_length=config["plots"]["termianl_nucleotide_bias_distribution"][
+                pattern_length=config["plots"]["terminal_nucleotide_bias_distribution"][
                     "nucleotide_count"
                 ],
             )
@@ -237,7 +237,9 @@ def annotation_mode(
                 config['qc']['read_frame_distribution']['3nt_count_cutoff']
             )
 
-        frame_info_content_dict_28_to_32 = rf_info_metric(read_frame_dist_28_to_32)
+        frame_info_content_dict_28_to_32 = rf_info_metric(
+            read_frame_dist_28_to_32
+            )
         results_dict["read_frame_distribution_28_to_32"] = read_frame_dist_28_to_32
         results_dict["metrics"]["read_frame_information_metric_28_to_32"] =\
             information_metric_cutoff(
@@ -387,7 +389,7 @@ def sequence_mode(
     results_dict = {
         "mode": "sequence_mode",
         "read_length_distribution": read_length_distribution(read_df),
-        "termianl_nucleotide_bias_distribution": termianl_nucleotide_bias_distribution(read_df),
+        "terminal_nucleotide_bias_distribution": terminal_nucleotide_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
         "read_frame_distribution": read_frame_distribution(read_df),
     }

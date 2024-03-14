@@ -112,14 +112,14 @@ def read_length_distribution_prop_at_peak_metric(
     return max_count / total_count
 
 
-def termianl_nucleotide_bias_distribution_metric(
+def terminal_nucleotide_bias_distribution_metric(
         observed_freq: dict,
         expected_freq: dict,
         prime: str = "five_prime",
         ) -> float:
     """
     Calculate the ligation bias metric from the output of
-    the termianl_nucleotide_bias_distribution module.
+    the terminal_nucleotide_bias_distribution module.
 
     This metric is the K-L divergence of the ligation bias distribution
     of the observed frequencies from the expected frequencies. The
@@ -128,7 +128,7 @@ def termianl_nucleotide_bias_distribution_metric(
 
     Inputs:
         observed_freq: Dictionary containing the output of the
-                termianl_nucleotide_bias_distribution module
+                terminal_nucleotide_bias_distribution module
         expected_freq: Dictionary containing the expected frequencies
         prime: The prime end to consider
 
@@ -149,21 +149,21 @@ def termianl_nucleotide_bias_distribution_metric(
     return -kl_divergence
 
 
-def termianl_nucleotide_bias_max_proportion_metric(
+def terminal_nucleotide_bias_max_proportion_metric(
         observed_freq: dict,
         expected_freq: dict,
         prime: str = "five_prime",
         ) -> float:
     """
     Calculate the ligation bias metric from the output of
-    the termianl_nucleotide_bias_distribution module.
+    the terminal_nucleotide_bias_distribution module.
 
     This metric is the maximum difference in observed and expected
     frequencies of dinucleotides
 
     Inputs:
         observed_freq: Dictionary containing the output of the
-                termianl_nucleotide_bias_distribution module
+                terminal_nucleotide_bias_distribution module
         expected_freq: Dictionary containing the expected frequencies
 
     Outputs:
@@ -772,11 +772,13 @@ def kurtosis(profile):
         if total_sum == 0:
             kurtoses[read_len] = 0
             continue
-        mean = total_sum / len(counts)
-        kurtosis_sum = 0
-        for count in counts:
-            kurtosis_sum += (count - mean)**4
-        kurtoses[read_len] = kurtosis_sum / (total_sum * (total_sum - 1))
+        else:
+            mean = total_sum / len(counts)
+            kurtosis_sum = 0
+            for count in counts:
+                kurtosis_sum += (count - mean)**4
+            print(read_len, kurtosis_sum, total_sum)
+            kurtoses[read_len] = kurtosis_sum / (total_sum * (total_sum - 1))
 
     global_total_sum = sum(global_counts)
     global_counts = [count / global_total_sum for count in global_counts]
