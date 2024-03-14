@@ -138,6 +138,12 @@ def read_length_distribution_non_normality_metric(
 
     data = np.repeat(read_lens, counts)
 
+    # write hist of data to file
+    import matplotlib.pyplot as plt
+    plt.hist(data, bins=100)
+    plt.savefig('hist.png')
+    
+
     res = normaltest(data)
     return res.statistic
 
