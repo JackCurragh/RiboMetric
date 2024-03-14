@@ -769,7 +769,7 @@ def kurtosis(profile):
                     ]
         counts = list(profile['start'][read_len].values())
         total_sum = sum(counts)
-        if total_sum == 0:
+        if total_sum <= 1:
             kurtoses[read_len] = 0
             continue
         else:
@@ -777,7 +777,6 @@ def kurtosis(profile):
             kurtosis_sum = 0
             for count in counts:
                 kurtosis_sum += (count - mean)**4
-            print(read_len, kurtosis_sum, total_sum)
             kurtoses[read_len] = kurtosis_sum / (total_sum * (total_sum - 1))
 
     global_total_sum = sum(global_counts)
