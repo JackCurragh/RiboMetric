@@ -141,11 +141,9 @@ def read_length_distribution_non_normality_metric(
     # write hist of data to file
     import matplotlib.pyplot as plt
     plt.hist(data, bins=100)
-    plt.savefig('hist.png')
-    
 
     res = normaltest(data)
-    return res.statistic
+    return res.pvalue
 
 
 def read_length_distribution_prop_at_peak_metric(
