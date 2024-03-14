@@ -692,6 +692,7 @@ def theil_index_triplets(profile, read_lengths=[28, 29, 30, 31, 32]):
 
     return theils
 
+
 def gini_index(profile):
     """
     Calculates the Gini index for a Ribo-Seq profile.
@@ -740,6 +741,101 @@ def gini_index(profile):
 
     ginis["global"] = global_gini_sum / (len(global_counts) - 1)
     return ginis
+
+
+def kurtosis(profile):
+    """
+    Calculates the kurtosis for a Ribo-Seq profile.
+
+    Inputs:
+        profile (dict): A dictionary where keys represent positions,
+        and values represent counts.
+
+    Returns:
+        dict: The kurtosis for the given profile.
+    """
+    kurtoses = {}
+    global_counts = []
+
+    for read_len in profile['start']:
+        if not global_counts:
+            global_counts = list(profile['start'][read_len].values())
+        else:
+            global_counts = [
+                i + j for i, j in zip(
+                    global_counts,
+                    list(profile['start'][read_len].values())
+                    )
+                    ]
+        counts = list(profile['start'][read_len].values())
+        total_sum = sum(counts)
+        if total_sum == 0:
+            kurtoses[read_len] = 0
+            continue
+        mean = total_sum / len(counts)
+        kurtosis_sum = 0
+        for count in counts:
+            kurtosis_sum += (count - mean)**4
+        kurtoses[read_len] = kurtosis_sum / (total_sum * (total_sum - 1))
+
+    global_total_sum = sum(global_counts)
+    global_counts = [count / global_total_sum for count in global_counts]
+    global_mean = global_total_sum / len(global_counts)
+    global_kurtosis_sum = 0
+    for count in global_counts:
+        global_kurtosis_sum += (count - global_mean)**4
+    kurtoses["global"] = global_kurtosis_sum / (global_total_sum * (global_total_sum - 1))
+    return kurtoses
+
+
+def KS_test(profile):
+    """
+    Calculates the Kolmogorov-Smirnov test statistic for a Ribo-Seq profile.
+
+    Inputs:
+        profile (dict): A dictionary where keys represent positions,
+        and values represent counts.
+
+    Returns:
+        dict: The Kolmogorov-Smirnov test statistic for the given profile.
+    """
+    KSs = {}
+    global_counts = []
+
+    for read_len in profile['start']:
+        if not global_counts:
+            global_counts = list(profile['start'][read_len].values())
+        else:
+            global_counts = [
+                i + j for i, j in zip(
+                    global_counts,
+                    list(profile['start'][read_len].values())
+                    )
+                    ]
+        counts = list(profile['start'][read_len].values())
+        total_sum = sum(counts)
+        if total_sum == 0:
+            KSs[read_len] = 0
+            continue
+        counts = [count / total_sum for count in counts]
+        counts.sort()
+
+        KS = 0
+        for i, count in enumerate(counts):
+            KS = max(KS, abs((i + 1) / len(counts) - count))
+
+        KSs[read_len] = KS
+
+    global_total_sum = sum(global_counts)
+    global_counts = [count / global_total_sum for count in global_counts]
+    global_counts.sort()
+
+    global_KS = 0
+    for i, count in enumerate(global_counts):
+        global_KS = max(global_KS, abs((i + 1) / len(global_counts) - count))
+
+    KSs["global"] = global_KS
+    return KSs
 
 
 def read_frame_dominance(read_frame_dict):
