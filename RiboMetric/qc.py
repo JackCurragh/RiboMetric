@@ -284,7 +284,7 @@ def annotation_mode(
         coding_metagene = metagene_profile(
                 annotated_read_df,
                 target="start",
-                distance_range=[15, 102],
+                distance_range=[30, 117],
             )
         results_dict["metrics"]["autocorrelation"] = autocorrelation(
             coding_metagene
