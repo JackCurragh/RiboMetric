@@ -437,7 +437,7 @@ def leader_cds_ratio_metric(
                         read_len]["five_leader"] / mRNA_distribution[
                             read_len]["CDS"])
 
-    leader_cds_ratio["total"] = 1 - (five_prime_total / cds_total)
+    leader_cds_ratio["global"] = 1 - (five_prime_total / cds_total)
     return leader_cds_ratio
 
 
@@ -482,12 +482,24 @@ def autocorrelate_counts(metagene_profile: dict, lag: int) -> dict:
         The autocorrelation scores at the given lag.
     """
     read_length_scores = {}
+    global_counts = []
+
     for read_length in metagene_profile:
+        if not global_counts:
+            global_counts = list(metagene_profile[read_length].values())
+        else:
+            global_counts = [
+                i + j for i, j in zip(
+                    global_counts,
+                    list(metagene_profile[read_length].values())
+                    )
+                    ]
         count_list = np.array(list(metagene_profile[read_length].values()))
         if count_list[0] is not None:
             read_length_scores[read_length] = autocorrelate(count_list, lag)
         else:
             read_length_scores[read_length] = 0
+    read_length_scores['global'] = autocorrelate(np.array(global_counts), lag)
     return read_length_scores
 
 
@@ -526,7 +538,18 @@ def uniformity(metagene_profile: dict) -> dict:
             The uniformity scores for each read length.
     """
     read_len_uniformity = {}
+
+    global_counts = []
     for read_len in metagene_profile['start']:
+        if not global_counts:
+            global_counts = list(metagene_profile['start'][read_len].values())
+        else:
+            global_counts = [
+                i + j for i, j in zip(
+                    global_counts,
+                    list(metagene_profile['start'][read_len].values())
+                    )
+                    ]
         total_counts = sum(metagene_profile['start'][read_len].values())
         entropy = 0.0
         for count in metagene_profile['start'][read_len].values():
@@ -536,6 +559,16 @@ def uniformity(metagene_profile: dict) -> dict:
         max_entropy = math.log(len(metagene_profile['start'][read_len]), 2)
         uniformity = entropy / max_entropy
         read_len_uniformity[read_len] = uniformity
+
+    global_total_counts = sum(global_counts)
+    global_entropy = 0.0
+    for count in global_counts:
+        if count > 0:
+            probability = count / global_total_counts
+            global_entropy -= probability * math.log(probability, 2)
+    global_max_entropy = math.log(len(global_counts), 2)
+    global_uniformity = global_entropy / global_max_entropy
+    read_len_uniformity["global"] = global_uniformity
     return read_len_uniformity
 
 
@@ -551,8 +584,20 @@ def theil_index(profile, read_lengths=[28, 29, 30, 31, 32]):
         dict: The Theil index for the given profile.
     """
     theils = {}
+    global_counts = []
+    global_sum = 0
     for read_len in profile['start']:
+        if not global_counts:
+            global_counts = list(profile['start'][read_len].values())
+        else:
+            global_counts = [
+                i + j for i, j in zip(
+                    global_counts,
+                    list(profile['start'][read_len].values())
+                    )
+                    ]
         total_sum = sum(profile['start'][read_len].values())
+        global_sum += total_sum
         theil_sum = 0
 
         for count in profile['start'][read_len].values():
@@ -561,6 +606,14 @@ def theil_index(profile, read_lengths=[28, 29, 30, 31, 32]):
                 theil_sum += proportion * math.log(1 / proportion)
 
         theils[read_len] = theil_sum
+
+    global_theil_sum = 0
+    for count in global_counts:
+        if count > 0:
+            proportion = count / global_sum
+            global_theil_sum += proportion * math.log(1 / proportion)
+
+    theils["global"] = global_theil_sum
 
     return theils
 
@@ -577,7 +630,18 @@ def gini_index(profile):
         dict: The Gini index for the given profile.
     """
     ginis = {}
+    global_raw_counts = []
+
     for read_len in profile['start']:
+        if not global_raw_counts:
+            global_raw_counts = list(profile['start'][read_len].values())
+        else:
+            global_raw_counts = [
+                i + j for i, j in zip(
+                    global_raw_counts,
+                    list(profile['start'][read_len].values())
+                    )
+                    ]
         counts = list(profile['start'][read_len].values())
         total_sum = sum(counts)
         if total_sum == 0:
@@ -591,6 +655,16 @@ def gini_index(profile):
             gini_sum += count * (2 * i - len(counts) + 1)
 
         ginis[read_len] = gini_sum / (len(counts) - 1)
+
+    global_total_sum = sum(global_raw_counts)
+    global_counts = [count / global_total_sum for count in global_raw_counts]
+    global_counts.sort()
+
+    global_gini_sum = 0
+    for i, count in enumerate(global_counts):
+        global_gini_sum += count * (2 * i - len(global_counts) + 1)
+
+    ginis["global"] = global_gini_sum / (len(global_counts) - 1)
     return ginis
 
 
