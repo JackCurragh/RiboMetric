@@ -26,19 +26,12 @@ def generate_plots(results_dict: dict, config: dict) -> list:
 
     """
     print("Generating plots")
-    print("0", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
     plots_list = [plot_metrics_summary(results_dict["metrics"].copy(), config)]
-    print()
-    print()
-    print("A", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
     plots_list.append(
             plot_read_frame_distribution(
                 results_dict["read_frame_distribution"], config
             )
     )
-    print()
-    print()
-    print("B", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
     if results_dict["mode"] == "annotation":
         plots_list.extend(
             [
@@ -64,9 +57,6 @@ def generate_plots(results_dict: dict, config: dict) -> list:
                 ),
             ]
         )
-    print()
-    print()
-    print("C",results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
     if "nucleotide_composition" in results_dict:
         plots_list.extend([
                 plot_ligation_bias_distribution(

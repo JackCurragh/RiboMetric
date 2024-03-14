@@ -284,18 +284,11 @@ def main(args):
                                                    sequence_background,
                                                    annotation_df,
                                                    config)
-                    print()
-                    print()
-                    print("Annotation: ", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
-
                 if config["argument"]["fasta"] is not None:
                     fasta_dict = parse_fasta(config["argument"]["fasta"])
                     results_dict = sequence_mode(
                         results_dict, read_df, fasta_dict, config
                     )
-                    print()
-                    print()
-                    print("SEQ:", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
 
             filename = config["argument"]["bam"].split('/')[-1]
             if "." in filename:
@@ -330,9 +323,6 @@ def main(args):
             report_export = "pdf"
         else:
             report_export = None
-        print()
-        print()
-        print(results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
         # Write out the specified output files
         if report_export is not None:
             plots_list = generate_plots(results_dict, config)
@@ -341,23 +331,14 @@ def main(args):
                             report_export,
                             report_prefix,
                             export["output"])
-            print()
-            print()
-            print("PLOTS: ", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
 
         if export["json"]:
             generate_json(results_dict,
                           config,
                           report_prefix,
                           export["output"])
-            print()
-            print()
-            print("JSON",results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
 
         if export["csv"]:
-            print()
-            print()
-            print("CSV", results_dict['metrics']['fourier'], type(results_dict['metrics']['fourier']))
             generate_csv(results_dict,
                          config,
                          report_prefix,
