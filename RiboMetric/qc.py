@@ -33,6 +33,7 @@ from .modules import (
 from .metrics import (
     read_length_distribution_spread_metric as rld_metric,
     read_length_distribution_variation_metric as rldv_metric,
+    read_length_distribution_non_normality_metric as rldn_metric,
     terminal_nucleotide_bias_distribution_metric as lbd_metric,
     terminal_nucleotide_bias_max_proportion_metric as lbmp_metric,
     read_frame_information_content as rf_info_metric,
@@ -113,9 +114,14 @@ def annotation_mode(
     results_dict["metrics"]["read_length_distribution_metric"] = rld_metric(
         results_dict["read_length_distribution"]
     )
-    results_dict["metrics"]["bimodality_coefficient"] = bimodality_coefficient(
-        results_dict["read_length_distribution"]
-    )
+    results_dict["metrics"]["rld_bimodality_coefficient"] =\
+        bimodality_coefficient(
+            results_dict["read_length_distribution"]
+        )
+    results_dict["metrics"]["read_length_distribution_non_normality_metric"] =\
+        rldn_metric(
+            results_dict["read_length_distribution"]
+        )
 
     results_dict["metrics"]["read_length_distribution_variation_metric"] =\
         rldv_metric(
@@ -133,6 +139,7 @@ def annotation_mode(
         results_dict["read_length_distribution"],
         num_top_readlens=5
     )
+    results
 
     if sequence_background:
         print("> terminal_nucleotide_bias_distribution")
