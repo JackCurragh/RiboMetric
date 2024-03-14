@@ -54,7 +54,7 @@ from .metrics import (
     fourier_transform,
     multitaper,
     wavelet_transform,
-    hartigans_dip_test,
+    bimodality_coefficient
 )
 from typing import Any, Dict
 
@@ -113,11 +113,10 @@ def annotation_mode(
     results_dict["metrics"]["read_length_distribution_metric"] = rld_metric(
         results_dict["read_length_distribution"]
     )
-    dip_test_stat, dip_test_p_value = hartigans_dip_test(
+    results_dict["metrics"]["bimodality_coefficient"] = bimodality_coefficient(
         results_dict["read_length_distribution"]
     )
-    results_dict["metrics"]["dip_test_metric"] = dip_test_stat
-    results_dict["metrics"]["dip_test_p_value"] = dip_test_p_value
+
     results_dict["metrics"]["read_length_distribution_variation_metric"] =\
         rldv_metric(
             results_dict["read_length_distribution"]
