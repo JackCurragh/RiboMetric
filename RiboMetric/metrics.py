@@ -145,6 +145,7 @@ def hartigans_dip_test(read_length_counts):
     Returns:
         float: The dip statistic.
     """
+    print("> Dip Test")
     read_lengths = np.array(list(read_length_counts.keys()))
     counts = np.array(list(read_length_counts.values()))
 
@@ -157,9 +158,10 @@ def hartigans_dip_test(read_length_counts):
     n = len(data)
     dip_statistic = 1 - np.max(pdf_values) / (np.sum(pdf_values) / (n - 1))
 
-    B = 1000
+    B = 10  # originally set to 1000
     dip_permuted = np.zeros(B)
     for i in range(B):
+        print(f"> Permutation {i+1}/{B}")
         dip_permuted[i] = dip_statistic_permuted(data)
     p_value = np.sum(dip_permuted > dip_statistic) / B
 
