@@ -102,6 +102,9 @@ def bimodality_coefficient(data):
     Returns:
         float: The bimodality coefficient.
     """
+    print(data)
+    if len(data) < 3:
+        return 0
     data = np.array(data)
     n = len(data)
     skew_value = skew(data)
