@@ -112,14 +112,14 @@ def read_length_distribution_prop_at_peak_metric(
     return max_count / total_count
 
 
-def ligation_bias_distribution_metric(
+def termianl_nucleotide_bias_distribution_metric(
         observed_freq: dict,
         expected_freq: dict,
         prime: str = "five_prime",
         ) -> float:
     """
     Calculate the ligation bias metric from the output of
-    the ligation_bias_distribution module.
+    the termianl_nucleotide_bias_distribution module.
 
     This metric is the K-L divergence of the ligation bias distribution
     of the observed frequencies from the expected frequencies. The
@@ -128,7 +128,7 @@ def ligation_bias_distribution_metric(
 
     Inputs:
         observed_freq: Dictionary containing the output of the
-                ligation_bias_distribution module
+                termianl_nucleotide_bias_distribution module
         expected_freq: Dictionary containing the expected frequencies
         prime: The prime end to consider
 
@@ -149,21 +149,21 @@ def ligation_bias_distribution_metric(
     return -kl_divergence
 
 
-def ligation_bias_max_proportion_metric(
+def termianl_nucleotide_bias_max_proportion_metric(
         observed_freq: dict,
         expected_freq: dict,
         prime: str = "five_prime",
         ) -> float:
     """
     Calculate the ligation bias metric from the output of
-    the ligation_bias_distribution module.
+    the termianl_nucleotide_bias_distribution module.
 
     This metric is the maximum difference in observed and expected
     frequencies of dinucleotides
 
     Inputs:
         observed_freq: Dictionary containing the output of the
-                ligation_bias_distribution module
+                termianl_nucleotide_bias_distribution module
         expected_freq: Dictionary containing the expected frequencies
 
     Outputs:
@@ -357,6 +357,7 @@ def read_frame_information_weighted_score(
 
     Inputs:
         frame_info_content_dict (dict): Dictionary containing the information
+            content metric and total counts for each read length
 
     Returns:
         result (float): The triplet periodicity score.
@@ -587,17 +588,19 @@ def theil_index(profile, read_lengths=[28, 29, 30, 31, 32]):
     global_counts = []
     global_sum = 0
     for read_len in profile['start']:
-        if not global_counts:
-            global_counts = list(profile['start'][read_len].values())
-        else:
-            global_counts = [
-                i + j for i, j in zip(
-                    global_counts,
-                    list(profile['start'][read_len].values())
-                    )
-                    ]
+        if read_len in read_lengths:
+            if not global_counts:
+                global_counts = list(profile['start'][read_len].values())
+            else:
+                global_counts = [
+                    i + j for i, j in zip(
+                        global_counts,
+                        list(profile['start'][read_len].values())
+                        )
+                        ]
         total_sum = sum(profile['start'][read_len].values())
-        global_sum += total_sum
+        global_sum += total_sum if read_len in read_lengths else 0
+
         theil_sum = 0
 
         for count in profile['start'][read_len].values():
@@ -617,6 +620,77 @@ def theil_index(profile, read_lengths=[28, 29, 30, 31, 32]):
 
     return theils
 
+
+def theil_index_triplets(profile, read_lengths=[28, 29, 30, 31, 32]):
+    """
+    Calculates the Theil index for a Ribo-Seq profile.
+
+    Inputs:
+        profile (dict): A dictionary where keys represent positions,
+        and values represent counts.
+
+    Returns:
+        dict: The Theil index for the given profile.
+    """
+    theils = {}
+    global_counts = []
+    global_sum = 0
+    for read_len in profile['start']:
+        if read_len in read_lengths:
+            if not global_counts:
+                global_counts = list(profile['start'][read_len].values())
+            else:
+                global_counts = [
+                    i + j for i, j in zip(
+                        global_counts,
+                        list(profile['start'][read_len].values())
+                        )
+                        ]
+        total_sum = sum(profile['start'][read_len].values())
+        global_sum += total_sum if read_len in read_lengths else 0
+
+        theil_sum = 0
+
+        for i in range(0, len(profile['start'][read_len]), 3):
+            triplet_counts = list(profile['start'][read_len].values())[i:i+3]
+            total_triplet_sum = sum(triplet_counts)
+
+            if total_triplet_sum > 0:
+                triplet_proportions = [
+                    count / total_triplet_sum
+                    for count in triplet_counts
+                    ]
+                theil_sum += sum(
+                    [
+                        proportion * math.log(1 / proportion)
+                        for proportion in triplet_proportions
+                        if proportion > 0
+                        ]
+                        )
+
+        theils[read_len] = theil_sum
+
+    global_theil_sum = 0
+    for i in range(0, len(global_counts), 3):
+        triplet_counts = global_counts[i:i+3]
+        total_triplet_sum = sum(triplet_counts)
+
+        if total_triplet_sum > 0:
+            triplet_proportions = [
+                count / total_triplet_sum
+                for count in triplet_counts
+                ]
+            global_theil_sum += sum(
+                [
+                    proportion * math.log(1 / proportion)
+                    for proportion in triplet_proportions
+                    if proportion > 0
+                    ]
+                    )
+
+    theils["global"] = global_theil_sum
+
+    return theils
 
 def gini_index(profile):
     """

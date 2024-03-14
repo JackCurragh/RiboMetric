@@ -16,7 +16,7 @@ from .modules import (
     assign_mRNA_category,
     read_length_distribution,
     read_df_to_cds_read_df,
-    ligation_bias_distribution,
+    termianl_nucleotide_bias_distribution,
     normalise_ligation_bias,
     nucleotide_composition,
     read_frame_distribution,
@@ -33,8 +33,8 @@ from .modules import (
 from .metrics import (
     read_length_distribution_spread_metric as rld_metric,
     read_length_distribution_variation_metric as rldv_metric,
-    ligation_bias_distribution_metric as lbd_metric,
-    ligation_bias_max_proportion_metric as lbmp_metric,
+    termianl_nucleotide_bias_distribution_metric as lbd_metric,
+    termianl_nucleotide_bias_max_proportion_metric as lbmp_metric,
     read_frame_information_content as rf_info_metric,
     read_frame_information_weighted_score,
     read_frame_information_best_read_length_score as tpbrl_metric,
@@ -46,6 +46,7 @@ from .metrics import (
     autocorrelation,
     uniformity,
     theil_index,
+    theil_index_triplets,
     gini_index,
     read_frame_dominance,
     fourier_transform,
@@ -127,50 +128,50 @@ def annotation_mode(
     )
 
     if sequence_background:
-        print("> ligation_bias_distribution")
+        print("> termianl_nucleotide_bias_distribution")
         results_dict[
-            "ligation_bias_distribution"
-            ] = ligation_bias_distribution(
+            "termianl_nucleotide_bias_distribution"
+            ] = termianl_nucleotide_bias_distribution(
             read_df,
-            pattern_length=config["plots"]["ligation_bias_distribution"][
+            pattern_length=config["plots"]["termianl_nucleotide_bias_distribution"][
                 "nucleotide_count"
             ],
         )
         results_dict["metrics"][
-            "ligation_bias_distribution_5_prime_metric"
+            "termianl_nucleotide_bias_distribution_5_prime_metric"
             ] = lbd_metric(
-            results_dict["ligation_bias_distribution"],
+            results_dict["termianl_nucleotide_bias_distribution"],
             sequence_background["5_prime_bg"],
             prime="five_prime",
         )
         results_dict["metrics"][
-            "ligation_bias_distribution_3_prime_metric"
+            "termianl_nucleotide_bias_distribution_3_prime_metric"
             ] = lbd_metric(
-            results_dict["ligation_bias_distribution"],
+            results_dict["termianl_nucleotide_bias_distribution"],
             sequence_background["3_prime_bg"],
             prime="three_prime",
         )
         results_dict["metrics"][
-            "ligation_bias_max_proportion_metric_5_prime"
+            "termianl_nucleotide_bias_max_proportion_metric_5_prime"
             ] = lbmp_metric(
-            results_dict["ligation_bias_distribution"],
+            results_dict["termianl_nucleotide_bias_distribution"],
             sequence_background["5_prime_bg"],
             prime="five_prime",
         )
         results_dict["metrics"][
-            "ligation_bias_max_proportion_metric_3_prime"
+            "termianl_nucleotide_bias_max_proportion_metric_3_prime"
             ] = lbmp_metric(
-            results_dict["ligation_bias_distribution"],
+            results_dict["termianl_nucleotide_bias_distribution"],
             sequence_background["3_prime_bg"],
             prime="three_prime",
         )
-        if config["plots"]["ligation_bias_distribution"]["background_freq"]:
+        if config["plots"]["termianl_nucleotide_bias_distribution"]["background_freq"]:
             results_dict[
-                "ligation_bias_distribution"
+                "termianl_nucleotide_bias_distribution"
                 ] = normalise_ligation_bias(
-                results_dict["ligation_bias_distribution"],
+                results_dict["termianl_nucleotide_bias_distribution"],
                 sequence_background=sequence_background,
-                pattern_length=config["plots"]["ligation_bias_distribution"][
+                pattern_length=config["plots"]["termianl_nucleotide_bias_distribution"][
                     "nucleotide_count"
                 ],
             )
@@ -283,7 +284,7 @@ def annotation_mode(
         coding_metagene = metagene_profile(
                 annotated_read_df,
                 target="start",
-                distance_range=[15, 100],
+                distance_range=[15, 102],
             )
         results_dict["metrics"]["autocorrelation"] = autocorrelation(
             coding_metagene
@@ -291,9 +292,13 @@ def annotation_mode(
         results_dict["metrics"]["uniformity"] = uniformity(
             coding_metagene
         )
-        results_dict["metrics"]["thiel_index"] = theil_index(
+        results_dict["metrics"]["theil_index"] = theil_index(
             coding_metagene
         )
+        results_dict["metrics"]["thiel_index_triplet"] = theil_index_triplets(
+            coding_metagene
+        )
+
         results_dict["metrics"]["gini_index"] = gini_index(
             coding_metagene
         )
@@ -375,7 +380,7 @@ def sequence_mode(
     results_dict = {
         "mode": "sequence_mode",
         "read_length_distribution": read_length_distribution(read_df),
-        "ligation_bias_distribution": ligation_bias_distribution(read_df),
+        "termianl_nucleotide_bias_distribution": termianl_nucleotide_bias_distribution(read_df),
         "nucleotide_composition": nucleotide_composition(read_df),
         "read_frame_distribution": read_frame_distribution(read_df),
     }

@@ -59,8 +59,8 @@ def generate_plots(results_dict: dict, config: dict) -> list:
         )
     if "nucleotide_composition" in results_dict:
         plots_list.extend([
-                plot_ligation_bias_distribution(
-                    results_dict["ligation_bias_distribution"], config
+                plot_termianl_nucleotide_bias_distribution(
+                    results_dict["termianl_nucleotide_bias_distribution"], config
                 ),
                 plot_nucleotide_composition(
                     results_dict["nucleotide_composition"], config
@@ -132,8 +132,8 @@ def plot_read_length_distribution(
     return plot_read_length_dict
 
 
-def plot_ligation_bias_distribution(
-    ligation_bias_dict: dict, config: dict
+def plot_termianl_nucleotide_bias_distribution(
+    termianl_nucleotide_bias_dict: dict, config: dict
 ) -> dict:
     """
     Generate a plot of ligation bias distribution for the full dataset
@@ -143,12 +143,12 @@ def plot_ligation_bias_distribution(
         config: Dictionary containing the configuration information
 
     Outputs:
-        plot_ligation_bias_dict: Dictionary containing the plot name,
+        plot_termianl_nucleotide_bias_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
-    if ligation_bias_dict["five_prime"] != {}:
+    if termianl_nucleotide_bias_dict["five_prime"] != {}:
         target_loop = ["five_prime"]
-        if ligation_bias_dict["three_prime"] != {}:
+        if termianl_nucleotide_bias_dict["three_prime"] != {}:
             target_loop.append("three_prime")
             columns = 2
     else:
@@ -169,11 +169,11 @@ def plot_ligation_bias_distribution(
         count += 1
         # Set colors according to the value
         color = ["#636efa" if value > 0 else "#da5325"
-                 for value in ligation_bias_dict[current_target].values()]
+                 for value in termianl_nucleotide_bias_dict[current_target].values()]
         fig.add_trace(
             go.Bar(
-                x=list(ligation_bias_dict[current_target].keys()),
-                y=list(ligation_bias_dict[current_target].values()),
+                x=list(termianl_nucleotide_bias_dict[current_target].keys()),
+                y=list(termianl_nucleotide_bias_dict[current_target].values()),
                 name="",
                 hovertemplate="<b>Nucleotides</b>:%{x}<br><b>Bias</b>:%{y}",
                 marker=dict(color=color),
@@ -201,8 +201,8 @@ def plot_ligation_bias_distribution(
         showlegend=False,
     )
     distance = 0.2
-    for prime in ligation_bias_dict:
-        for bias in ligation_bias_dict[prime].values():
+    for prime in termianl_nucleotide_bias_dict:
+        for bias in termianl_nucleotide_bias_dict[prime].values():
             if abs(bias) > distance:
                 distance = abs(bias)
     max_range = [-distance, distance]
@@ -220,7 +220,7 @@ def plot_ligation_bias_distribution(
         fig.update_layout(
             xaxis=dict(domain=[0, 1], zeroline=False),
         )
-    plot_ligation_bias_dict = {
+    plot_termianl_nucleotide_bias_dict = {
         "name": "Ligation Bias Distribution",
         "description": "Distribution of end bases for the full dataset",
         "fig_html": pio.to_html(fig, full_html=False),
@@ -228,7 +228,7 @@ def plot_ligation_bias_distribution(
                                      config["plots"]["image_size"][0],
                                      config["plots"]["image_size"][1]),
     }
-    return plot_ligation_bias_dict
+    return plot_termianl_nucleotide_bias_dict
 
 
 def plot_nucleotide_composition(
