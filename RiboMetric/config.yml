@@ -23,7 +23,7 @@ plots:
   base_color: '#7f7f7f'
   nucleotide_colors: {"A": "#c93434", "C": "#2e85db", "G": "#f0de1f", "T": "#1fc24d"}
   image_size: [720, 370]      # [Width, Height] in pixels, used for pdf images
-  termianl_nucleotide_bias_distribution:
+  terminal_nucleotide_bias_distribution:
     nucleotide_count: 2       # Size of nucleotide groups to check (default = 2)
     target: "both"            # Options: ["five_prime", "three-prime", "both"]
     include_N: False          # Show nucleotide groups with N in plot

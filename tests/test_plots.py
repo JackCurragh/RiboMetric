@@ -3,14 +3,14 @@
 """Tests for `plots` package."""
 
 from RiboMetric.plots import (
-    plot_termianl_nucleotide_bias_distribution,
+    plot_terminal_nucleotide_bias_distribution,
     plot_nucleotide_composition,
     plot_read_length_distribution,
     plot_read_frame_distribution,
 )
 from RiboMetric.modules import (
     read_length_distribution,
-    termianl_nucleotide_bias_distribution,
+    terminal_nucleotide_bias_distribution,
     nucleotide_composition,
     a_site_calculation,
     read_frame_distribution,
@@ -49,8 +49,8 @@ def test_plots():
             config)["fig_html"]
     ):
         errors.append("Read length distribution plot html output error")
-    if ("<div>" not in plot_termianl_nucleotide_bias_distribution(
-            termianl_nucleotide_bias_distribution(read_df), config)["fig_html"]):
+    if ("<div>" not in plot_terminal_nucleotide_bias_distribution(
+            terminal_nucleotide_bias_distribution(read_df), config)["fig_html"]):
         errors.append("Ligation bias distribution plot html output error")
     if ("<div>" not in plot_nucleotide_composition(
             nucleotide_composition(sequence_data_single), config)["fig_html"]):
