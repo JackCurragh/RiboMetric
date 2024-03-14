@@ -139,7 +139,6 @@ def annotation_mode(
         results_dict["read_length_distribution"],
         num_top_readlens=5
     )
-    results
 
     if sequence_background:
         print("> terminal_nucleotide_bias_distribution")
