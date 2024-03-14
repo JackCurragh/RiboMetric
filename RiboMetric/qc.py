@@ -262,7 +262,7 @@ def annotation_mode(
 
     culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
     results_dict["metrics"]["read_frame_score_trips-viz"] = read_frame_score_trips_viz(
-        culled_read_frame_dict)["global"]
+        culled_read_frame_dict)
     results_dict["metrics"]["read_frame_dominance"] = read_frame_dominance(
         culled_read_frame_dict
     )
