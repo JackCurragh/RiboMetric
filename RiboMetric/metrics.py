@@ -454,42 +454,44 @@ def read_frame_information_weighted_score_best_3_read_lengths(
     return sum(weighted_scores) / total_reads
 
 
-def leader_cds_ratio_metric(
-        mRNA_distribution: dict,
-        read_length_range: tuple = (20, 40),
-        ) -> dict:
+def region_region_ratio_metric(
+    mRNA_distribution: dict,
+    region1: str = "leader",
+    region2: str = "CDS",
+    read_length_range: tuple = (20, 40),
+    ) -> dict:
     """
-    Calculate the leader cds ratio metric. This metric is the ratio of
-    reads in 5' leader relative to the CDS.
+    Calculate the region-region ratio metric. This metric is the ratio of
+    reads in region1 relative to region2.
 
     Inputs:
-        mRNA_distribution: Dictionary containing the output of the
-                mRNA_distribution module
-        read_length_range: Tuple containing the minimum and maximum read
-                length to consider for the metric
+    mRNA_distribution: Dictionary containing the output of the
+        mRNA_distribution module
+    region1: String specifying the first region
+    region2: String specifying the second region
+    read_length_range: Tuple containing the minimum and maximum read
+        length to consider for the metric
 
     Outputs:
-        leader_cds_ratio: Dictionary containing the leader cds ratio metric
+    region_region_ratio: Dictionary containing the region-region ratio metric
     """
-    leader_cds_ratio: Dict[str, float] = {}
-    five_prime_total, cds_total = 0, 0
+    region_region_ratio: Dict[str, float] = {}
+    region1_total, region2_total = 0, 0
     read_lengths = [i for i in range(
         read_length_range[0], read_length_range[1]
-        )]
+    )]
     for read_len in mRNA_distribution:
         if read_len in read_lengths:
-            five_prime_total += mRNA_distribution[read_len]["five_leader"]
-            cds_total += mRNA_distribution[read_len]["CDS"]
-            if mRNA_distribution[read_len]["CDS"] == 0:
-                leader_cds_ratio[read_len] = 0
+            region1_total += mRNA_distribution[read_len][region1]
+            region2_total += mRNA_distribution[read_len][region2]
+            if region2_total == 0:
+                region_region_ratio[read_len] = 0
             else:
-                leader_cds_ratio[read_len] = 1 - (
-                    mRNA_distribution[
-                        read_len]["five_leader"] / mRNA_distribution[
-                            read_len]["CDS"])
+                region_region_ratio[read_len] = 1 - (
+                    mRNA_distribution[read_len][region1] / region2_total)
 
-    leader_cds_ratio["global"] = 1 - (five_prime_total / cds_total)
-    return leader_cds_ratio
+    region_region_ratio["global"] = 1 - (region1_total / region2_total)
+    return region_region_ratio
 
 
 def autocorrelate(signal: np.array, lag: int) -> float:
