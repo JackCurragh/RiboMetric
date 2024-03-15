@@ -494,6 +494,36 @@ def region_region_ratio_metric(
     return region_region_ratio
 
 
+def proportion_of_reads_in_region(
+        mRNA_distribution: dict,
+        region: str = "CDS",
+        ):
+    """
+    Calculate the proportion of reads in a specific region
+
+    Inputs:
+    mRNA_distribution: Dictionary containing the output of the
+        mRNA_distribution module
+    region: String specifying the region
+
+    Outputs:
+    proportion: Dictionary containing the proportion of reads in the region
+    """
+    proportion = {}
+    total = 0
+    read_len_total = {}
+    for read_len in mRNA_distribution:
+        read_len_total[read_len] = sum(mRNA_distribution[read_len].values())
+        total += read_len_total[read_len]
+
+    for read_len in mRNA_distribution:
+        proportion[read_len] = mRNA_distribution[read_len][region] / read_len_total[read_len]
+    proportion["global"] = sum(
+        mRNA_distribution[read_len][region] for read_len in mRNA_distribution
+    ) / total
+    return proportion
+
+
 def autocorrelate(signal: np.array, lag: int) -> float:
     """
     Computes the autocorrelation of a signal at a given lag.

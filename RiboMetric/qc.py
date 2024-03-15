@@ -55,7 +55,8 @@ from .metrics import (
     fourier_transform,
     multitaper,
     wavelet_transform,
-    bimodality_coefficient
+    bimodality_coefficient,
+    proportion_of_reads_in_region
 )
 from typing import Any, Dict
 
@@ -500,16 +501,20 @@ def annotation_mode(
                 region2="three_trailer",
             )
         results_dict["metrics"]["prop_reads_CDS"] =\
-            results_dict["mRNA_distribution"]["global"]["CDS"] /\
-            sum(results_dict["mRNA_distribution"]["global"].values())
-        
+            proportion_of_reads_in_region(
+                mRNA_distribution=results_dict["mRNA_distribution"],
+                region="CDS",
+            )
         results_dict["metrics"]["prop_reads_leader"] =\
-            results_dict["mRNA_distribution"]["global"]["five_leader"] /\
-            sum(results_dict["mRNA_distribution"]["global"].values())
-        
+            proportion_of_reads_in_region(
+                mRNA_distribution=results_dict["mRNA_distribution"],
+                region="five_leader",
+            )
         results_dict["metrics"]["prop_reads_trailer"] =\
-            results_dict["mRNA_distribution"]["global"]["three_trailer"] /\
-            sum(results_dict["mRNA_distribution"]["global"].values())
+            proportion_of_reads_in_region(
+                mRNA_distribution=results_dict["mRNA_distribution"],
+                region="three_trailer",
+            )
     return results_dict
 
 
