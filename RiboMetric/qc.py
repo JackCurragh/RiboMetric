@@ -42,7 +42,7 @@ from .metrics import (
     information_metric_cutoff,
     read_frame_information_weighted_score_best_3_read_lengths as tpw3rl_metric,
     cds_coverage_metric,
-    leader_cds_ratio_metric,
+    region_region_ratio_metric,
     read_length_distribution_prop_at_peak_metric as rldpp_metric,
     autocorrelation,
     uniformity,
@@ -481,9 +481,35 @@ def annotation_mode(
             in_frame_coverage=True,
             num_transcripts=1000
             )
-        results_dict["metrics"]["ratio_cds:leader"] = leader_cds_ratio_metric(
-            mRNA_distribution=results_dict["mRNA_distribution"]
+        results_dict["metrics"]["ratio_cds:leader"] =\
+            region_region_ratio_metric(
+                mRNA_distribution=results_dict["mRNA_distribution"],
+                region1="five_leader",
+                region2="CDS",
             )
+        results_dict["metrics"]["ratio_cds:trailer"] =\
+            region_region_ratio_metric(
+                mRNA_distribution=results_dict["mRNA_distribution"],
+                region1="CDS",
+                region2="three_trailer",
+            )
+        results_dict["metrics"]["ratio_leader:trailer"] =\
+            region_region_ratio_metric(
+                mRNA_distribution=results_dict["mRNA_distribution"],
+                region1="five_leader",
+                region2="three_trailer",
+            )
+        results_dict["metrics"]["prop_reads_CDS"] =\
+            results_dict["mRNA_distribution"]["global"]["CDS"] /\
+            sum(results_dict["mRNA_distribution"]["global"].values())
+        
+        results_dict["metrics"]["prop_reads_leader"] =\
+            results_dict["mRNA_distribution"]["global"]["five_leader"] /\
+            sum(results_dict["mRNA_distribution"]["global"].values())
+        
+        results_dict["metrics"]["prop_reads_trailer"] =\
+            results_dict["mRNA_distribution"]["global"]["three_trailer"] /\
+            sum(results_dict["mRNA_distribution"]["global"].values())
     return results_dict
 
 
