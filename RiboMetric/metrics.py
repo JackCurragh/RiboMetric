@@ -225,7 +225,7 @@ def terminal_nucleotide_bias_max_proportion_metric(
         scores[dinucleotide] = abs(
             observed_prob - expected_prob)
 
-    return 1 - max(scores.values())
+    return max(scores.values())
 
 
 def cds_coverage_metric(
@@ -939,42 +939,70 @@ def read_frame_dominance(read_frame_dict):
     return read_frame_dominance
 
 
-def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
+def fourier_periodicity_metric(counts, normalize=True):
     """
-    Calculate the Fourier transform of the metagene profile.
+    Compute a periodicity metric based on the Fourier transform of the input
+    counts.
 
-    Inputs:
-        metagene_profile: dict
-            The metagene profile to compute the Fourier transform of.
+    Args:
+        counts (list or np.ndarray): The input signal (counts or data) for 
+                                    which to compute the periodicity metric.
+        normalize (bool, optional): Whether to normalize the Fourier
+                                    coefficients before computing the metric.
 
     Returns:
-        fourier_scores: dict
-            The Fourier transform scores for each read length.
+        float: The periodicity metric, ranging from 0 (no periodicity) to 1 (strong periodicity).
+    """
+    fourier_transform = np.fft.fft(counts)
+    amplitudes = np.abs(fourier_transform)
+    if normalize:
+        amplitudes /= np.sum(amplitudes)
+
+    # Exclude the DC component (first coefficient)
+    significant_amplitudes = amplitudes[1:]
+
+    return np.max(significant_amplitudes)
+
+
+def fourier_transform(
+        metagene_profile,
+        read_lengths=[28, 29, 30, 31, 32],
+        normalize=True
+        ):
+    """
+    Calculate the Fourier transform periodicity metric for the metagene
+    profile.
+
+    Args:
+        metagene_profile (dict): The metagene profile to compute the Fourier
+                                transform of.
+        read_lengths (list, optional): The list of read lengths to consider.
+        normalize (bool, optional): Whether to normalize the Fourier
+                                    coefficients before computing the metric.
+
+    Returns:
+        dict: The Fourier transform periodicity metrics for each read length and the global counts.
     """
     fourier_scores = {}
     global_counts = []
-    for read_len in read_lengths:
-        if not global_counts:
-            global_counts = list(metagene_profile['start'][read_len].values())
-        else:
-            global_counts = [
-                i + j for i, j in zip(
-                    global_counts,
-                    list(metagene_profile['start'][read_len].values())
-                    )
-                    ]
-        counts = list(metagene_profile['start'][read_len].values())
-        if len(counts) < 2:
-            fourier_scores[read_len] = 0
-        else:
-            fourier_transform = np.fft.fft(counts)
-            fourier_scores[read_len] = np.abs(fourier_transform[1])
 
-    if len(global_counts) < 2:
-        fourier_scores["global"] = 0
-    else:
-        global_fourier_transform = np.fft.fft(global_counts)
-        fourier_scores["global"] = np.abs(global_fourier_transform[1])
+    for read_len in read_lengths:
+        counts = list(metagene_profile['start'][read_len].values())
+        fourier_scores[read_len] = fourier_periodicity_metric(
+                                                        counts,
+                                                        normalize=normalize,
+                                                        )
+
+        if not global_counts:
+            global_counts = counts
+        else:
+            global_counts = [i + j for i, j in zip(global_counts, counts)]
+
+    fourier_scores["global"] = fourier_periodicity_metric(
+                                                    global_counts,
+                                                    normalize=normalize,
+                                                    )
+
     return fourier_scores
 
 
@@ -1043,34 +1071,71 @@ def multitaper(
     return multitaper_scores
 
 
-def wavelet_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
+def wavelet_periodicity_metric(counts, wavelet=signal.ricker, widths=[1]):
     """
-    Calculate the wavelet transform of the metagene profile.
+    Compute a periodicity metric based on the continuous wavelet transform of
+    the input counts.
 
-    Inputs:
-        metagene_profile: dict
-            The metagene profile to compute the wavelet transform of.
+    Args:
+        counts (list or np.ndarray): The input signal (counts or data) for
+                                    which to compute the periodicity metric.
+        wavelet (callable, optional): The wavelet function to use for the CWT.
+        widths (list or np.ndarray, optional): The widths of the wavelet
+                                                function to use.
 
     Returns:
-        wavelet_scores: dict
-            The wavelet transform scores for each read length.
+        float: The periodicity metric, ranging from 0 (no periodicity) to 1
+                (strong periodicity).
+    """
+    wavelet_transform = signal.cwt(counts, wavelet, widths)
+    max_coefficients = np.max(np.abs(wavelet_transform), axis=-1)
+    max_coefficients /= np.sum(max_coefficients)
+
+    return np.max(max_coefficients)
+
+
+def wavelet_transform(
+        metagene_profile,
+        read_lengths=[28, 29, 30, 31, 32],
+        wavelet=signal.ricker,
+        widths=[1]
+        ):
+    """
+    Calculate the wavelet transform periodicity metric for the metagene
+    profile.
+
+    Args:
+        metagene_profile (dict): The metagene profile to compute the wavelet
+                                transform of.
+        read_lengths (list, optional): The list of read lengths to consider.
+        wavelet (callable, optional): The wavelet function to use for the CWT.
+        widths (list or np.ndarray, optional): The widths of the wavelet
+                                                function to use.
+
+    Returns:
+        dict: The wavelet transform periodicity metrics for each read
+                length and the global counts.
     """
     wavelet_scores = {}
     global_counts = []
-    for read_len in read_lengths:
-        if not global_counts:
-            global_counts = list(metagene_profile['start'][read_len].values())
-        else:
-            global_counts = [
-                i + j for i, j in zip(
-                    global_counts,
-                    list(metagene_profile['start'][read_len].values())
-                    )
-                    ]
-        counts = list(metagene_profile['start'][read_len].values())
-        wavelet_transform = signal.cwt(np.array(counts), signal.ricker, [1])
-        wavelet_scores[read_len] = np.max(wavelet_transform)
 
-    global_wavelet_transform = signal.cwt(np.array(global_counts), signal.ricker, [1])
-    wavelet_scores["global"] = np.max(global_wavelet_transform)
+    for read_len in read_lengths:
+        counts = list(metagene_profile['start'][read_len].values())
+        wavelet_scores[read_len] = wavelet_periodicity_metric(
+                                                    counts,
+                                                    wavelet=wavelet,
+                                                    widths=widths
+                                                    )
+
+        if not global_counts:
+            global_counts = counts
+        else:
+            global_counts = [i + j for i, j in zip(global_counts, counts)]
+
+    wavelet_scores["global"] = wavelet_periodicity_metric(
+                                                    global_counts,
+                                                    wavelet=wavelet,
+                                                    widths=widths
+                                                    )
+
     return wavelet_scores
