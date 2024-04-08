@@ -1007,13 +1007,15 @@ def fourier_transform(
             fourier_transform = np.fft.fft(counts)
             frequencies = np.fft.fftfreq(len(counts), 1/len(counts))
 
-            # Find the index corresponding to the expected 3nt periodicity frequency
             expected_frequency = 1/3
             idx_3nt = np.argmin(np.abs(frequencies - expected_frequency))
 
-            # Extract the amplitude at the expected 3nt periodicity frequency
-            amplitudes = np.abs(fourier_transform)
-            fourier_scores[read_len] = amplitudes[idx_3nt]
+            amplitudes = np.abs(fourier_transform) ** 2
+            total_power = np.sum(amplitudes)
+            triplet_power = amplitudes[idx_3nt]
+
+            periodicity_score = triplet_power / total_power
+            fourier_scores[read_len] = 1 - periodicity_score
 
     if len(global_counts) < 2:
         fourier_scores["global"] = 0
@@ -1021,13 +1023,15 @@ def fourier_transform(
         global_fourier_transform = np.fft.fft(global_counts)
         frequencies = np.fft.fftfreq(len(global_counts), 1/len(global_counts))
 
-        # Find the index corresponding to the expected 3nt periodicity frequency
         expected_frequency = 1/3
         idx_3nt = np.argmin(np.abs(frequencies - expected_frequency))
 
-        # Extract the amplitude at the expected 3nt periodicity frequency
-        amplitudes = np.abs(global_fourier_transform)
-        fourier_scores["global"] = amplitudes[idx_3nt]
+        amplitudes = np.abs(global_fourier_transform) ** 2
+        total_power = np.sum(amplitudes)
+        triplet_power = amplitudes[idx_3nt]
+
+        periodicity_score = triplet_power / total_power
+        fourier_scores["global"] = 1 - periodicity_score
 
     return fourier_scores
 
