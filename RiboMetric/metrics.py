@@ -1000,7 +1000,7 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
             fourier_transform = np.fft.fft(codon_proportions)
             amplitudes = np.abs(fourier_transform)
             amplitudes /= theoretical_max
-            print(read_len, theoretical_max, np.max(amplitudes[1]))
+            print(read_len, theoretical_max, np.max(amplitudes[1]), codon_proportions)
             fourier_scores[read_len] = np.max(amplitudes[1])
 
     if len(global_counts) < 2:
