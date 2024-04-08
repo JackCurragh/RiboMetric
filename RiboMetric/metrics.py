@@ -951,6 +951,10 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
         fourier_scores: dict
             The Fourier transform scores for each read length.
     """
+    perfect_periodicity = np.array([0, 0, 1] * (max(read_lengths) // 3 + 1))
+    perfect_fourier = np.fft.fft(perfect_periodicity)
+    theoretical_max = np.abs(perfect_fourier).max()
+
     fourier_scores = {}
     global_counts = []
     for read_len in read_lengths:
@@ -968,10 +972,10 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
             fourier_scores[read_len] = 0
         else:
             fourier_transform = np.fft.fft(counts)
-            amplitudes = np.abs(fourier_transform)[1:]
+            amplitudes = np.abs(fourier_transform)
 
-            amplitudes /= np.max(amplitudes)
-            fourier_scores[read_len] = np.max(amplitudes)
+            amplitudes /= theoretical_max
+            fourier_scores[read_len] = np.max(amplitudes[1])
 
     if len(global_counts) < 2:
         fourier_scores["global"] = 0
@@ -979,8 +983,8 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
         global_fourier_transform = np.fft.fft(global_counts)
         amplitudes = np.abs(global_fourier_transform)
 
-        amplitudes /= np.max(amplitudes)
-        fourier_scores["global"] = np.max(amplitudes)
+        amplitudes /= theoretical_max
+        fourier_scores["global"] = np.max(amplitudes[1])
     return fourier_scores
 
 
