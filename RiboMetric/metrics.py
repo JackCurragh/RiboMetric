@@ -939,6 +939,31 @@ def read_frame_dominance(read_frame_dict):
     return read_frame_dominance
 
 
+def counts_to_codon_proportions(counts: list) -> list:
+    """
+    Convert a list of counts to proportions of codon.
+    Codons are windows of 3 nucleotides and there is no overlap between windows
+
+    Inputs:
+        counts: list
+            A list of counts for each position
+
+    Returns:
+        dict: A dictionary where keys represent positions,
+        and values represent codon proportions.
+    """
+    codon_proportions = []
+    for i in range(0, len(counts), 3):
+        codon_counts = counts[i:i+3]
+        total_count = sum(codon_counts)
+        for count in codon_counts:
+            if total_count != 0:
+                codon_proportions.append(count / total_count)
+            else:
+                codon_proportions.append(0)
+    return codon_proportions
+
+
 def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
     """
     Calculate the Fourier transform of the metagene profile.
@@ -968,21 +993,21 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
                     )
                     ]
         counts = list(metagene_profile['start'][read_len].values())
+        codon_proportions = counts_to_codon_proportions(counts)
         if len(counts) < 2:
             fourier_scores[read_len] = 0
         else:
-            fourier_transform = np.fft.fft(counts)
+            fourier_transform = np.fft.fft(codon_proportions)
             amplitudes = np.abs(fourier_transform)
-            print(read_len,amplitudes, theoretical_max)
             amplitudes /= theoretical_max
-            print(read_len,amplitudes, theoretical_max)
-            print(read_len, np.max(amplitudes[1]))
+            print(read_len, theoretical_max, np.max(amplitudes[1]))
             fourier_scores[read_len] = np.max(amplitudes[1])
 
     if len(global_counts) < 2:
         fourier_scores["global"] = 0
     else:
-        global_fourier_transform = np.fft.fft(global_counts)
+        global_codon_proportions = counts_to_codon_proportions(global_counts)
+        global_fourier_transform = np.fft.fft(global_codon_proportions)
         amplitudes = np.abs(global_fourier_transform)
 
         amplitudes /= theoretical_max
