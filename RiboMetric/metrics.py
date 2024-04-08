@@ -1127,8 +1127,8 @@ def wavelet_transform(
                     ]
         counts = list(metagene_profile['start'][read_len].values())
         wavelet_transform = signal.cwt(np.array(counts), signal.ricker, [1])
-        wavelet_scores[read_len] = np.max(wavelet_transform)
+        wavelet_scores[read_len] = np.max(wavelet_transform) / np.sum(np.abs(wavelet_transform))
 
     global_wavelet_transform = signal.cwt(np.array(global_counts), signal.ricker, [1])
-    wavelet_scores["global"] = np.max(global_wavelet_transform)
+    wavelet_scores["global"] = np.max(global_wavelet_transform) / np.sum(np.abs(global_wavelet_transform))
     return wavelet_scores
