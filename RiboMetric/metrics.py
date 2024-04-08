@@ -1013,6 +1013,7 @@ def fourier_transform(
             amplitudes = np.abs(fourier_transform) ** 2
             total_power = np.sum(amplitudes)
             triplet_power = amplitudes[idx_3nt]
+            print(read_len, triplet_power, total_power, triplet_power / total_power)
 
             periodicity_score = triplet_power / total_power
             fourier_scores[read_len] = 1 - periodicity_score
