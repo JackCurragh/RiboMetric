@@ -490,7 +490,10 @@ def region_region_ratio_metric(
                 region_region_ratio[read_len] = 1 - (
                     mRNA_distribution[read_len][region1] / region2_total)
 
-    region_region_ratio["global"] = 1 - (region1_total / region2_total)
+    if region2_total == 0:
+        region_region_ratio["global"] = 0
+    else:
+        region_region_ratio["global"] = 1 - (region1_total / region2_total)
     return region_region_ratio
 
 
@@ -657,7 +660,7 @@ def uniformity(metagene_profile: dict) -> dict:
 
 def theil_index(
         profile,
-        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35]
+        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
         ):
     """
     Calculates the Theil index for a Ribo-Seq profile.
@@ -972,18 +975,22 @@ def counts_to_codon_proportions(counts: list) -> list:
 
 def fourier_transform(
         metagene_profile,
-        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35]
+        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
         ):
     """
-    Calculate the Fourier transform of the metagene profile.
+    Calculate the Fourier transform of the metagene profile and extract the
+    amplitude at the expected 3nt periodicity frequency.
 
     Inputs:
         metagene_profile: dict
             The metagene profile to compute the Fourier transform of.
+        read_lengths: list (optional)
+            The list of read lengths to consider.
 
     Returns:
         fourier_scores: dict
-            The Fourier transform scores for each read length.
+            The Fourier transform scores for each read length, including the
+            amplitude at the expected 3nt periodicity frequency.
     """
     fourier_scores = {}
     global_counts = []
@@ -991,34 +998,37 @@ def fourier_transform(
         if not global_counts:
             global_counts = list(metagene_profile['start'][read_len].values())
         else:
-            global_counts = [
-                i + j for i, j in zip(
-                    global_counts,
-                    list(metagene_profile['start'][read_len].values())
-                    )
-                    ]
+            global_counts = [i + j for i, j in zip(
+                global_counts, list(metagene_profile['start'][read_len].values()))]
         counts = list(metagene_profile['start'][read_len].values())
-        codon_proportions = counts_to_codon_proportions(counts)
         if len(counts) < 2:
             fourier_scores[read_len] = 0
         else:
-            fourier_transform = np.fft.fft(codon_proportions)
-            amplitudes = np.abs(fourier_transform) ** 2
-            total_power = np.sum(amplitudes)
-            max_power = np.max(amplitudes)
-            periodicity_score = max_power / total_power
-            fourier_scores[read_len] = 1 - periodicity_score
+            fourier_transform = np.fft.fft(counts)
+            frequencies = np.fft.fftfreq(len(counts), 1/len(counts))
+
+            # Find the index corresponding to the expected 3nt periodicity frequency
+            expected_frequency = 1/3
+            idx_3nt = np.argmin(np.abs(frequencies - expected_frequency))
+
+            # Extract the amplitude at the expected 3nt periodicity frequency
+            amplitudes = np.abs(fourier_transform)
+            fourier_scores[read_len] = amplitudes[idx_3nt]
 
     if len(global_counts) < 2:
         fourier_scores["global"] = 0
     else:
-        global_codon_proportions = counts_to_codon_proportions(global_counts)
-        global_fourier_transform = np.fft.fft(global_codon_proportions)
-        amplitudes = np.abs(global_fourier_transform) ** 2
-        global_total_power = np.sum(amplitudes)
-        global_max_power = np.max(amplitudes)
-        global_periodicity_score = global_max_power / global_total_power
-        fourier_scores["global"] = 1 - global_periodicity_score
+        global_fourier_transform = np.fft.fft(global_counts)
+        frequencies = np.fft.fftfreq(len(global_counts), 1/len(global_counts))
+
+        # Find the index corresponding to the expected 3nt periodicity frequency
+        expected_frequency = 1/3
+        idx_3nt = np.argmin(np.abs(frequencies - expected_frequency))
+
+        # Extract the amplitude at the expected 3nt periodicity frequency
+        amplitudes = np.abs(global_fourier_transform)
+        fourier_scores["global"] = amplitudes[idx_3nt]
+
     return fourier_scores
 
 
@@ -1089,7 +1099,7 @@ def multitaper(
 
 def wavelet_transform(
         metagene_profile,
-        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35]
+        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
         ):
     """
     Calculate the wavelet transform of the metagene profile.
