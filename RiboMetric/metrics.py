@@ -976,10 +976,6 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
         fourier_scores: dict
             The Fourier transform scores for each read length.
     """
-    perfect_periodicity = np.array([0, 0, 1] * (max(read_lengths) // 3 + 1))
-    perfect_fourier = np.fft.fft(perfect_periodicity)
-    theoretical_max = np.abs(perfect_fourier).max()
-
     fourier_scores = {}
     global_counts = []
     for read_len in read_lengths:
@@ -998,10 +994,11 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
             fourier_scores[read_len] = 0
         else:
             fourier_transform = np.fft.fft(codon_proportions)
-            amplitudes = np.abs(fourier_transform)
-            amplitudes /= theoretical_max
-            print(read_len, theoretical_max, np.max(amplitudes[1]), codon_proportions)
-            fourier_scores[read_len] = np.max(amplitudes[1])
+            amplitudes = np.abs(fourier_transform) ** 2  # Square the amplitudes to get the power spectrum
+            total_power = np.sum(amplitudes)  # Calculate the total power of the signal
+            max_power = np.max(amplitudes)  # Find the maximum power (dominant frequency component)
+            periodicity_score = max_power / total_power
+            fourier_scores[read_len] = 1 - periodicity_score
 
     if len(global_counts) < 2:
         fourier_scores["global"] = 0
@@ -1009,11 +1006,13 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
         global_codon_proportions = counts_to_codon_proportions(global_counts)
         global_fourier_transform = np.fft.fft(global_codon_proportions)
         amplitudes = np.abs(global_fourier_transform)
+        global_total_power = np.sum(amplitudes)
+        global_max_power = np.max(amplitudes)
+        global_periodicity_score = global_max_power / global_total_power
 
-        amplitudes /= theoretical_max
-        fourier_scores["global"] = np.max(amplitudes[1])
+        # amplitudes /= theoretical_max
+        fourier_scores["global"] = 1 - global_periodicity_score
     return fourier_scores
-
 
 def multitaper(
         metagene_profile,
