@@ -655,7 +655,10 @@ def uniformity(metagene_profile: dict) -> dict:
     return read_len_uniformity
 
 
-def theil_index(profile, read_lengths=[28, 29, 30, 31, 32]):
+def theil_index(
+        profile,
+        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35]
+        ):
     """
     Calculates the Theil index for a Ribo-Seq profile.
 
@@ -703,7 +706,10 @@ def theil_index(profile, read_lengths=[28, 29, 30, 31, 32]):
     return theils
 
 
-def theil_index_triplets(profile, read_lengths=[28, 29, 30, 31, 32]):
+def theil_index_triplets(
+        profile,
+        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+        ):
     """
     Calculates the Theil index for a Ribo-Seq profile.
 
@@ -964,7 +970,10 @@ def counts_to_codon_proportions(counts: list) -> list:
     return codon_proportions
 
 
-def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
+def fourier_transform(
+        metagene_profile,
+        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35]
+        ):
     """
     Calculate the Fourier transform of the metagene profile.
 
@@ -994,9 +1003,9 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
             fourier_scores[read_len] = 0
         else:
             fourier_transform = np.fft.fft(codon_proportions)
-            amplitudes = np.abs(fourier_transform) ** 2  # Square the amplitudes to get the power spectrum
-            total_power = np.sum(amplitudes)  # Calculate the total power of the signal
-            max_power = np.max(amplitudes)  # Find the maximum power (dominant frequency component)
+            amplitudes = np.abs(fourier_transform) ** 2
+            total_power = np.sum(amplitudes)
+            max_power = np.max(amplitudes)
             periodicity_score = max_power / total_power
             fourier_scores[read_len] = 1 - periodicity_score
 
@@ -1005,18 +1014,17 @@ def fourier_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
     else:
         global_codon_proportions = counts_to_codon_proportions(global_counts)
         global_fourier_transform = np.fft.fft(global_codon_proportions)
-        amplitudes = np.abs(global_fourier_transform)
+        amplitudes = np.abs(global_fourier_transform) ** 2
         global_total_power = np.sum(amplitudes)
         global_max_power = np.max(amplitudes)
         global_periodicity_score = global_max_power / global_total_power
-
-        # amplitudes /= theoretical_max
         fourier_scores["global"] = 1 - global_periodicity_score
     return fourier_scores
 
+
 def multitaper(
         metagene_profile,
-        read_lengths=[28, 29, 30, 31, 32],
+        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
         nperseg=8,
         noverlap=4):
     """
@@ -1079,7 +1087,10 @@ def multitaper(
     return multitaper_scores
 
 
-def wavelet_transform(metagene_profile, read_lengths=[28, 29, 30, 31, 32]):
+def wavelet_transform(
+        metagene_profile,
+        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35]
+        ):
     """
     Calculate the wavelet transform of the metagene profile.
 
