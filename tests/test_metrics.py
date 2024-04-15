@@ -7,8 +7,8 @@ from RiboMetric.modules import (
 )
 
 from RiboMetric.metrics import (
-    read_length_distribution_spread_metric as rld_metric,
-    terminal_nucleotide_bias_distribution_metric as lbd_metric,
+    read_length_distribution_IQR_normalised_metric as rld_metric,
+    terminal_nucleotide_bias_KL_metric as lbd_metric,
     read_frame_information_content as rfd_metric,
     read_frame_information_weighted_score,
     read_frame_information_best_read_length_score as tpbrl_metric,
@@ -29,7 +29,7 @@ def test_read_length_distribution_metric():
     assert round(read_length_metric, 3) == 0.333
 
 
-def test_terminal_nucleotide_bias_distribution_metric():
+def test_terminal_nucleotide_bias_KL_metric():
     """
     Test the ligation bias distribution metric
     """

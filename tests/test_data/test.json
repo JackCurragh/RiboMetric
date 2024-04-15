@@ -3,7 +3,7 @@
     "mode": "annotation",
     "metrics": {
       "read_length_distribution_metric": 0.25,
-      "terminal_nucleotide_bias_distribution_metric": 0.07271576401609435,
+      "terminal_nucleotide_bias_KL_metric": 0.07271576401609435,
       "3nt_weighted_score": 1.0,
       "3nt_weighted_score_best_3_read_lengths": 1.0,
       "CDS_coverage_metric": 0.0
