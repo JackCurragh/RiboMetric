@@ -804,94 +804,7 @@ def uniformity_gini_index(profile):
     return ginis
 
 
-def kurtosis_metric(profile):
-    """
-    Calculates the kurtosis for a Ribo-Seq profile.
-
-    Inputs:
-        profile (dict): A dictionary where keys represent positions,
-        and values represent counts.
-
-    Returns:
-        dict: The kurtosis for the given profile.
-    """
-    kurtoses = {}
-    global_counts = []
-    for read_len in profile['start']:
-        if not global_counts:
-            global_counts = list(profile['start'][read_len].values())
-        else:
-            global_counts = [
-                i + j for i, j in zip(
-                    global_counts,
-                    list(profile['start'][read_len].values())
-                    )
-                    ]
-        counts = list(profile['start'][read_len].values())
-        total_sum = sum(counts)
-        if total_sum <= 1:
-            kurtoses[read_len] = 0
-            continue
-        else:
-            kurtoses[read_len] = kurtosis(counts)
-
-    global_total_sum = sum(global_counts)
-    global_counts = [count / global_total_sum for count in global_counts]
-    kurtoses["global"] = kurtosis(global_counts)
-    return kurtoses
-
-
-def KS_test(profile):
-    """
-    Calculates the Kolmogorov-Smirnov test statistic for a Ribo-Seq profile.
-
-    Inputs:
-        profile (dict): A dictionary where keys represent positions,
-        and values represent counts.
-
-    Returns:
-        dict: The Kolmogorov-Smirnov test statistic for the given profile.
-    """
-    KSs = {}
-    global_counts = []
-
-    for read_len in profile['start']:
-        if not global_counts:
-            global_counts = list(profile['start'][read_len].values())
-        else:
-            global_counts = [
-                i + j for i, j in zip(
-                    global_counts,
-                    list(profile['start'][read_len].values())
-                    )
-                    ]
-        counts = list(profile['start'][read_len].values())
-        total_sum = sum(counts)
-        if total_sum == 0:
-            KSs[read_len] = 0
-            continue
-        counts = [count / total_sum for count in counts]
-        counts.sort()
-
-        KS = 0
-        for i, count in enumerate(counts):
-            KS = max(KS, abs((i + 1) / len(counts) - count))
-
-        KSs[read_len] = KS
-
-    global_total_sum = sum(global_counts)
-    global_counts = [count / global_total_sum for count in global_counts]
-    global_counts.sort()
-
-    global_KS = 0
-    for i, count in enumerate(global_counts):
-        global_KS = max(global_KS, abs((i + 1) / len(global_counts) - count))
-
-    KSs["global"] = global_KS
-    return KSs
-
-
-def read_frame_dominance(read_frame_dict):
+def periodicity_dominance(read_frame_dict):
     """
     Calculate the read frame dominance metric from the output of
     the read_frame_distribution module.
@@ -910,10 +823,18 @@ def read_frame_dominance(read_frame_dict):
     global_max_frame = 0
     for read_length in read_frame_dict:
         total_count = sum(read_frame_dict[read_length].values())
-        max_frame = max(read_frame_dict[read_length], key=read_frame_dict[read_length].get)
-        read_frame_dominance[read_length] = read_frame_dict[read_length][max_frame] / total_count
+        if total_count == 0:
+            read_frame_dominance[read_length] = 0
+            continue
+        max_frame = max(
+            read_frame_dict[read_length], key=read_frame_dict[read_length].get
+            )
+        read_frame_dominance[read_length] = read_frame_dict[
+            read_length][max_frame] / total_count
+
         global_total += total_count
         global_max_frame += read_frame_dict[read_length][max_frame]
+
     read_frame_dominance["global"] = global_max_frame / global_total
     return read_frame_dominance
 
