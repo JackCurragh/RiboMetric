@@ -47,9 +47,7 @@ from .metrics import (
     uniformity_entropy,
     uniformity_theil_index,
     uniformity_gini_index,
-    kurtosis_metric,
-    KS_test,
-    read_frame_dominance,
+    periodicity_dominance,
     fourier_transform,
     multitaper,
     wavelet_transform,
@@ -106,6 +104,9 @@ def annotation_mode(
         "metrics": {}
     }
 
+    #######################################################################
+    # READ LENGTH DISTRIBUTION
+    #######################################################################
     print("> read_length_distribution")
     results_dict["read_length_distribution"] = read_length_distribution(
         read_df
@@ -116,7 +117,7 @@ def annotation_mode(
         results_dict["read_length_distribution"]
     )
     results_dict["metrics"][
-        "rld_read_length_distribution_bimodality"
+        "read_length_distribution_bimodality"
         ] = read_length_distribution_bimodality(
             results_dict["read_length_distribution"]
         )
@@ -147,6 +148,9 @@ def annotation_mode(
         num_top_readlens=5
     )
 
+    #######################################################################
+    # TERMINAL NUCLEOTIDE BIAS
+    #######################################################################
     if sequence_background:
         print("> terminal_nucleotide_bias_distribution")
         results_dict[
@@ -187,7 +191,9 @@ def annotation_mode(
             sequence_background["3_prime_bg"],
             prime="three_prime",
         )
-        if config["plots"]["terminal_nucleotide_bias_distribution"]["background_freq"]:
+        if config["plots"][
+                "terminal_nucleotide_bias_distribution"][
+                "background_freq"]:
             results_dict[
                 "terminal_nucleotide_bias_distribution"
                 ] = normalise_ligation_bias(
@@ -206,33 +212,35 @@ def annotation_mode(
 
     print("> read_frame_distribution")
     if annotation:
-        read_frame_dist = (
-            read_frame_distribution_annotated(cds_read_df)
-            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
-            and annotation
-            else read_frame_distribution_annotated(annotated_read_df)
+        coding_metagene = metagene_profile(
+                annotated_read_df,
+                target="start",
+                distance_range=[30, 117],
             )
-        read_frame_dist_exclude_15 = (
-            read_frame_distribution_annotated(cds_read_df, exclusion_length=15)
-            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
-            and annotation
-            else read_frame_distribution_annotated(annotated_read_df)
-            )
-        read_frame_dist_exclude_60 = (
-            read_frame_distribution_annotated(cds_read_df, exclusion_length=60)
-            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
-            and annotation
-            else read_frame_distribution_annotated(annotated_read_df)
-            )
-        print("> reading_frame_proportions")
+
+        #######################################################################
+        # Periodicity
+        #######################################################################
+        results_dict["metrics"][
+            "periodicity_autocorrelation"
+            ] = periodicity_autocorrelation(
+            coding_metagene.copy()
+        )
+        results_dict["metrics"]["periodicity_fourier"] = fourier_transform(
+            coding_metagene.copy()
+        )
+        results_dict["metrics"]["periodicity_multitaper"] = multitaper(
+            coding_metagene.copy()
+        )
+        results_dict["metrics"]["periodicity_wavelet"] = wavelet_transform(
+            coding_metagene.copy()
+        )
+
         results_dict["reading_frame_triangle"] = reading_frame_triangle(
                 annotated_read_df
             )
-        read_frame_dist_28_to_32 = (
-            read_frame_distribution_annotated(
-                cds_read_df,
-                read_length_range=(28, 32)
-                )
+        read_frame_dist = (
+            read_frame_distribution_annotated(cds_read_df)
             if config["qc"]["use_cds_subset"]["read_frame_distribution"]
             and annotation
             else read_frame_distribution_annotated(annotated_read_df)
@@ -244,7 +252,19 @@ def annotation_mode(
                 frame_info_content_dict,
                 config['qc']['read_frame_distribution']['3nt_count_cutoff']
             )
-        frame_info_content_dict_exclude_15 = rf_info_metric(read_frame_dist_exclude_15)
+
+        #######################################################################
+        # Periodicity - exclusion tests
+        #######################################################################
+        read_frame_dist_exclude_15 = (
+            read_frame_distribution_annotated(cds_read_df, exclusion_length=15)
+            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
+            and annotation
+            else read_frame_distribution_annotated(annotated_read_df)
+            )
+        frame_info_content_dict_exclude_15 = rf_info_metric(
+            read_frame_dist_exclude_15
+            )
         results_dict["read_frame_distribution"] = read_frame_dist_exclude_15
         results_dict["metrics"][
             "periodicity_information_metric_exclude_15"
@@ -253,14 +273,32 @@ def annotation_mode(
                 frame_info_content_dict_exclude_15,
                 config['qc']['read_frame_distribution']['3nt_count_cutoff']
             )
-        frame_info_content_dict_exclude_60 = rf_info_metric(read_frame_dist_exclude_60)
-        results_dict["read_frame_distribution"] = read_frame_dist_exclude_60
+
+        read_frame_dist_excl_60 = (
+            read_frame_distribution_annotated(cds_read_df, exclusion_length=60)
+            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
+            and annotation
+            else read_frame_distribution_annotated(annotated_read_df)
+            )
+        frame_info_content_dict_exclude_60 = rf_info_metric(
+            read_frame_dist_excl_60
+            )
+        results_dict["read_frame_distribution"] = read_frame_dist_excl_60
         results_dict["metrics"]["periodicity_information_metric_exclude_60"] =\
             information_metric_cutoff(
                 frame_info_content_dict_exclude_60,
                 config['qc']['read_frame_distribution']['3nt_count_cutoff']
             )
 
+        read_frame_dist_28_to_32 = (
+            read_frame_distribution_annotated(
+                cds_read_df,
+                read_length_range=(28, 32)
+                )
+            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
+            and annotation
+            else read_frame_distribution_annotated(annotated_read_df)
+            )
         frame_info_content_dict_28_to_32 = rf_info_metric(
             read_frame_dist_28_to_32
             )
@@ -270,29 +308,12 @@ def annotation_mode(
                 frame_info_content_dict_28_to_32,
                 config['qc']['read_frame_distribution']['3nt_count_cutoff']
             )
-
         results_dict["metrics"]["periodicity_information_weighted_score"] = \
             read_frame_information_weighted_score(
                 frame_info_content_dict,
             )
-        read_frame_dist = read_frame_distribution(read_df)
-        results_dict[
-            "read_frame_distribution_best_frame_per_tx"] = read_frame_dist
-    else:
-        read_frame_dist = read_frame_distribution(read_df)
-        results_dict["read_frame_distribution"] = read_frame_dist
 
-    culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
-    results_dict["metrics"][
-        "periodicity_trips-viz"
-        ] = read_frame_score_trips_viz(
-        culled_read_frame_dict)
 
-    results_dict["metrics"]["periodicity_dominance"] = read_frame_dominance(
-        culled_read_frame_dict
-    )
-
-    if annotation:
         print("> mRNA_distribution")
         results_dict["mRNA_distribution"] = mRNA_distribution(
             annotated_read_df
@@ -305,16 +326,9 @@ def annotation_mode(
             config["plots"]["metagene_profile"]["distance_range"],
         )
 
-        coding_metagene = metagene_profile(
-                annotated_read_df,
-                target="start",
-                distance_range=[30, 117],
-            )
-        results_dict["metrics"][
-            "periodicity_autocorrelation"
-            ] = periodicity_autocorrelation(
-            coding_metagene.copy()
-        )
+        #######################################################################
+        # UNIFORMITY
+        #######################################################################
         results_dict["metrics"][
             "uniformity_autocorrelation"
             ] = uniformity_autocorrelation(
@@ -328,26 +342,15 @@ def annotation_mode(
             ] = uniformity_theil_index(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["kurtosis"] = kurtosis_metric(
-            coding_metagene.copy()
-        )
-        results_dict["metrics"]["KS_test"] = KS_test(
-            coding_metagene.copy()
-        )
         results_dict["metrics"][
             "uniformity_gini_index"
             ] = uniformity_gini_index(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["periodicity_fourier"] = fourier_transform(
-            coding_metagene.copy()
-        )
-        results_dict["metrics"]["periodicity_multitaper"] = multitaper(
-            coding_metagene.copy()
-        )
-        results_dict["metrics"]["periodicity_wavelet"] = wavelet_transform(
-            coding_metagene.copy()
-        )
+
+        #######################################################################
+        # COVERAGE
+        #######################################################################
         print("> cds_coverage_metric")
         results_dict["metrics"]["CDS_coverage_metric"] = cds_coverage_metric(
             cds_read_df,
@@ -498,6 +501,10 @@ def annotation_mode(
             in_frame_coverage=True,
             num_transcripts=1000
             )
+
+        #######################################################################
+        # RNA REGIONAL SUPPORT
+        #######################################################################
         results_dict["metrics"]["ratio_cds:leader"] =\
             region_region_ratio_metric(
                 mRNA_distribution=results_dict["mRNA_distribution"],
@@ -516,6 +523,7 @@ def annotation_mode(
                 region1="five_leader",
                 region2="three_trailer",
             )
+
         results_dict["metrics"]["prop_reads_CDS"] =\
             proportion_of_reads_in_region(
                 mRNA_distribution=results_dict["mRNA_distribution"],
@@ -531,6 +539,19 @@ def annotation_mode(
                 mRNA_distribution=results_dict["mRNA_distribution"],
                 region="three_trailer",
             )
+    else:
+        read_frame_dist = read_frame_distribution(read_df)
+        results_dict["read_frame_distribution"] = read_frame_dist
+
+    culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
+    results_dict["metrics"][
+        "periodicity_trips-viz"
+        ] = read_frame_score_trips_viz(
+        culled_read_frame_dict)
+
+    results_dict["metrics"]["periodicity_dominance"] = periodicity_dominance(
+        culled_read_frame_dict
+    )
     return results_dict
 
 

@@ -11,7 +11,6 @@ from RiboMetric.metrics import (
     terminal_nucleotide_bias_KL_metric as lbd_metric,
     read_frame_information_content as rfd_metric,
     read_frame_information_weighted_score,
-    read_frame_information_best_read_length_score as tpbrl_metric,
     information_metric_cutoff,
 )
 
@@ -80,27 +79,6 @@ def test_read_frame_distribution_metric():
     pre_scores = rfd_metric(read_frame_dict)
     read_frame_metric = information_metric_cutoff(pre_scores)
     assert round(read_frame_metric[30], 2) == 0.23
-
-
-def test_read_frame_distribution_metric_best_read_length():
-    """
-    Test the information content metric for read frame distribution
-    using the best_read length score
-    """
-    read_frame_dict = {
-        27: {0: 100, 1: 5, 2: 5},
-        28: {0: 1000, 1: 50000, 2: 50},
-        29: {0: 100, 1: 2000, 2: 5},
-        30: {0: 100000, 1: 50000, 2: 50000},
-        31: {0: 100, 1: 50, 2: 500},
-        32: {0: 1000, 1: 5000, 2: 5000},
-    }
-    pre_scores = rfd_metric(read_frame_dict)
-    read_frame_metric = information_metric_cutoff(pre_scores)
-    read_frame_metric_best_read_length = tpbrl_metric(
-        read_frame_metric
-    )
-    assert round(read_frame_metric_best_read_length, 2) == 0.95
 
 
 def test_triplet_periodicity_weighted_score():
