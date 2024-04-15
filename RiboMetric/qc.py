@@ -44,6 +44,7 @@ from .metrics import (
     cds_coverage_metric,
     region_region_ratio_metric,
     read_length_distribution_max_prop_metric as rldpp_metric,
+    periodicity_autocorrelation,
     uniformity_autocorrelation,
     uniformity_entropy,
     uniformity_theil_index,
@@ -301,7 +302,10 @@ def annotation_mode(
                 target="start",
                 distance_range=[30, 117],
             )
-        results_dict["metrics"]["autocorrelation"] = uniformity_autocorrelation(
+        results_dict["metrics"]["periodicity_autocorrelation"] = periodicity_autocorrelation(
+            coding_metagene.copy()
+        )
+        results_dict["metrics"]["uniformity_autocorrelation"] = uniformity_autocorrelation(
             coding_metagene.copy()
         )
         results_dict["metrics"]["uniformity_entropy"] = uniformity_entropy(
