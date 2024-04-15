@@ -38,9 +38,7 @@ from .metrics import (
     terminal_nucleotide_bias_max_absolute_metric as lbmp_metric,
     read_frame_information_content as rf_info_metric,
     read_frame_information_weighted_score,
-    read_frame_information_best_read_length_score as tpbrl_metric,
     information_metric_cutoff,
-    read_frame_information_weighted_score_best_3_read_lengths as tpw3rl_metric,
     cds_coverage_metric,
     region_region_ratio_metric,
     read_length_distribution_max_prop_metric as rldpp_metric,
@@ -112,31 +110,39 @@ def annotation_mode(
     results_dict["read_length_distribution"] = read_length_distribution(
         read_df
     )
-    results_dict["metrics"]["read_length_distribution_metric"] = rld_metric(
+    results_dict["metrics"][
+        "read_length_distribution_IQR_metric"
+        ] = rld_metric(
         results_dict["read_length_distribution"]
     )
-    results_dict["metrics"]["rld_read_length_distribution_bimodality"] =\
-        read_length_distribution_bimodality(
+    results_dict["metrics"][
+        "rld_read_length_distribution_bimodality"
+        ] = read_length_distribution_bimodality(
             results_dict["read_length_distribution"]
         )
-    results_dict["metrics"]["read_length_distribution_normality_metric"] =\
-        rldn_metric(
+    results_dict["metrics"][
+        "read_length_distribution_normality_metric"
+        ] = rldn_metric(
             results_dict["read_length_distribution"]
         )
 
-    results_dict["metrics"]["read_length_distribution_coefficient_of_variation_metric"] =\
-        rldv_metric(
+    results_dict["metrics"][
+        "read_length_distribution_coefficient_of_variation_metric"
+        ] = rldv_metric(
             results_dict["read_length_distribution"]
         )
-    results_dict["metrics"]["rld_prop_top_1_metric"] = rldpp_metric(
+    results_dict["metrics"][
+        "read_length_distribution_prop_top_1_metric"] = rldpp_metric(
         results_dict["read_length_distribution"],
         num_top_readlens=1
     )
-    results_dict["metrics"]["rld_prop_top_3_metric"] = rldpp_metric(
+    results_dict["metrics"][
+        "read_length_distribution_prop_top_3_metric"] = rldpp_metric(
         results_dict["read_length_distribution"],
         num_top_readlens=3
     )
-    results_dict["metrics"]["rld_prop_top_5_metric"] = rldpp_metric(
+    results_dict["metrics"][
+        "read_length_distribution_prop_top_5_metric"] = rldpp_metric(
         results_dict["read_length_distribution"],
         num_top_readlens=5
     )
@@ -147,7 +153,9 @@ def annotation_mode(
             "terminal_nucleotide_bias_distribution"
             ] = terminal_nucleotide_bias_distribution(
             read_df,
-            pattern_length=config["plots"]["terminal_nucleotide_bias_distribution"][
+            pattern_length=config[
+                "plots"][
+                "terminal_nucleotide_bias_distribution"][
                 "nucleotide_count"
             ],
         )
@@ -185,7 +193,9 @@ def annotation_mode(
                 ] = normalise_ligation_bias(
                 results_dict["terminal_nucleotide_bias_distribution"],
                 sequence_background=sequence_background,
-                pattern_length=config["plots"]["terminal_nucleotide_bias_distribution"][
+                pattern_length=config[
+                    "plots"][
+                    "terminal_nucleotide_bias_distribution"][
                     "nucleotide_count"
                 ],
             )
@@ -229,21 +239,23 @@ def annotation_mode(
             )
         frame_info_content_dict = rf_info_metric(read_frame_dist)
         results_dict["read_frame_distribution"] = read_frame_dist
-        results_dict["metrics"]["read_frame_information_metric"] =\
+        results_dict["metrics"]["periodicity_information_metric"] =\
             information_metric_cutoff(
                 frame_info_content_dict,
                 config['qc']['read_frame_distribution']['3nt_count_cutoff']
             )
         frame_info_content_dict_exclude_15 = rf_info_metric(read_frame_dist_exclude_15)
         results_dict["read_frame_distribution"] = read_frame_dist_exclude_15
-        results_dict["metrics"]["read_frame_information_metric_exclude_15"] =\
+        results_dict["metrics"][
+            "periodicity_information_metric_exclude_15"
+            ] =\
             information_metric_cutoff(
                 frame_info_content_dict_exclude_15,
                 config['qc']['read_frame_distribution']['3nt_count_cutoff']
             )
         frame_info_content_dict_exclude_60 = rf_info_metric(read_frame_dist_exclude_60)
         results_dict["read_frame_distribution"] = read_frame_dist_exclude_60
-        results_dict["metrics"]["read_frame_information_metric_exclude_60"] =\
+        results_dict["metrics"]["periodicity_information_metric_exclude_60"] =\
             information_metric_cutoff(
                 frame_info_content_dict_exclude_60,
                 config['qc']['read_frame_distribution']['3nt_count_cutoff']
@@ -253,23 +265,16 @@ def annotation_mode(
             read_frame_dist_28_to_32
             )
         results_dict["read_frame_distribution_28_to_32"] = read_frame_dist_28_to_32
-        results_dict["metrics"]["read_frame_information_metric_28_to_32"] =\
+        results_dict["metrics"]["periodicity_information_metric_28_to_32"] =\
             information_metric_cutoff(
                 frame_info_content_dict_28_to_32,
                 config['qc']['read_frame_distribution']['3nt_count_cutoff']
             )
 
-        results_dict["metrics"]["3nt_weighted_score"] = \
+        results_dict["metrics"]["periodicity_information_weighted_score"] = \
             read_frame_information_weighted_score(
                 frame_info_content_dict,
             )
-        results_dict["metrics"]["3nt_weighted_score_best_3_read_lengths"] = \
-            tpw3rl_metric(
-                frame_info_content_dict,
-        )
-        results_dict["metrics"]["3nt_best_read_length_score"] = tpbrl_metric(
-            frame_info_content_dict,
-        )
         read_frame_dist = read_frame_distribution(read_df)
         results_dict[
             "read_frame_distribution_best_frame_per_tx"] = read_frame_dist
@@ -278,9 +283,12 @@ def annotation_mode(
         results_dict["read_frame_distribution"] = read_frame_dist
 
     culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
-    results_dict["metrics"]["read_frame_score_trips-viz"] = read_frame_score_trips_viz(
+    results_dict["metrics"][
+        "periodicity_trips-viz"
+        ] = read_frame_score_trips_viz(
         culled_read_frame_dict)
-    results_dict["metrics"]["read_frame_dominance"] = read_frame_dominance(
+
+    results_dict["metrics"]["periodicity_dominance"] = read_frame_dominance(
         culled_read_frame_dict
     )
 
@@ -302,16 +310,22 @@ def annotation_mode(
                 target="start",
                 distance_range=[30, 117],
             )
-        results_dict["metrics"]["periodicity_autocorrelation"] = periodicity_autocorrelation(
+        results_dict["metrics"][
+            "periodicity_autocorrelation"
+            ] = periodicity_autocorrelation(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["uniformity_autocorrelation"] = uniformity_autocorrelation(
+        results_dict["metrics"][
+            "uniformity_autocorrelation"
+            ] = uniformity_autocorrelation(
             coding_metagene.copy()
         )
         results_dict["metrics"]["uniformity_entropy"] = uniformity_entropy(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["uniformity_theil_index"] = uniformity_theil_index(
+        results_dict["metrics"][
+            "uniformity_theil_index"
+            ] = uniformity_theil_index(
             coding_metagene.copy()
         )
         results_dict["metrics"]["kurtosis"] = kurtosis_metric(
@@ -320,16 +334,18 @@ def annotation_mode(
         results_dict["metrics"]["KS_test"] = KS_test(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["uniformity_gini_index"] = uniformity_gini_index(
+        results_dict["metrics"][
+            "uniformity_gini_index"
+            ] = uniformity_gini_index(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["fourier"] = fourier_transform(
+        results_dict["metrics"]["periodicity_fourier"] = fourier_transform(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["multitaper"] = multitaper(
+        results_dict["metrics"]["periodicity_multitaper"] = multitaper(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["wavelet"] = wavelet_transform(
+        results_dict["metrics"]["periodicity_wavelet"] = wavelet_transform(
             coding_metagene.copy()
         )
         print("> cds_coverage_metric")

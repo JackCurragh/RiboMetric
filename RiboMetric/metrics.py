@@ -383,21 +383,6 @@ def information_metric_cutoff(
     return information_content_metric
 
 
-def read_frame_information_best_read_length_score(information_content_metric):
-    '''
-    Produce a single metric for the triplet periodicity by taking the maximum
-    score across all read lengths.
-
-    Inputs:
-        information_content_metric (dict): The information content metric
-            for each read length.
-
-    Returns:
-        result (float): The triplet periodicity score.
-    '''
-    return max(information_content_metric.values())
-
-
 def read_frame_information_weighted_score(
     frame_info_content_dict: dict,
         ):
@@ -418,36 +403,6 @@ def read_frame_information_weighted_score(
         )
     weighted_scores = []
     for _, score in frame_info_content_dict.items():
-        weighted_score = score[0] * score[1]
-        weighted_scores.append(weighted_score)
-
-    return sum(weighted_scores) / total_reads
-
-
-def read_frame_information_weighted_score_best_3_read_lengths(
-        frame_info_content_dict: dict,) -> float:
-    """
-    Produce a single metric for the triplet periodicity by taking the weighted
-    average of the scores for the best 3 read lengths.
-
-    Inputs:
-        frame_info_content_dict: Dictionary containing the information
-                content metric and total counts for each read length
-
-    Returns:
-        result: The triplet periodicity score
-    """
-    total_reads = sum(
-        frame_info_content_dict[key][1]
-        for key in frame_info_content_dict
-        )
-    sorted_counts = sorted(
-        frame_info_content_dict.items(),
-        key=lambda x: x[1][1],
-        reverse=True,
-        )[:3]
-    weighted_scores = []
-    for _, score in sorted_counts:
         weighted_score = score[0] * score[1]
         weighted_scores.append(weighted_score)
 
