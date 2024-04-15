@@ -27,7 +27,7 @@ def find_category_by_cumulative_percentage(df, percentage):
     return read_length
 
 
-def read_length_distribution_spread_metric(
+def read_length_distribution_IQR_normalised_metric(
         rld_dict: dict,
         ) -> pd.DataFrame:
     """
@@ -60,7 +60,7 @@ def read_length_distribution_spread_metric(
     return 1 - (inter_quartile_range / max_range)
 
 
-def read_length_distribution_variation_metric(
+def read_length_distribution_coefficient_of_variation_metric(
         rld_dict: dict,
         ) -> float:
     """
@@ -92,7 +92,7 @@ def read_length_distribution_variation_metric(
     return math.sqrt(variance) / mean
 
 
-def bimodality_coefficient(data):
+def read_length_distribution_bimodality(data):
     """
     Calculate the bimodality coefficient for a given dataset.
 
@@ -117,7 +117,7 @@ def bimodality_coefficient(data):
     return bimodality_coeff
 
 
-def read_length_distribution_non_normality_metric(
+def read_length_distribution_normality_metric(
         rld_dict: dict,
         ) -> float:
     """
@@ -141,7 +141,7 @@ def read_length_distribution_non_normality_metric(
     return res.pvalue
 
 
-def read_length_distribution_prop_at_peak_metric(
+def read_length_distribution_max_prop_metric(
         rld_dict: dict,
         num_top_readlens: int = 1,
         ) -> float:
@@ -162,7 +162,7 @@ def read_length_distribution_prop_at_peak_metric(
     return max_count / total_count
 
 
-def terminal_nucleotide_bias_distribution_metric(
+def terminal_nucleotide_bias_KL_metric(
         observed_freq: dict,
         expected_freq: dict,
         prime: str = "five_prime",
@@ -199,7 +199,7 @@ def terminal_nucleotide_bias_distribution_metric(
     return -kl_divergence
 
 
-def terminal_nucleotide_bias_max_proportion_metric(
+def terminal_nucleotide_bias_max_absolute_metric(
         observed_freq: dict,
         expected_freq: dict,
         prime: str = "five_prime",
@@ -527,30 +527,31 @@ def proportion_of_reads_in_region(
     return proportion
 
 
-def autocorrelate(signal: np.array, lag: int) -> float:
+def autocorrelate(signal: np.array) -> np.ndarray:
     """
-    Computes the autocorrelation of a signal at a given lag.
+    Computes the autocorrelation of a signal
 
     Inputs:
         signal: np.array
             The signal to compute the autocorrelation of.
 
-        lag: int
-            The lag to compute the autocorrelation at.
-
     Returns:
         correlation_score: float
-            The autocorrelation score at the given lag.
+            The autocorrelation scores for all lags
     """
     np.seterr(divide='ignore', invalid='ignore')  # ignore divide by zero here
     autocorr = np.correlate(signal, signal, mode='full')
     autocorr = autocorr[len(signal)-1:].astype(float)
     autocorr /= autocorr[0]
     np.seterr(divide='warn', invalid='warn')  # reset to default
-    return autocorr[lag]
+    return autocorr
 
 
-def autocorrelate_counts(metagene_profile: dict, lag: int) -> dict:
+def autocorrelate_counts(
+        metagene_profile: dict,
+        mode: str = "uniformity",
+        lag: int = 0
+        ) -> dict:
     """
     Computes the autocorrelation of the ribosome counts at a given lag.
 
@@ -580,16 +581,43 @@ def autocorrelate_counts(metagene_profile: dict, lag: int) -> dict:
                     list(metagene_profile[read_length].values())
                     )
                     ]
-        count_list = np.array(list(metagene_profile[read_length].values()))
-        if count_list[0] is not None:
-            read_length_scores[read_length] = autocorrelate(count_list, lag)
+        counts = list(metagene_profile[read_length].values())
+
+        if counts[0] is not None:
+            if mode == "uniformity":
+                triplet_counts = [
+                    sum(counts[i:i+3]) for i in range(0, len(counts), 3)
+                    ]
+                count_list = np.array(triplet_counts)
+                auto_correlation = autocorrelate(count_list)
+                read_length_scores[read_length] = float(
+                    auto_correlation[:5].mean()
+                )
+            elif mode == "periodicity":
+                count_list = np.array(counts)
+                auto_correlation = autocorrelate(count_list)
+                read_length_scores[read_length] = auto_correlation[lag]
         else:
             read_length_scores[read_length] = 0
-    read_length_scores['global'] = autocorrelate(np.array(global_counts), lag)
+
+    if mode == "uniformity":
+        global_counts = [
+            sum(global_counts[i:i+3]) for i in range(0, len(global_counts), 3)
+            ]
+        global_count_list = np.array(global_counts)
+        global_auto_correlation = autocorrelate(global_count_list)
+        read_length_scores['global'] = global_auto_correlation[:5].mean()
+    elif mode == "periodicity":
+        global_auto_correlation = autocorrelate(np.array(global_counts))
+        read_length_scores['global'] = (
+            global_auto_correlation[lag] - global_auto_correlation.mean()
+            ) / global_auto_correlation.mean()
+    else:
+        read_length_scores['global'] = 0
     return read_length_scores
 
 
-def autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
+def periodicity_autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
     """
     Computes the autocorrelation of the ribosome counts at a given lag.
 
@@ -608,10 +636,32 @@ def autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
         for i in range(0, int(max(metagene_profile['start'][read_len]))):
             if i not in metagene_profile['start'][read_len]:
                 metagene_profile['start'][read_len][i] = 0
-    return autocorrelate_counts(metagene_profile['start'], lag)
+    return autocorrelate_counts(metagene_profile['start'], mode="periodicity", lag=lag)
 
 
-def uniformity(metagene_profile: dict) -> dict:
+def uniformity_autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
+    """
+    Computes the autocorrelation of the ribosome counts at a given lag.
+
+    Inputs:
+        metagene_profile: dict
+            The metagene profile to compute the autocorrelation of.
+
+        lag: int
+            The lag to compute the autocorrelation at.
+
+    Returns:
+        read_length_scores: dict
+            The autocorrelation scores at the given lag.
+    """
+    for read_len in metagene_profile['start']:
+        for i in range(0, int(max(metagene_profile['start'][read_len]))):
+            if i not in metagene_profile['start'][read_len]:
+                metagene_profile['start'][read_len][i] = 0
+    return autocorrelate_counts(metagene_profile['start'], mode="uniformity")
+
+
+def uniformity_entropy(metagene_profile: dict) -> dict:
     """
     Computes the uniformity of the metagene profile. Inspired by ORQAS
 
@@ -636,9 +686,13 @@ def uniformity(metagene_profile: dict) -> dict:
                     list(metagene_profile['start'][read_len].values())
                     )
                     ]
-        total_counts = sum(metagene_profile['start'][read_len].values())
+        counts = list(metagene_profile['start'][read_len].values())
+        total_counts = sum(counts)
         entropy = 0.0
-        for count in metagene_profile['start'][read_len].values():
+
+        triplet_counts = [sum(counts[i:i+3]) for i in range(0, len(counts), 3)]
+
+        for count in triplet_counts:
             if count > 0:
                 probability = count / total_counts
                 entropy -= probability * math.log(probability, 2)
@@ -648,7 +702,10 @@ def uniformity(metagene_profile: dict) -> dict:
 
     global_total_counts = sum(global_counts)
     global_entropy = 0.0
-    for count in global_counts:
+    global_triplet_counts = [
+        sum(global_counts[i:i+3]) for i in range(0, len(global_counts), 3)
+        ]
+    for count in global_triplet_counts:
         if count > 0:
             probability = count / global_total_counts
             global_entropy -= probability * math.log(probability, 2)
@@ -658,58 +715,7 @@ def uniformity(metagene_profile: dict) -> dict:
     return read_len_uniformity
 
 
-def theil_index(
-        profile,
-        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
-        ):
-    """
-    Calculates the Theil index for a Ribo-Seq profile.
-
-    Inputs:
-        profile (dict): A dictionary where keys represent positions,
-        and values represent counts.
-
-    Returns:
-        dict: The Theil index for the given profile.
-    """
-    theils = {}
-    global_counts = []
-    global_sum = 0
-    for read_len in profile['start']:
-        if read_len in read_lengths:
-            if not global_counts:
-                global_counts = list(profile['start'][read_len].values())
-            else:
-                global_counts = [
-                    i + j for i, j in zip(
-                        global_counts,
-                        list(profile['start'][read_len].values())
-                        )
-                        ]
-        total_sum = sum(profile['start'][read_len].values())
-        global_sum += total_sum if read_len in read_lengths else 0
-
-        theil_sum = 0
-
-        for count in profile['start'][read_len].values():
-            if count > 0:
-                proportion = count / total_sum
-                theil_sum += proportion * math.log(1 / proportion)
-
-        theils[read_len] = theil_sum
-
-    global_theil_sum = 0
-    for count in global_counts:
-        if count > 0:
-            proportion = count / global_sum
-            global_theil_sum += proportion * math.log(1 / proportion)
-
-    theils["global"] = global_theil_sum
-
-    return theils
-
-
-def theil_index_triplets(
+def uniformity_theil_index(
         profile,
         read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
         ):
@@ -779,14 +785,17 @@ def theil_index_triplets(
                     ]
                     )
 
-    theils["global"] = global_theil_sum
+    theils["global"] = 1 / (global_theil_sum + 0.0001)
 
     return theils
 
 
-def gini_index(profile):
+def uniformity_gini_index(profile):
     """
+
     Calculates the Gini index for a Ribo-Seq profile.
+
+    See: https://kimberlyfessel.com/mathematics/applications/gini-use-cases/
 
     Inputs:
         profile (dict): A dictionary where keys represent positions,
@@ -813,24 +822,30 @@ def gini_index(profile):
         if total_sum == 0:
             ginis[read_len] = 0
             continue
-        counts = [count / total_sum for count in counts]
-        counts.sort()
+        triplet_counts = [sum(counts[i:i+3]) for i in range(0, len(counts), 3)]
+        triplet_counts.sort()
 
         gini_sum = 0
-        for i, count in enumerate(counts):
-            gini_sum += count * (2 * i - len(counts) + 1)
+        for i, count in enumerate(triplet_counts):
+            gini_sum += count * ((2 * i) - len(triplet_counts) - 1)
 
-        ginis[read_len] = gini_sum / (len(counts) - 1)
+        denominator = len(triplet_counts) * sum(triplet_counts)
+        ginis[read_len] = gini_sum / denominator
 
-    global_total_sum = sum(global_raw_counts)
-    global_counts = [count / global_total_sum for count in global_raw_counts]
+    global_counts = [
+        sum(counts[i:i+3]) for i in range(0, len(global_raw_counts), 3)
+        ]
     global_counts.sort()
 
     global_gini_sum = 0
     for i, count in enumerate(global_counts):
-        global_gini_sum += count * (2 * i - len(global_counts) + 1)
+        global_gini_sum += count * (2 * i - len(global_counts) - 1)
 
-    ginis["global"] = global_gini_sum / (len(global_counts) - 1)
+    global_denominator = len(global_counts) * sum(global_counts)
+    if global_denominator != 0:
+        ginis["global"] = global_gini_sum / global_denominator
+    else:
+        ginis["global"] = 0
     return ginis
 
 

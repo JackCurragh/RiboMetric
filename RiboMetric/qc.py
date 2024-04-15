@@ -31,11 +31,11 @@ from .modules import (
 )
 
 from .metrics import (
-    read_length_distribution_spread_metric as rld_metric,
-    read_length_distribution_variation_metric as rldv_metric,
-    read_length_distribution_non_normality_metric as rldn_metric,
-    terminal_nucleotide_bias_distribution_metric as lbd_metric,
-    terminal_nucleotide_bias_max_proportion_metric as lbmp_metric,
+    read_length_distribution_IQR_normalised_metric as rld_metric,
+    read_length_distribution_coefficient_of_variation_metric as rldv_metric,
+    read_length_distribution_normality_metric as rldn_metric,
+    terminal_nucleotide_bias_KL_metric as lbd_metric,
+    terminal_nucleotide_bias_max_absolute_metric as lbmp_metric,
     read_frame_information_content as rf_info_metric,
     read_frame_information_weighted_score,
     read_frame_information_best_read_length_score as tpbrl_metric,
@@ -43,19 +43,18 @@ from .metrics import (
     read_frame_information_weighted_score_best_3_read_lengths as tpw3rl_metric,
     cds_coverage_metric,
     region_region_ratio_metric,
-    read_length_distribution_prop_at_peak_metric as rldpp_metric,
-    autocorrelation,
-    uniformity,
-    theil_index,
-    theil_index_triplets,
-    gini_index,
+    read_length_distribution_max_prop_metric as rldpp_metric,
+    uniformity_autocorrelation,
+    uniformity_entropy,
+    uniformity_theil_index,
+    uniformity_gini_index,
     kurtosis_metric,
     KS_test,
     read_frame_dominance,
     fourier_transform,
     multitaper,
     wavelet_transform,
-    bimodality_coefficient,
+    read_length_distribution_bimodality,
     proportion_of_reads_in_region
 )
 from typing import Any, Dict
@@ -115,16 +114,16 @@ def annotation_mode(
     results_dict["metrics"]["read_length_distribution_metric"] = rld_metric(
         results_dict["read_length_distribution"]
     )
-    results_dict["metrics"]["rld_bimodality_coefficient"] =\
-        bimodality_coefficient(
+    results_dict["metrics"]["rld_read_length_distribution_bimodality"] =\
+        read_length_distribution_bimodality(
             results_dict["read_length_distribution"]
         )
-    results_dict["metrics"]["read_length_distribution_non_normality_metric"] =\
+    results_dict["metrics"]["read_length_distribution_normality_metric"] =\
         rldn_metric(
             results_dict["read_length_distribution"]
         )
 
-    results_dict["metrics"]["read_length_distribution_variation_metric"] =\
+    results_dict["metrics"]["read_length_distribution_coefficient_of_variation_metric"] =\
         rldv_metric(
             results_dict["read_length_distribution"]
         )
@@ -166,14 +165,14 @@ def annotation_mode(
             prime="three_prime",
         )
         results_dict["metrics"][
-            "terminal_nucleotide_bias_max_proportion_metric_5_prime"
+            "terminal_nucleotide_bias_max_absolute_metric_5_prime"
             ] = lbmp_metric(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["5_prime_bg"],
             prime="five_prime",
         )
         results_dict["metrics"][
-            "terminal_nucleotide_bias_max_proportion_metric_3_prime"
+            "terminal_nucleotide_bias_max_absolute_metric_3_prime"
             ] = lbmp_metric(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["3_prime_bg"],
@@ -302,16 +301,13 @@ def annotation_mode(
                 target="start",
                 distance_range=[30, 117],
             )
-        results_dict["metrics"]["autocorrelation"] = autocorrelation(
+        results_dict["metrics"]["autocorrelation"] = uniformity_autocorrelation(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["uniformity"] = uniformity(
+        results_dict["metrics"]["uniformity_entropy"] = uniformity_entropy(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["theil_index"] = theil_index(
-            coding_metagene.copy()
-        )
-        results_dict["metrics"]["thiel_index_triplet"] = theil_index_triplets(
+        results_dict["metrics"]["uniformity_theil_index"] = uniformity_theil_index(
             coding_metagene.copy()
         )
         results_dict["metrics"]["kurtosis"] = kurtosis_metric(
@@ -320,7 +316,7 @@ def annotation_mode(
         results_dict["metrics"]["KS_test"] = KS_test(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["gini_index"] = gini_index(
+        results_dict["metrics"]["uniformity_gini_index"] = uniformity_gini_index(
             coding_metagene.copy()
         )
         results_dict["metrics"]["fourier"] = fourier_transform(
