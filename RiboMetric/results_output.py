@@ -112,8 +112,8 @@ def generate_csv(
             for k, v in value.items():
                 max_min_score  = normalise_score(
                     v,
-                    config["max_mins"]['_'.join(key.split("_")[:-1])][0],
-                    config["max_mins"]['_'.join(key.split("_")[:-1])][1]
+                    config["max_mins"][key][0],
+                    config["max_mins"][key][1]
                 )
                 metrics_dict.append(
                     {
