@@ -98,7 +98,7 @@ def generate_csv(
         elif isinstance(value, dict):
             for k, v in value.items():
                 max_min_score  = normalise_score(
-                    v,
+                    '_'.join(v.split("_")[:-1]),
                     config["metrics"][key]["max"],
                     config["metrics"][key]["min"]
                 )

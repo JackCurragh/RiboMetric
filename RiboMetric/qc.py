@@ -117,7 +117,7 @@ def annotation_mode(
         results_dict["read_length_distribution"]
     )
     results_dict["metrics"][
-        "read_length_distribution_bimodality"
+        "read_length_distribution_bimodality_metric"
         ] = read_length_distribution_bimodality(
             results_dict["read_length_distribution"]
         )
@@ -168,14 +168,14 @@ def annotation_mode(
             prime="three_prime",
         )
         results_dict["metrics"][
-            "terminal_nucleotide_bias_max_absolute_metric_5_prime"
+            "terminal_nucleotide_bias_max_absolute_metric_5_prime_metric"
             ] = lbmp_metric(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["5_prime_bg"],
             prime="five_prime",
         )
         results_dict["metrics"][
-            "terminal_nucleotide_bias_max_absolute_metric_3_prime"
+            "terminal_nucleotide_bias_max_absolute_metric_3_prime_metric"
             ] = lbmp_metric(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["3_prime_bg"],

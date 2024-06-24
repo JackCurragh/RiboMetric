@@ -837,10 +837,10 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     # drop any metric that is not in max_mins
     df = df[df['Metric'].isin(config["max_mins"].keys())]
 
-    # normalise metrics between max_min values 
+    # normalise metrics between max_min values
     for metric in config["max_mins"]:
-        df.loc[df['Metric'] == metric, 'Score'] = normalise_score(
-            df.loc[df['Metric'] == metric, 'Score'].values[0],
+        df.loc[df['Metric'].str.startswith(metric), 'Score'] = normalise_score(
+            df.loc[df['Metric'].str.startswith(metric), 'Score'].values[0],
             config["max_mins"][metric][0],
             config["max_mins"][metric][1]
         )
