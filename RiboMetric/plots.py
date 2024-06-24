@@ -835,8 +835,7 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     df = pd.DataFrame(list(metrics_dict.items()), columns=['Metric', 'Score'])
 
     # drop any metric that is not in max_mins
-    df = df[df['Metric'].isin(config["max_mins"].keys())]
-
+    df = df[df['Metric'].apply(lambda x: any(x.startswith(key) for key in config["max_mins"].keys()))]
     df.to_csv("test.csv")
     # normalise metrics between max_min values
     for metric in config["max_mins"]:
