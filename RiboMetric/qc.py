@@ -49,8 +49,6 @@ from .metrics import (
     uniformity_gini_index,
     periodicity_dominance,
     fourier_transform,
-    multitaper,
-    wavelet_transform,
     read_length_distribution_bimodality,
     proportion_of_reads_in_region
 )
@@ -231,7 +229,7 @@ def annotation_mode(
             )
         frame_info_content_dict = rf_info_metric(read_frame_dist)
         results_dict["read_frame_distribution"] = read_frame_dist
-        results_dict["metrics"]["periodicity_information_metric"] =\
+        results_dict["metrics"]["periodicity_information"] =\
             information_metric_cutoff(
                 frame_info_content_dict,
                 config['qc']['read_frame_distribution']['3nt_count_cutoff']
