@@ -83,4 +83,4 @@ max_mins: # max mins from simulations for each metric github.com/JackCurragh/Met
   read_length_distribution_bimodality: [0, 1]
   read_length_distribution_normality: [0, 1]
   read_length_distribution_coefficient_of_variation: [0, 1]
-  read_length_distribution_maxprop: [0, ]
+  read_length_distribution_maxprop: [0, 1]
