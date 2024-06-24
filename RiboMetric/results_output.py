@@ -110,11 +110,14 @@ def generate_csv(
                  )
         elif isinstance(value, dict):
             for k, v in value.items():
-                max_min_score  = normalise_score(
-                    v,
-                    config["max_mins"][key][0],
-                    config["max_mins"][key][1]
-                )
+                if key not in config["max_mins"]:
+                    max_min_score = v
+                else:
+                    max_min_score  = normalise_score(
+                        v,
+                        config["max_mins"][key][0],
+                        config["max_mins"][key][1]
+                    )
                 metrics_dict.append(
                     {
                         "Metric": f"{key}_{k}",
