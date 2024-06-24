@@ -57,6 +57,7 @@ def normalise_score(score: float, max_score: float, min_score: float) -> float:
         The normalised score
     """
     if score > max_score:
+        print(f"Score {score} is greater than the maximum score {max_score}")
         return 1
     elif score < min_score:
         return 0
