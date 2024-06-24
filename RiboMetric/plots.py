@@ -841,8 +841,8 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     for metric in config["max_mins"]:
         df.loc[df['Metric'] == metric, 'Score'] = normalise_score(
             df.loc[df['Metric'] == metric, 'Score'].values[0],
-            config["max_mins"][metric]["max"],
-            config["max_mins"][metric]["min"]
+            config["max_mins"][metric][0],
+            config["max_mins"][metric][1]
         )
     # drop any metrics that are in exclude list in config
     df = df[~df['Metric'].isin(config["plots"]["exclude_metrics"])]
