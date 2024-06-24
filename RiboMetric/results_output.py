@@ -44,6 +44,21 @@ def generate_json(
     print(f"Results written in {output}")
 
 
+def normalise_score(score: float, max_score: float, min_score: float) -> float:
+    """
+    Normalise the score of a metric
+
+    Input:
+        score: The score of the metric
+        max_score: The maximum score of the metric
+        min_score: The minimum score of the metric
+
+    Output:
+        The normalised score
+    """
+    return (score - min_score) / (max_score - min_score)
+
+
 def generate_csv(
     results_dict: dict,
     config: dict,
@@ -70,14 +85,25 @@ def generate_csv(
             output_directory = output_directory[:-1]
         output = output_directory + "/" + name + ".csv"
 
-    columns = ["metric", "score"]
+    columns = ["Metric", "Score", "MaxMinScore"]
     metrics_dict = []
     for key, value in results_dict["metrics"].items():
         if isinstance(value, float) or isinstance(value, int):
-            metrics_dict.append({"metric": key, "score": value})
+            metrics_dict.append({"Metric": key, "Score": value})
         elif isinstance(value, dict):
             for k, v in value.items():
-                metrics_dict.append({"metric": f"{key}_{k}", "score": v})
+                max_min_score  = normalise_score(
+                    v,
+                    config["metrics"][key]["max"],
+                    config["metrics"][key]["min"]
+                )
+                metrics_dict.append(
+                    {
+                        "Metric": f"{key}_{k}",
+                        "Score": v,
+                        "MaxMinScore": max_min_score
+                        }
+                        )
 
     with open(output, "w") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=columns)
