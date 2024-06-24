@@ -66,6 +66,7 @@ max_mins: # max mins from simulations for each metric github.com/JackCurragh/Met
   periodicity_autocorrelation: [0, 4.552344]
   periodicity_fourier: [0, 1]
   periodicity_information: [0, 0.913217]
+  periodicity_information_weighted_score: [0, 0.913217]
   periodicity_trips-viz: [0, 1]
   periodicity_dominance: [0, 1]
   uniformity_autocorrelation: [0, 1]
