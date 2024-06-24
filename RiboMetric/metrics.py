@@ -454,7 +454,7 @@ def region_region_ratio_metric(
         if read_len in read_lengths:
             region1_total += mRNA_distribution[read_len][region1]
             region2_total += mRNA_distribution[read_len][region2]
-            if region2_total == 0:
+            if mRNA_distribution[read_len][region2] == 0:
                 region_region_ratio[read_len] = 0
             else:
                 region_region_ratio[read_len] = mRNA_distribution[
