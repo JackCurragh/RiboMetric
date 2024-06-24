@@ -357,9 +357,9 @@ def read_frame_information_content(
 def information_metric_cutoff(
     frame_info_content_dict: dict,
     min_count_threshold: float = 0.05,
-        ) -> dict:
+) -> dict:
     """
-    Apply the cut off to the information content metric
+    Apply the cut off to the information content metric and calculate a global score
 
     Inputs:
         frame_info_content_dict: Dictionary containing the output of the
@@ -369,17 +369,32 @@ def information_metric_cutoff(
 
     Outputs:
         information_content_metric: Dictionary containing the information
-                content metric for each read length
+                content metric for each read length and a global score
     """
     information_content_metric = {}
     total_reads = sum(
         frame_info_content_dict[key][1]
         for key in frame_info_content_dict
-        )
+    )
+    total_weighted_score = 0
+    total_count_above_threshold = 0
+
     for read_length in frame_info_content_dict:
         score, count = frame_info_content_dict[read_length]
         if count > total_reads * min_count_threshold:
             information_content_metric[read_length] = score
+            total_weighted_score += score * count
+            total_count_above_threshold += count
+
+    # Calculate global score
+    if total_count_above_threshold > 0:
+        global_score = total_weighted_score / total_count_above_threshold
+    else:
+        global_score = 0
+
+    # Add global score to the output dictionary
+    information_content_metric['global'] = global_score
+
     return information_content_metric
 
 
@@ -442,13 +457,13 @@ def region_region_ratio_metric(
             if region2_total == 0:
                 region_region_ratio[read_len] = 0
             else:
-                region_region_ratio[read_len] = 1 - (
-                    mRNA_distribution[read_len][region1] / region2_total)
+                region_region_ratio[read_len] = mRNA_distribution[
+                    read_len][region1] / mRNA_distribution[read_len][region2]
 
     if region2_total == 0:
         region_region_ratio["global"] = 0
     else:
-        region_region_ratio["global"] = 1 - (region1_total / region2_total)
+        region_region_ratio["global"] = region1_total / region2_total
     return region_region_ratio
 
 
