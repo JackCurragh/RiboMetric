@@ -99,8 +99,8 @@ def generate_csv(
         if isinstance(value, float) or isinstance(value, int):
             max_min_score = normalise_score(
                 value,
-                config["max_mins"][key][0],
-                config["max_mins"][key][1]
+                config["max_mins"]['_'.join(key.split("_")[:-1])][0],
+                config["max_mins"]['_'.join(key.split("_")[:-1])][1]
             )
             metrics_dict.append(
                 {"Metric": key,
