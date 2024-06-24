@@ -833,8 +833,17 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     # Convert the metrics_dict to a DataFrame for easier plotting
     df = pd.DataFrame(list(metrics_dict.items()), columns=['Metric', 'Score'])
 
-    # drop any non global metrics 
-    df = df[~df['Metric'].str.contains("global")]
+    # drop any metric that is not in max_mins
+    df = df[df['Metric'].isin(config["max_mins"].keys())]
+
+    # normalise metrics between max_min values 
+    for metric in config["max_mins"]:
+        df.loc[df['Metric'] == metric, 'Score'] = (
+            df.loc[df['Metric'] == metric, 'Score'] - config["max_mins"][metric][0]
+        ) / (config["max_mins"][metric][1] - config["max_mins"][metric][0])
+
+    # drop any metrics that are in exclude list in config
+    df = df[~df['Metric'].isin(config["plots"]["exclude_metrics"])]
 
     width = 750
     height = 320

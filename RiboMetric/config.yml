@@ -50,6 +50,7 @@ plots:
     distance_range: [-50,50]  # Set the max distance to count reads from the target(s)
     colorscale: "blues"    # Heatmap colorscale, see https://plotly.com/python/builtin-colorscales/
     max_colorscale: null      # if set to null, the plot will generate with relative counts (0 to 1)
+  exclude_metrics: ['ratio_leader:trailer_global', 'prop_reads_leader_global', 'prop_reads_trailer_global']
     
 qc:
   use_cds_subset:
@@ -60,3 +61,26 @@ qc:
     3nt_count_cutoff: 0.05
   cds_coverage:
     in_frame_coverage: True   # Only check in-frame coverage, otherwise check complete cds coverage
+
+max_mins: # max mins from simulations for each metric github.com/JackCurragh/MetricAnalysis
+  periodicity_autocorrelation_global: [0, 4.552344]
+  periodicity_fourier_global: [0, 0.644216]
+  periodicity_information_global: [0, 0.913217]
+  periodicity_trips-viz_global: [0, 1]
+  periodicity_dominance_global: [0, 1]
+  uniformity_autocorrelation_global: [0, 1]
+  uniformity_entropy_global: [0, 1]
+  uniformity_theil_index_global: [0, 1]
+  uniformity_gini_index_global: [0, 1]
+  prop_reads_CDS_global: [0, 1]
+  prop_reads_leader_global: [0, 1]
+  prop_reads_trailer_global: [0, 1]
+  terminal_nucleotide_bias_distribution_5_prime_metric: [0, 3.637]
+  terminal_nucleotide_bias_distribution_3_prime_metric: [0, 3.637]
+  terminal_nucleotide_bias_max_absolute_metric_5_prime: [0, 1]
+  terminal_nucleotide_bias_max_absolute_metric_3_prime: [0, 1]
+  read_length_distribution_IQR_metric: [0, 1]
+  read_length_distribution_bimodality: [0, 1]
+  read_length_distribution_normality_metric: [0, 1]
+  read_length_distribution_coefficient_of_variation_metric: [0, 1]
+  read_length_distribution_maxprop_metric: [0, ]
