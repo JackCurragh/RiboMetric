@@ -800,7 +800,7 @@ def uniformity_gini_index(profile):
             gini_sum += count * ((2 * i) - len(triplet_counts) - 1)
 
         denominator = len(triplet_counts) * sum(triplet_counts)
-        ginis[read_len] = gini_sum / denominator
+        ginis[read_len] = abs(gini_sum / denominator)
 
     global_counts = [
         sum(counts[i:i+3]) for i in range(0, len(global_raw_counts), 3)
@@ -813,7 +813,7 @@ def uniformity_gini_index(profile):
 
     global_denominator = len(global_counts) * sum(global_counts)
     if global_denominator != 0:
-        ginis["global"] = global_gini_sum / global_denominator
+        ginis["global"] = abs(global_gini_sum / global_denominator)
     else:
         ginis["global"] = 0
     return ginis

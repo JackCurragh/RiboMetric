@@ -64,13 +64,13 @@ qc:
 
 max_mins: # max mins from simulations for each metric github.com/JackCurragh/MetricAnalysis
   periodicity_autocorrelation: [0, 4.552344]
-  periodicity_fourier: [0, 0.644216]
+  periodicity_fourier: [0, 1]
   periodicity_information: [0, 0.913217]
   periodicity_trips-viz: [0, 1]
   periodicity_dominance: [0, 1]
   uniformity_autocorrelation: [0, 1]
   uniformity_entropy: [0, 1]
-  uniformity_theil_index: [0, 1]
+  uniformity_theil_index: [0, 45]
   uniformity_gini_index: [0, 1]
   prop_reads_CDS: [0, 1]
   prop_reads_leader: [0, 1]
