@@ -95,13 +95,15 @@ def generate_csv(
     columns = ["Metric", "Score", "MaxMinScore"]
     metrics_dict = []
     for key, value in results_dict["metrics"].items():
-        print(key,'_'.join(key.split("_")[:-1]))
         if isinstance(value, float) or isinstance(value, int):
-            max_min_score = normalise_score(
-                value,
-                config["max_mins"]['_'.join(key.split("_")[:-1])][0],
-                config["max_mins"]['_'.join(key.split("_")[:-1])][1]
-            )
+            if key not in config["max_mins"]:
+                max_min_score = value
+            else:
+                max_min_score = normalise_score(
+                    value,
+                    config["max_mins"]['_'.join(key.split("_")[:-1])][0],
+                    config["max_mins"]['_'.join(key.split("_")[:-1])][1]
+                )
             metrics_dict.append(
                 {"Metric": key,
                  "Score": value,
