@@ -44,14 +44,15 @@ def generate_json(
     print(f"Results written in {output}")
 
 
-def normalise_score(score: float, max_score: float, min_score: float) -> float:
+def normalise_score(score: float, min_score: float, max_score: float) -> float:
     """
     Normalise the score of a metric
 
     Input:
         score: The score of the metric
-        max_score: The maximum score of the metric
         min_score: The minimum score of the metric
+        max_score: The maximum score of the metric
+
 
     Output:
         The normalised score
@@ -99,9 +100,9 @@ def generate_csv(
         elif isinstance(value, dict):
             for k, v in value.items():
                 max_min_score  = normalise_score(
-                    '_'.join(v.split("_")[:-1]),
-                    config["metrics"][key]["max"],
-                    config["metrics"][key]["min"]
+                    v,
+                    config["metrics"]['_'.join(k.split("_")[:-1])]["max"],
+                    config["metrics"]['_'.join(k.split("_")[:-1])]["min"]
                 )
                 metrics_dict.append(
                     {
