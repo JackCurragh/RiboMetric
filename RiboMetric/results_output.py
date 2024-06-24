@@ -99,10 +99,11 @@ def generate_csv(
             metrics_dict.append({"Metric": key, "Score": value})
         elif isinstance(value, dict):
             for k, v in value.items():
+                print(k, '_'.join(k.split("_")[:-1]))
                 max_min_score  = normalise_score(
                     v,
-                    config["max_mins"]['_'.join(k.split("_")[:-1])]["max"],
-                    config["max_mins"]['_'.join(k.split("_")[:-1])]["min"]
+                    config["max_mins"]['_'.join(k.split("_")[:-1])][0],
+                    config["max_mins"]['_'.join(k.split("_")[:-1])][1]
                 )
                 metrics_dict.append(
                     {
