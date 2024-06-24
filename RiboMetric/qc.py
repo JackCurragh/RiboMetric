@@ -133,19 +133,9 @@ def annotation_mode(
             results_dict["read_length_distribution"]
         )
     results_dict["metrics"][
-        "read_length_distribution_prop_top_1_metric"] = rldpp_metric(
+        "read_length_distribution_maxprop_metric"] = rldpp_metric(
         results_dict["read_length_distribution"],
         num_top_readlens=1
-    )
-    results_dict["metrics"][
-        "read_length_distribution_prop_top_3_metric"] = rldpp_metric(
-        results_dict["read_length_distribution"],
-        num_top_readlens=3
-    )
-    results_dict["metrics"][
-        "read_length_distribution_prop_top_5_metric"] = rldpp_metric(
-        results_dict["read_length_distribution"],
-        num_top_readlens=5
     )
 
     #######################################################################
@@ -229,12 +219,6 @@ def annotation_mode(
         results_dict["metrics"]["periodicity_fourier"] = fourier_transform(
             coding_metagene.copy()
         )
-        results_dict["metrics"]["periodicity_multitaper"] = multitaper(
-            coding_metagene.copy()
-        )
-        results_dict["metrics"]["periodicity_wavelet"] = wavelet_transform(
-            coding_metagene.copy()
-        )
 
         results_dict["reading_frame_triangle"] = reading_frame_triangle(
                 annotated_read_df
@@ -253,66 +237,10 @@ def annotation_mode(
                 config['qc']['read_frame_distribution']['3nt_count_cutoff']
             )
 
-        #######################################################################
-        # Periodicity - exclusion tests
-        #######################################################################
-        read_frame_dist_exclude_15 = (
-            read_frame_distribution_annotated(cds_read_df, exclusion_length=15)
-            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
-            and annotation
-            else read_frame_distribution_annotated(annotated_read_df)
-            )
-        frame_info_content_dict_exclude_15 = rf_info_metric(
-            read_frame_dist_exclude_15
-            )
-        results_dict["read_frame_distribution"] = read_frame_dist_exclude_15
-        results_dict["metrics"][
-            "periodicity_information_metric_exclude_15"
-            ] =\
-            information_metric_cutoff(
-                frame_info_content_dict_exclude_15,
-                config['qc']['read_frame_distribution']['3nt_count_cutoff']
-            )
-
-        read_frame_dist_excl_60 = (
-            read_frame_distribution_annotated(cds_read_df, exclusion_length=60)
-            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
-            and annotation
-            else read_frame_distribution_annotated(annotated_read_df)
-            )
-        frame_info_content_dict_exclude_60 = rf_info_metric(
-            read_frame_dist_excl_60
-            )
-        results_dict["read_frame_distribution"] = read_frame_dist_excl_60
-        results_dict["metrics"]["periodicity_information_metric_exclude_60"] =\
-            information_metric_cutoff(
-                frame_info_content_dict_exclude_60,
-                config['qc']['read_frame_distribution']['3nt_count_cutoff']
-            )
-
-        read_frame_dist_28_to_32 = (
-            read_frame_distribution_annotated(
-                cds_read_df,
-                read_length_range=(28, 32)
-                )
-            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
-            and annotation
-            else read_frame_distribution_annotated(annotated_read_df)
-            )
-        frame_info_content_dict_28_to_32 = rf_info_metric(
-            read_frame_dist_28_to_32
-            )
-        results_dict["read_frame_distribution_28_to_32"] = read_frame_dist_28_to_32
-        results_dict["metrics"]["periodicity_information_metric_28_to_32"] =\
-            information_metric_cutoff(
-                frame_info_content_dict_28_to_32,
-                config['qc']['read_frame_distribution']['3nt_count_cutoff']
-            )
         results_dict["metrics"]["periodicity_information_weighted_score"] = \
             read_frame_information_weighted_score(
                 frame_info_content_dict,
             )
-
 
         print("> mRNA_distribution")
         results_dict["mRNA_distribution"] = mRNA_distribution(

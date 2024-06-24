@@ -275,6 +275,7 @@ def prepare_annotation(
         print("Done")
 
         return annotation_df
+    return pd.DataFrame()
 
 
 def is_gzipped(file_path: str) -> bool:
