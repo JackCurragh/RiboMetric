@@ -6,6 +6,7 @@ RiboMetric reports
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from .modules import read_frame_cull, read_frame_score_trips_viz, sum_mRNA_distribution
+from .results_output import normalise_score
 import plotly.io as pio
 import base64
 
@@ -838,10 +839,11 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
 
     # normalise metrics between max_min values 
     for metric in config["max_mins"]:
-        df.loc[df['Metric'] == metric, 'Score'] = (
-            df.loc[df['Metric'] == metric, 'Score'] - config["max_mins"][metric][0]
-        ) / (config["max_mins"][metric][1] - config["max_mins"][metric][0])
-
+        df.loc[df['Metric'] == metric, 'Score'] = normalise_score(
+            df.loc[df['Metric'] == metric, 'Score'].values[0],
+            config["max_mins"][metric]["max"],
+            config["max_mins"][metric]["min"]
+        )
     # drop any metrics that are in exclude list in config
     df = df[~df['Metric'].isin(config["plots"]["exclude_metrics"])]
 

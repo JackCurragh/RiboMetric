@@ -56,7 +56,12 @@ def normalise_score(score: float, max_score: float, min_score: float) -> float:
     Output:
         The normalised score
     """
-    return (score - min_score) / (max_score - min_score)
+    if score > max_score:
+        return 1
+    elif score < min_score:
+        return 0
+    else:
+        return (score - min_score) / (max_score - min_score)
 
 
 def generate_csv(
