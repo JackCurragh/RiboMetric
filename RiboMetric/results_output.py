@@ -115,7 +115,7 @@ def generate_csv(
                 if key not in config["max_mins"]:
                     max_min_score = v
                 else:
-                    max_min_score  = normalise_score(
+                    max_min_score = normalise_score(
                         v,
                         config["max_mins"][key][0],
                         config["max_mins"][key][1]
