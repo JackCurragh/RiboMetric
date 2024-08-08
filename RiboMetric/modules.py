@@ -818,14 +818,12 @@ def change_point_analysis(
 
         t_statistic, p_value = stats.ttest_ind(left_window, right_window)
 
-        if sum(left_window) == 0:
-            continue
-        raise Exception(f"{p_value}\n {counts} \n {max_t_statistic}")
-
         if abs(t_statistic) > max_t_statistic and p_value < significance_threshold:
             max_t_statistic = abs(t_statistic)
-            change_point = positions[i]
+            print(f"{p_value}\n {counts} \n {max_t_statistic}")
 
+            change_point = positions[i]
+    print()
     return change_point
 
 
@@ -857,6 +855,7 @@ def asite_calculation_per_readlength(
             distance_range=[-30, 10],
         )
 
+        print(read_length)
         offset = change_point_analysis(
             read_length_metagene["start"][read_length],
             surrounding_range=(-26, 5)
@@ -872,4 +871,6 @@ def asite_calculation_per_readlength(
                     min(offset, offset_range[1])
                     )
 
+    for i in offset_dict.items():
+        print(i)
     return offset_dict
