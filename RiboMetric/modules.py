@@ -9,7 +9,8 @@ import numpy as np
 from xhtml2pdf import pisa
 from collections import Counter
 
-from typing import List, Dict
+from typing import List, Dict, Tuple, Optional
+from scipy import stats
 
 
 def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -120,8 +121,8 @@ def terminal_nucleotide_bias_distribution(
         target: Calculate ligation bias for 5', 3' or both
 
     Outputs:
-        terminal_nucleotide_bias_dict: Dictionary containing the distribution of the
-        first pattern of nucleotides in the reads
+        terminal_nucleotide_bias_dict: Dictionary containing the distribution
+        of the first pattern of nucleotides in the reads
     """
     terminal_nucleotide_bias_dict: dict = (
         {target: {}} if target != "both" else {
@@ -172,14 +173,15 @@ def normalise_ligation_bias(
     pattern at the start and end of the sequences.
 
     Inputs:
-        terminal_nucleotide_bias_dict: Dictionary containing observed proportions for 5'
-                            and 3' ends of the sequences
+        terminal_nucleotide_bias_dict: Dictionary containing observed
+                            proportions for 5' and 3' ends of the sequences
         sequence_background: Dictionary containing expected proportions for 5'
                             and 3' directions of sequences
         # pattern_length: Length of nucleotide pattern
 
     Outputs:
-        terminal_nucleotide_bias_dict_norm: Modified terminal_nucleotide_bias_dict to show the
+        terminal_nucleotide_bias_dict_norm: Modified 
+                                terminal_nucleotide_bias_dict to show the
                                 difference between observed and expected
                                 distributions
     """
@@ -312,21 +314,31 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     Calculate the distribution of the reading frame over the dataset
 
     Inputs:
-    a_site_df: Dataframe containing the read information with an added column for the a-site location
+    a_site_df: Dataframe containing the read information with an
+                added column for the a-site location
 
     Outputs:
-    read_frame_dict: Nested dictionary containing counts for every reading frame at the different read lengths
+    read_frame_dict: Nested dictionary containing counts for every
+                    reading frame at the different read lengths
     """
     read_frame_dict = {}
 
     # Iterate over unique combinations of transcript_id and read_length
-    for (transcript_id, read_length), group in a_site_df.groupby(['reference_name', 'read_length']):
+    for (transcript_id, read_length), group in a_site_df.groupby(
+        ['reference_name', 'read_length']
+        ):
         group['read_frame'] = group['a_site'] % 3
-        frame_counts = group['read_frame'].value_counts().sort_values(ascending=False).to_dict()
+        frame_counts = group['read_frame'].value_counts().sort_values(
+                                                            ascending=False
+                                                            ).to_dict()
 
         # Assign frame numbers based on sorted order per transcript
-        # The most frequent frame is assigned 0, the second most frequent is assigned 1, and the least frequent is assigned 2
-        frame_count_dict = {idx: count for idx, count in enumerate(sorted(frame_counts.values(), reverse=True))}
+        # The most frequent frame is assigned 0, the second most
+        # frequent is assigned 1, and the least frequent is assigned 2
+        frame_count_dict = {
+            idx: count for idx, count in enumerate(
+                sorted(frame_counts.values(), reverse=True))
+                }
 
         if read_length not in read_frame_dict:
             read_frame_dict[int(read_length)] = {0: 0, 1: 0, 2: 0}
@@ -773,68 +785,72 @@ def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict:
 
 
 def change_point_analysis(
-        read_counts: dict,
-        surrounding_range: tuple = (-30, 10),
-        ) -> int:
+        read_counts: Dict[int, int],
+        surrounding_range: Tuple[int, int] = (-30, 10),
+        window_size: int = 4,
+        significance_threshold: float = 0.01
+        ) -> Optional[int]:
     """
-    Calculate the change point for the metagene profile
-    This should reflect where the cds starts and as a result the
-    offset to apply to get a-site
+    Calculate the change point for the metagene profile using a t-test 
+    approach.
+    This should reflect where the CDS starts and as a result the offset
+    to apply to get A-site.
 
     Inputs:
         read_counts: Dictionary containing the read counts for each position
-        surrounding_range: tuple of start and stop for change point analysis
+        surrounding_range: Tuple of start and stop for change point analysis
+        window_size: Size of the window to use for t-test comparison
+        significance_threshold: P-value threshold for significance
 
     Outputs:
-        max_shift_position: The position of the change point
+        change_point: The position of the change point, or None if no
+            significant change point is found
     """
-    max_shift = 0
-    max_shift_position = None
+    max_t_statistic = 0
+    change_point = None
 
-    for i in range(surrounding_range[0], surrounding_range[1]):
-        left = []
-        for i in range(i-3, i+1):
-            if i in read_counts:
-                left.append(read_counts[i])
-            else:
-                left.append(0)
-        right = []
-        for i in range(i+1, i+5):
-            if i in read_counts:
-                right.append(read_counts[i])
-            else:
-                right.append(0)
+    positions = range(surrounding_range[0], surrounding_range[1])
+    counts = np.array([read_counts.get(pos, 0) for pos in positions])
 
-        mean_left = sum(left) / 4
-        mean_right = sum(right) / 4
-        shift = abs(mean_right - mean_left)
-        if shift > max_shift:
-            max_shift = shift
-            max_shift_position = i
-    if not max_shift_position:
-        return 15
-    return max_shift_position
+    for i in range(window_size, len(counts) - window_size):
+        left_window = counts[i-window_size:i]
+        right_window = counts[i:i+window_size]
+
+        t_statistic, p_value = stats.ttest_ind(left_window, right_window)
+
+        if sum(left_window) == 0:
+            continue
+        raise Exception(f"{p_value}\n {counts} \n {max_t_statistic}")
+
+        if abs(t_statistic) > max_t_statistic and p_value < significance_threshold:
+            max_t_statistic = abs(t_statistic)
+            change_point = positions[i]
+
+    return change_point
 
 
 def asite_calculation_per_readlength(
         annotated_read_df: pd.DataFrame,
-        offset_range: tuple = (10, 18),
-) -> dict:
+        offset_range: Tuple[int, int] = (10, 18),
+        default_offset: int = 15
+    ) -> Dict[int, int]:
     """
     Calculate offset values per read length for the A-site
-    Shoelaces based method using metagene counts
+    using an improved change point detection method.
 
-    Input:read_counts.get(i, 0) for i in range(i+1, i+5)
-        with an cds info added
-        offset_range: Range of offsets to test
+    Input:
+        annotated_read_df: DataFrame with read counts and CDS info
+        offset_range: Range of allowed offsets
+        default_offset: Default offset to use if no significant
+                        change point is found
 
     Output:
-        offset_dict: Dictionary containing the offset values for each read len
+        offset_dict: Dictionary containing the offset values for
+                    each read length
     """
-    offset_dict: dict = {}
+    offset_dict: Dict[int, int] = {}
 
     for read_length in annotated_read_df["read_length"].unique():
-        offset_dict[read_length] = {}
         read_length_metagene = metagene_profile(
             annotated_read_df[annotated_read_df["read_length"] == read_length],
             target="start",
@@ -846,7 +862,14 @@ def asite_calculation_per_readlength(
             surrounding_range=(-26, 5)
         )
 
-        offset_dict[read_length] = max(
-            offset_range[0], min(offset, offset_range[1])
-            )
+        if offset is None:
+            offset_dict[read_length] = default_offset
+        else:
+            # Check if the offset is within the allowed range
+            if offset < offset_range[0] or offset > offset_range[1]:
+                offset_dict[read_length] = max(
+                    offset_range[0],
+                    min(offset, offset_range[1])
+                    )
+
     return offset_dict
