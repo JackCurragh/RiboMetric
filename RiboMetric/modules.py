@@ -818,7 +818,7 @@ def change_point_analysis(
 
 def asite_calculation_per_readlength(
         annotated_read_df: pd.DataFrame,
-        offset_range: tuple = (10, 15),
+        offset_range: tuple = (10, 18),
 ) -> dict:
     """
     Calculate offset values per read length for the A-site
@@ -841,8 +841,12 @@ def asite_calculation_per_readlength(
             distance_range=[-30, 10],
         )
 
-        offset_dict[read_length] = change_point_analysis(
+        offset = change_point_analysis(
             read_length_metagene["start"][read_length],
             surrounding_range=(-26, 5)
         )
+
+        offset_dict[read_length] = max(
+            offset_range[0], min(offset, offset_range[1])
+            )
     return offset_dict
