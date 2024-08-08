@@ -788,7 +788,7 @@ def change_point_analysis(
         read_counts: Dict[int, int],
         surrounding_range: Tuple[int, int] = (-30, 10),
         window_size: int = 4,
-        significance_threshold: float = 0.01
+        significance_threshold: float = 0.1
         ) -> Optional[int]:
     """
     Calculate the change point for the metagene profile using a t-test 
