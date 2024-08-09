@@ -818,7 +818,7 @@ def change_point_analysis(
 
         t_statistic, p_value = stats.ttest_ind(left_window, right_window)
 
-        if abs(t_statistic) > max_t_statistic and p_value < significance_threshold:
+        if abs(t_statistic) > max_t_statistic: #and p_value < significance_threshold:
             max_t_statistic = abs(t_statistic)
             print(f"{p_value}\n {counts} \n {max_t_statistic}")
 
