@@ -849,7 +849,6 @@ def asite_calculation_per_readlength(
             distance_range=[-30, 10],
         )
 
-        print(read_length)
         change_points = change_point_analysis(
             read_length_metagene["start"][read_length],
             surrounding_range=(-26, 5)
@@ -858,16 +857,7 @@ def asite_calculation_per_readlength(
             pos: val for pos, val in change_points.items()
             if pos in range(offset_range[0], offset_range[1])
             }
-        print(accepted_change_points)
         offset = max(accepted_change_points, key=accepted_change_points.get)
-        print(offset)
-        if offset is None:
-            offset_dict[read_length] = default_offset
-        else:
-            # Check if the offset is within the allowed range
-            if offset < offset_range[0] or offset > offset_range[1]:
-                offset_dict[read_length] = max(
-                    offset_range[0],
-                    min(abs(offset), offset_range[1])
-                    )
+        offset_dict[read_length] = offset
+
     return offset_dict
