@@ -807,7 +807,7 @@ def change_point_analysis(
             significant change point is found
     """
     max_t_statistic = 0
-    change_point = None
+    change_points = {}
 
     positions = range(surrounding_range[0], surrounding_range[1])
     counts = np.array([read_counts.get(pos, 0) for pos in positions])
@@ -817,13 +817,13 @@ def change_point_analysis(
         right_window = counts[i:i+window_size]
 
         t_statistic, p_value = stats.ttest_ind(left_window, right_window)
+        change_points[positions[i]] = (abs(t_statistic), p_value)
 
-        if abs(t_statistic) > max_t_statistic: #and p_value < significance_threshold:
-            max_t_statistic = abs(t_statistic)
-
-            change_point = positions[i]
-    print(f"{p_value}\n {counts} \n {max_t_statistic}\n{change_point}")
-
+    for position, (t_statistic, p_value) in change_points.items():
+        if p_value < significance_threshold and t_statistic > max_t_statistic:
+            max_t_statistic = t_statistic
+            change_point = position
+        print(position, t_statistic, p_value)
     print()
     return change_point
 
@@ -832,7 +832,7 @@ def asite_calculation_per_readlength(
         annotated_read_df: pd.DataFrame,
         offset_range: Tuple[int, int] = (10, 18),
         default_offset: int = 15
-    ) -> Dict[int, int]:
+        ) -> Dict[int, int]:
     """
     Calculate offset values per read length for the A-site
     using an improved change point detection method.
@@ -871,7 +871,4 @@ def asite_calculation_per_readlength(
                     offset_range[0],
                     min(abs(offset), offset_range[1])
                     )
-
-    for i in offset_dict.items():
-        print(i)
     return offset_dict
