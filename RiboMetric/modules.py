@@ -789,7 +789,7 @@ def change_point_analysis(
         surrounding_range: Tuple[int, int] = (-30, 10),
         window_size: int = 4,
         significance_threshold: float = 0.1
-        ) -> Optional[int]:
+        ) -> Optional[Dict[int, int]]:
     """
     Calculate the change point for the metagene profile using a t-test 
     approach.
@@ -806,7 +806,6 @@ def change_point_analysis(
         change_point: The position of the change point, or None if no
             significant change point is found
     """
-    max_t_statistic = 0
     change_points = {}
 
     positions = range(surrounding_range[0], surrounding_range[1])
@@ -816,16 +815,10 @@ def change_point_analysis(
         left_window = counts[i-window_size:i]
         right_window = counts[i:i+window_size]
 
-        t_statistic, p_value = stats.ttest_ind(left_window, right_window)
-        change_points[positions[i]] = (abs(t_statistic), p_value)
+        t_statistic, _ = stats.ttest_ind(left_window, right_window)
+        change_points[positions[i]] = abs(t_statistic)
 
-    for position, (t_statistic, p_value) in change_points.items():
-        if p_value < significance_threshold and t_statistic > max_t_statistic:
-            max_t_statistic = t_statistic
-            change_point = position
-        print(position, t_statistic, p_value)
-    print()
-    return change_point
+    return change_points
 
 
 def asite_calculation_per_readlength(
@@ -857,11 +850,17 @@ def asite_calculation_per_readlength(
         )
 
         print(read_length)
-        offset = change_point_analysis(
+        change_points = change_point_analysis(
             read_length_metagene["start"][read_length],
             surrounding_range=(-26, 5)
         )
-
+        accepted_change_points = {
+            pos: val for pos, val in change_points.items()
+            if pos in range(offset_range[0], offset_range[1])
+            }
+        print(accepted_change_points)
+        offset = max(accepted_change_points, key=accepted_change_points.get)
+        print(offset)
         if offset is None:
             offset_dict[read_length] = default_offset
         else:
