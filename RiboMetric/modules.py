@@ -869,7 +869,7 @@ def asite_calculation_per_readlength(
             if offset < offset_range[0] or offset > offset_range[1]:
                 offset_dict[read_length] = max(
                     offset_range[0],
-                    min(offset, offset_range[1])
+                    min(abs(offset), offset_range[1])
                     )
 
     for i in offset_dict.items():
