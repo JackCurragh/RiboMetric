@@ -820,9 +820,10 @@ def change_point_analysis(
 
         if abs(t_statistic) > max_t_statistic: #and p_value < significance_threshold:
             max_t_statistic = abs(t_statistic)
-            print(f"{p_value}\n {counts} \n {max_t_statistic}")
 
             change_point = positions[i]
+    print(f"{p_value}\n {counts} \n {max_t_statistic}\n{change_point}")
+
     print()
     return change_point
 
