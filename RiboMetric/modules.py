@@ -854,8 +854,8 @@ def asite_calculation_per_readlength(
             surrounding_range=(-26, 5)
         )
         accepted_change_points = {
-            pos: val for pos, val in change_points.items()
-            if pos in range(offset_range[0], offset_range[1])
+            abs(pos): val for pos, val in change_points.items()
+            if abs(pos) in range(offset_range[0], offset_range[1])
             }
         offset = max(accepted_change_points, key=accepted_change_points.get)
         offset_dict[read_length] = offset
