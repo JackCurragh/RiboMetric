@@ -249,7 +249,7 @@ def main(args):
                                              offset_file=config["argument"][
                                                  "offset_read_length"],
                                              offset_type="read_length")
-            elif ("offset_read_specific" in config['arugument']):
+            elif ("offset_read_specific" in config['argument']):
                 read_df = a_site_calculation(read_df,
                                              offset_file=config["argument"][
                                                  "offset_read_specific"],
