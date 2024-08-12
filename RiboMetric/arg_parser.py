@@ -67,6 +67,24 @@ def argument_parser():
         help="Path to the transcriptome fasta file",
     )
     run_parser.add_argument(
+        "--offset-read-length",
+        type=str,
+        required=False,
+        help="Path to the tsv file of read length specific offsets format: read_length <tab> offset",
+    )
+    run_parser.add_argument(
+        "--offset-read-specific",
+        type=str,
+        required=False,
+        help="Path to the tsv file of read specific offsets format: read_name <tab> offset",
+    )
+    run_parser.add_argument(
+        "--global-offset",
+        type=int,
+        required=False,
+        help="Global offset to be used for all read lengths",
+    )
+    run_parser.add_argument(
         "--json-config",
         action="store_true",
         default=False,

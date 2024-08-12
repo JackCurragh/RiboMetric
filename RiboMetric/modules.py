@@ -31,19 +31,28 @@ def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
     return cds_read_df
 
 
-def a_site_calculation(read_df: pd.DataFrame, offset=12) -> pd.DataFrame:
+def a_site_calculation(read_df: pd.DataFrame,
+                       offset_file: str = "None",
+                       offset_type: str = "calculate",
+                       global_offset: int = 15) -> pd.DataFrame:
     """
     Adds a column to the read_df containing the A-site for the reads
 
     Inputs:
         read_df: Dataframe containing the read information
-        offset: Offset from the start of the read to the A-site (Default = 15)
+        offset_file: Path to a file containing offsets for each read length
+        offset_type: Method to calculate offsets
+                     Options: 'calculate', 'variable', 'file'
 
     Outputs:
         asite_df: Dataframe containing the read information with an added
                     column for the A-site
     """
-    a_site_df = read_df.assign(a_site=read_df.reference_start.add(offset))
+    if offset_type == "calculate":
+        a_site_df = a_site_calculation_variable_offset(read_df)
+    elif offset_type == "read_length":
+        a_site_df = a_site_calculation_variable_offset(read_df, offset_file)
+    a_site_df = read_df.assign(a_site=read_df.reference_start.add(global_offset))
     return a_site_df
 
 
@@ -84,7 +93,6 @@ def a_site_calculation_variable_offset(
 
     # Calculate A-site based on offset for each read
     a_site_df = read_df.assign(a_site=read_df['reference_start'] + offset)
-    a_site_df.to_csv('a_site_df_offsets.csv')
     return a_site_df
 
 
