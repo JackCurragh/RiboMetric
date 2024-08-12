@@ -49,6 +49,7 @@ def a_site_calculation(read_df: pd.DataFrame,
                     column for the A-site
     """
     print("asite_calc global offset; ", global_offset)
+    print(read_df.head())
     if offset_type == "calculate":
         a_site_df = a_site_calculation_variable_offset(read_df)
     elif offset_type == "read_length":
