@@ -51,11 +51,20 @@ def a_site_calculation(read_df: pd.DataFrame,
     print("asite_calc global offset; ", global_offset)
     print(read_df.head())
     if offset_type == "calculate":
+        print("Calculating offsets")
         a_site_df = a_site_calculation_variable_offset(read_df)
     elif offset_type == "read_length":
-        a_site_df = a_site_calculation_variable_offset(read_df, offset_file)
+        print("Using read length specific offsets")
+        offset_dict = {
+            int(row[0]): int(row[1])
+            for row in pd.read_csv(offset_file, sep="\t").values
+        }
+
+        a_site_df = a_site_calculation_variable_offset(read_df, offset_dict)
     else:
-        a_site_df = read_df.assign(a_site=read_df.reference_start.add(global_offset))
+        a_site_df = read_df.assign(
+            a_site=read_df.reference_start.add(global_offset)).assign(
+                offset=global_offset)
     return a_site_df
 
 
@@ -87,6 +96,8 @@ def a_site_calculation_variable_offset(
             length: offset_dict.get(length, 15)
             for length in read_df['read_length'].unique()
             }
+        print("offset_mapping: ", offset_mapping)
+        print("offset_dict: ", offset_dict)
         # Map offsets to corresponding read lengths
         read_df['offset'] = read_df['read_length'].map(offset_mapping)
         read_df['offset'] = read_df['offset'].astype('int64')

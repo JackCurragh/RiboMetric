@@ -251,7 +251,6 @@ def main(args):
                                              offset_type="read_length")
             elif ("global_offset" in config["argument"]):
                 print(config["argument"])
-                
                 read_df = a_site_calculation(read_df,
                                              global_offset=config["argument"][
                                                 "global_offset"],
@@ -265,7 +264,7 @@ def main(args):
                                              offset_type="read_specific",
                                              )
             else:
-                read_df = a_site_calculation(read_df)
+                read_df = a_site_calculation(read_df, offset_type="global")
 
             if (config["argument"]["gff"] is None and
                     config["argument"]["annotation"] is None):
