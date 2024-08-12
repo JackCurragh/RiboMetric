@@ -82,6 +82,7 @@ def argument_parser():
         "--global-offset",
         type=int,
         required=False,
+        default=15,
         help="Global offset to be used for all read lengths",
     )
     run_parser.add_argument(
