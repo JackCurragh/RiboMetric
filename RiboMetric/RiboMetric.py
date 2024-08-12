@@ -250,7 +250,7 @@ def main(args):
                                                  "offset_read_length"],
                                              offset_type="read_length")
             elif ("global_offset" in config["argument"]):
-                print(global_offset=config["argument"])
+                print(config["argument"])
                 
                 read_df = a_site_calculation(read_df,
                                              global_offset=config["argument"][
