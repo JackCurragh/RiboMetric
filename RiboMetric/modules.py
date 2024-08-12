@@ -48,11 +48,13 @@ def a_site_calculation(read_df: pd.DataFrame,
         asite_df: Dataframe containing the read information with an added
                     column for the A-site
     """
+    print("asite_calc global offset; ", global_offset)
     if offset_type == "calculate":
         a_site_df = a_site_calculation_variable_offset(read_df)
     elif offset_type == "read_length":
         a_site_df = a_site_calculation_variable_offset(read_df, offset_file)
-    a_site_df = read_df.assign(a_site=read_df.reference_start.add(global_offset))
+    else:
+        a_site_df = read_df.assign(a_site=read_df.reference_start.add(global_offset))
     return a_site_df
 
 
