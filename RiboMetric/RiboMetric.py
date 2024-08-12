@@ -243,29 +243,6 @@ def main(args):
 
             del read_df_pre
 
-            print("Calculating A site information...")
-            if ("offset_read_length" in config["argument"]):
-                read_df = a_site_calculation(read_df,
-                                             offset_file=config["argument"][
-                                                 "offset_read_length"],
-                                             offset_type="read_length")
-            elif ("global_offset" in config["argument"]):
-                print(config["argument"])
-                read_df = a_site_calculation(read_df,
-                                             global_offset=config["argument"][
-                                                "global_offset"],
-                                             )
-                print(read_df.head())
-
-            elif ("offset_read_specific" in config['argument']):
-                read_df = a_site_calculation(read_df,
-                                             offset_file=config["argument"][
-                                                 "offset_read_specific"],
-                                             offset_type="read_specific",
-                                             )
-            else:
-                read_df = a_site_calculation(read_df, offset_type="global")
-
             if (config["argument"]["gff"] is None and
                     config["argument"]["annotation"] is None):
                 results_dict = annotation_mode(read_df,
