@@ -244,12 +244,12 @@ def main(args):
             del read_df_pre
             print("Calculating A site information...")
 
-            if ("offset_read_length" not in config["argument"]):
+            if ("offset_read_length" in config["argument"]):
                 read_df = a_site_calculation(read_df,
                                              offset_file=config["argument"][
                                                  "offset_read_length"],
                                              offset_type="read_length")
-            elif ("offset_read_specific" not in config['arugument']):
+            elif ("offset_read_specific" in config['arugument']):
                 read_df = a_site_calculation(read_df,
                                              offset_file=config["argument"][
                                                  "offset_read_specific"],
