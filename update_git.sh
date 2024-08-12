@@ -1,5 +1,5 @@
 git add . 
-git commit -m "auto-update"
+git commit -m "${1}"
 git push
 
 pip uninstall RiboMetric -y
