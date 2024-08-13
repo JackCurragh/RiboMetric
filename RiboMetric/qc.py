@@ -99,20 +99,23 @@ def annotation_mode(
                                      offset_type="global",
                                      )
 
-    else:
-        read_df = a_site_calculation(read_df, offset_type="global")
-
     if len(annotation_df) > 0:
         annotation = True
         print("Merging annotation and reads")
-        annotated_read_df = chunked_annotate_reads(read_df, annotation_df)
+        if "a_site" not in read_df.columns:
+            read_df = a_site_calculation(read_df, offset_type="global")
+            annotated_read_df = chunked_annotate_reads(read_df, annotation_df)
 
-        print("assigning mRNA categories")
-        annotated_read_df = assign_mRNA_category(annotated_read_df)
-        offsets = asite_calculation_per_readlength(annotated_read_df)
-        annotated_read_df = a_site_calculation_variable_offset(
-            annotated_read_df, offsets
-            )
+            print("assigning mRNA categories")
+            annotated_read_df = assign_mRNA_category(annotated_read_df)
+            offsets = asite_calculation_per_readlength(annotated_read_df)
+            annotated_read_df = a_site_calculation_variable_offset(
+                annotated_read_df, offsets
+                )
+        else:
+            annotated_read_df = chunked_annotate_reads(read_df, annotation_df)
+            annotated_read_df = assign_mRNA_category(annotated_read_df)
+
         print("Subsetting to CDS reads")
         cds_read_df = read_df_to_cds_read_df(annotated_read_df)
         if cds_read_df.empty:
@@ -121,6 +124,8 @@ def annotation_mode(
 
     else:
         annotation = False
+        read_df = a_site_calculation(read_df, offset_type="global")
+
     print("Running modules")
 
     results_dict: Dict[str, Any] = {

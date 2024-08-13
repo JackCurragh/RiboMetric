@@ -62,7 +62,6 @@ from .file_parser import (
 from .arg_parser import argument_parser, open_config
 from .qc import annotation_mode, sequence_mode
 from .plots import generate_plots
-from .modules import a_site_calculation
 from .html_report import generate_report, parse_json_input
 from .results_output import generate_json, generate_csv
 
