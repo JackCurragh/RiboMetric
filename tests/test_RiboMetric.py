@@ -108,6 +108,7 @@ def test_main_run_readlength_offsets():
         annotation=f"{file_path}/1000_entry_RiboMetric.tsv",
         bam=f"{file_path}/test.bam",
         output=f"{file_path}",
+        offset_read_length=f"{file_path}/offset_read_length.tsv",
         config=f"{file_path}/../../config.yml",
         all=False,
         gff=None,
@@ -129,7 +130,7 @@ def test_main_run_readlength_offsets():
     output = sys.stdout.getvalue()
 
     # Assert that the expected output was produced
-    assert 'Annotation parsed' in output
+    assert 'Applying specified read length specific offsets' in output
     assert 'Running modules' in output
 
 
@@ -141,8 +142,8 @@ def test_main_run_readspecific_offsets():
         annotation=f"{file_path}/1000_entry_RiboMetric.tsv",
         bam=f"{file_path}/test.bam",
         output=f"{file_path}",
+        offset_read_specific=f"{file_path}/offset_read_specific.tsv",
         config=f"{file_path}/../../config.yml",
-        offset_read_length=f"{file_path}/offset_read_length.tsv",
         all=False,
         gff=None,
         fasta=None,
@@ -163,7 +164,7 @@ def test_main_run_readspecific_offsets():
     output = sys.stdout.getvalue()
 
     # Assert that the expected output was produced
-    assert 'Annotation parsed' in output
+    assert 'Applying read specific offsets' in output
     assert 'Running modules' in output
 
 
@@ -197,5 +198,5 @@ def test_main_run_global_offsets():
     output = sys.stdout.getvalue()
 
     # Assert that the expected output was produced
-    assert 'Annotation parsed' in output
+    assert 'Applying global offset' in output
     assert 'Running modules' in output
