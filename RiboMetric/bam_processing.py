@@ -220,7 +220,7 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
         batch_df: Dataframe containing a processed batch of reads
     """
     batch_df = pd.DataFrame()
-    print(oxbow_df.head())
+    batch_df['read_name'] = oxbow_df["qname"].astype("category")
     batch_df["read_length"] = pd.Series(oxbow_df["end"] - oxbow_df["pos"] + 1,
                                         dtype="category")
     batch_df["reference_name"] = oxbow_df["rname"].astype("category")
