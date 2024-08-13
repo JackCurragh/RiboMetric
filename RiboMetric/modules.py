@@ -52,7 +52,6 @@ def a_site_calculation(read_df: pd.DataFrame,
         print("Calculating offsets")
         a_site_df = a_site_calculation_variable_offset(read_df)
     elif offset_type == "read_length":
-        print("Using read length specific offsets")
         offset_dict = {
             int(row[0]): int(row[1])
             for row in pd.read_csv(offset_file, sep="\t").values
@@ -63,7 +62,6 @@ def a_site_calculation(read_df: pd.DataFrame,
             a_site=read_df.reference_start.add(global_offset)).assign(
                 offset=global_offset)
     elif offset_type == "read_specific":
-        print("Using read-specific offsets")
         read_offsets = pd.read_csv(
             offset_file,
             sep="\t",
@@ -76,7 +74,6 @@ def a_site_calculation(read_df: pd.DataFrame,
         merged_df['a_site'] = merged_df['reference_start'] + merged_df['offset']
 
         a_site_df = merged_df[read_df.columns.tolist() + ['a_site', 'offset']]
-        print(a_site_df)
     else:
         a_site_df = read_df.assign(
             a_site=read_df.reference_start.add(global_offset)).assign(
@@ -112,8 +109,7 @@ def a_site_calculation_variable_offset(
             length: offset_dict.get(length, 15)
             for length in read_df['read_length'].unique()
             }
-        print("offset_mapping: ", offset_mapping)
-        print("offset_dict: ", offset_dict)
+
         # Map offsets to corresponding read lengths
         read_df['offset'] = read_df['read_length'].map(offset_mapping)
         read_df['offset'] = read_df['offset'].astype('int64')
