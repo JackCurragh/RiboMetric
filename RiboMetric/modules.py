@@ -48,8 +48,6 @@ def a_site_calculation(read_df: pd.DataFrame,
         asite_df: Dataframe containing the read information with an added
                     column for the A-site
     """
-    print("asite_calc global offset; ", global_offset)
-    print(read_df.head())
     if offset_type == "calculate":
         print("Calculating offsets")
         a_site_df = a_site_calculation_variable_offset(read_df)
@@ -59,8 +57,26 @@ def a_site_calculation(read_df: pd.DataFrame,
             int(row[0]): int(row[1])
             for row in pd.read_csv(offset_file, sep="\t").values
         }
-
         a_site_df = a_site_calculation_variable_offset(read_df, offset_dict)
+    elif offset_type == "global":
+        a_site_df = read_df.assign(
+            a_site=read_df.reference_start.add(global_offset)).assign(
+                offset=global_offset)
+    elif offset_type == "read_specific":
+        print("Using read-specific offsets")
+        read_offsets = pd.read_csv(
+            offset_file,
+            sep="\t",
+            names=['read_name', 'offset']
+            )
+
+        merged_df = read_df.merge(read_offsets, on='read_name', how='left')
+
+        merged_df['offset'] = merged_df['offset'].fillna(global_offset)
+        merged_df['a_site'] = merged_df['reference_start'] + merged_df['offset']
+
+        a_site_df = merged_df[read_df.columns.tolist() + ['a_site', 'offset']]
+        print(a_site_df)
     else:
         a_site_df = read_df.assign(
             a_site=read_df.reference_start.add(global_offset)).assign(
