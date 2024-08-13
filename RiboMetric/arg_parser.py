@@ -83,7 +83,7 @@ def argument_parser():
         type=int,
         required=False,
         default=15,
-        help="Global offset to be used for all read lengths",
+        help="Global offset to be used for all read lengths (default: 15)",
     )
     run_parser.add_argument(
         "--json-config",
