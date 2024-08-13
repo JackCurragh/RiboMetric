@@ -83,13 +83,6 @@ def annotation_mode(
                                      offset_file=config["argument"][
                                             "offset_read_length"],
                                      offset_type="read_length")
-    elif ("global_offset" in config["argument"]):
-        print("Applying global offset")
-        read_df = a_site_calculation(read_df,
-                                     global_offset=config["argument"][
-                                        "global_offset"],
-                                     offset_type="global",
-                                     )
 
     elif ("offset_read_specific" in config['argument']):
         print("Applying read specific offsets")
@@ -98,6 +91,14 @@ def annotation_mode(
                                             "offset_read_specific"],
                                      offset_type="read_specific",
                                      )
+    elif ("global_offset" in config["argument"]):
+        print("Applying global offset")
+        read_df = a_site_calculation(read_df,
+                                     global_offset=config["argument"][
+                                        "global_offset"],
+                                     offset_type="global",
+                                     )
+
     else:
         read_df = a_site_calculation(read_df, offset_type="global")
 
