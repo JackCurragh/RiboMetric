@@ -78,12 +78,13 @@ def annotation_mode(
     """
     print("Calculating A site information...")
     if ("offset_read_length" in config["argument"]):
+        print("Applying specified read length specific offsets")
         read_df = a_site_calculation(read_df,
                                      offset_file=config["argument"][
                                             "offset_read_length"],
                                      offset_type="read_length")
     elif ("global_offset" in config["argument"]):
-        print(config["argument"])
+        print("Applying global offset")
         read_df = a_site_calculation(read_df,
                                      global_offset=config["argument"][
                                         "global_offset"],
@@ -91,6 +92,7 @@ def annotation_mode(
         print(read_df.head())
 
     elif ("offset_read_specific" in config['argument']):
+        print("Applying read specific offsets")
         read_df = a_site_calculation(read_df,
                                      offset_file=config["argument"][
                                             "offset_read_specific"],
@@ -98,6 +100,7 @@ def annotation_mode(
                                      )
     else:
         read_df = a_site_calculation(read_df, offset_type="global")
+
     if len(annotation_df) > 0:
         annotation = True
         print("Merging annotation and reads")

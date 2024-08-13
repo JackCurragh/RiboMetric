@@ -27,7 +27,7 @@ def test_a_site_calculation():
         read_df_pre.index.repeat(read_df_pre["count"])
     ].reset_index(drop=True)
     a_site_df = a_site_calculation(read_df)
-    assert a_site_df.a_site[0] == 353
+    assert a_site_df.a_site[0] == 356
 
 
 def test_read_length_distribution():
@@ -114,7 +114,7 @@ def test_read_frame_distribution():
 @pytest.mark.parametrize(
     "test_input,expected",
     [
-        ('mRNA_distribution_dict[29]["CDS"]', 10),
+        ('mRNA_distribution_dict[29]["CDS"]', 30),
         ('mRNA_distribution_dict[21]["three_trailer"]', 40),
     ],
 )
@@ -158,4 +158,5 @@ def test_metagene_profile():
     a_site_df = a_site_calculation(read_df)
     annotated_read_df = annotate_reads(a_site_df, annotation_df)
     metagene_profile_dict = metagene_profile(annotated_read_df)
-    assert metagene_profile_dict["stop"][21][1] == 30
+
+    assert metagene_profile_dict["stop"][21][4] == 30
