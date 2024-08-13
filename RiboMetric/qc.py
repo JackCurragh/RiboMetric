@@ -88,8 +88,8 @@ def annotation_mode(
         read_df = a_site_calculation(read_df,
                                      global_offset=config["argument"][
                                         "global_offset"],
+                                     offset_type="global",
                                      )
-        print(read_df.head())
 
     elif ("offset_read_specific" in config['argument']):
         print("Applying read specific offsets")
