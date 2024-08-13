@@ -222,9 +222,6 @@ def split_gff_df(gff_df: pd.DataFrame, split_num: int) -> list:
             next_transcript_id = gff_df["transcript_id"].iloc[upper_limit
                                                               + offset]
 
-        # print("="*50)
-        # print(last_transcript_id, next_transcript_id, offset)
-
         split_df = gff_df.iloc[lower_limit + prev_offset:
                                upper_limit + offset]
         prev_offset = offset
