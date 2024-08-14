@@ -954,7 +954,7 @@ def asite_calculation_per_readlength(
                     each read length
     """
     offset_dict: Dict[int, int] = {}
-
+    print(f"Running A-site calculation per read length with {method} method")
     for read_length in annotated_read_df["read_length"].unique():
         read_length_metagene = metagene_profile(
             annotated_read_df[annotated_read_df["read_length"] == read_length],
@@ -988,5 +988,6 @@ def asite_calculation_per_readlength(
             raise ValueError(f"Invalid method: {method}")
 
         offset_dict[read_length] = abs(offset)
+        print(offset_dict)
 
     return offset_dict
