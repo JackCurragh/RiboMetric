@@ -982,7 +982,8 @@ def asite_calculation_per_readlength(
                 )[read_length]
             if psite_offset is None:
                 offset = default_offset
-            offset = psite_offset + 3  # Convert to A-site offset
+            else:
+                offset = psite_offset + 3  # Convert to A-site offset
         else:
             raise ValueError(f"Invalid method: {method}")
 
