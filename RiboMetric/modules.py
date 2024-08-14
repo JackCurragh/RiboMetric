@@ -858,57 +858,80 @@ def change_point_analysis(
 def ribowaltz_psite_prediction(read_counts, flanking_length=9):
     """
     Predict P-site offsets for each read length using the riboWaltz algorithm.
-
+    
     Args:
         read_counts (dict): Dictionary of read counts per position for each read length.
                             Format: {read_length: {position: count}}
         flanking_length (int): Number of nucleotides to exclude on each side of the start codon.
                                Default is 9.
-
+                               
     Returns:
         psite_offsets (dict): Dictionary of P-site offsets for each read length.
                               Format: {read_length: offset}
     """
     psite_offsets = {}
     read_lengths = sorted(read_counts.keys())
+    
     # Step 1: Determine temporary P-site offsets for each read length
     temp_offsets = {}
     for read_length in read_lengths:
         counts = read_counts[read_length]
         positions = sorted(counts.keys())
-
+        
         # Exclude counts within flanking_length of start codon
         left_pos = [p for p in positions if p < -flanking_length]
         right_pos = [p for p in positions if p > flanking_length]
-
+        
         left_counts = [counts[p] for p in left_pos]
         right_counts = [counts[p] for p in right_pos]
-
-        left_max_idx = np.argmax(left_counts)
-        right_max_idx = np.argmax(right_counts) + len(left_pos)
-
-        temp_offsets[read_length] = (
-            left_pos[left_max_idx], positions[right_max_idx]
-            )
-
+        
+        if left_counts:
+            left_max_idx = np.argmax(left_counts)
+            left_offset = left_pos[left_max_idx]
+        else:
+            left_offset = None
+        
+        if right_counts:  
+            right_max_idx = np.argmax(right_counts)
+            right_offset = right_pos[right_max_idx]
+        else:
+            right_offset = None
+        
+        temp_offsets[read_length] = (left_offset, right_offset)
+        
     # Step 2: Determine optimal P-site offset
     offset_counts = {}
     for offset_5p, offset_3p in temp_offsets.values():
-        offset = abs(offset_5p) if abs(offset_5p) <= abs(offset_3p) else abs(offset_3p)
-        offset_counts[offset] = offset_counts.get(offset, 0) + 1
-
-    optimal_offset = max(offset_counts, key=offset_counts.get)
-
+        if offset_5p is not None and offset_3p is not None:
+            offset = min(abs(offset_5p), abs(offset_3p))
+            offset_counts[offset] = offset_counts.get(offset, 0) + 1
+        elif offset_5p is not None:
+            offset_counts[abs(offset_5p)] = offset_counts.get(abs(offset_5p), 0) + 1
+        elif offset_3p is not None:
+            offset_counts[abs(offset_3p)] = offset_counts.get(abs(offset_3p), 0) + 1
+    
+    if offset_counts:
+        optimal_offset = max(offset_counts, key=offset_counts.get)
+    else:
+        optimal_offset = None
+    
     # Step 3: Correct temporary offsets for each read length
     for read_length in read_lengths:
         offset_5p, offset_3p = temp_offsets[read_length]
-
-        if abs(offset_5p - optimal_offset) <= abs(offset_3p - optimal_offset):
+        
+        if offset_5p is None and offset_3p is None:
+            psite_offsets[read_length] = None
+        elif offset_5p is None:
+            psite_offsets[read_length] = offset_3p
+        elif offset_3p is None:
             psite_offsets[read_length] = offset_5p
         else:
-            psite_offsets[read_length] = offset_3p
+            if abs(offset_5p - optimal_offset) <= abs(offset_3p - optimal_offset):
+                psite_offsets[read_length] = offset_5p
+            else:
+                psite_offsets[read_length] = offset_3p
+            
     return psite_offsets
-
 
 def asite_calculation_per_readlength(
         annotated_read_df: pd.DataFrame,
