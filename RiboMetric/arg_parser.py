@@ -79,7 +79,7 @@ def argument_parser():
         help="Path to the tsv file of read specific offsets format: read_name <tab> offset",
     )
     run_parser.add_argument(
-        "--global-offset",
+        "--offset-global",
         type=int,
         required=False,
         default=15,
@@ -95,7 +95,7 @@ def argument_parser():
         "--server",
         action="store_true",
         default=False,
-        help="""Runs RiboMetric in 'server' mode, higher speed at 
+        help="""Runs RiboMetric in 'server' mode, higher speed at
                 cost of memory efficiency""",
     )
     run_parser.add_argument(
