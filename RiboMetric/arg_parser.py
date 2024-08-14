@@ -86,6 +86,13 @@ def argument_parser():
         help="Global offset to be used for all read lengths (default: 15)",
     )
     run_parser.add_argument(
+        "--offset-calculation-method",
+        type=str,
+        required=False,
+        default="changepoint",
+        help="Method to calculate offsets (default: changepoint) [changepoint, ribowaltz]",
+    )
+    run_parser.add_argument(
         "--json-config",
         action="store_true",
         default=False,
