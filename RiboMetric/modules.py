@@ -640,6 +640,7 @@ def metagene_profile(
     target: str = "both",
     distance_range: list = [-50, 50],
     position: str = "a_site",
+    extend: bool = False,
 ) -> dict:
     """
     Groups the reads by read_length and distance to a target and counts them
@@ -650,6 +651,8 @@ def metagene_profile(
         the annotation file
         target: Target from which the distance is calculated
         distance_range: The range of the plot
+        position: The position to plot
+        extend: Extend the range to include all read lengths
 
     Outputs:
         metagene_profile_dict: dictionary containing the read_length of
@@ -673,18 +676,24 @@ def metagene_profile(
             .to_dict()
         )
 
-        if pre_metaprofile_dict == {}:  # If no reads in range
+        if pre_metaprofile_dict == {} and extend:  # If no reads in range
             pre_metaprofile_dict = (
                 annotated_read_df.groupby(["read_length", "metagene_info"])
                 .size()
                 .to_dict()
             )
+        else:
+            return {
+                "start": {0: 0},
+                "stop": {0: 0}
+            }
+
         # Fill empty read lengths with 0
         min_length = int(min([x[0] for x
                               in list(pre_metaprofile_dict.keys())]))
         max_length = int(max([x[0] for x
                               in list(pre_metaprofile_dict.keys())]))
-        print("MIN MAX LEN METAPROFILE", min_length, max_length, distance_range)
+
         for y in range(min_length, max_length):
             if y not in [x[0] for x in list(pre_metaprofile_dict.keys())]:
                 pre_metaprofile_dict[(y, 0)] = 0
@@ -991,6 +1000,7 @@ def asite_calculation_per_readlength(
             annotated_read_df[annotated_read_df["read_length"] == read_length],
             target="start",
             distance_range=[-30, 10],
+            extend=False
         )
         if method == "changepoint":
             change_points = change_point_analysis(
