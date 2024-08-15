@@ -962,9 +962,10 @@ def trips_asite_prediction(
 
     asite_offsets = {}
     for read_length, counts in read_counts.items():
+        print(read_length)
         print(counts)
         if counts:
-            max_pos = max(counts, key=counts.get) - 2
+            max_pos = max(counts, key=counts.get)
         else:
             max_pos = None
         print(max_pos)
@@ -1030,6 +1031,7 @@ def asite_calculation_per_readlength(
                 offset = default_offset
             else:
                 offset = psite_offset + 3  # Convert to A-site offset
+
         elif method == "tripsviz":
             print("Running Trips-Viz A-site prediction")
             offset = trips_asite_prediction(
