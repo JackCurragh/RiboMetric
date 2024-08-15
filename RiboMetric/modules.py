@@ -684,6 +684,7 @@ def metagene_profile(
                               in list(pre_metaprofile_dict.keys())]))
         max_length = int(max([x[0] for x
                               in list(pre_metaprofile_dict.keys())]))
+        print("MIN MAX LEN METAPROFILE", min_length, max_length, distance_range)
         for y in range(min_length, max_length):
             if y not in [x[0] for x in list(pre_metaprofile_dict.keys())]:
                 pre_metaprofile_dict[(y, 0)] = 0
