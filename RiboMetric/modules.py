@@ -962,6 +962,8 @@ def trips_asite_prediction(
 
     asite_offsets = {}
     for read_length, counts in read_counts.items():
+        # exclude counts within 10 nt of the start codon
+        counts = {pos: count for pos, count in counts.items() if abs(pos) < 10}
         print(read_length)
         print(counts)
         if counts:
