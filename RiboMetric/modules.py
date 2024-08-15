@@ -676,17 +676,18 @@ def metagene_profile(
             .to_dict()
         )
 
-        if pre_metaprofile_dict == {} and extend:  # If no reads in range
-            pre_metaprofile_dict = (
-                annotated_read_df.groupby(["read_length", "metagene_info"])
-                .size()
-                .to_dict()
-            )
-        else:
-            return {
-                "start": {0: 0},
-                "stop": {0: 0}
-            }
+        if pre_metaprofile_dict == {}:
+            if extend:  # If no reads in range
+                pre_metaprofile_dict = (
+                    annotated_read_df.groupby(["read_length", "metagene_info"])
+                    .size()
+                    .to_dict()
+                )
+            else:
+                return {
+                    "start": {0: 0},
+                    "stop": {0: 0}
+                }
 
         # Fill empty read lengths with 0
         min_length = int(min([x[0] for x
@@ -1002,6 +1003,10 @@ def asite_calculation_per_readlength(
             distance_range=[-30, 10],
             extend=False
         )
+        if read_length not in read_length_metagene["start"]:
+            offset_dict[read_length] = default_offset
+            continue
+
         if method == "changepoint":
             change_points = change_point_analysis(
                 read_length_metagene["start"][read_length],
