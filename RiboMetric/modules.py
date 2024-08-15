@@ -1003,7 +1003,7 @@ def asite_calculation_per_readlength(
         read_length_metagene = metagene_profile(
             annotated_read_df[annotated_read_df["read_length"] == read_length],
             target="start",
-            distance_range=[-30, 10],
+            distance_range=[-50, 20],
             extend=False
         )
         if read_length not in read_length_metagene["start"]:
