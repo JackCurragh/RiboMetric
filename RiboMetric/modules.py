@@ -933,6 +933,34 @@ def ribowaltz_psite_prediction(read_counts, flanking_length=9):
             
     return psite_offsets
 
+
+def trips_asite_prediction(
+        read_counts: Dict[int, Dict[int, int]],
+        ) -> Dict[int, int]:
+    """
+    Predict A-site offsets for each read length using the Trips-Viz algorithm.
+
+    Args:
+        read_counts (dict): Dictionary of read counts per position for each read length.
+                            Format: {read_length: {position: count}}
+
+    Returns:
+        asite_offsets (dict): Dictionary of A-site offsets for each read length.
+                              Format: {read_length: offset}
+    """
+
+    asite_offsets = {}
+    for read_length, counts in read_counts.items():
+        if counts:
+            max_pos = max(counts, key=counts.get) - 2
+        else:
+            max_pos = None
+
+        asite_offsets[read_length] = max_pos
+
+    return asite_offsets
+
+
 def asite_calculation_per_readlength(
         annotated_read_df: pd.DataFrame,
         method: str = "ribowaltz",
@@ -984,6 +1012,15 @@ def asite_calculation_per_readlength(
                 offset = default_offset
             else:
                 offset = psite_offset + 3  # Convert to A-site offset
+        elif method == "tripsviz":
+            print("Running Trips-Viz A-site prediction")
+            offset = trips_asite_prediction(
+                {read_length: read_length_metagene["start"][read_length]}
+            )[read_length]
+
+            if offset is None:
+                offset = default_offset
+
         else:
             raise ValueError(f"Invalid method: {method}")
 
