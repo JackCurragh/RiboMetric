@@ -16,6 +16,7 @@ argument:
   pdf: False                  # Output PDF report
   json: False                 # Output results as JSON
   csv: False                  # Output metrics as CSV
+  offset_calculation_method: "changepoint"
 
 plots:
   # Controls general plot theming and specific plot options

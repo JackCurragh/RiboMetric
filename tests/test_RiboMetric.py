@@ -52,6 +52,7 @@ def test_main_run():
         html=True,
         pdf=None,
         csv=None,
+        global_offset=15,
     )
 
     # Redirect stdout to a StringIO object to capture output
@@ -84,7 +85,8 @@ def test_main_run_server():
         html=None,
         pdf=None,
         csv=True,
-        server=True
+        server=True,
+        global_offset=15,
     )
 
     # Redirect stdout to a StringIO object to capture output
