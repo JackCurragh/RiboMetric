@@ -761,7 +761,7 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
                 z_data.append(int(counts))
 
         if config["plots"]["metagene_profile"]["max_colorscale"] is None:
-            z_max = max(z_data)
+            z_max = max(max(z_data), 1)
             z_data = [z/z_max for z in z_data]
 
         fig.add_trace(

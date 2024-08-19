@@ -553,7 +553,7 @@ def autocorrelate_counts(
                     ]
         counts = list(metagene_profile[read_length].values())
 
-        if counts[0] is not None:
+        if counts[0] is not None and sum(counts) > 0:
             if mode == "uniformity":
                 triplet_counts = [
                     sum(counts[i:i+3]) for i in range(0, len(counts), 3)
@@ -570,14 +570,14 @@ def autocorrelate_counts(
         else:
             read_length_scores[read_length] = 0
 
-    if mode == "uniformity":
+    if mode == "uniformity" and sum(counts) > 0:
         global_counts = [
             sum(global_counts[i:i+3]) for i in range(0, len(global_counts), 3)
             ]
         global_count_list = np.array(global_counts)
         global_auto_correlation = autocorrelate(global_count_list)
         read_length_scores['global'] = global_auto_correlation[:5].mean()
-    elif mode == "periodicity":
+    elif mode == "periodicity" and sum(counts) > 0:
         global_auto_correlation = autocorrelate(np.array(global_counts))
         read_length_scores['global'] = (
             global_auto_correlation[lag] - global_auto_correlation.mean()

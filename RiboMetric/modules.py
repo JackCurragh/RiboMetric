@@ -675,7 +675,7 @@ def metagene_profile(
             .size()
             .to_dict()
         )
-
+        print(annotated_read_df.groupby(["read_length", "metagene_info"]).size().to_dict())
         if pre_metaprofile_dict == {}:
             if extend:  # If no reads in range
                 pre_metaprofile_dict = (
@@ -685,8 +685,8 @@ def metagene_profile(
                 )
             else:
                 return {
-                    "start": {0: 0},
-                    "stop": {0: 0}
+                    "start": {0: {1: 0}},
+                    "stop": {0: {1: 0}},
                 }
 
         # Fill empty read lengths with 0

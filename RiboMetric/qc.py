@@ -238,6 +238,7 @@ def annotation_mode(
                 annotated_read_df,
                 target="start",
                 distance_range=[30, 117],
+                extend=True,
             )
 
         #######################################################################
