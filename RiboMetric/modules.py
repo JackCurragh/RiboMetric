@@ -675,7 +675,6 @@ def metagene_profile(
             .size()
             .to_dict()
         )
-        print(annotated_read_df.groupby(["read_length", "metagene_info"]).size().to_dict())
         if pre_metaprofile_dict == {}:
             if extend:  # If no reads in range
                 pre_metaprofile_dict = (
@@ -964,14 +963,11 @@ def trips_asite_prediction(
     for read_length, counts in read_counts.items():
         # exclude counts within 10 nt of the start codon
         counts = {pos: count for pos, count in counts.items() if abs(pos) > 10}
-        print(read_length)
-        print(counts)
+
         if counts:
             max_pos = max(counts, key=counts.get)
         else:
             max_pos = None
-        print(max_pos)
-
         asite_offsets[read_length] = max_pos
 
     return asite_offsets
