@@ -7,8 +7,8 @@ pip install git+https://github.com/JackCurragh/RiboMetric.git
 
 # RiboMetric run -b Calviello16/Calviello.transcriptome.sorted.bam -a Calviello16/gencode.v45_RiboMetric.tsv -S 100000 --all --global-offset 15
 # RiboMetric run -b Calviello16/Calviello.transcriptome.sorted.bam -a Calviello16/gencode.v45_RiboMetric.tsv -S 100000 --all --offset-read-specific Calviello16/readspecific_offsets.tsv 
-RiboMetric run -b Calviello16/Calviello.transcriptome.sorted.bam -a Calviello16/gencode.v45_RiboMetric.tsv -S 10000000 --all --offset-calculation-method ribowaltz -o ribowaltz
-RiboMetric run -b Calviello16/Calviello.transcriptome.sorted.bam -a Calviello16/gencode.v45_RiboMetric.tsv -S 10000000 --all --offset-calculation-method tripsviz -o tripsviz
-RiboMetric run -b Calviello16/Calviello.transcriptome.sorted.bam -a Calviello16/gencode.v45_RiboMetric.tsv -S 10000000 --all --offset-calculation-method changepoint -o changepoint
+RiboMetric run -b Calviello16/Calviello.transcriptome.sorted.bam -a Calviello16/gencode.v45_RiboMetric.tsv -S 1000000 --all --offset-calculation-method ribowaltz -o ribowaltz
+RiboMetric run -b Calviello16/Calviello.transcriptome.sorted.bam -a Calviello16/gencode.v45_RiboMetric.tsv -S 1000000 --all --offset-calculation-method tripsviz -o tripsviz
+RiboMetric run -b Calviello16/Calviello.transcriptome.sorted.bam -a Calviello16/gencode.v45_RiboMetric.tsv -S 1000000 --all --offset-calculation-method changepoint -o changepoint
 
 # RiboMetric run -j test/Calviellotranscriptomesorted_RiboMetric.json --all
