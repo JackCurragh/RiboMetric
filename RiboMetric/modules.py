@@ -1031,7 +1031,6 @@ def asite_calculation_per_readlength(
                 offset = psite_offset + 3  # Convert to A-site offset
 
         elif method == "tripsviz":
-            print("Running Trips-Viz A-site prediction")
             offset = trips_asite_prediction(
                 {read_length: read_length_metagene["start"][read_length]}
             )[read_length]
