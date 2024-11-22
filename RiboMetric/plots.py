@@ -828,6 +828,7 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     # for any entry in metrics_dict with a dict as value (these are where the
     # metrics are per read length) get average of the top 3 values of that dict
     for key, value in metrics_dict.items():
+        print(key, value)
         if isinstance(value, dict):
             metrics_dict[key] = sum(sorted(value.values(), reverse=True)[:3])/3
 

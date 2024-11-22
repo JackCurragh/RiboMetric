@@ -357,8 +357,8 @@ def annotation_mode(
         results_dict["metrics"]["ratio_cds:leader"] =\
             region_region_ratio_metric(
                 mRNA_distribution=results_dict["mRNA_distribution"],
-                region1="five_leader",
-                region2="CDS",
+                region1="CDS",
+                region2="five_leader",
             )
         results_dict["metrics"]["ratio_cds:trailer"] =\
             region_region_ratio_metric(
