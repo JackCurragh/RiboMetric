@@ -74,8 +74,6 @@ def generate_report(
     else:
         export_mode = [export_mode]
 
-    print(plots)
-
     template = env.get_template("base.html")
     context = {
         "summary": plots.pop(0),
@@ -85,6 +83,7 @@ def generate_report(
         "logo": base64_logo,
         "favicon": base64_icon,
     }
+    print(context["summary"])
 
     for filetype in export_mode:
         if filetype == "html":
