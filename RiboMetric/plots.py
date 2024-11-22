@@ -834,10 +834,14 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     # Convert the metrics_dict to a DataFrame for easier plotting
     df = pd.DataFrame(list(metrics_dict.items()), columns=['Metric', 'Score'])
 
-    # drop any metric that is not in max_mins
+    # Filter metrics based on max_mins keys
     df = df[
         df['Metric'].apply(lambda x: any(x.startswith(key) for key in config["max_mins"].keys()))
-        ]
+    ]
+
+    # Get list of valid metrics after first filter
+    valid_metrics = df['Metric'].tolist()
+
     # normalise metrics between max_min values
     for metric in config["max_mins"]:
         df.loc[df['Metric'].str.startswith(metric), 'Score'] = normalise_score(
@@ -845,8 +849,12 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
             config["max_mins"][metric][0],
             config["max_mins"][metric][1]
         )
-    # drop any metrics that are in exclude list in config
+
+    # Filter out excluded metrics
     df = df[~df['Metric'].isin(config["plots"]["exclude_metrics"])]
+
+    # Get final list of valid metrics after all filtering
+    final_valid_metrics = df['Metric'].tolist()
 
     width = 750
     height = 320
@@ -863,6 +871,10 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     fig_html = pio.to_html(fig, full_html=False)
     fig_image = plotly_to_image(fig, width, height)
 
+    # Only include metrics that passed all filtering steps
+    filtered_metrics = {k: v for k, v in metrics_dict.items() 
+                       if k in final_valid_metrics and isinstance(v, float)}
+
     plot_metrics_summary_dict = {
         "plot": {
             "name": "Summary of Metrics",
@@ -871,11 +883,10 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
             "fig_image": fig_image,
         },
         "metrics": [{"name": k.replace("_", " ").capitalize(), "score": round(v, 3)}
-                    for k, v in metrics_dict.items() if isinstance(v, float)]
+                   for k, v in filtered_metrics.items()]
     }
 
     return plot_metrics_summary_dict
-
 
 def plot_read_frame_triangle(
         read_frame_triangle_dict: dict, config: dict) -> dict:
