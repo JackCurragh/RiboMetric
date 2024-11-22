@@ -63,17 +63,18 @@ qc:
   cds_coverage:
     in_frame_coverage: True   # Only check in-frame coverage, otherwise check complete cds coverage
 
+# Commented out metrics here will not appear in the summary scores plot
 max_mins: # max mins from simulations for each metric github.com/JackCurragh/MetricAnalysis
   # periodicity_autocorrelation: [0, 4.552344]
   periodicity_fourier: [0, 1]
   # periodicity_information: [0, 0.913217]
-  periodicity_information_weighted: [0, 0.913217]
-  periodicity_trips-viz: [0, 1]
+  # periodicity_information_weighted: [0, 0.913217]
+  # periodicity_trips-viz: [0, 1]
   periodicity_dominance: [0, 1]
-  uniformity_autocorrelation: [0, 1]
+  # uniformity_autocorrelation: [0, 1]
   uniformity_entropy: [0, 1]
   # uniformity_theil_index: [0, 45]
-  uniformity_gini_index: [0, 1]
+  # uniformity_gini_index: [0, 1]
   prop_reads_CDS: [0, 1]
   prop_reads_leader: [0, 1]
   prop_reads_trailer: [0, 1]
@@ -84,5 +85,5 @@ max_mins: # max mins from simulations for each metric github.com/JackCurragh/Met
   read_length_distribution_IQR: [0, 1]
   # read_length_distribution_bimodality: [0, 1]
   # read_length_distribution_normality: [0, 1]
-  read_length_distribution_coefficient_of_variation: [0, 1]
-  read_length_distribution_maxprop: [0, 1]
+  # read_length_distribution_coefficient_of_variation: [0, 1]
+  # read_length_distribution_maxprop: [0, 1]

@@ -74,6 +74,8 @@ def generate_report(
     else:
         export_mode = [export_mode]
 
+    print(plots)
+
     template = env.get_template("base.html")
     context = {
         "summary": plots.pop(0),
