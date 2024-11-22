@@ -580,6 +580,7 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
             mRNA_distribution_dict["global"][mRNA_category] += value
         else:
             mRNA_distribution_dict["global"][mRNA_category] = value
+    print(mRNA_distribution_dict)
     return mRNA_distribution_dict
 
 
