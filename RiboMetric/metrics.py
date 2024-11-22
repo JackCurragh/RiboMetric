@@ -919,7 +919,8 @@ def fourier_transform(
             amplitudes = np.abs(fourier_transform) ** 2
             total_power = np.sum(amplitudes)
             triplet_power = amplitudes[idx_3nt]
-            fourier_scores[read_len] = 1 - (triplet_power / total_power)
+            fourier_scores[read_len] = 1 - (triplet_power / total_power) if total_power != 0 else 0
+
 
     if len(global_counts) < 2:
         fourier_scores["global"] = 0
