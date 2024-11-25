@@ -421,7 +421,7 @@ def read_frame_information_weighted_score(
         weighted_score = score[0] * score[1]
         weighted_scores.append(weighted_score)
 
-    return sum(weighted_scores) / total_reads
+    return sum(weighted_scores) / total_reads if total_reads > 0 else 0
 
 
 def region_region_ratio_metric(
@@ -904,7 +904,7 @@ def fourier_transform(
 
     if not read_lengths:
         read_lengths = metagene_profile['start'].keys()
-        
+
     for read_len in read_lengths:
         if not global_counts:
             global_counts = list(metagene_profile['start'][read_len].values())
