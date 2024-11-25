@@ -330,50 +330,67 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
     """
     Generate a plot of the read frame distribution
 
-    Inputs:
-        read_frame_dict: Dataframe containing the read frame distribution
+    Args:
+        read_frame_dict: Dictionary containing the read frame distribution
         config: Dictionary containing the configuration information
 
-    Outputs:
-        plot_read_frame_dict: Dictionary containing the plot name, description
-        and plotly figure for html and pdf export
+    Returns:
+        dict: Dictionary containing plot name, description, and plotly figures
     """
     culled_read_frame_dict = read_frame_cull(read_frame_dict, config)
-    # Calculates the read frame scores if 'show_scores' option
-    # in config is not 'none'
+    show_scores = config["plots"]["read_frame_distribution"]["show_scores"]
     scored_read_frame_dict = (
         read_frame_score_trips_viz(culled_read_frame_dict)
-        if config["plots"]["read_frame_distribution"]["show_scores"] != "none"
+        if show_scores != "none"
         else None
     )
 
-    # Set minimum and maximum font sizes
-    min_font_size, max_font_size = 5, 30
+    # Dynamic font sizing
+    font_size = _calculate_font_size(len(culled_read_frame_dict))
+    
+    # Generate base plot
+    fig = _create_base_plot(culled_read_frame_dict, config)
+    
+    # Add score annotations if enabled
+    if scored_read_frame_dict:
+        _add_score_annotations(fig, culled_read_frame_dict, scored_read_frame_dict, 
+                             show_scores, font_size)
 
-    # Calculate font size based on number of data points
-    num_data_points = len(culled_read_frame_dict)
-    font_size = max_font_size - (max_font_size - min_font_size) * (
-        num_data_points / 50
-    )
-    # Generate plot
-    plot_data = []
-    for i in range(0, 3):
-        plot_data.append(
-            go.Bar(
-                name="Frame " + str(i + 1),
-                x=list(culled_read_frame_dict.keys()),
-                #
-                y=[
-                    culled_read_frame_dict[x][y]
-                    for x in culled_read_frame_dict
-                    for y in culled_read_frame_dict[x]
-                    if y == i
-                ],
-            )
+    # Calculate plot limits
+    y_buffer = max(max(trace.y) for trace in fig.data) * 0.05
+    x_limits = _calculate_x_limits(fig, culled_read_frame_dict, y_buffer)
+    
+    # Update x-axis range
+    fig.update_xaxes(range=[x_limits['lower'] - 0.5, x_limits['upper'] + 0.5])
+
+    return {
+        "name": "Read Frame Distribution",
+        "description": "Frame distribution per read length",
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": plotly_to_image(fig,
+                                   config["plots"]["image_size"][0],
+                                   config["plots"]["image_size"][1]),
+    }
+
+def _calculate_font_size(num_data_points: int) -> float:
+    """Calculate dynamic font size based on data points."""
+    min_font_size, max_font_size = 5, 30
+    return max_font_size - (max_font_size - min_font_size) * (num_data_points / 50)
+
+def _create_base_plot(data_dict: dict, config: dict) -> go.Figure:
+    """Create the base plot with three frames."""
+    plot_data = [
+        go.Bar(
+            name=f"Frame {i + 1}",
+            x=list(data_dict.keys()),
+            y=[data_dict[x][i] for x in data_dict]
         )
+        for i in range(3)
+    ]
+    
     fig = go.Figure(data=plot_data)
-    fig.update_layout(barmode="group")
     fig.update_layout(
+        barmode="group",
         title="Read Frame Distribution",
         xaxis_title="Read Length",
         yaxis_title="Read Count",
@@ -383,38 +400,36 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             color=config["plots"]["base_color"],
         ),
     )
-    # Place scores dynamically over bars
-    if scored_read_frame_dict is not None:
-        if config["plots"]["read_frame_distribution"]["show_scores"] == "all":
-            for idx in enumerate(culled_read_frame_dict):
-                if idx[1] != "global":
-                    y_buffer = (
-                        max(fig.data[0].y + fig.data[1].y + fig.data[2].y)
-                        * 0.05
-                    )
+    return fig
 
-                    ymax = max(
-                        fig.data[0].y[idx[0]],
-                        fig.data[1].y[idx[0]],
-                        fig.data[2].y[idx[0]],
-                    )
-
-                    if (
-                        fig.data[0].y[idx[0]]
-                        + fig.data[1].y[idx[0]]
-                        + fig.data[2].y[idx[0]]
-                        > y_buffer
-                    ):
-                        fig.add_annotation(
-                            x=idx[1],
-                            y=ymax + y_buffer,
-                            text=round(scored_read_frame_dict[idx[1]], 2),
-                            showarrow=False,
-                            xanchor="center",
-                            font={"size": font_size},
-                        )
+def _add_score_annotations(fig: go.Figure, data_dict: dict, 
+                         scores_dict: dict, show_scores: str, 
+                         font_size: float) -> None:
+    """Add score annotations to the plot."""
+    if show_scores == "all":
+        y_buffer = max(max(trace.y) for trace in fig.data) * 0.05
+        
+        for idx, key in enumerate(data_dict):
+            if key == "global":
+                continue
+                
+            ymax = max(trace.y[idx] for trace in fig.data)
+            total_count = sum(trace.y[idx] for trace in fig.data)
+            
+            if total_count > y_buffer:
+                fig.add_annotation(
+                    x=key,
+                    y=ymax + y_buffer,
+                    text=str(round(scores_dict[key], 2)),
+                    showarrow=False,
+                    xanchor="center",
+                    font={"size": font_size},
+                )
+    
+    # Add global score
+    if "global" in scores_dict:
         fig.add_annotation(
-            text=f'Score: {round(scored_read_frame_dict["global"], 2)}',
+            text=f'Score: {round(scores_dict["global"], 2)}',
             showarrow=False,
             xref="paper",
             yref="paper",
@@ -423,32 +438,27 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             xanchor="left",
         )
 
-    for idx in enumerate(culled_read_frame_dict):
-        count_sum = (
-            fig.data[0].y[idx[0]]
-            + fig.data[1].y[idx[0]]
-            + fig.data[2].y[idx[0]])
-        if count_sum > y_buffer:
-            lower_limit = (idx[1])
-            break
-    for idx in list(enumerate((culled_read_frame_dict)))[::-1]:
-        count_sum = (
-            fig.data[0].y[idx[0]]
-            + fig.data[1].y[idx[0]]
-            + fig.data[2].y[idx[0]])
-        if count_sum > y_buffer:
-            upper_limit = (idx[1])
-            break
-    fig.update_xaxes(range=[lower_limit-0.5, upper_limit+0.5])
-    plot_read_frame_dict = {
-        "name": "Read Frame Distribution",
-        "description": "Frame distribution per read length",
-        "fig_html": pio.to_html(fig, full_html=False),
-        "fig_image": plotly_to_image(fig,
-                                     config["plots"]["image_size"][0],
-                                     config["plots"]["image_size"][1]),
+def _calculate_x_limits(fig: go.Figure, data_dict: dict, y_buffer: float) -> dict:
+    """Calculate the x-axis limits based on data distribution."""
+    # Default limits
+    limits = {
+        'lower': min(data_dict.keys()),
+        'upper': max(data_dict.keys())
     }
-    return plot_read_frame_dict
+    
+    # Find first significant data point
+    for idx, key in enumerate(data_dict):
+        if sum(trace.y[idx] for trace in fig.data) > y_buffer:
+            limits['lower'] = key
+            break
+    
+    # Find last significant data point
+    for idx, key in reversed(list(enumerate(data_dict))):
+        if sum(trace.y[idx] for trace in fig.data) > y_buffer:
+            limits['upper'] = key
+            break
+            
+    return limits
 
 
 def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
@@ -884,10 +894,11 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
             "fig_image": fig_image,
         },
         "metrics": [{"name": k.replace("_", " ").capitalize(), "score": round(v, 3)}
-                   for k, v in filtered_metrics.items()]
+                    for k, v in filtered_metrics.items()]
     }
 
     return plot_metrics_summary_dict
+
 
 def plot_read_frame_triangle(
         read_frame_triangle_dict: dict, config: dict) -> dict:
