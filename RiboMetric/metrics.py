@@ -900,6 +900,11 @@ def fourier_transform(
     """
     fourier_scores = {}
     global_counts = []
+    read_lengths = [i for i in read_lengths if i in metagene_profile['start'].keys()]
+
+    if not read_lengths:
+        read_lengths = metagene_profile['start'].keys()
+        
     for read_len in read_lengths:
         if not global_counts:
             global_counts = list(metagene_profile['start'][read_len].values())
@@ -976,6 +981,11 @@ def multitaper(
     """
     multitaper_scores = {}
     global_counts = []
+    read_lengths = [i for i in read_lengths if i in metagene_profile['start'].keys()]
+
+    if not read_lengths:
+        read_lengths = metagene_profile['start'].keys()
+        
     for read_len in read_lengths:
         if not global_counts:
             global_counts = list(metagene_profile['start'][read_len].values())
@@ -1022,6 +1032,11 @@ def wavelet_transform(
     """
     wavelet_scores = {}
     global_counts = []
+    read_lengths = [i for i in read_lengths if i in metagene_profile['start'].keys()]
+
+    if not read_lengths:
+        read_lengths = metagene_profile['start'].keys()
+
     for read_len in read_lengths:
         if not global_counts:
             global_counts = list(metagene_profile['start'][read_len].values())
