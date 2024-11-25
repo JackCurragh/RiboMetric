@@ -490,7 +490,7 @@ def proportion_of_reads_in_region(
         total += read_len_total[read_len]
 
     for read_len in mRNA_distribution:
-        proportion[read_len] = mRNA_distribution[read_len][region] / read_len_total[read_len]
+        proportion[read_len] = mRNA_distribution[read_len][region] / read_len_total[read_len] if read_len_total[read_len] > 0 else 0
     proportion["global"] = sum(
         mRNA_distribution[read_len][region] for read_len in mRNA_distribution
     ) / total
@@ -680,7 +680,7 @@ def uniformity_entropy(metagene_profile: dict) -> dict:
             probability = count / global_total_counts
             global_entropy -= probability * math.log(probability, 2)
     global_max_entropy = math.log(len(global_counts), 2)
-    global_uniformity = global_entropy / global_max_entropy
+    global_uniformity = global_entropy / global_max_entropy if global_max_entropy > 0 else 0 
     read_len_uniformity["global"] = global_uniformity
     return read_len_uniformity
 
@@ -845,12 +845,13 @@ def periodicity_dominance(read_frame_dict):
             read_frame_dict[read_length], key=read_frame_dict[read_length].get
             )
         read_frame_dominance[read_length] = read_frame_dict[
-            read_length][max_frame] / total_count
+            read_length][max_frame] / total_count if total_count > 0 else 0
 
         global_total += total_count
         global_max_frame += read_frame_dict[read_length][max_frame]
 
-    read_frame_dominance["global"] = global_max_frame / global_total
+    read_frame_dominance[
+        "global"] = global_max_frame / global_total if global_total > 0 else 0
     return read_frame_dominance
 
 
@@ -924,8 +925,9 @@ def fourier_transform(
             amplitudes = np.abs(fourier_transform) ** 2
             total_power = np.sum(amplitudes)
             triplet_power = amplitudes[idx_3nt]
-            fourier_scores[read_len] = 1 - (triplet_power / total_power) if total_power != 0 else 0
-
+            fourier_scores[
+                read_len
+                ] = 1 - (triplet_power / total_power) if total_power != 0 else 0
 
     if len(global_counts) < 2:
         fourier_scores["global"] = 0
@@ -940,7 +942,9 @@ def fourier_transform(
         total_power = np.sum(amplitudes)
         triplet_power = amplitudes[idx_3nt]
 
-        fourier_scores["global"] = 1 - (triplet_power / total_power)
+        fourier_scores[
+            "global"
+            ] = 1 - (triplet_power / total_power) if total_power > 0 else 0
 
     return fourier_scores
 
