@@ -196,7 +196,7 @@ def terminal_nucleotide_bias_KL_metric(
         kl_divergence += observed_prob * math.log2(
                                             observed_prob / expected_prob
                                             )
-    return -kl_divergence
+    return abs(kl_divergence)
 
 
 def terminal_nucleotide_bias_max_absolute_metric(
