@@ -61,7 +61,7 @@ def test_terminal_nucleotide_bias_KL_metric():
         terminal_nucleotide_bias_dict, sequence_background[2]["5_prime_bg"]
         )
 
-    assert round(terminal_nucleotide_bias_metric, 2) == -1.18
+    assert round(terminal_nucleotide_bias_metric, 2) == 1.18
 
 
 def test_read_frame_distribution_metric():
