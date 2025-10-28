@@ -19,6 +19,10 @@ requirements = [
     "pysam>=0.21.0",
     "PyYAML>=6.0",
     "scipy>=1.10",
+]
+
+# Optional PDF export dependencies
+pdf_requirements = [
     "xhtml2pdf>=0.2.11",
 ]
 
@@ -61,6 +65,7 @@ setup(
     },
     install_requires=requirements,
     extras_require={
+        "pdf": pdf_requirements,
         "test": test_requirements,
         "dev": dev_requirements,
     },
