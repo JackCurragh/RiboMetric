@@ -39,6 +39,12 @@ To install RiboMetric:
 
     $ pip install RiboMetric
 
+For PDF export support (adds ~30 dependencies):
+
+.. code-block:: console
+
+    $ pip install RiboMetric[pdf]
+
 Usage
 ------------
 

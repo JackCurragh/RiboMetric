@@ -6,8 +6,13 @@ of the RibosomeProfiler pipeline
 
 import pandas as pd
 import numpy as np
-from xhtml2pdf import pisa
 from collections import Counter
+
+try:
+    from xhtml2pdf import pisa
+    HAS_PDF = True
+except ImportError:
+    HAS_PDF = False
 
 from typing import List, Dict, Tuple, Optional
 from scipy import stats
@@ -793,6 +798,10 @@ def sequence_slice(
 
 
 def convert_html_to_pdf(source_html, output_filename):
+    if not HAS_PDF:
+        raise ImportError(
+            "PDF export requires xhtml2pdf. Install with: pip install RiboMetric[pdf]"
+        )
     result_file = open(output_filename, "w+b")
 
     pisa_status = pisa.CreatePDF(source_html, dest=result_file)
