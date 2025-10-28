@@ -93,6 +93,18 @@ def argument_parser():
         help="Method to calculate offsets (default: changepoint) [changepoint, ribowaltz]",
     )
     run_parser.add_argument(
+        "--enable-optional-metrics",
+        action="store_true",
+        default=False,
+        help="Enable all optional (theoretical) metrics in addition to defaults",
+    )
+    run_parser.add_argument(
+        "--enable-metric",
+        type=str,
+        action="append",
+        help="Enable specific optional metric(s) (can be used multiple times)",
+    )
+    run_parser.add_argument(
         "--json-config",
         action="store_true",
         default=False,
@@ -252,5 +264,19 @@ def open_config(args) -> dict:
     for arg in vars(args):
         if getattr(args, arg) is not False and getattr(args, arg) is not None:
             config["argument"][arg] = getattr(args, arg)
+
+    # Handle metric selection
+    if args.command == "run":
+        enabled_metrics = set(config.get("metrics", {}).get("default", []))
+
+        if hasattr(args, 'enable_optional_metrics') and args.enable_optional_metrics:
+            # Add all optional metrics
+            enabled_metrics.update(config.get("metrics", {}).get("optional", []))
+
+        if hasattr(args, 'enable_metric') and args.enable_metric:
+            # Add specific metrics
+            enabled_metrics.update(args.enable_metric)
+
+        config["enabled_metrics"] = list(enabled_metrics)
 
     return config

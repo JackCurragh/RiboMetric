@@ -63,6 +63,52 @@ qc:
   cds_coverage:
     in_frame_coverage: True   # Only check in-frame coverage, otherwise check complete cds coverage
 
+metrics:
+  # Control which metrics are calculated
+  # Default metrics are the standard Ribo-Seq QC metrics expected by users
+  # Optional metrics are more theoretical/experimental approaches
+
+  # DEFAULT METRICS (always calculated)
+  default:
+    # Read length distribution
+    - read_length_distribution_IQR
+    - read_length_distribution_coefficient_of_variation
+    - read_length_distribution_maxprop
+
+    # Terminal nucleotide bias
+    - terminal_nucleotide_bias_KL_5prime
+    - terminal_nucleotide_bias_KL_3prime
+    - terminal_nucleotide_bias_max_absolute_5prime
+    - terminal_nucleotide_bias_max_absolute_3prime
+
+    # Periodicity - frame dominance is the standard metric
+    - periodicity_dominance
+    - periodicity_information  # Information content approach
+
+    # Uniformity - entropy is interpretable and standard
+    - uniformity_entropy
+
+    # Coverage and regional distribution
+    - CDS_coverage
+    - region_ratios
+    - region_proportions
+
+  # OPTIONAL METRICS (only calculated if enabled via --enable-optional-metrics or --enable-metric)
+  optional:
+    # Additional read length metrics
+    - read_length_distribution_bimodality
+    - read_length_distribution_normality
+
+    # Alternative periodicity metrics (more theoretical)
+    - periodicity_autocorrelation
+    - periodicity_fourier
+    - periodicity_trips_viz
+
+    # Alternative uniformity metrics (more theoretical)
+    - uniformity_autocorrelation
+    - uniformity_theil_index
+    - uniformity_gini_index
+
 # Commented out metrics here will not appear in the summary scores plot
 max_mins: # max mins from simulations for each metric github.com/JackCurragh/MetricAnalysis
   # periodicity_autocorrelation: [0, 4.552344]
@@ -78,8 +124,8 @@ max_mins: # max mins from simulations for each metric github.com/JackCurragh/Met
   prop_reads_CDS: [0, 1]
   prop_reads_leader: [0, 1]
   prop_reads_trailer: [0, 1]
-  terminal_nucleotide_bias_distribution_5_prime: [0, 3.637]
-  terminal_nucleotide_bias_distribution_3_prime: [0, 3.637]
+  terminal_nucleotide_bias_distribution_5_prime: [0, 1]
+  terminal_nucleotide_bias_distribution_3_prime: [0, 1]
   # terminal_nucleotide_bias_max_absolute_metric_5_prime: [0, 1]
   # terminal_nucleotide_bias_max_absolute_metric_3_prime: [0, 1]
   read_length_distribution_IQR: [0, 1]

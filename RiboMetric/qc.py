@@ -10,6 +10,7 @@ Three main modes:
 """
 
 import pandas as pd
+from numbers import Number
 
 from .modules import (
     chunked_annotate_reads,
@@ -54,6 +55,33 @@ from .metrics import (
     proportion_of_reads_in_region
 )
 from typing import Any, Dict
+
+
+def should_calculate_metric(metric_name: str, config: dict) -> bool:
+    """
+    Check if a metric should be calculated based on the configuration
+
+    Inputs:
+        metric_name: Name of the metric to check
+        config: Configuration dictionary containing enabled metrics
+
+    Outputs:
+        bool: True if the metric should be calculated, False otherwise
+    """
+    enabled_metrics = config.get("enabled_metrics", [])
+
+    # If no enabled_metrics specified, calculate all (backwards compatibility)
+    if not enabled_metrics:
+        return True
+
+    # Check various name formats the metric might be stored as
+    metric_variants = [
+        metric_name,
+        metric_name.replace("_metric", ""),
+        metric_name.replace("periodicity_", "").replace("uniformity_", ""),
+    ]
+
+    return any(variant in enabled_metrics for variant in metric_variants)
 
 
 def annotation_mode(
@@ -143,32 +171,43 @@ def annotation_mode(
     results_dict["read_length_distribution"] = read_length_distribution(
         read_df
     )
-    results_dict["metrics"][
-        "read_length_distribution_IQR_metric"
-        ] = rld_metric(
-        results_dict["read_length_distribution"]
-    )
-    results_dict["metrics"][
-        "read_length_distribution_bimodality_metric"
-        ] = read_length_distribution_bimodality(
-            results_dict["read_length_distribution"]
-        )
-    results_dict["metrics"][
-        "read_length_distribution_normality_metric"
-        ] = rldn_metric(
+
+    # Default read length metrics
+    if should_calculate_metric("read_length_distribution_IQR", config):
+        results_dict["metrics"][
+            "read_length_distribution_IQR_metric"
+            ] = rld_metric(
             results_dict["read_length_distribution"]
         )
 
-    results_dict["metrics"][
-        "read_length_distribution_coefficient_of_variation_metric"
-        ] = rldv_metric(
+    if should_calculate_metric("read_length_distribution_coefficient_of_variation", config):
+        results_dict["metrics"][
+            "read_length_distribution_coefficient_of_variation_metric"
+            ] = rldv_metric(
             results_dict["read_length_distribution"]
         )
-    results_dict["metrics"][
-        "read_length_distribution_maxprop_metric"] = rldpp_metric(
-        results_dict["read_length_distribution"],
-        num_top_readlens=1
-    )
+
+    if should_calculate_metric("read_length_distribution_maxprop", config):
+        results_dict["metrics"][
+            "read_length_distribution_maxprop_metric"] = rldpp_metric(
+            results_dict["read_length_distribution"],
+            num_top_readlens=1
+        )
+
+    # Optional read length metrics
+    if should_calculate_metric("read_length_distribution_bimodality", config):
+        results_dict["metrics"][
+            "read_length_distribution_bimodality_metric"
+            ] = read_length_distribution_bimodality(
+                results_dict["read_length_distribution"]
+            )
+
+    if should_calculate_metric("read_length_distribution_normality", config):
+        results_dict["metrics"][
+            "read_length_distribution_normality_metric"
+            ] = rldn_metric(
+                results_dict["read_length_distribution"]
+            )
 
     #######################################################################
     # TERMINAL NUCLEOTIDE BIAS
@@ -244,14 +283,17 @@ def annotation_mode(
         #######################################################################
         # Periodicity
         #######################################################################
-        results_dict["metrics"][
-            "periodicity_autocorrelation"
-            ] = periodicity_autocorrelation(
-            coding_metagene.copy()
-        )
-        results_dict["metrics"]["periodicity_fourier"] = fourier_transform(
-            coding_metagene.copy()
-        )
+        # Optional periodicity metrics (only if enabled)
+        if should_calculate_metric("periodicity_autocorrelation", config):
+            results_dict["metrics"][
+                "periodicity_autocorrelation"
+                ] = periodicity_autocorrelation(
+                coding_metagene.copy()
+            )
+        if should_calculate_metric("periodicity_fourier", config):
+            results_dict["metrics"]["periodicity_fourier"] = fourier_transform(
+                coding_metagene.copy()
+            )
 
         results_dict["reading_frame_triangle"] = reading_frame_triangle(
                 annotated_read_df
@@ -290,24 +332,31 @@ def annotation_mode(
         #######################################################################
         # UNIFORMITY
         #######################################################################
-        results_dict["metrics"][
-            "uniformity_autocorrelation"
-            ] = uniformity_autocorrelation(
-            coding_metagene.copy()
-        )
-        results_dict["metrics"]["uniformity_entropy"] = uniformity_entropy(
-            coding_metagene.copy()
-        )
-        results_dict["metrics"][
-            "uniformity_theil_index"
-            ] = uniformity_theil_index(
-            coding_metagene.copy()
-        )
-        results_dict["metrics"][
-            "uniformity_gini_index"
-            ] = uniformity_gini_index(
-            coding_metagene.copy()
-        )
+        # Default: uniformity_entropy (interpretable, standard)
+        if should_calculate_metric("uniformity_entropy", config):
+            results_dict["metrics"]["uniformity_entropy"] = uniformity_entropy(
+                coding_metagene.copy()
+            )
+
+        # Optional uniformity metrics (only if enabled)
+        if should_calculate_metric("uniformity_autocorrelation", config):
+            results_dict["metrics"][
+                "uniformity_autocorrelation"
+                ] = uniformity_autocorrelation(
+                coding_metagene.copy()
+            )
+        if should_calculate_metric("uniformity_theil_index", config):
+            results_dict["metrics"][
+                "uniformity_theil_index"
+                ] = uniformity_theil_index(
+                coding_metagene.copy()
+            )
+        if should_calculate_metric("uniformity_gini_index", config):
+            results_dict["metrics"][
+                "uniformity_gini_index"
+                ] = uniformity_gini_index(
+                coding_metagene.copy()
+            )
 
         #######################################################################
         # COVERAGE
@@ -378,29 +427,43 @@ def annotation_mode(
                 mRNA_distribution=results_dict["mRNA_distribution"],
                 region="CDS",
             )
-        results_dict["metrics"]["prop_reads_leader"] =\
-            proportion_of_reads_in_region(
-                mRNA_distribution=results_dict["mRNA_distribution"],
-                region="five_leader",
-            )
-        results_dict["metrics"]["prop_reads_trailer"] =\
-            proportion_of_reads_in_region(
-                mRNA_distribution=results_dict["mRNA_distribution"],
-                region="three_trailer",
-            )
+
+        leader_prop = proportion_of_reads_in_region(
+            mRNA_distribution=results_dict["mRNA_distribution"],
+            region="five_leader",
+        )
+        results_dict["metrics"]["prop_reads_leader"] = {
+            key: (1 - value if isinstance(value, Number) else value)
+            for key, value in leader_prop.items()
+        }
+
+        trailer_prop = proportion_of_reads_in_region(
+            mRNA_distribution=results_dict["mRNA_distribution"],
+            region="three_trailer",
+        )
+        results_dict["metrics"]["prop_reads_trailer"] = {
+            key: (1 - value if isinstance(value, Number) else value)
+            for key, value in trailer_prop.items()
+        }
     else:
         read_frame_dist = read_frame_distribution(read_df)
         results_dict["read_frame_distribution"] = read_frame_dist
 
     culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
-    results_dict["metrics"][
-        "periodicity_trips-viz"
-        ] = read_frame_score_trips_viz(
-        culled_read_frame_dict)
 
-    results_dict["metrics"]["periodicity_dominance"] = periodicity_dominance(
-        culled_read_frame_dict
-    )
+    # Default: periodicity dominance (standard frame preference metric)
+    if should_calculate_metric("periodicity_dominance", config):
+        results_dict["metrics"]["periodicity_dominance"] = periodicity_dominance(
+            culled_read_frame_dict
+        )
+
+    # Optional: trips-viz metric
+    if should_calculate_metric("periodicity_trips_viz", config):
+        results_dict["metrics"][
+            "periodicity_trips-viz"
+            ] = read_frame_score_trips_viz(
+            culled_read_frame_dict)
+
     return results_dict
 
 

@@ -3,20 +3,39 @@
 """The setup script."""
 
 from setuptools import setup, find_packages
-from pathlib import Path
 
 with open("README.rst") as readme_file:
     readme = readme_file.read()
 
-# Get the path to the requirements.txt file
-requirements_path = Path(__file__).parent / 'requirements_dev.txt'
+# Core dependencies needed to run RiboMetric
+requirements = [
+    "biopython>=1.81",
+    "click>=8.0",
+    "gffpandas>=1.2.0",
+    "Jinja2>=3.0",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "plotly>=5.14",
+    "pysam>=0.21.0",
+    "PyYAML>=6.0",
+    "scipy>=1.10",
+    "xhtml2pdf>=0.2.11",
+]
 
-# Read the contents of the requirements file
-with open(requirements_path) as f:
-    requirements = f.read().splitlines()
-
+# Test dependencies
 test_requirements = [
-    "pytest>=3",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "pytest-xdist>=3.0.0",
+    "coverage>=7.0.0",
+]
+
+# Development dependencies (linting, formatting, docs)
+dev_requirements = test_requirements + [
+    "flake8>=6.0.0",
+    "black>=23.0.0",
+    "sphinx>=5.0.0",
 ]
 
 setup(
@@ -41,8 +60,13 @@ setup(
         ],
     },
     install_requires=requirements,
+    extras_require={
+        "test": test_requirements,
+        "dev": dev_requirements,
+    },
     license="MIT license",
-    # long_description=readme + "\n\n" + history,
+    long_description=readme,
+    long_description_content_type="text/x-rst",
     include_package_data=True,
     keywords="RiboMetric",
     name="RiboMetric",

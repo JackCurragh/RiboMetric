@@ -89,7 +89,9 @@ def read_length_distribution_coefficient_of_variation_metric(
         (rld_df["read_length"] - mean)**2 * rld_df["read_count"]
         ).sum()\
         / rld_df["read_count"].sum()
-    return math.sqrt(variance) / mean
+    coefficient_of_variation = math.sqrt(variance) / mean if mean != 0 else 0
+    # Transform so that higher scores indicate tighter (better) distributions.
+    return 1 / (1 + coefficient_of_variation)
 
 
 def read_length_distribution_bimodality(data):
@@ -112,9 +114,11 @@ def read_length_distribution_bimodality(data):
 
     numerator = (skew_value ** 2) + 1
     denominator = kurt_value + (3 * ((n - 1) ** 2 / ((n - 2) * (n - 3))))
-    bimodality_coeff = numerator / denominator
+    bimodality_coeff = numerator / denominator if denominator != 0 else 0
 
-    return bimodality_coeff
+    # Lower bimodality is preferred; map to (0,1] where 1 is best (unimodal).
+    bimodality_coeff = max(bimodality_coeff, 0)
+    return 1 / (1 + bimodality_coeff)
 
 
 def read_length_distribution_normality_metric(
@@ -138,7 +142,8 @@ def read_length_distribution_normality_metric(
 
     data = np.repeat(read_lens, counts)
     res = normaltest(data)
-    return res.pvalue
+    # Non-normal distributions are expected; invert p-value so higher is better.
+    return max(0.0, min(1.0, 1 - res.pvalue))
 
 
 def read_length_distribution_max_prop_metric(
@@ -196,7 +201,9 @@ def terminal_nucleotide_bias_KL_metric(
         kl_divergence += observed_prob * math.log2(
                                             observed_prob / expected_prob
                                             )
-    return abs(kl_divergence)
+    kl_divergence = max(0.0, kl_divergence)
+    # Higher values signal less bias; map divergence to (0,1].
+    return 1 / (1 + kl_divergence)
 
 
 def terminal_nucleotide_bias_max_absolute_metric(
@@ -225,7 +232,9 @@ def terminal_nucleotide_bias_max_absolute_metric(
         scores[dinucleotide] = abs(
             observed_prob - expected_prob)
 
-    return max(scores.values())
+    max_diff = max(scores.values()) if scores else 0
+    # Perfect agreement should score 1, larger deviations trend towards 0.
+    return max(0.0, 1 - max_diff)
 
 
 def cds_coverage_metric(
@@ -735,7 +744,7 @@ def uniformity_theil_index(
                         ]
                         )
 
-        theils[read_len] = theil_sum
+        theils[read_len] = 1 / (1 + theil_sum)
 
     global_theil_sum = 0
     for i in range(0, len(global_counts), 3):
@@ -755,7 +764,7 @@ def uniformity_theil_index(
                     ]
                     )
 
-    theils["global"] = 1 / (global_theil_sum + 0.0001)
+    theils["global"] = 1 / (1 + global_theil_sum)
 
     return theils
 
@@ -800,7 +809,9 @@ def uniformity_gini_index(profile):
             gini_sum += count * ((2 * i) - len(triplet_counts) - 1)
 
         denominator = len(triplet_counts) * sum(triplet_counts)
-        ginis[read_len] = abs(gini_sum / denominator)
+        gini_value = abs(gini_sum / denominator) if denominator != 0 else 0
+        gini_value = max(0, min(1, gini_value))
+        ginis[read_len] = 1 - gini_value
 
     global_counts = [
         sum(counts[i:i+3]) for i in range(0, len(global_raw_counts), 3)
@@ -813,9 +824,11 @@ def uniformity_gini_index(profile):
 
     global_denominator = len(global_counts) * sum(global_counts)
     if global_denominator != 0:
-        ginis["global"] = abs(global_gini_sum / global_denominator)
+        global_gini_value = abs(global_gini_sum / global_denominator)
     else:
-        ginis["global"] = 0
+        global_gini_value = 0
+    global_gini_value = max(0, min(1, global_gini_value))
+    ginis["global"] = 1 - global_gini_value
     return ginis
 
 
@@ -927,7 +940,11 @@ def fourier_transform(
             triplet_power = amplitudes[idx_3nt]
             fourier_scores[
                 read_len
-                ] = 1 - (triplet_power / total_power) if total_power != 0 else 0
+                ] = (
+                    triplet_power / total_power
+                    if total_power != 0
+                    else 0
+                )
 
     if len(global_counts) < 2:
         fourier_scores["global"] = 0
@@ -944,7 +961,11 @@ def fourier_transform(
 
         fourier_scores[
             "global"
-            ] = 1 - (triplet_power / total_power) if total_power > 0 else 0
+            ] = (
+                triplet_power / total_power
+                if total_power > 0
+                else 0
+            )
 
     return fourier_scores
 
