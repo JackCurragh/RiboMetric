@@ -15,10 +15,12 @@ requirements = [
     "Jinja2>=3.0",
     "kaleido==0.2.1",
     "numpy>=1.24",
+    "oxbow>=0.3.0",
     "pandas>=2.0",
     "plotly>=5.14",
     "pysam>=0.21.0",
     "PyYAML>=6.0",
+    "rich>=13.0.0",
     "scipy>=1.10",
 ]
 
