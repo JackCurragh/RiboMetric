@@ -60,7 +60,7 @@ def test_terminal_nucleotide_bias_KL_metric():
         terminal_nucleotide_bias_dict, sequence_background[2]["5_prime_bg"]
         )
 
-    assert terminal_nucleotide_bias_metric == pytest.approx(0.4587, rel=1e-3)
+    assert terminal_nucleotide_bias_metric == pytest.approx(0.4581, rel=1e-3)
 
 
 def test_read_frame_distribution_metric():

@@ -845,11 +845,13 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
 
     # normalise metrics between max_min values
     for metric in config["max_mins"]:
-        df.loc[df['Metric'].str.startswith(metric), 'Score'] = normalise_score(
-            df.loc[df['Metric'].str.startswith(metric), 'Score'].values[0],
-            config["max_mins"][metric][0],
-            config["max_mins"][metric][1]
-        )
+        matching_rows = df['Metric'].str.startswith(metric)
+        if matching_rows.any():
+            df.loc[matching_rows, 'Score'] = normalise_score(
+                df.loc[matching_rows, 'Score'].values[0],
+                config["max_mins"][metric][0],
+                config["max_mins"][metric][1]
+            )
 
     # Filter out excluded metrics
     df = df[~df['Metric'].isin(config["plots"]["exclude_metrics"])]
