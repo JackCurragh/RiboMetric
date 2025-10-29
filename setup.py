@@ -18,6 +18,7 @@ requirements = [
     "oxbow>=0.3.0",
     "pandas>=2.0",
     "plotly>=5.14",
+    "pyarrow>=10.0.0",
     "pysam>=0.21.0",
     "PyYAML>=6.0",
     "rich>=13.0.0",
