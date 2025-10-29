@@ -57,6 +57,8 @@ def read_length_distribution_IQR_normalised_metric(
     max_range = find_category_by_cumulative_percentage(rld_df, 0.9)\
         - find_category_by_cumulative_percentage(rld_df, 0.1)
 
+    if max_range == 0:
+        return 1.0  # Perfect concentration, IQR = 0
     return 1 - (inter_quartile_range / max_range)
 
 
@@ -579,14 +581,14 @@ def autocorrelate_counts(
         else:
             read_length_scores[read_length] = 0
 
-    if mode == "uniformity" and sum(counts) > 0:
+    if mode == "uniformity" and sum(global_counts) > 0:
         global_counts = [
             sum(global_counts[i:i+3]) for i in range(0, len(global_counts), 3)
             ]
         global_count_list = np.array(global_counts)
         global_auto_correlation = autocorrelate(global_count_list)
         read_length_scores['global'] = global_auto_correlation[:5].mean()
-    elif mode == "periodicity" and sum(counts) > 0:
+    elif mode == "periodicity" and sum(global_counts) > 0:
         global_auto_correlation = autocorrelate(np.array(global_counts))
         read_length_scores['global'] = (
             global_auto_correlation[lag] - global_auto_correlation.mean()
@@ -675,8 +677,8 @@ def uniformity_entropy(metagene_profile: dict) -> dict:
             if count > 0:
                 probability = count / total_counts
                 entropy -= probability * math.log(probability, 2)
-        max_entropy = math.log(len(metagene_profile['start'][read_len]), 2)
-        uniformity = entropy / max_entropy
+        max_entropy = math.log(len(triplet_counts), 2)
+        uniformity = entropy / max_entropy if max_entropy > 0 else 0
         read_len_uniformity[read_len] = uniformity
 
     global_total_counts = sum(global_counts)
@@ -688,7 +690,7 @@ def uniformity_entropy(metagene_profile: dict) -> dict:
         if count > 0:
             probability = count / global_total_counts
             global_entropy -= probability * math.log(probability, 2)
-    global_max_entropy = math.log(len(global_counts), 2)
+    global_max_entropy = math.log(len(global_triplet_counts), 2)
     global_uniformity = global_entropy / global_max_entropy if global_max_entropy > 0 else 0 
     read_len_uniformity["global"] = global_uniformity
     return read_len_uniformity
@@ -1074,8 +1076,10 @@ def wavelet_transform(
                     ]
         counts = list(metagene_profile['start'][read_len].values())
         wavelet_transform = signal.cwt(np.array(counts), signal.ricker, [1])
-        wavelet_scores[read_len] = np.max(wavelet_transform) / np.sum(np.abs(wavelet_transform))
+        total_abs_wavelet = np.sum(np.abs(wavelet_transform))
+        wavelet_scores[read_len] = np.max(wavelet_transform) / total_abs_wavelet if total_abs_wavelet > 0 else 0
 
     global_wavelet_transform = signal.cwt(np.array(global_counts), signal.ricker, [1])
-    wavelet_scores["global"] = np.max(global_wavelet_transform) / np.sum(np.abs(global_wavelet_transform))
+    global_total_abs_wavelet = np.sum(np.abs(global_wavelet_transform))
+    wavelet_scores["global"] = np.max(global_wavelet_transform) / global_total_abs_wavelet if global_total_abs_wavelet > 0 else 0
     return wavelet_scores

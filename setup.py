@@ -13,6 +13,7 @@ requirements = [
     "click>=8.0",
     "gffpandas>=1.2.0",
     "Jinja2>=3.0",
+    "kaleido==0.2.1",
     "numpy>=1.24",
     "pandas>=2.0",
     "plotly>=5.14",
