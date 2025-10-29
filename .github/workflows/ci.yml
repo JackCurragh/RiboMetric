@@ -25,6 +25,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y samtools libbz2-dev zlib1g-dev liblzma-dev libcurl4-openssl-dev
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -34,11 +39,6 @@ jobs:
     - name: Build Package
       run: |
         python setup.py sdist bdist_wheel
-
-    - name: Install Samtools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y samtools
 
     - name: Run tests with coverage
       run: |
