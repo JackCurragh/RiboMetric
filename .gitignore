@@ -142,3 +142,6 @@ mprof/*
 Saccharomyces_cerevisiae*
 Calviello16/
 internal_docs/
+# pixi environments
+.pixi
+*.egg-info

@@ -167,6 +167,40 @@ def main(args):
     Outputs:
         None
     """
+    # Handle view command separately (no logo or config needed)
+    if args.command == "view":
+        from .tui import run_tui
+        import json
+        from pathlib import Path
+
+        # Validate file exists and is JSON
+        file_path = Path(args.json_file)
+        if not file_path.exists():
+            print(f"Error: File not found: {args.json_file}")
+            return 1
+
+        if not file_path.suffix == '.json':
+            print("Error: File must be a JSON file")
+            return 1
+
+        # Validate it's a RiboMetric JSON file
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+                if "results" not in data or "config" not in data:
+                    print("Warning: File may not be a valid RiboMetric JSON file.")
+                    print("Expected structure: {'results': {...}, 'config': {...}}")
+        except json.JSONDecodeError as e:
+            print(f"Error: Invalid JSON file: {e}")
+            return 1
+        except Exception as e:
+            print(f"Error reading file: {e}")
+            return 1
+
+        # Launch TUI
+        run_tui(str(file_path))
+        return 0
+
     console = Console()
     print_logo(console)
 
