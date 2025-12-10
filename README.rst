@@ -60,6 +60,12 @@ Use the annotation file to run RiboMetric on a bam file:
 
     $ RiboMetric run -b bam_file.bam -a annotation_RiboMetric.tsv
 
+View results interactively in your terminal:
+
+.. code-block:: console
+
+    $ RiboMetric view output_RiboMetric_data.json
+
 By default, RiboMetric calculates standard Ribo-Seq QC metrics. To enable optional (theoretical) metrics:
 
 .. code-block:: console
@@ -107,6 +113,7 @@ RiboMetric provides multiple output formats for different use cases:
   * Comparison CSV - Wide format for multi-sample comparison
 
 **For Sample Review:**
+  * Interactive TUI - Terminal-based viewer for exploring metrics (``RiboMetric view``)
   * Interactive HTML - Professional reports with executive summary and searchable metrics
   * PDF - Archivable reports for documentation
   * Metrics Table CSV - Detailed metrics with read-length breakdowns

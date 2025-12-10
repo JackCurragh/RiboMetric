@@ -230,6 +230,18 @@ def argument_parser():
         default="config.yml",
         help="Path to the config file (default: config.yml)",
     )
+
+    # create the parser for the "view" command
+    view_parser = subparsers.add_parser(
+        "view",
+        help="view RiboMetric results interactively in the terminal"
+    )
+    view_parser.add_argument(
+        "json_file",
+        type=str,
+        help="Path to RiboMetric JSON output file (*_RiboMetric_data.json)"
+    )
+
     return parser
 
 

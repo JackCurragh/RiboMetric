@@ -23,6 +23,7 @@ requirements = [
     "PyYAML>=6.0",
     "rich>=13.0.0",
     "scipy>=1.10",
+    "textual>=0.47.0",
 ]
 
 # Optional PDF export dependencies
@@ -91,6 +92,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/JackCurragh/RiboMetric",
-    version="0.1.12",
+    version="0.1.14",
     zip_safe=False,
 )
