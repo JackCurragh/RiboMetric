@@ -10,10 +10,9 @@ with open("README.rst") as readme_file:
 # Core dependencies needed to run RiboMetric
 requirements = [
     "biopython>=1.81",
-    "click>=8.0",
     "gffpandas>=1.2.0",
     "Jinja2>=3.0",
-    "kaleido==0.2.1",
+    "kaleido==0.2.1",  # Required for plotly image export
     "numpy>=1.24",
     "oxbow>=0.3.0",
     "pandas>=2.0",
@@ -21,7 +20,7 @@ requirements = [
     "pyarrow>=10.0.0",
     "pysam>=0.21.0",
     "PyYAML>=6.0",
-    "rich>=13.0.0",
+    "rich>=13.3.3",  # Required by textual
     "scipy>=1.10",
     "textual>=0.47.0",
 ]
@@ -92,6 +91,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/JackCurragh/RiboMetric",
-    version="0.1.14",
+    version="0.1.15",
     zip_safe=False,
 )
