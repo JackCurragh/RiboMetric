@@ -375,6 +375,20 @@ def main(args):
                          report_prefix,
                          export["output"])
 
+        if export.get("output_offsets"):
+            offsets_data = results_dict.get("computed_offsets", {})
+            if offsets_data:
+                with open(export["output_offsets"], "w") as f:
+                    f.write("read_len\toffset\n")
+                    for length, offset in sorted(
+                        offsets_data.items(), key=lambda x: int(x[0])
+                    ):
+                        f.write(f"{length}\t{offset}\n")
+                print(f"Offsets written to {export['output_offsets']}")
+            else:
+                print("Warning: --output-offsets set but no computed offsets available. "
+                      "Offsets are only calculated when no external offset file is provided.")
+
 
 if __name__ == "__main__":
     parser = argument_parser()
