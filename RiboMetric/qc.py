@@ -127,6 +127,7 @@ def annotation_mode(
                                      offset_type="global",
                                      )
 
+    computed_offsets = {}
     if len(annotation_df) > 0:
         annotation = True
         print("Merging annotation and reads")
@@ -140,6 +141,7 @@ def annotation_mode(
                 annotated_read_df,
                 method=config["argument"]["offset_calculation_method"]
                 )
+            computed_offsets = offsets
             annotated_read_df = a_site_calculation_variable_offset(
                 annotated_read_df, offsets
                 )
@@ -163,6 +165,11 @@ def annotation_mode(
         "mode": ("annotation" if annotation else "annotation_free"),
         "metrics": {}
     }
+
+    if computed_offsets:
+        results_dict["computed_offsets"] = {
+            str(k): v for k, v in computed_offsets.items()
+        }
 
     #######################################################################
     # READ LENGTH DISTRIBUTION

@@ -191,6 +191,13 @@ def argument_parser():
         default=False,
         help="Output the results as all of the above",
     )
+    run_parser.add_argument(
+        "--output-offsets",
+        type=str,
+        required=False,
+        help="Path to write per-read-length offsets TSV (read_len<tab>offset). "
+             "Only written when offsets are calculated internally (not from --offset-read-length).",
+    )
 
     # create the parser for the "prepare" command
     prepare_parser = subparsers.add_parser(
