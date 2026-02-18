@@ -1,25 +1,24 @@
-FROM condaforge/mambaforge:latest
+FROM python:3.10-slim
 
 LABEL description="RiboMetric container for ribosome profiling QC" \
       author="Jack Curragh" \
       org.opencontainers.image.source="https://github.com/JackCurragh/RiboMetric"
 
-# Install conda packages (precompiled, avoids compilation issues)
-RUN mamba install -y -c conda-forge -c bioconda \
-    python=3.10 \
-    pip \
-    biopython \
-    pysam \
-    rich \
-    pyarrow \
+# System deps required to build pysam and run samtools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
     samtools \
- && mamba clean -a -y
+    libbz2-dev \
+    zlib1g-dev \
+    liblzma-dev \
+    libcurl4-openssl-dev \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY . .
 
-RUN pip install --no-build-isolation .
+RUN pip install .
 
 WORKDIR /data
 
