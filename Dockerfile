@@ -19,7 +19,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN pip install --no-build-isolation --no-deps .
+RUN pip install --no-build-isolation .
 
 WORKDIR /data
 
