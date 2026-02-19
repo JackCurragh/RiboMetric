@@ -723,8 +723,8 @@ def metagene_profile(
 
         # Fill empty distances with 0
         for position_dict in metagene_profile_dict[current_target].values():
-            for position in position_range:
-                position_dict.setdefault(int(position), 0)
+            for pos in position_range:
+                position_dict.setdefault(int(pos), 0)
 
     return metagene_profile_dict
 
