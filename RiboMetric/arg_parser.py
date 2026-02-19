@@ -89,8 +89,11 @@ def argument_parser():
         "--offset-calculation-method",
         type=str,
         required=False,
-        default="changepoint",
-        help="Method to calculate offsets (default: changepoint) [changepoint, ribowaltz]",
+        default=None,  # None so config.yml controls the default
+        help=(
+            "Method to calculate offsets. If omitted, the value in the active "
+            "config.yml is used. Options: changepoint, ribowaltz"
+        ),
     )
     run_parser.add_argument(
         "--enable-optional-metrics",
@@ -183,6 +186,40 @@ def argument_parser():
         action="store_true",
         default=False,
         help="Output the results as all of the above",
+    )
+    # Improved outputs
+    run_parser.add_argument(
+        "--improved-outputs",
+        action="store_true",
+        default=False,
+        help=(
+            "Emit all improved outputs: summary TSV, QC status JSON, "
+            "comparison CSV, and detailed metrics table"
+        ),
+    )
+    run_parser.add_argument(
+        "--summary-tsv",
+        action="store_true",
+        default=False,
+        help="Write {sample}_summary.tsv (one-line summary)",
+    )
+    run_parser.add_argument(
+        "--qc-status",
+        action="store_true",
+        default=False,
+        help="Write {sample}_qc_status.json (pass/warn/fail)",
+    )
+    run_parser.add_argument(
+        "--comparison-csv",
+        action="store_true",
+        default=False,
+        help="Append {sample}_comparison.csv (wide sample comparison)",
+    )
+    run_parser.add_argument(
+        "--metrics-table",
+        action="store_true",
+        default=False,
+        help="Write {sample}_metrics_table.csv (long-form metrics)",
     )
     run_parser.add_argument(
         "--output-offsets",

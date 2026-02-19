@@ -15,7 +15,7 @@ RiboMetric
         :target: https://github.com/JackCurragh/RiboMetric/actions
         :alt: Build Status
 
-.. image:: https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue
+.. image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue
         :target: https://www.python.org/downloads/
         :alt: Python Version
 
@@ -79,6 +79,20 @@ Or enable specific metrics:
     $ RiboMetric run -b bam_file.bam -a annotation_RiboMetric.tsv --enable-metric periodicity_fourier
 
 For more information on how to use RiboMetric, see the documentation_ or use :code:`--help`
+
+Improved outputs for pipelines and review:
+
+.. code-block:: console
+
+    # One-line summary, QC status, comparison, and detailed metrics
+    $ RiboMetric run -b bam.bam -a annotation.tsv --improved-outputs
+
+Or pick specific ones:
+
+.. code-block:: console
+
+    $ RiboMetric run -b bam.bam -a annotation.tsv \
+        --summary-tsv --qc-status --comparison-csv --metrics-table
 
 .. _documentation: https://ribometric.readthedocs.io/en/latest/?version=latest
 
