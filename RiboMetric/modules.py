@@ -66,6 +66,13 @@ def a_site_calculation(read_df: pd.DataFrame,
         asite_df: Dataframe containing the read information with an added
                     column for the A-site
     """
+    # Ensure reference_start is numeric before any arithmetic
+    if 'reference_start' in read_df.columns:
+        read_df = read_df.copy()
+        read_df['reference_start'] = pd.to_numeric(
+            read_df['reference_start'], errors='coerce'
+        )
+
     if offset_type == "calculate":
         print("Calculating offsets")
         a_site_df = a_site_calculation_variable_offset(read_df)
@@ -76,9 +83,12 @@ def a_site_calculation(read_df: pd.DataFrame,
         }
         a_site_df = a_site_calculation_variable_offset(read_df, offset_dict)
     elif offset_type == "global":
-        a_site_df = read_df.assign(
-            a_site=read_df.reference_start.add(global_offset)).assign(
-                offset=global_offset)
+        df = read_df.copy()
+        # Coerce again for safety under different pandas versions
+        df['reference_start'] = pd.to_numeric(df['reference_start'], errors='coerce')
+        df['offset'] = int(global_offset)
+        df['a_site'] = df['reference_start'] + df['offset']
+        a_site_df = df
     elif offset_type == "read_specific":
         read_offsets = pd.read_csv(
             offset_file,
@@ -87,8 +97,10 @@ def a_site_calculation(read_df: pd.DataFrame,
             )
 
         merged_df = read_df.merge(read_offsets, on='read_name', how='left')
-
-        merged_df['offset'] = merged_df['offset'].fillna(global_offset)
+        # Robust numeric coercion to avoid object/str arithmetic issues on CI
+        merged_df['offset'] = pd.to_numeric(merged_df['offset'], errors='coerce')
+        merged_df['offset'] = merged_df['offset'].fillna(global_offset).astype(int)
+        merged_df['reference_start'] = pd.to_numeric(merged_df['reference_start'], errors='coerce')
         merged_df['a_site'] = merged_df['reference_start'] + merged_df['offset']
 
         a_site_df = merged_df[read_df.columns.tolist() + ['a_site', 'offset']]
