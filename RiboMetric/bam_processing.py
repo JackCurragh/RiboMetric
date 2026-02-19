@@ -153,58 +153,7 @@ def ox_parse_reads(bam_file: str,
     return (batch_df, sequence_data)
 
 
-def ox_server_parse_reads(bam_file: str,
-                          num_processes: int = 4
-                          ) -> tuple:
-    """
-    Functionally the same as ox_parse_reads,
-    but without splitting the bam file.
-
-    Inputs:
-        bam_file: Path to the BAM file
-        pool: Multiprocessing pool
-
-    Outputs:
-        tuple: A tuple containing:
-            batch_df: Dataframe containing a processed batch of reads
-            sequence_data: Dictionary containing the processed sequence data
-    """
-    pool = Pool(processes=num_processes)
-    print("Running in server mode")
-    print("Generating pyarrow object")
-    arrow_ipc = ox.read_bam(bam_file)
-    print("Transforming to pandas df")
-    oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
-    del arrow_ipc
-    read_df = process_reads(oxbow_df)
-    print("retrieving sequence data")
-    sequence_data: Dict[int, list] = {1: [], 2: []}
-    sequence_list = oxbow_df["seq"].tolist()
-    count_list = read_df["count"].tolist()
-    del oxbow_df
-    # sequence_list batch size
-    size = 10000
-    if len(sequence_list) < size and len(sequence_list) != 0:
-        size = len(sequence_list)
-    for pattern_length in sequence_data:
-        count = -1
-        for i in range(0, len(sequence_list), size):
-            count += 1
-            if count % 10 != 0:
-                continue
-            section = sequence_list[i:i+size]
-            counts = count_list[i:i+size]
-            sequence_data[pattern_length].append(
-                pool.apply_async(
-                    process_sequences,
-                    [section, counts, pattern_length]
-                    )
-                )
-
-    pool.close()
-    pool.join()
-
-    return (read_df, sequence_data)
+# Server mode path removed; parse_bam now raises NotImplementedError when requested.
 
 
 def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
@@ -240,7 +189,7 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     soft_clip_5 = (
         oxbow_df["cigar"]
         .str.extract(r"^(?:\d+H)?(\d+)S", expand=False)
-        .fillna(0)
+        .fillna("0")
         .astype(int)
     )
     # Use float to preserve NaN for reads with no mapped position; NaN - int = NaN

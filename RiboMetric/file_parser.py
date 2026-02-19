@@ -21,7 +21,6 @@ from tempfile import TemporaryDirectory
 
 from .bam_processing import (join_batches,
                              ox_parse_reads,
-                             ox_server_parse_reads,
                              validate_bam,
                              )
 from .file_splitting import (split_gff_df,
@@ -32,29 +31,33 @@ from .file_splitting import (split_gff_df,
 
 def parse_annotation(annotation_path: str) -> pd.DataFrame:
     """
-    Read in the annotation file at the provided path and return a dataframe
+    Read an annotation TSV and return a DataFrame.
 
-    Inputs:
-        annotation_path: Path to the annotation file with columns:
-                                    "transcript_id","cds_start",
-                                    "cds_end","transcript_length",
-                                    "genomic_cds_starts","genomic_cds_ends"
-
-    Outputs:
-        annotation_df: Dataframe containing the annotation information
+    Accepts both minimal and extended schemas. Required columns:
+    transcript_id, cds_start, cds_end, transcript_length.
+    Optional columns (ignored if missing): genomic_cds_starts, genomic_cds_ends.
     """
-    return pd.read_csv(
-        annotation_path,
-        sep="\t",
-        dtype={
-            "transcript_id": str,
-            "cds_start": int,
-            "cds_end": int,
-            "transcript_length": int,
-            "genomic_cds_starts": str,
-            "genomic_cds_ends": str,
-        },
-    )
+    df = pd.read_csv(annotation_path, sep="\t")
+
+    required = {"transcript_id", "cds_start", "cds_end", "transcript_length"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"Annotation file missing required columns: {sorted(missing)}"
+        )
+
+    # Coerce dtypes for required columns
+    df["transcript_id"] = df["transcript_id"].astype(str)
+    for c in ["cds_start", "cds_end", "transcript_length"]:
+        df[c] = df[c].astype(int)
+
+    # Ensure optional cols exist as strings
+    for c in ["genomic_cds_starts", "genomic_cds_ends"]:
+        if c not in df.columns:
+            df[c] = ""
+        df[c] = df[c].astype(str)
+
+    return df
 
 
 def parse_fasta(fasta_path: str) -> dict:
@@ -126,7 +129,6 @@ def parse_bam(bam_file: str,
               num_reads: int,
               batch_size: int = 10000000,
               num_processes: int = 4,
-              server_mode: bool = False,
               ) -> tuple:
     """
     Read in the bam file at the provided path and return parsed read and
@@ -154,32 +156,26 @@ def parse_bam(bam_file: str,
     # in separate batch
 
     print(f"Splitting BAM into {batch_size} reads")
-    if server_mode is False:
-        pool = Pool(processes=num_processes)
-        bam_batches = []
-        with TemporaryDirectory() as tempdir:
-            idxstats_df = run_samtools_idxstats(bam_file)
-            reference_dfs = split_idxstats_df(idxstats_df,
-                                              batch_size,
-                                              num_reads)
-            for split_num, reference_df in enumerate(reference_dfs):
-                bam_batches.append(pool.apply_async(ox_parse_reads,
-                                                    [bam_file,
-                                                     split_num,
-                                                     reference_df,
-                                                     tempdir]))
+    # Standard (chunked) parsing path
+    pool = Pool(processes=num_processes)
+    bam_batches = []
+    with TemporaryDirectory() as tempdir:
+        idxstats_df = run_samtools_idxstats(bam_file)
+        reference_dfs = split_idxstats_df(idxstats_df,
+                                          batch_size,
+                                          num_reads)
+        for split_num, reference_df in enumerate(reference_dfs):
+            bam_batches.append(pool.apply_async(ox_parse_reads,
+                                                [bam_file,
+                                                 split_num,
+                                                 reference_df,
+                                                 tempdir]))
 
-            pool.close()
-            pool.join()
+        pool.close()
+        pool.join()
 
-            print("\n"*(split_num // 4))
+        print("\n"*(split_num // 4))
 
-            parsed_bam = join_batches(bam_batches)
-
-    else:
-        print("Warning: The server option is not working as intended.",
-              "Regular runs are recommended.")
-        bam_batches = ox_server_parse_reads(bam_file)
         parsed_bam = join_batches(bam_batches)
 
     return parsed_bam
@@ -206,23 +202,15 @@ def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
 
 
 def check_annotation(file_path: str) -> bool:
-    """
-    Checks whether an annotation file exists and is in the right format
-
-    Inputs:
-        file_path: Path to the annotation or gff file
-
-    Outputs:
-        bool: True if an annotation exists, False otherwise
-    """
-    if os.path.exists(file_path):
-        with open(file_path) as f:
-            if len(str(f.readline()).split()) == 4:
-                return True
-            else:
-                return False
-    else:
+    """Validate that an annotation TSV exists and has required columns."""
+    if not os.path.exists(file_path):
         return False
+    try:
+        head = pd.read_csv(file_path, sep="\t", nrows=1)
+    except Exception:
+        return False
+    required = {"transcript_id", "cds_start", "cds_end", "transcript_length"}
+    return required.issubset(set(head.columns))
 
 
 def prepare_annotation(

@@ -111,13 +111,6 @@ def argument_parser():
         help="Use JSON config instead of active config for generating plots",
     )
     run_parser.add_argument(
-        "--server",
-        action="store_true",
-        default=False,
-        help="""Runs RiboMetric in 'server' mode, higher speed at
-                cost of memory efficiency""",
-    )
-    run_parser.add_argument(
         "-n",
         "--name",
         type=str,

@@ -88,7 +88,7 @@ def a_site_calculation(read_df: pd.DataFrame,
 
 def a_site_calculation_variable_offset(
         read_df: pd.DataFrame,
-        offset_dict: dict = {},
+        offset_dict: Optional[dict] = None,
         ) -> pd.DataFrame:
     """
     Adds a column to the read_df containing the A-site for the reads
@@ -137,10 +137,19 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     Outputs:
         dict: Dictionary containing the read length distribution
     """
-    read_lengths, read_counts = np.unique(
-        read_df["read_length"], return_counts=True
+    from pandas.api.types import is_categorical_dtype
+    use_weights = (
+        "count" in read_df.columns and is_categorical_dtype(read_df["count"])  # unexpanded path
     )
-    return dict(zip(read_lengths.tolist(), read_counts.tolist()))
+    if use_weights:
+        counts = (read_df.assign(_w=read_df["count"].astype(int))
+                  .groupby("read_length", observed=True)["_w"].sum())
+        return {int(k): int(v) for k, v in counts.to_dict().items()}
+    else:
+        read_lengths, read_counts = np.unique(
+            read_df["read_length"], return_counts=True
+        )
+        return dict(zip(read_lengths.tolist(), read_counts.tolist()))
 
 
 def terminal_nucleotide_bias_distribution(
@@ -169,11 +178,24 @@ def terminal_nucleotide_bias_distribution(
             }
                           )
 
-    total_counts = len(read_df)
-    prime_counts = {
-        "five_prime": read_df["first_dinucleotide"].value_counts(),
-        "three_prime": read_df["last_dinucleotide"].value_counts(),
-    }
+    from pandas.api.types import is_categorical_dtype
+    weights = (
+        read_df["count"].astype(int)
+        if ("count" in read_df.columns and is_categorical_dtype(read_df["count"]))
+        else None
+    )
+    total_counts = (weights.sum() if weights is not None else len(read_df))
+    if weights is not None:
+        tmp = read_df.assign(_w=weights)
+        prime_counts = {
+            "five_prime": tmp.groupby("first_dinucleotide", observed=True)["_w"].sum(),
+            "three_prime": tmp.groupby("last_dinucleotide", observed=True)["_w"].sum(),
+        }
+    else:
+        prime_counts = {
+            "five_prime": read_df["first_dinucleotide"].value_counts(),
+            "three_prime": read_df["last_dinucleotide"].value_counts(),
+        }
 
     categories = {
         "five_prime": read_df["first_dinucleotide"].cat.categories.to_list(),
@@ -196,8 +218,14 @@ def terminal_nucleotide_bias_distribution(
     for pattern in pattern_list:
         for prime in terminal_nucleotide_bias_dict:
             if pattern in categories[prime]:
-                terminal_nucleotide_bias_dict[prime][pattern] = \
-                    prime_counts[prime][pattern]/total_counts
+                val = prime_counts[prime].get(pattern, 0)
+                # pandas Series .get for index, or dict .get
+                if hasattr(prime_counts[prime], "get"):
+                    try:
+                        val = prime_counts[prime].get(pattern, 0)
+                    except Exception:
+                        val = prime_counts[prime][pattern] if pattern in prime_counts[prime] else 0
+                terminal_nucleotide_bias_dict[prime][pattern] = float(val) / float(total_counts) if total_counts else 0.0
 
     return terminal_nucleotide_bias_dict
 
@@ -224,7 +252,10 @@ def normalise_ligation_bias(
                                 difference between observed and expected
                                 distributions
     """
-    terminal_nucleotide_bias_dict_norm = terminal_nucleotide_bias_dict
+    # Work on a copy to avoid mutating the input
+    terminal_nucleotide_bias_dict_norm = {
+        prime: inner.copy() for prime, inner in terminal_nucleotide_bias_dict.items()
+    }
     expected_distribution = {
         "five_prime": sequence_background["5_prime_bg"],
         "three_prime": sequence_background["3_prime_bg"],
@@ -364,7 +395,7 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
 
     # Iterate over unique combinations of transcript_id and read_length
     for (transcript_id, read_length), group in a_site_df.groupby(
-        ['reference_name', 'read_length']
+        ['reference_name', 'read_length'], observed=True
         ):
         group['read_frame'] = group['a_site'] % 3
         frame_counts = group['read_frame'].value_counts().sort_values(
@@ -415,7 +446,7 @@ def read_frame_distribution_annotated(
     ]
     frame_df = (
         df_slice.assign(read_frame=(df_slice.a_site-df_slice.cds_start).mod(3))
-        .groupby(["read_length", "read_frame"])
+        .groupby(["read_length", "read_frame"], observed=True)
         .size()
     )
     read_frame_dict: Dict[int, Dict[int, int]] = {}
@@ -565,7 +596,7 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
     )
     # Group annotated_read_df
     annotated_read_df = (
-        annotated_read_df.groupby(["read_length", "mRNA_category"])
+        annotated_read_df.groupby(["read_length", "mRNA_category"], observed=True)
         .size()
         .reindex(idx, fill_value=0)
         .sort_index()
@@ -683,14 +714,14 @@ def metagene_profile(
                 (annotated_read_df["metagene_info"] > distance_range[0] - 1)
                 & (annotated_read_df["metagene_info"] < distance_range[1] + 1)
             ]
-            .groupby(["read_length", "metagene_info"])
+            .groupby(["read_length", "metagene_info"], observed=True)
             .size()
             .to_dict()
         )
         if pre_metaprofile_dict == {}:
             if extend:  # If no reads in range
                 pre_metaprofile_dict = (
-                    annotated_read_df.groupby(["read_length", "metagene_info"])
+                    annotated_read_df.groupby(["read_length", "metagene_info"], observed=True)
                     .size()
                     .to_dict()
                 )
@@ -782,7 +813,7 @@ def reading_frame_triangle(
         of the triangle plot for the reading frame
     '''
     triangle_dict = {}
-    for transcript, df in annotated_read_df.groupby('transcript_id'):
+    for transcript, df in annotated_read_df.groupby('transcript_id', observed=True):
         # Get the proportion of reads with predicted a-sites in each frame
         proportion = proportion_of_kmer(df)
         if len(proportion) < 3:
@@ -1009,20 +1040,24 @@ def asite_calculation_per_readlength(
             continue
 
         if method == "changepoint":
-            change_points = change_point_analysis(
-                read_length_metagene["start"][read_length],
-                surrounding_range=(-26, 5)
-            )
-            accepted_change_points = {
-                abs(pos): val for pos, val in change_points.items()
-                if abs(pos) in range(offset_range[0], offset_range[1])
+            # Find the position with the highest read count in the upstream
+            # region of the 5'-end metagene.  The pile-up from ribosomes
+            # stalled at the start codon appears at position -(P_site_offset)
+            # (negative = upstream).  Adding 3 converts P-site → A-site offset.
+            # This is equivalent to the ribowaltz peak-detection step but
+            # applied independently per read length (no consensus fallback).
+            counts = read_length_metagene["start"][read_length]
+            # Search positions corresponding to P-site offsets in offset_range
+            candidate_positions = {
+                pos: counts.get(pos, 0)
+                for pos in range(-offset_range[1] + 1, -offset_range[0] + 1)
             }
-            if not accepted_change_points:
+            peak_count = max(candidate_positions.values(), default=0)
+            if peak_count == 0:
                 offset = default_offset
             else:
-                offset = max(
-                    accepted_change_points, key=accepted_change_points.get
-                )
+                peak_pos = max(candidate_positions, key=candidate_positions.get)
+                offset = abs(peak_pos) + 3  # P-site offset + 1 codon = A-site
 
         elif method == "ribowaltz":
             # ribowaltz_psite_prediction now returns a positive P-site offset

@@ -305,13 +305,16 @@ def annotation_mode(
         results_dict["reading_frame_triangle"] = reading_frame_triangle(
                 annotated_read_df
             )
+        exclude_nt = config["qc"]["read_frame_distribution"].get("exclude_codons", 9)
         read_frame_dist = (
-            read_frame_distribution_annotated(cds_read_df)
+            read_frame_distribution_annotated(cds_read_df, exclusion_length=exclude_nt)
             if config["qc"]["use_cds_subset"]["read_frame_distribution"]
             and annotation
-            else read_frame_distribution_annotated(annotated_read_df)
+            else read_frame_distribution_annotated(annotated_read_df, exclusion_length=exclude_nt)
             )
-        frame_info_content_dict = rf_info_metric(read_frame_dist)
+        # Compute entropy-based periodicity on culled read lengths
+        culled_for_entropy = read_frame_cull(read_frame_dist, config)
+        frame_info_content_dict = rf_info_metric(culled_for_entropy)
         results_dict["read_frame_distribution"] = read_frame_dist
         results_dict["metrics"]["periodicity_information"] =\
             information_metric_cutoff(

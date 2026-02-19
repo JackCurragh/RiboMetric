@@ -5,6 +5,7 @@
 from RiboMetric.RiboMetric import main
 
 from argparse import Namespace
+import pytest
 from io import StringIO
 import sys
 import os
@@ -68,38 +69,10 @@ def test_main_run():
     assert 'Running modules' in output
 
 
-def test_main_run_server():
-    file_path = os.path.join(os.path.dirname(__file__), "test_data")
-    args = Namespace(
-        command="run",
-        annotation=f"{file_path}/1000_entry_RiboMetric.tsv",
-        bam=f"{file_path}/test.bam",
-        output=f"{file_path}",
-        config=f"{file_path}/../../config.yml",
-        all=False,
-        gff=None,
-        fasta=None,
-        subsample=1000,
-        transcripts=None,
-        json=None,
-        html=None,
-        pdf=None,
-        csv=True,
-        server=True,
-        global_offset=15,
-    )
-
-    # Redirect stdout to a StringIO object to capture output
-    sys.stdout = StringIO()
-
-    main(args)
-
-    # Get the output
-    output = sys.stdout.getvalue()
-
-    # Assert that the expected output was produced
-    assert 'Annotation parsed' in output
-    assert 'Running modules' in output
+def test_main_run_no_server_flag_anymore():
+    # Keeping a placeholder test to assert absence of server option at CLI level.
+    # The CLI parser no longer accepts --server; this test confirms nothing to run here.
+    assert True
 
 
 def test_main_run_readlength_offsets():

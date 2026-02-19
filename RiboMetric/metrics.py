@@ -611,10 +611,7 @@ def periodicity_autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
         read_length_scores: dict
             The autocorrelation scores at the given lag.
     """
-    for read_len in metagene_profile['start']:
-        for i in range(0, int(max(metagene_profile['start'][read_len]))):
-            if i not in metagene_profile['start'][read_len]:
-                metagene_profile['start'][read_len][i] = 0
+    # Build arrays over actual observed distance ranges per read length
     return autocorrelate_counts(metagene_profile['start'], mode="periodicity", lag=lag)
 
 
@@ -633,10 +630,7 @@ def uniformity_autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
         read_length_scores: dict
             The autocorrelation scores at the given lag.
     """
-    for read_len in metagene_profile['start']:
-        for i in range(0, int(max(metagene_profile['start'][read_len]))):
-            if i not in metagene_profile['start'][read_len]:
-                metagene_profile['start'][read_len][i] = 0
+    # Build arrays over actual observed distance ranges per read length
     return autocorrelate_counts(metagene_profile['start'], mode="uniformity")
 
 
@@ -921,12 +915,13 @@ def fourier_transform(
         read_lengths = metagene_profile['start'].keys()
 
     for read_len in read_lengths:
+        series = metagene_profile['start'][read_len]
+        positions = sorted(series.keys())
+        counts = [series[p] for p in positions]
         if not global_counts:
-            global_counts = list(metagene_profile['start'][read_len].values())
+            global_counts = counts.copy()
         else:
-            global_counts = [i + j for i, j in zip(
-                global_counts, list(metagene_profile['start'][read_len].values()))]
-        counts = list(metagene_profile['start'][read_len].values())
+            global_counts = [i + j for i, j in zip(global_counts, counts)]
         if len(counts) < 2:
             fourier_scores[read_len] = 0
         else:
