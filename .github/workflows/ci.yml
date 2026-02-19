@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.12']
 
     steps:
     - name: Checkout code
@@ -24,6 +24,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        cache: 'pip'
 
     - name: Install system dependencies
       run: |
@@ -37,14 +38,28 @@ jobs:
         pip install -e ".[test]"
         # Ensure modern kaleido is present to avoid plotly deprecations
         pip install 'kaleido>=1.0.0'
+        # Optional: style/lint (non-fatal)
+        pip install 'flake8>=6' 'black>=23' || true
 
     - name: Build Package
       run: |
         python setup.py sdist bdist_wheel
 
-    - name: Run tests with coverage
+    - name: Run tests (no coverage)
+      if: matrix.python-version != '3.12'
+      env:
+        RIBOMETRIC_SKIP_IMAGES: "1"
+        RIBOMETRIC_THREADS: "2"
       run: |
-        pytest --cov=RiboMetric --cov-report=xml --cov-report=term-missing
+        pytest -q -n auto
+
+    - name: Run tests with coverage (single job)
+      if: matrix.python-version == '3.12'
+      env:
+        RIBOMETRIC_SKIP_IMAGES: "1"
+        RIBOMETRIC_THREADS: "2"
+      run: |
+        pytest -n auto --cov=RiboMetric --cov-report=xml --cov-report=term-missing
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4

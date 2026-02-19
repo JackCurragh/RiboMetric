@@ -265,7 +265,10 @@ def cds_coverage_metric(
     cds_coverage_df = cds_read_df[["transcript_id",
                                    "a_site",
                                    "cds_start",
-                                   "cds_end"]].copy()
+                                   "cds_end",
+                                   "count"]].copy()
+    if "count" not in cds_coverage_df.columns:
+        cds_coverage_df["count"] = 1
     cds_coverage_df["name_pos"] = (cds_coverage_df["transcript_id"]
                                    .astype("object")
                                    + cds_coverage_df["a_site"]
@@ -280,8 +283,7 @@ def cds_coverage_metric(
 
     # Calculate the total combined length of the CDS of transcripts that have
     # reads aligned to them
-    cds_transcripts = cds_coverage_df[~cds_coverage_df["transcript_id"]
-                                      .duplicated()].copy()
+    cds_transcripts = cds_coverage_df.drop_duplicates("transcript_id").copy()
     cds_transcripts["cds_length"] = (
         cds_transcripts["cds_end"] - cds_transcripts["cds_start"]
     )
@@ -298,8 +300,13 @@ def cds_coverage_metric(
         cds_length_total = cds_length_total/3
 
     # Calculate the count of nucleotides covered by the reads after filtering
-    cds_reads_count = sum(cds_coverage_df.value_counts("name_pos")
-                          > minimum_reads)
+    # Weighted “coverage”: sum positions whose weighted count exceeds threshold
+    # Ensure numeric weights for aggregation
+    pos_counts = (
+        cds_coverage_df.assign(count=cds_coverage_df["count"].astype(int))
+        .groupby("name_pos", observed=True)["count"].sum()
+    )
+    cds_reads_count = int((pos_counts > minimum_reads).sum())
     return cds_reads_count/cds_length_total
 
 
@@ -921,6 +928,11 @@ def fourier_transform(
         if not global_counts:
             global_counts = counts.copy()
         else:
+            # pad to same length if needed
+            if len(global_counts) < len(counts):
+                global_counts += [0] * (len(counts) - len(global_counts))
+            elif len(counts) < len(global_counts):
+                counts += [0] * (len(global_counts) - len(counts))
             global_counts = [i + j for i, j in zip(global_counts, counts)]
         if len(counts) < 2:
             fourier_scores[read_len] = 0

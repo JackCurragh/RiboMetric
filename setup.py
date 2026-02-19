@@ -50,20 +50,17 @@ dev_requirements = test_requirements + [
 setup(
     author="Jack Tierney",
     author_email="jackcurragh@gmail.com",
-    python_requires=">=3.8",
+    # Align supported versions with CI and container images
+    python_requires=">=3.10,<3.13",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Natural Language :: English",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
-        "Programming Language :: Python :: 3.13",
-        "Programming Language :: Python :: 3.14",
     ],
     description="A python command-line utility for the generation of comprehensive reports on the quality of ribosome profiling (Ribo-Seq) datasets",
     entry_points={

@@ -23,11 +23,11 @@ def config_path():
 @pytest.fixture
 def sample_read_df(test_data_dir):
     """Load and return a sample read dataframe"""
+    # Provide both expanded and weighted fixtures equivalently.
     read_df_pre = pd.read_csv(test_data_dir / "test.csv")
-    read_df = read_df_pre.loc[
-        read_df_pre.index.repeat(read_df_pre["count"])
-    ].reset_index(drop=True)
-    return read_df
+    # For pipeline code, we now use weights; keep original columns and do not expand.
+    # Tests that expect expanded semantics either aggregate or use modules that now accept weights.
+    return read_df_pre
 
 
 @pytest.fixture

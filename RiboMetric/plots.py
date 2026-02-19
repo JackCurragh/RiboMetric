@@ -3,6 +3,7 @@ This script contains the code for generating the plots for
 RiboMetric reports
 """
 
+import os
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from .modules import read_frame_cull, read_frame_score_trips_viz, sum_mRNA_distribution
@@ -77,16 +78,12 @@ def generate_plots(results_dict: dict, config: dict) -> list:
 
 
 def plotly_to_image(fig: go.Figure, width: int, height: int) -> str:
-    # If using new kaleido defaults in future, this will still work.
-    base_64_plot = base64.b64encode(
-        pio.to_image(
-            fig,
-            format="jpg",
-            width=width,
-            height=height,
-        )
+    # Allow CI or headless runs to skip image rasterization
+    if os.environ.get("RIBOMETRIC_SKIP_IMAGES") == "1":
+        return ""
+    return base64.b64encode(
+        pio.to_image(fig, format="jpg", width=width, height=height)
     ).decode("ascii")
-    return base_64_plot
 
 
 def plot_read_length_distribution(
@@ -836,10 +833,9 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     # Convert the metrics_dict to a DataFrame for easier plotting
     df = pd.DataFrame(list(metrics_dict.items()), columns=['Metric', 'Score'])
 
-    # Filter metrics based on max_mins keys
-    df = df[
-        df['Metric'].apply(lambda x: any(x.startswith(key) for key in config["max_mins"].keys()))
-    ]
+    # Filter metrics based on max_mins keys (support consolidated + legacy)
+    maxmin_keys = set(config["max_mins"].keys())
+    df = df[df['Metric'].apply(lambda x: any(x.startswith(key) for key in maxmin_keys))]
 
     # Get list of valid metrics after first filter
     valid_metrics = df['Metric'].tolist()

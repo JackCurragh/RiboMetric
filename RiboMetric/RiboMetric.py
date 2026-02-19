@@ -260,19 +260,10 @@ def main(args):
                 """)
             print("Reads parsed")
 
-            # Expand the dataframe to have one row per read
-            # This makes calculations on reads easier but uses more memory
+            # Use weighted computations downstream instead of expanding rows
             if "count" not in read_df_pre.columns:
                 read_df_pre["count"] = 1
-                read_df = read_df_pre
-            else:
-                print("Expanding dataframe")
-                repeat_indices = np.repeat(read_df_pre.index,
-                                           read_df_pre["count"])
-                read_df = (read_df_pre.iloc[repeat_indices]
-                           .reset_index(drop=True))
-                print("Dataframe expanded")
-
+            read_df = read_df_pre
             del read_df_pre
 
             if (config["argument"]["gff"] is None and
