@@ -392,46 +392,50 @@ def annotation_mode(
                     frame_info_content_dict,
                 )
 
-        print("> mRNA_distribution")
-        results_dict["mRNA_distribution"] = mRNA_distribution(
-            annotated_read_df
-            )
+        if annotation:
+            print("> mRNA_distribution")
+            results_dict["mRNA_distribution"] = mRNA_distribution(
+                annotated_read_df
+                )
 
-        print("> metagene_profile")
-        results_dict["metagene_profile"] = metagene_profile(
-            annotated_read_df,
-            config["plots"]["metagene_profile"]["distance_target"],
-            config["plots"]["metagene_profile"]["distance_range"],
-        )
+            print("> metagene_profile")
+            results_dict["metagene_profile"] = metagene_profile(
+                annotated_read_df,
+                config["plots"]["metagene_profile"]["distance_target"],
+                config["plots"]["metagene_profile"]["distance_range"],
+            )
+        else:
+            results_dict["mRNA_distribution"] = {}
+            results_dict["metagene_profile"] = {"start": {}, "stop": {}}
 
         #######################################################################
         # UNIFORMITY
         #######################################################################
-        # Default: uniformity_entropy (interpretable, standard)
-        if should_calculate_metric("uniformity_entropy", config):
-            results_dict["metrics"]["uniformity_entropy"] = uniformity_entropy(
-                coding_metagene.copy()
-            )
+        # Default + optional uniformity metrics only when annotation-derived metagene exists
+        if annotation:
+            if should_calculate_metric("uniformity_entropy", config):
+                results_dict["metrics"]["uniformity_entropy"] = uniformity_entropy(
+                    coding_metagene.copy()
+                )
 
-        # Optional uniformity metrics (only if enabled)
-        if should_calculate_metric("uniformity_autocorrelation", config):
-            results_dict["metrics"][
-                "uniformity_autocorrelation"
-                ] = uniformity_autocorrelation(
-                coding_metagene.copy()
-            )
-        if should_calculate_metric("uniformity_theil_index", config):
-            results_dict["metrics"][
-                "uniformity_theil_index"
-                ] = uniformity_theil_index(
-                coding_metagene.copy()
-            )
-        if should_calculate_metric("uniformity_gini_index", config):
-            results_dict["metrics"][
-                "uniformity_gini_index"
-                ] = uniformity_gini_index(
-                coding_metagene.copy()
-            )
+            if should_calculate_metric("uniformity_autocorrelation", config):
+                results_dict["metrics"][
+                    "uniformity_autocorrelation"
+                    ] = uniformity_autocorrelation(
+                    coding_metagene.copy()
+                )
+            if should_calculate_metric("uniformity_theil_index", config):
+                results_dict["metrics"][
+                    "uniformity_theil_index"
+                    ] = uniformity_theil_index(
+                    coding_metagene.copy()
+                )
+            if should_calculate_metric("uniformity_gini_index", config):
+                results_dict["metrics"][
+                    "uniformity_gini_index"
+                    ] = uniformity_gini_index(
+                    coding_metagene.copy()
+                )
 
         #######################################################################
         # COVERAGE
@@ -518,6 +522,12 @@ def annotation_mode(
             key: (1 - value if isinstance(value, Number) else value)
             for key, value in trailer_prop.items()
         }
+        
+        # Ensure read_frame_dist exists when annotation is False but sequence_background is present
+        # so downstream culling and periodicity dominance always have input.
+        if not annotation:
+            read_frame_dist = read_frame_distribution(read_df)
+            results_dict["read_frame_distribution"] = read_frame_dist
     else:
         read_frame_dist = read_frame_distribution(read_df)
         results_dict["read_frame_distribution"] = read_frame_dist
