@@ -103,13 +103,12 @@ def print_table_run(args, config: dict, console, mode):
     Inputs.add_column("Values")
     if config["argument"]["bam"]:
         Inputs.add_row("Bam File:", config["argument"]["bam"])
-        if config["argument"]["annotation"]:
-            Inputs.add_row(
-                "Annotation File:", config["argument"]["annotation"]
-                )
-        else:
+        if config["argument"].get("annotation"):
+            Inputs.add_row("Annotation File:", config["argument"]["annotation"])
+        elif config["argument"].get("gff"):
             Inputs.add_row("GFF File:", config["argument"]["gff"])
-        Inputs.add_row("Transcriptome File:", config["argument"]["fasta"])
+        if config["argument"].get("fasta"):
+            Inputs.add_row("Transcriptome File:", config["argument"]["fasta"])
     elif config["argument"]["json_in"]:
         Inputs.add_row("JSON File:", config["argument"]["json_in"])
 
@@ -117,10 +116,10 @@ def print_table_run(args, config: dict, console, mode):
     Configs.add_column("Options", style="dim", width=20)
     Configs.add_column("Values")
     Configs.add_row("Mode:", mode)
-    Configs.add_row("# of reads:", str(config["argument"]["subsample"]
-                                       if not None else "Full file"))
-    Configs.add_row("# of transcripts:", str(config["argument"]["transcripts"]
-                                             if not None else "Full file"))
+    subs = config["argument"].get("subsample")
+    trans = config["argument"].get("transcripts")
+    Configs.add_row("# of reads:", str(subs) if subs is not None else "Full file")
+    Configs.add_row("# of transcripts:", str(trans) if trans is not None else "Full file")
     Configs.add_row("# of threads:", str(config["argument"]["threads"]))
     Configs.add_row("Config file:", args.config)
 
@@ -148,8 +147,8 @@ def print_table_prepare(args, config, console, mode):
     Configs.add_column("Options", style="dim", width=20)
     Configs.add_column("Values")
     Configs.add_row("Mode:", mode)
-    Configs.add_row("# of transcripts:", str(config["argument"]["transcripts"]
-                                             if not None else "Full file"))
+    trans = config["argument"].get("transcripts")
+    Configs.add_row("# of transcripts:", str(trans) if trans is not None else "Full file")
     Configs.add_row("# of threads:", str(config["argument"]["threads"]))
     Configs.add_row("Config file:", args.config)
 
@@ -252,7 +251,7 @@ def main(args):
                 bam_file=config["argument"]["bam"],
                 num_reads=read_limit,
                 num_processes=config["argument"]["threads"],
-                server_mode=config["argument"]["server"])
+            )
             if read_df_pre.empty:
                 raise Exception("""
                 No reads found in the given bam file.

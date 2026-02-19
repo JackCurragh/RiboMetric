@@ -12,7 +12,8 @@ requirements = [
     "biopython>=1.81",
     "gffpandas>=1.2.0",
     "Jinja2>=3.0",
-    "kaleido==0.2.1",  # Required for plotly image export
+    # Prefer newer Kaleido (>=1.0.0) to avoid deprecations and get wheels
+    "kaleido>=1.0.0",  # Required for plotly image export
     "numpy>=1.24",
     "oxbow>=0.3.0",
     "pandas>=2.0",

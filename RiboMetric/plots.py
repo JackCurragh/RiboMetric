@@ -77,6 +77,7 @@ def generate_plots(results_dict: dict, config: dict) -> list:
 
 
 def plotly_to_image(fig: go.Figure, width: int, height: int) -> str:
+    # If using new kaleido defaults in future, this will still work.
     base_64_plot = base64.b64encode(
         pio.to_image(
             fig,
