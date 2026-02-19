@@ -13,6 +13,9 @@ formats:
   - pdf
 
 python:
-  version: 3.8
+  version: '3.12'
   install:
-    - requirements: requirements_dev.txt
+    - method: pip
+      path: .
+      extra_requirements:
+        - dev

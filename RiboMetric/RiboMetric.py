@@ -63,7 +63,15 @@ from .arg_parser import argument_parser, open_config
 from .qc import annotation_mode, sequence_mode
 from .plots import generate_plots
 from .html_report import generate_report, parse_json_input
-from .results_output import generate_json, generate_csv
+from .results_output import (
+    generate_json,
+    generate_csv,
+    generate_summary_tsv,
+    generate_qc_status,
+    generate_comparison_ready_csv,
+    generate_metrics_table_csv,
+    generate_all_outputs,
+)
 
 
 def print_logo(console):
@@ -280,6 +288,14 @@ def main(args):
                     annotation_df = parse_annotation(
                         config["argument"]["annotation"]
                         )
+                    # Ensure annotation mode actually runs for this branch
+                    results_dict = annotation_mode(
+                        read_df,
+                        sequence_data,
+                        sequence_background,
+                        annotation_df,
+                        config,
+                    )
                 elif (config["argument"]["annotation"] is None and
                         config["argument"]["gff"] is not None):
                     print("Gff provided, preparing annotation")
@@ -290,6 +306,14 @@ def main(args):
                         config
                     )
                     print("Annotation prepared")
+                    # Run annotation mode after preparing annotation
+                    results_dict = annotation_mode(
+                        read_df,
+                        sequence_data,
+                        sequence_background,
+                        annotation_df,
+                        config,
+                    )
 
                 elif (config["argument"]["annotation"] is not None and
                         config["argument"]["gff"] is None):
@@ -335,12 +359,12 @@ def main(args):
 
         report_prefix = f"{''.join(filename)}_RiboMetric"
 
-        if export["html"]:
+        if export.get("html"):
             if export["pdf"]:
                 report_export = "both"
             else:
                 report_export = "html"
-        elif export["pdf"]:
+        elif export.get("pdf"):
             report_export = "pdf"
         else:
             report_export = None
@@ -353,17 +377,48 @@ def main(args):
                             report_prefix,
                             export["output"])
 
-        if export["json"]:
+        if export.get("json"):
             generate_json(results_dict,
                           config,
                           report_prefix,
                           export["output"])
 
-        if export["csv"]:
+        if export.get("csv"):
             generate_csv(results_dict,
                          config,
                          report_prefix,
                          export["output"])
+
+        # Improved outputs (low-hanging fruit)
+        sample_name = "".join(filename)
+        if export.get("improved_outputs"):
+            generate_all_outputs(
+                results_dict,
+                config,
+                sample_name,
+                export.get("output", ""),
+            )
+        else:
+            if export.get("summary_tsv"):
+                generate_summary_tsv(
+                    results_dict, config, sample_name,
+                    f"{sample_name}_summary.tsv", export.get("output", "")
+                )
+            if export.get("metrics_table"):
+                generate_metrics_table_csv(
+                    results_dict, config, sample_name,
+                    f"{sample_name}_metrics_table.csv", export.get("output", "")
+                )
+            if export.get("qc_status"):
+                generate_qc_status(
+                    results_dict, config, sample_name, None,
+                    f"{sample_name}_qc_status.json", export.get("output", "")
+                )
+            if export.get("comparison_csv"):
+                generate_comparison_ready_csv(
+                    results_dict, config, sample_name,
+                    f"{sample_name}_comparison.csv", export.get("output", "")
+                )
 
         if export.get("output_offsets"):
             offsets_data = results_dict.get("computed_offsets", {})
