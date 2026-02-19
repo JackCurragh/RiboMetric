@@ -77,9 +77,13 @@ def a_site_calculation(read_df: pd.DataFrame,
         print("Calculating offsets")
         a_site_df = a_site_calculation_variable_offset(read_df)
     elif offset_type == "read_length":
+        # TSV with two columns: read_length<tab>offset (no header)
+        rl_table = pd.read_csv(
+            offset_file, sep="\t", header=None, names=["read_length", "offset"]
+        )
         offset_dict = {
-            int(row[0]): int(row[1])
-            for row in pd.read_csv(offset_file, sep="\t").values
+            int(rl): int(off)
+            for rl, off in zip(rl_table["read_length"].tolist(), rl_table["offset"].tolist())
         }
         a_site_df = a_site_calculation_variable_offset(read_df, offset_dict)
     elif offset_type == "global":
@@ -105,9 +109,12 @@ def a_site_calculation(read_df: pd.DataFrame,
 
         a_site_df = merged_df[read_df.columns.tolist() + ['a_site', 'offset']]
     else:
-        a_site_df = read_df.assign(
-            a_site=read_df.reference_start.add(global_offset)).assign(
-                offset=global_offset)
+        # Fallback to global behavior with robust numeric handling
+        df = read_df.copy()
+        df['reference_start'] = pd.to_numeric(df['reference_start'], errors='coerce')
+        df['offset'] = int(global_offset)
+        df['a_site'] = df['reference_start'] + df['offset']
+        a_site_df = df
     return a_site_df
 
 
@@ -134,14 +141,9 @@ def a_site_calculation_variable_offset(
     if offset_dict is None:
         offset = 15
     else:
-        # Create a mapping from read_length to offset
-        offset_mapping = {
-            length: offset_dict.get(length, 15)
-            for length in read_df['read_length'].unique()
-            }
-
-        # Map offsets to corresponding read lengths
-        read_df['offset'] = read_df['read_length'].map(offset_mapping)
+        # Map offsets to corresponding read lengths (cast to built-in int to avoid numpy int hash mismatch)
+        read_len_int = read_df['read_length'].astype(int)
+        read_df['offset'] = read_len_int.map(lambda l: int(offset_dict.get(int(l), 15)))
         read_df['offset'] = read_df['offset'].astype('int64')
         offset = read_df['offset']
 
