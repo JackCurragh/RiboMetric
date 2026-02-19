@@ -18,27 +18,19 @@ import pandas as pd
 import pytest
 
 
-def test_a_site_calculation():
+def test_a_site_calculation(sample_read_df):
     """
     Test A-site calculation
     """
-    read_df_pre = pd.read_csv("tests/test_data/test.csv")
-    read_df = read_df_pre.loc[
-        read_df_pre.index.repeat(read_df_pre["count"])
-    ].reset_index(drop=True)
-    a_site_df = a_site_calculation(read_df)
+    a_site_df = a_site_calculation(sample_read_df)
     assert a_site_df.a_site[0] == 356
 
 
-def test_read_length_distribution():
+def test_read_length_distribution(sample_read_df):
     """
     Test read length distribution calculation
     """
-    read_df_pre = pd.read_csv("tests/test_data/test.csv")
-    read_df = read_df_pre.loc[
-        read_df_pre.index.repeat(read_df_pre["count"])
-    ].reset_index(drop=True)
-    read_length_dict = read_length_distribution(read_df)
+    read_length_dict = read_length_distribution(sample_read_df)
     assert read_length_dict[29] == 40
 
 
@@ -49,14 +41,11 @@ def test_read_length_distribution():
         ('terminal_nucleotide_bias_dict_norm["three_prime"]["TC"]', 0.275),
     ],
 )
-def test_terminal_nucleotide_bias_distribution(test_input, expected):
+def test_terminal_nucleotide_bias_distribution(test_input, expected, sample_read_df):
     """
     Test ligation bias distribution calculation
     """
-    read_df_pre = pd.read_csv("tests/test_data/test.csv")
-    read_df = read_df_pre.loc[
-        read_df_pre.index.repeat(read_df_pre["count"])
-    ].reset_index(drop=True)
+    read_df = sample_read_df.copy()
     categories = ["first_dinucleotide", "last_dinucleotide"]
     read_df[categories] = read_df[categories].astype("category")
     sequence_background = {
@@ -99,15 +88,11 @@ def test_nucleotide_composition():
     ]
 
 
-def test_read_frame_distribution():
+def test_read_frame_distribution(sample_read_df):
     """
     Test read frame labelling
     """
-    read_df_pre = pd.read_csv("tests/test_data/test.csv")
-    read_df = read_df_pre.loc[
-        read_df_pre.index.repeat(read_df_pre["count"])
-    ].reset_index(drop=True)
-    read_frame_dict = read_frame_distribution(a_site_calculation(read_df))
+    read_frame_dict = read_frame_distribution(a_site_calculation(sample_read_df))
     assert read_frame_dict[33][1] == 10
 
 
@@ -118,21 +103,12 @@ def test_read_frame_distribution():
         ('mRNA_distribution_dict[21]["three_trailer"]', 40),
     ],
 )
-def test_mRNA_distribution(test_input, expected):
+def test_mRNA_distribution(test_input, expected, sample_read_df, sample_annotation_df):
     """
     Test metagene distance calculations
     """
-    annotation_df = pd.read_csv(
-        "tests/test_data/test_annotation.tsv", sep="\t",
-        dtype={"transcript_id": str, "cds_start": int,
-               "cds_end": int, "transcript_length": int}
-    )
-    read_df_pre = pd.read_csv("tests/test_data/test.csv")
-    read_df = read_df_pre.loc[
-        read_df_pre.index.repeat(read_df_pre["count"])
-    ].reset_index(drop=True)
-    a_site_df = a_site_calculation(read_df)
-    annotated_read_df = annotate_reads(a_site_df, annotation_df)
+    a_site_df = a_site_calculation(sample_read_df)
+    annotated_read_df = annotate_reads(a_site_df, sample_annotation_df)
     annotated_read_df = assign_mRNA_category(annotated_read_df)
 
     mRNA_distribution_dict = mRNA_distribution(annotated_read_df)
@@ -142,21 +118,12 @@ def test_mRNA_distribution(test_input, expected):
     assert eval(test_input) == expected
 
 
-def test_metagene_profile():
+def test_metagene_profile(sample_read_df, sample_annotation_df):
     """
     Test metagene distance calculations
     """
-    annotation_df = pd.read_csv(
-        "tests/test_data/test_annotation.tsv", sep="\t",
-        dtype={"transcript_id": str, "cds_start": int,
-               "cds_end": int, "transcript_length": int}
-    )
-    read_df_pre = pd.read_csv("tests/test_data/test.csv")
-    read_df = read_df_pre.loc[
-        read_df_pre.index.repeat(read_df_pre["count"])
-    ].reset_index(drop=True)
-    a_site_df = a_site_calculation(read_df)
-    annotated_read_df = annotate_reads(a_site_df, annotation_df)
+    a_site_df = a_site_calculation(sample_read_df)
+    annotated_read_df = annotate_reads(a_site_df, sample_annotation_df)
     metagene_profile_dict = metagene_profile(annotated_read_df)
 
     assert metagene_profile_dict["stop"][21][4] == 30

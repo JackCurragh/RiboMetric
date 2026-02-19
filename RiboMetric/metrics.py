@@ -282,10 +282,9 @@ def cds_coverage_metric(
     # reads aligned to them
     cds_transcripts = cds_coverage_df[~cds_coverage_df["transcript_id"]
                                       .duplicated()].copy()
-    cds_transcripts["cds_length"] = (cds_transcripts
-                                     .apply(lambda x: x['cds_end']
-                                            - x['cds_start'],
-                                            axis=1))
+    cds_transcripts["cds_length"] = (
+        cds_transcripts["cds_end"] - cds_transcripts["cds_start"]
+    )
     cds_length_total = cds_transcripts["cds_length"].sum()
     del cds_transcripts
 
@@ -550,19 +549,15 @@ def autocorrelate_counts(
         The autocorrelation scores at the given lag.
     """
     read_length_scores = {}
-    global_counts = []
+    global_counts = None
 
     for read_length in metagene_profile:
-        if not global_counts:
-            global_counts = list(metagene_profile[read_length].values())
-        else:
-            global_counts = [
-                i + j for i, j in zip(
-                    global_counts,
-                    list(metagene_profile[read_length].values())
-                    )
-                    ]
         counts = list(metagene_profile[read_length].values())
+        counts_arr = np.array(counts)
+        if global_counts is None:
+            global_counts = counts_arr.copy()
+        else:
+            global_counts = global_counts + counts_arr
 
         if counts[0] is not None and sum(counts) > 0:
             if mode == "uniformity":
@@ -581,15 +576,18 @@ def autocorrelate_counts(
         else:
             read_length_scores[read_length] = 0
 
-    if mode == "uniformity" and sum(global_counts) > 0:
-        global_counts = [
-            sum(global_counts[i:i+3]) for i in range(0, len(global_counts), 3)
-            ]
-        global_count_list = np.array(global_counts)
-        global_auto_correlation = autocorrelate(global_count_list)
-        read_length_scores['global'] = global_auto_correlation[:5].mean()
-    elif mode == "periodicity" and sum(global_counts) > 0:
-        global_auto_correlation = autocorrelate(np.array(global_counts))
+    if global_counts is None:
+        read_length_scores['global'] = 0
+        return read_length_scores
+
+    if mode == "uniformity" and global_counts.sum() > 0:
+        triplet_counts = np.array([
+            global_counts[i:i+3].sum() for i in range(0, len(global_counts), 3)
+        ])
+        global_auto_correlation = autocorrelate(triplet_counts)
+        read_length_scores['global'] = float(global_auto_correlation[:5].mean())
+    elif mode == "periodicity" and global_counts.sum() > 0:
+        global_auto_correlation = autocorrelate(global_counts)
         read_length_scores['global'] = (
             global_auto_correlation[lag] - global_auto_correlation.mean()
             ) / global_auto_correlation.mean()
@@ -724,13 +722,14 @@ def uniformity_theil_index(
                         list(profile['start'][read_len].values())
                         )
                         ]
-        total_sum = sum(profile['start'][read_len].values())
+        read_len_counts = list(profile['start'][read_len].values())
+        total_sum = sum(read_len_counts)
         global_sum += total_sum if read_len in read_lengths else 0
 
         theil_sum = 0
 
-        for i in range(0, len(profile['start'][read_len]), 3):
-            triplet_counts = list(profile['start'][read_len].values())[i:i+3]
+        for i in range(0, len(read_len_counts), 3):
+            triplet_counts = read_len_counts[i:i+3]
             total_triplet_sum = sum(triplet_counts)
 
             if total_triplet_sum > 0:

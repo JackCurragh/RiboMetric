@@ -221,10 +221,30 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     """
     batch_df = pd.DataFrame()
     batch_df['read_name'] = oxbow_df["qname"].astype("category")
-    batch_df["read_length"] = pd.Series(oxbow_df["end"] - oxbow_df["pos"] + 1,
-                                        dtype="category")
+
+    # Use the aligned length (end - pos + 1) as read length.
+    # This excludes soft-clipped bases, so reads with residual adapter sequence
+    # (soft-clipped by the aligner) are not inflated into a longer length bin.
+    # For perfectly trimmed data any soft clips are 1-2 nt quality clips and the
+    # difference is negligible; for under-trimmed data this is the safer choice.
+    batch_df["read_length"] = pd.Series(
+        oxbow_df["end"] - oxbow_df["pos"] + 1, dtype="category"
+    )
+
     batch_df["reference_name"] = oxbow_df["rname"].astype("category")
-    batch_df["reference_start"] = oxbow_df["pos"].dropna().astype("int")
+
+    # Correct reference_start for 5' soft clips so it points to the true 5' end
+    # of the read (first base of the protected fragment) rather than the first
+    # aligned base. This is required for accurate A-site/P-site offset detection.
+    # CIGAR pattern: optional leading hard-clip (\d+H), then optional soft-clip (\d+S)
+    soft_clip_5 = (
+        oxbow_df["cigar"]
+        .str.extract(r"^(?:\d+H)?(\d+)S", expand=False)
+        .fillna(0)
+        .astype(int)
+    )
+    # Use float to preserve NaN for reads with no mapped position; NaN - int = NaN
+    batch_df["reference_start"] = oxbow_df["pos"].astype("float") - soft_clip_5
     batch_df["first_dinucleotide"] = (oxbow_df["seq"].str.slice(stop=2)
                                       .astype("category"))
     batch_df["last_dinucleotide"] = (oxbow_df["seq"].str.slice(stop=-3,
@@ -332,7 +352,7 @@ def pattern_to_index(pattern: str) -> int:
         if nucleotide in base_to_index:
             index = index * 4 + base_to_index[nucleotide]
         else:
-            return 0
+            return -1
     return index
 
 

@@ -145,3 +145,6 @@ internal_docs/
 # pixi environments
 .pixi
 *.egg-info
+
+# Local project notes
+TODO.md
