@@ -618,24 +618,29 @@ def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
 
 
 def metagene_distance(
-    annotated_read_df: pd.DataFrame, target: str = "start"
+    annotated_read_df: pd.DataFrame,
+    target: str = "start",
+    position: str = "a_site",
 ) -> pd.Series:
     """
-    Calculate distance from A-site to start or stop codon
+    Calculate distance from a read position to start or stop codon
 
     Inputs:
         annotated_read_df: Dataframe containing the read information
         with an added column for the a-site location along with data from
         the annotation file
         target: Target from which the distance is calculated
+        position: Column to use as the read position. Use "a_site" (default)
+            for the standard metagene profile, or "reference_start" to build
+            a 5'-end metagene (required for accurate offset detection).
 
     Outputs:
     pd.Series
     """
     if target == "start":
-        return annotated_read_df["a_site"] - annotated_read_df["cds_start"]
+        return annotated_read_df[position] - annotated_read_df["cds_start"]
     elif target == "stop":
-        return annotated_read_df["a_site"] - annotated_read_df["cds_end"]
+        return annotated_read_df[position] - annotated_read_df["cds_end"]
     else:
         raise ValueError("Target must be start or stop")
 
@@ -669,7 +674,9 @@ def metagene_profile(
         }
     for current_target in target_loop:
         annotated_read_df = annotated_read_df.assign(
-            metagene_info=metagene_distance(annotated_read_df, current_target)
+            metagene_info=metagene_distance(
+                annotated_read_df, current_target, position
+            )
         )
         pre_metaprofile_dict = (
             annotated_read_df[
@@ -876,80 +883,58 @@ def change_point_analysis(
 
 def ribowaltz_psite_prediction(read_counts, flanking_length=9):
     """
-    Predict P-site offsets for each read length using the riboWaltz algorithm.
-    
+    Predict P-site offsets for each read length from a 5'-end metagene.
+
+    The metagene must be built using reference_start (5' end of the read) as
+    the position, so the P-site signal appears as a peak at a NEGATIVE position
+    upstream of the start codon.  The returned offsets are positive integers
+    representing the distance from the 5' end of the read to the P-site.
+
     Args:
-        read_counts (dict): Dictionary of read counts per position for each read length.
-                            Format: {read_length: {position: count}}
-        flanking_length (int): Number of nucleotides to exclude on each side of the start codon.
-                               Default is 9.
-                               
+        read_counts (dict): {read_length: {metagene_position: count}}
+            Positions should be reference_start - cds_start (negative = upstream).
+        flanking_length (int): Positions within this distance of the start codon
+            are excluded to avoid the initiation peak noise.  Default is 9.
+
     Returns:
-        psite_offsets (dict): Dictionary of P-site offsets for each read length.
-                              Format: {read_length: offset}
+        psite_offsets (dict): {read_length: psite_offset (positive int or None)}
     """
     psite_offsets = {}
     read_lengths = sorted(read_counts.keys())
-    
-    # Step 1: Determine temporary P-site offsets for each read length
-    temp_offsets = {}
+
+    # Step 1: Find the upstream peak for each read length.
+    # In the 5'-end metagene the P-site signal is upstream (negative positions):
+    # when a ribosome has its P-site at the start codon, the 5' end of the read
+    # sits ~P-site-offset nt upstream, giving a peak at position -(P-site offset).
+    candidate_offsets = {}
     for read_length in read_lengths:
         counts = read_counts[read_length]
         positions = sorted(counts.keys())
-        
-        # Exclude counts within flanking_length of start codon
-        left_pos = [p for p in positions if p < -flanking_length]
-        right_pos = [p for p in positions if p > flanking_length]
-        
-        left_counts = [counts[p] for p in left_pos]
-        right_counts = [counts[p] for p in right_pos]
-        
-        if left_counts:
-            left_max_idx = np.argmax(left_counts)
-            left_offset = left_pos[left_max_idx]
+
+        upstream_pos = [p for p in positions if p < -flanking_length]
+        upstream_counts = [counts[p] for p in upstream_pos]
+
+        if upstream_counts:
+            peak_idx = np.argmax(upstream_counts)
+            # P-site offset = distance from 5' end to P-site = |peak position|
+            candidate_offsets[read_length] = abs(upstream_pos[peak_idx])
         else:
-            left_offset = None
-        
-        if right_counts:  
-            right_max_idx = np.argmax(right_counts)
-            right_offset = right_pos[right_max_idx]
-        else:
-            right_offset = None
-        
-        temp_offsets[read_length] = (left_offset, right_offset)
-        
-    # Step 2: Determine optimal P-site offset
-    offset_counts = {}
-    for offset_5p, offset_3p in temp_offsets.values():
-        if offset_5p is not None and offset_3p is not None:
-            offset = min(abs(offset_5p), abs(offset_3p))
-            offset_counts[offset] = offset_counts.get(offset, 0) + 1
-        elif offset_5p is not None:
-            offset_counts[abs(offset_5p)] = offset_counts.get(abs(offset_5p), 0) + 1
-        elif offset_3p is not None:
-            offset_counts[abs(offset_3p)] = offset_counts.get(abs(offset_3p), 0) + 1
-    
-    if offset_counts:
-        optimal_offset = max(offset_counts, key=offset_counts.get)
-    else:
-        optimal_offset = None
-    
-    # Step 3: Correct temporary offsets for each read length
+            candidate_offsets[read_length] = None
+
+    # Step 2: Determine consensus offset as fallback for sparse read lengths.
+    offset_votes: dict = {}
+    for offset in candidate_offsets.values():
+        if offset is not None:
+            offset_votes[offset] = offset_votes.get(offset, 0) + 1
+    consensus_offset = max(offset_votes, key=offset_votes.get) if offset_votes else None
+
+    # Step 3: Assign per-read-length offsets, falling back to consensus if needed.
     for read_length in read_lengths:
-        offset_5p, offset_3p = temp_offsets[read_length]
-        
-        if offset_5p is None and offset_3p is None:
-            psite_offsets[read_length] = None
-        elif offset_5p is None:
-            psite_offsets[read_length] = offset_3p
-        elif offset_3p is None:
-            psite_offsets[read_length] = offset_5p
+        if candidate_offsets[read_length] is not None:
+            psite_offsets[read_length] = candidate_offsets[read_length]
         else:
-            if abs(offset_5p - optimal_offset) <= abs(offset_3p - optimal_offset):
-                psite_offsets[read_length] = offset_5p
-            else:
-                psite_offsets[read_length] = offset_3p
-            
+            psite_offsets[read_length] = consensus_offset
+
     return psite_offsets
 
 
@@ -1005,10 +990,18 @@ def asite_calculation_per_readlength(
     offset_dict: Dict[int, int] = {}
     print(f"Running A-site calculation per read length with {method} method")
     for read_length in annotated_read_df["read_length"].unique():
+        # Build metagene using the 5' end of reads (reference_start) rather than
+        # the preliminary a_site.  For typical A-site offsets of 12–18 nt the
+        # start-codon pile-up sits at positions −12 to −17 in the 5'-end metagene,
+        # which falls squarely in the detection range of both changepoint and
+        # ribowaltz.  Using the preliminary a_site metagene placed that pile-up
+        # near position 0, inside the exclusion zone of both methods, so they
+        # were detecting noise rather than signal.
         read_length_metagene = metagene_profile(
             annotated_read_df[annotated_read_df["read_length"] == read_length],
             target="start",
             distance_range=[-50, 20],
+            position="reference_start",
             extend=False
         )
         if read_length not in read_length_metagene["start"]:
@@ -1024,11 +1017,16 @@ def asite_calculation_per_readlength(
                 abs(pos): val for pos, val in change_points.items()
                 if abs(pos) in range(offset_range[0], offset_range[1])
             }
-            offset = max(
-                accepted_change_points, key=accepted_change_points.get
+            if not accepted_change_points:
+                offset = default_offset
+            else:
+                offset = max(
+                    accepted_change_points, key=accepted_change_points.get
                 )
 
         elif method == "ribowaltz":
+            # ribowaltz_psite_prediction now returns a positive P-site offset
+            # (distance from 5' end to P-site).  Adding 3 converts to A-site.
             psite_offset = ribowaltz_psite_prediction(
                 {
                     read_length: read_length_metagene["start"][read_length]
@@ -1037,7 +1035,7 @@ def asite_calculation_per_readlength(
             if psite_offset is None:
                 offset = default_offset
             else:
-                offset = psite_offset + 3  # Convert to A-site offset
+                offset = psite_offset + 3  # P-site offset + 1 codon = A-site offset
 
         elif method == "tripsviz":
             offset = trips_asite_prediction(

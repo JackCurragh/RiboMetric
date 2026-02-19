@@ -13,6 +13,7 @@ import numpy as np
 import tempfile
 import gzip
 import os
+import subprocess
 
 from multiprocessing import Pool
 from tempfile import TemporaryDirectory
@@ -90,12 +91,12 @@ def check_bam(bam_path: str) -> bool:
         if os.path.exists(bam_path + ".bai"):
             return True
         else:
-            os.system(f"samtools index {bam_path}")
+            subprocess.run(["samtools", "index", bam_path], check=True)
             if not os.path.exists(bam_path + ".bai"):
-                raise Exception("""
-                        Indexing failed - Ensure bam is sorted by coordinate
-                            samtools sort -o {bam_path} {bam_path}
-                                """)
+                raise Exception(
+                    "Indexing failed - Ensure bam is sorted by coordinate:\n"
+                    f"    samtools sort -o {bam_path} {bam_path}"
+                )
             return True
     else:
         return False
@@ -118,7 +119,6 @@ def flagstat_bam(bam_path: str) -> dict:
         flagstat_dict["total_reads"] = bamfile.mapped + bamfile.unmapped
         flagstat_dict["mapped_reads"] = bamfile.mapped
         flagstat_dict["unmapped_reads"] = bamfile.unmapped
-        flagstat_dict["duplicates"] = bamfile.mapped + bamfile.unmapped
     return flagstat_dict
 
 
@@ -233,8 +233,7 @@ def prepare_annotation(
         ) -> pd.DataFrame:
     """
     Given a path to a gff file, produce a tsv file containing the
-    transcript_id, tx_cds_start, tx_cds_end, tx_length,
-    genomic_cds_starts, genomic_cds_ends for each transcript
+    transcript_id, tx_cds_start, tx_cds_end, tx_length for each transcript.
 
     Inputs:
         gff_path: Path to the gff file
@@ -252,16 +251,13 @@ def prepare_annotation(
     gff_df, coding_tx_ids = parse_gff(gff_path, num_transcripts)
     split_df_list = split_gff_df(gff_df, num_processes)
     del gff_df
-    basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
-    output_name = f"{basename}_RiboMetric.tsv"
-    open(f"{outdir}/{output_name}", "w").write(
-        "transcript_id\tcds_start\tcds_end\ttranscript_length\n")
+
     annotation_batches = []
-    print("Subsetting CDS regions, Progress:")
+    print("Subsetting CDS regions..")
     for split_df in split_df_list:
         annotation_batches.append(pool.apply_async(
                 gff_df_to_cds_df,
-                [split_df, f"{outdir}/{output_name}"]
+                [split_df]
             ))
 
     pool.close()
@@ -272,8 +268,15 @@ def prepare_annotation(
     if all(isinstance(result, pd.DataFrame) for result in results):
         print("Combining results..")
         annotation_df = pd.concat(results, ignore_index=True)
-        print("Done")
 
+        if outdir is not None:
+            basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
+            output_name = f"{basename}_RiboMetric.tsv"
+            output_path = os.path.join(outdir, output_name)
+            annotation_df.to_csv(output_path, sep="\t", index=False)
+            print(f"Annotation written to {output_path}")
+
+        print("Done")
         return annotation_df
     return pd.DataFrame()
 
@@ -325,9 +328,18 @@ def parse_gff(gff_path: str, num_transcripts: int) -> pd.DataFrame:
     else:
         gff_df = gffpd.read_gff3(gff_path).df
 
-    gff_df.loc[:, "transcript_id"] = gff_df["attributes"].apply(
-        extract_transcript_id
-        )
+    # Extract transcript_id from the attributes string using a single vectorized
+    # regex that handles the common GFF3 and GTF attribute formats:
+    #   Ensembl GFF3:  Parent=transcript:ENST...  or  ID=transcript:ENST...
+    #   Gencode GFF3:  transcript_id=ENST...
+    #   GTF:           transcript_id "ENST..."
+    _TRANSCRIPT_ID_RE = (
+        r'(?:Parent=transcript:|ID=transcript:|transcript_id=|transcript_id ")'
+        r'([^;"]+)'
+    )
+    gff_df["transcript_id"] = gff_df["attributes"].str.extract(
+        _TRANSCRIPT_ID_RE, expand=False
+    )
 
     cds_df = gff_df[gff_df["type"] == "CDS"]
     coding_tx_ids = cds_df["transcript_id"].unique()[:num_transcripts]
@@ -341,75 +353,92 @@ def parse_gff(gff_path: str, num_transcripts: int) -> pd.DataFrame:
     return gff_df, coding_tx_ids
 
 
-def extract_transcript_id(attr_str):
-    for attr in attr_str.split(";"):
-        # Ensembl GFF3 support
-        if attr.startswith("Parent=transcript:") \
-                or attr.startswith("ID=transcript:"):
-            return attr.split(":")[1]
-        # Gencode GFF3 support
-        elif attr.startswith("transcript_id="):
-            return attr.split("=")[1]
-        # Ensembl GTF support
-        elif attr.startswith(" transcript_id "):
-            return attr.split(" ")[2].replace('"', "")
-    return np.nan
-
 
 def gff_df_to_cds_df(gff_df, outpath=None):
-    rows = {
-        "transcript_id": [],
-        "cds_start": [],
-        "cds_end": [],
-        "transcript_length": [],
-    }
+    """
+    Vectorized conversion of a GFF dataframe to a CDS annotation dataframe.
 
-    for group_name, group_df in gff_df.groupby("transcript_id"):
-        if group_df.iloc[0]["strand"] == "+":
-            cds_start = group_df[group_df["type"] == "CDS"]["start"].min()
-            cds_end = group_df[group_df["type"] == "CDS"]["end"].max()
-        else:
-            cds_start = group_df[group_df["type"] == "CDS"]["end"].max()
-            cds_end = group_df[group_df["type"] == "CDS"]["start"].min()
+    For each transcript, computes transcript-space CDS start/end and total
+    transcript length from exon and CDS features.  Handles both + and - strand.
 
-        leader_length, trailer_length, transcript_length = 0, 0, 0
+    The outpath parameter is kept for API compatibility but is no longer used
+    for incremental writing; the caller (prepare_annotation) handles file I/O.
+    """
+    exon_df = gff_df[gff_df["type"] == "exon"].copy()
+    cds_df = gff_df[gff_df["type"] == "CDS"]
 
-        for idx, exon in group_df[group_df["type"] == "exon"].sort_values(
-            "start", ascending=False
-                ).iterrows():
-            if group_df.iloc[0]["strand"] == "+":
-                if exon['end'] <= cds_start:
-                    leader_length += exon['end'] - exon['start']
-                elif exon['start'] <= cds_start:
-                    leader_length += cds_start - exon['start']
-                elif exon['start'] >= cds_end and exon['end'] >= cds_end:
-                    trailer_length += exon['end'] - exon['start']
-                elif exon['end'] >= cds_end and exon['start'] <= cds_end:
-                    trailer_length += exon['end'] - cds_end
+    if exon_df.empty or cds_df.empty:
+        return pd.DataFrame(
+            columns=["transcript_id", "cds_start", "cds_end", "transcript_length"]
+        )
 
-            elif group_df.iloc[0]["strand"] == "-":
-                if exon['start'] >= cds_start:
-                    leader_length += exon['end'] - exon['start']
-                elif exon['end'] >= cds_start:
-                    leader_length += exon['end'] - cds_start
-                elif exon['end'] <= cds_end:
-                    trailer_length += exon['end'] - exon['start']
-                elif exon['start'] <= cds_end:
-                    trailer_length += cds_end - exon['start']
-            transcript_length += exon['end'] - exon['start']
+    # Transcript length = sum of exon lengths per transcript
+    exon_df["_exon_len"] = exon_df["end"] - exon_df["start"]
+    transcript_length = exon_df.groupby("transcript_id")["_exon_len"].sum()
 
-        cds_start_transcript = leader_length
-        cds_end_transcript = transcript_length - trailer_length
+    # Strand per transcript
+    strand = gff_df.groupby("transcript_id")["strand"].first()
 
-        if outpath is None:
-            rows["transcript_id"].append(group_name)
-            rows["cds_start"].append(cds_start_transcript)
-            rows["cds_end"].append(cds_end_transcript)
-            rows["transcript_length"].append(transcript_length)
-        else:
-            with open(outpath, "a") as f:
-                f.write(f"{group_name}\t{cds_start_transcript}\t"
-                        f"{cds_end_transcript}\t{transcript_length}\n")
+    # CDS genomic boundaries — strand-aware to match original coordinate convention:
+    #   + strand: cgs = min CDS start  (5' end in genomic coords)
+    #             cge = max CDS end    (3' end in genomic coords)
+    #   - strand: cgs = max CDS end    (5' end — highest genomic coord)
+    #             cge = min CDS start  (3' end — lowest genomic coord)
+    cds_min_start = cds_df.groupby("transcript_id")["start"].min()
+    cds_max_end = cds_df.groupby("transcript_id")["end"].max()
 
-    if outpath is None:
-        return pd.DataFrame(rows)
+    is_plus = strand == "+"
+    cgs = pd.Series(index=strand.index, dtype=float)  # genomic CDS start
+    cge = pd.Series(index=strand.index, dtype=float)  # genomic CDS end
+    cgs[is_plus] = cds_min_start.reindex(strand.index[is_plus])
+    cgs[~is_plus] = cds_max_end.reindex(strand.index[~is_plus])
+    cge[is_plus] = cds_max_end.reindex(strand.index[is_plus])
+    cge[~is_plus] = cds_min_start.reindex(strand.index[~is_plus])
+
+    # Join boundaries and strand onto exon rows
+    exon_df = exon_df.join(cgs.rename("_cgs"), on="transcript_id")
+    exon_df = exon_df.join(cge.rename("_cge"), on="transcript_id")
+    exon_df = exon_df.join(strand.rename("_strand"), on="transcript_id")
+
+    plus = exon_df["_strand"] == "+"
+    s, e = exon_df["start"], exon_df["end"]
+
+    # Leader contribution per exon (exon nucleotides before the CDS start):
+    #   + strand: max(0, min(exon_end, cgs) - exon_start)
+    #   - strand: max(0, exon_end - max(exon_start, cgs))
+    leader = pd.Series(0.0, index=exon_df.index)
+    leader[plus] = np.maximum(
+        0, np.minimum(e[plus], exon_df.loc[plus, "_cgs"]) - s[plus]
+    )
+    leader[~plus] = np.maximum(
+        0, e[~plus] - np.maximum(s[~plus], exon_df.loc[~plus, "_cgs"])
+    )
+
+    # Trailer contribution per exon (exon nucleotides after the CDS end):
+    #   + strand: max(0, exon_end - max(exon_start, cge))
+    #   - strand: max(0, min(exon_end, cge) - exon_start)
+    trailer = pd.Series(0.0, index=exon_df.index)
+    trailer[plus] = np.maximum(
+        0, e[plus] - np.maximum(s[plus], exon_df.loc[plus, "_cge"])
+    )
+    trailer[~plus] = np.maximum(
+        0, np.minimum(e[~plus], exon_df.loc[~plus, "_cge"]) - s[~plus]
+    )
+
+    exon_df["_leader"] = leader
+    exon_df["_trailer"] = trailer
+
+    leader_sum = exon_df.groupby("transcript_id")["_leader"].sum()
+    trailer_sum = exon_df.groupby("transcript_id")["_trailer"].sum()
+
+    tx_ids = transcript_length.index
+    result = pd.DataFrame({
+        "transcript_id": tx_ids,
+        "cds_start": leader_sum.reindex(tx_ids).fillna(0).astype(int).values,
+        "cds_end": (
+            transcript_length - trailer_sum.reindex(tx_ids).fillna(0)
+        ).astype(int).values,
+        "transcript_length": transcript_length.astype(int).values,
+    })
+
+    return result
