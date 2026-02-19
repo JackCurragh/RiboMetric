@@ -145,6 +145,7 @@ def plot_terminal_nucleotide_bias_distribution(
         plot_terminal_nucleotide_bias_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
+    columns = 1
     if terminal_nucleotide_bias_dict["five_prime"] != {}:
         target_loop = ["five_prime"]
         if terminal_nucleotide_bias_dict["three_prime"] != {}:
@@ -155,7 +156,7 @@ def plot_terminal_nucleotide_bias_distribution(
 
     fig = make_subplots(
         rows=1,
-        cols=columns,
+        cols=int(columns),
         shared_yaxes=True,
         subplot_titles=["5' Ligation Bias", "3' Ligation Bias"]
         if len(target_loop) > 1
