@@ -60,6 +60,10 @@ qc:
   read_frame_distribution:
     3nt_count_cutoff: 0.05
     exclude_codons: 9          # Exclude this many nt around CDS start/stop (triplet boundary noise). 9 = 3 codons
+    # Optional selection of read lengths contributing to global periodicity metrics
+    # periodicity_top_n: 5        # Keep top-N read lengths by mass (commented = disabled)
+    # periodicity_mass_threshold: 0.8  # Keep minimal set of lengths covering this fraction of reads (disabled by default)
+    # psite_min_prominence: 1.5   # Minimum peak/median ratio to accept a P-site offset (fallback to consensus otherwise)
   cds_coverage:
     in_frame_coverage: True   # Only check in-frame coverage, otherwise check complete cds coverage
 
@@ -95,6 +99,8 @@ metrics:
 
   # OPTIONAL METRICS (only calculated if enabled via --enable-optional-metrics or --enable-metric)
   optional:
+    # Enable to build P-site aligned metagene for spectral metrics
+    - periodicity_psite_aligned
     # Additional read length metrics
     - read_length_distribution_bimodality
     - read_length_distribution_normality
@@ -108,6 +114,13 @@ metrics:
     - uniformity_autocorrelation
     - uniformity_theil_index
     - uniformity_gini_index
+    # Spectral metrics can optionally use P-site aligned metagenes
+    # (controlled by qc.periodicity.use_psite_aligned below)
+    # - periodicity_autocorr_psite
+    # - periodicity_fourier_psite
+
+periodicity:
+  use_psite_aligned: true  # When available, use P-site aligned metagene for autocorr/Fourier
 
 # Commented out metrics here will not appear in the summary scores plot
 max_mins: # max mins from simulations for each metric github.com/JackCurragh/MetricAnalysis
@@ -124,8 +137,17 @@ max_mins: # max mins from simulations for each metric github.com/JackCurragh/Met
   prop_reads_CDS: [0, 1]
   prop_reads_leader: [0, 1]
   prop_reads_trailer: [0, 1]
+  # Legacy bias metric names (kept for compatibility)
   terminal_nucleotide_bias_distribution_5_prime: [0, 1]
   terminal_nucleotide_bias_distribution_3_prime: [0, 1]
+  # Consolidated bias metric names
+  terminal_bias_kl_5prime: [0, 1]
+  terminal_bias_kl_3prime: [0, 1]
+  # Optional: max-abs bias consolidated names
+  terminal_bias_maxabs_5prime: [0, 1]
+  terminal_bias_maxabs_3prime: [0, 1]
+  # Consolidated CDS coverage key
+  cds_coverage: [0, 1]
   # terminal_nucleotide_bias_max_absolute_metric_5_prime: [0, 1]
   # terminal_nucleotide_bias_max_absolute_metric_3_prime: [0, 1]
   read_length_distribution_IQR: [0, 1]

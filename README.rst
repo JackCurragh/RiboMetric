@@ -120,13 +120,24 @@ RiboMetric provides multiple output formats for different use cases:
 
 See REPORTING_GUIDE.md_ for complete documentation and examples.
 
+Deprecated metric keys
+----------------------
+
+RiboMetric now publishes both consolidated and legacy metric names to ease upgrades:
+
+- Consolidated: ``terminal_bias_kl_5prime``, ``terminal_bias_kl_3prime``, ``terminal_bias_maxabs_5prime``, ``terminal_bias_maxabs_3prime``, ``cds_coverage``
+- Legacy: ``terminal_nucleotide_bias_distribution_5_prime_metric``, ``terminal_nucleotide_bias_distribution_3_prime_metric``, ``terminal_nucleotide_bias_max_absolute_metric_5_prime_metric``, ``terminal_nucleotide_bias_max_absolute_metric_3_prime_metric``, ``CDS_coverage_metric``
+
+Plots and summary normalization accept both. We recommend migrating dashboards and downstream code to the consolidated names.
+
 .. _REPORTING_GUIDE.md: REPORTING_GUIDE.md
 
 Requirements
 ------------
 
-  * Transcriptomic alignments are required in BAM format
-  * GFF annotations from Ensembl are also required
+  * Transcriptomic alignments in coordinate-sorted BAM format
+  * GFF3/GTF annotations (Ensembl recommended)
+  * samtools >= 1.10 available on PATH (used for idxstats and indexing)
 
 Testing
 -------

@@ -18,6 +18,19 @@ from typing import List, Dict, Tuple, Optional
 from scipy import stats
 
 
+def _get_weights(df: pd.DataFrame) -> Optional[pd.Series]:
+    """Return integer weights if unexpanded; otherwise None.
+
+    Heuristic: if a 'count' column exists but rows are already expanded
+    (duplicate read_name values), skip weighting to avoid double counting.
+    """
+    if "count" not in df.columns:
+        return None
+    if "read_name" in df.columns and df["read_name"].duplicated().any():
+        return None
+    return df["count"].astype(int)
+
+
 def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     Convert the a_site_df to a cds_read_df by removing reads that do not
@@ -137,12 +150,9 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     Outputs:
         dict: Dictionary containing the read length distribution
     """
-    from pandas.api.types import is_categorical_dtype
-    use_weights = (
-        "count" in read_df.columns and is_categorical_dtype(read_df["count"])  # unexpanded path
-    )
-    if use_weights:
-        counts = (read_df.assign(_w=read_df["count"].astype(int))
+    weights = _get_weights(read_df)
+    if weights is not None:
+        counts = (read_df.assign(_w=weights)
                   .groupby("read_length", observed=True)["_w"].sum())
         return {int(k): int(v) for k, v in counts.to_dict().items()}
     else:
@@ -178,12 +188,7 @@ def terminal_nucleotide_bias_distribution(
             }
                           )
 
-    from pandas.api.types import is_categorical_dtype
-    weights = (
-        read_df["count"].astype(int)
-        if ("count" in read_df.columns and is_categorical_dtype(read_df["count"]))
-        else None
-    )
+    weights = _get_weights(read_df)
     total_counts = (weights.sum() if weights is not None else len(read_df))
     if weights is not None:
         tmp = read_df.assign(_w=weights)
@@ -393,28 +398,25 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     """
     read_frame_dict = {}
 
-    # Iterate over unique combinations of transcript_id and read_length
-    for (transcript_id, read_length), group in a_site_df.groupby(
-        ['reference_name', 'read_length'], observed=True
-        ):
-        group['read_frame'] = group['a_site'] % 3
-        frame_counts = group['read_frame'].value_counts().sort_values(
-                                                            ascending=False
-                                                            ).to_dict()
+    # Weighted counts (use heuristic to avoid double-counting expanded rows)
+    weights = _get_weights(a_site_df)
 
-        # Assign frame numbers based on sorted order per transcript
-        # The most frequent frame is assigned 0, the second most
-        # frequent is assigned 1, and the least frequent is assigned 2
-        frame_count_dict = {
-            idx: count for idx, count in enumerate(
-                sorted(frame_counts.values(), reverse=True))
-                }
+    # Compute read_frame per row
+    a_site_df = a_site_df.assign(read_frame=(a_site_df["a_site"] % 3).astype(int))
 
+    # Group by read_length and frame; sum weights or sizes
+    if weights is not None:
+        grouped = (a_site_df
+                   .assign(_w=weights)
+                   .groupby(["read_length", "read_frame"], observed=True)["_w"].sum())
+    else:
+        grouped = a_site_df.groupby(["read_length", "read_frame"], observed=True).size()
+
+    for (read_length, frame), value in grouped.items():
+        read_length = int(read_length)
         if read_length not in read_frame_dict:
-            read_frame_dict[int(read_length)] = {0: 0, 1: 0, 2: 0}
-
-        for frame, count in frame_count_dict.items():
-            read_frame_dict[int(read_length)][frame] += count
+            read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
+        read_frame_dict[read_length][int(frame)] = int(value)
 
     return read_frame_dict
 
@@ -444,11 +446,12 @@ def read_frame_distribution_annotated(
         (df_slice["a_site"] > df_slice["cds_start"] + exclusion_length) &
         (df_slice["a_site"] < df_slice["cds_end"] - exclusion_length)
     ]
-    frame_df = (
-        df_slice.assign(read_frame=(df_slice.a_site-df_slice.cds_start).mod(3))
-        .groupby(["read_length", "read_frame"], observed=True)
-        .size()
-    )
+    weights = _get_weights(df_slice)
+    base = df_slice.assign(read_frame=(df_slice.a_site - df_slice.cds_start).mod(3))
+    if weights is not None:
+        frame_df = base.assign(_w=weights).groupby(["read_length", "read_frame"], observed=True)["_w"].sum()
+    else:
+        frame_df = base.groupby(["read_length", "read_frame"], observed=True).size()
     read_frame_dict: Dict[int, Dict[int, int]] = {}
     for index, value in frame_df.items():
         read_length: int
@@ -595,14 +598,23 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
         [classes, categories], names=["class", "category"]
     )
     # Group annotated_read_df
-    annotated_read_df = (
-        annotated_read_df.groupby(["read_length", "mRNA_category"], observed=True)
-        .size()
-        .reindex(idx, fill_value=0)
-        .sort_index()
-        .to_frame()  # Convert the resulting series to a DataFrame
-        .reset_index()  # Reset the index to a regular column
-    )
+    weights = _get_weights(annotated_read_df)
+    if weights is not None:
+        grp = (annotated_read_df.assign(_w=weights)
+               .groupby(["read_length", "mRNA_category"], observed=True)["_w"].sum()
+               .reindex(idx, fill_value=0)
+               .sort_index()
+               .to_frame(name=0)
+               .reset_index())
+    else:
+        grp = (annotated_read_df
+               .groupby(["read_length", "mRNA_category"], observed=True)
+               .size()
+               .reindex(idx, fill_value=0)
+               .sort_index()
+               .to_frame()  # value column named 0
+               .reset_index())
+    annotated_read_df = grp
 
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict: dict = {"global": {}}
@@ -709,22 +721,32 @@ def metagene_profile(
                 annotated_read_df, current_target, position
             )
         )
-        pre_metaprofile_dict = (
-            annotated_read_df[
-                (annotated_read_df["metagene_info"] > distance_range[0] - 1)
-                & (annotated_read_df["metagene_info"] < distance_range[1] + 1)
-            ]
-            .groupby(["read_length", "metagene_info"], observed=True)
-            .size()
-            .to_dict()
-        )
+        filtered = annotated_read_df[
+            (annotated_read_df["metagene_info"] > distance_range[0] - 1)
+            & (annotated_read_df["metagene_info"] < distance_range[1] + 1)
+        ]
+        wts = _get_weights(filtered)
+        if wts is not None:
+            pre_series = (filtered.assign(_w=wts)
+                          .groupby(["read_length", "metagene_info"], observed=True)["_w"].sum())
+        else:
+            pre_series = filtered.groupby(["read_length", "metagene_info"], observed=True).size()
+        pre_metaprofile_dict = pre_series.to_dict()
         if pre_metaprofile_dict == {}:
             if extend:  # If no reads in range
-                pre_metaprofile_dict = (
-                    annotated_read_df.groupby(["read_length", "metagene_info"], observed=True)
-                    .size()
-                    .to_dict()
-                )
+                w_all = _get_weights(annotated_read_df)
+                if w_all is not None:
+                    pre_metaprofile_dict = (
+                        annotated_read_df.assign(_w=w_all)
+                        .groupby(["read_length", "metagene_info"], observed=True)["_w"].sum()
+                        .to_dict()
+                    )
+                else:
+                    pre_metaprofile_dict = (
+                        annotated_read_df.groupby(["read_length", "metagene_info"], observed=True)
+                        .size()
+                        .to_dict()
+                    )
             else:
                 return {
                     "start": {0: {1: 0}},
@@ -773,11 +795,18 @@ def proportion_of_kmer(
         the annotation file
 
     '''
-    f1 = annotated_read_df[annotated_read_df['a_site'] % 3 == 0]
-    f2 = annotated_read_df[annotated_read_df['a_site'] % 3 == 1]
-    f3 = annotated_read_df[annotated_read_df['a_site'] % 3 == 2]
-
-    return [len(f1), len(f2), len(f3)]
+    # Weighted by 'count' if available
+    if 'count' in annotated_read_df.columns:
+        w = annotated_read_df['count'].astype(int)
+        f1 = w[annotated_read_df['a_site'] % 3 == 0].sum()
+        f2 = w[annotated_read_df['a_site'] % 3 == 1].sum()
+        f3 = w[annotated_read_df['a_site'] % 3 == 2].sum()
+        return [int(f1), int(f2), int(f3)]
+    else:
+        f1 = (annotated_read_df['a_site'] % 3 == 0).sum()
+        f2 = (annotated_read_df['a_site'] % 3 == 1).sum()
+        f3 = (annotated_read_df['a_site'] % 3 == 2).sum()
+        return [int(f1), int(f2), int(f3)]
 
 
 def get_cart_point(ternary_point, vertices=[[0.0, 0.0], [1.0, 0.0], [0.5, 1]]):

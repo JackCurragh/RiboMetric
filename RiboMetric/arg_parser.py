@@ -277,6 +277,14 @@ def open_config(args) -> dict:
         if getattr(args, arg) is not False and getattr(args, arg) is not None:
             config["argument"][arg] = getattr(args, arg)
 
+    # CI/Env override: allow RIBOMETRIC_THREADS to set threads
+    try:
+        env_threads = os.environ.get("RIBOMETRIC_THREADS")
+        if env_threads:
+            config["argument"]["threads"] = int(env_threads)
+    except Exception:
+        pass
+
     # Handle metric selection
     if args.command == "run":
         enabled_metrics = set(config.get("metrics", {}).get("default", []))

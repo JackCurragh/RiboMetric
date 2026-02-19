@@ -90,19 +90,30 @@ def check_bam(bam_path: str) -> bool:
     Outputs:
         bool: True if the bam file and its index exist, False otherwise
     """
-    if os.path.exists(bam_path):
-        if os.path.exists(bam_path + ".bai"):
-            return True
-        else:
-            subprocess.run(["samtools", "index", bam_path], check=True)
-            if not os.path.exists(bam_path + ".bai"):
-                raise Exception(
-                    "Indexing failed - Ensure bam is sorted by coordinate:\n"
-                    f"    samtools sort -o {bam_path} {bam_path}"
-                )
-            return True
-    else:
+    if not os.path.exists(bam_path):
         return False
+    # If index present, we're good
+    if os.path.exists(bam_path + ".bai"):
+        return True
+    # Try to build index, with actionable error if samtools missing
+    try:
+        subprocess.run(["samtools", "index", bam_path], check=True)
+    except FileNotFoundError:
+        raise RuntimeError(
+            "samtools is required but not found on PATH.\n"
+            "Install samtools (>=1.10) and ensure it is available."
+        )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            "samtools index failed. Ensure BAM is coordinate-sorted.\n"
+            f"Try: samtools sort -o sorted.bam {bam_path} && samtools index sorted.bam\n"
+            f"Original error: {e}"
+        )
+    if not os.path.exists(bam_path + ".bai"):
+        raise RuntimeError(
+            "Indexing did not produce a .bai file. Verify BAM sorting and write permissions."
+        )
+    return True
 
 
 def flagstat_bam(bam_path: str) -> dict:

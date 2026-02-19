@@ -30,6 +30,7 @@ from .modules import (
     asite_calculation_per_readlength,
     a_site_calculation_variable_offset,
     a_site_calculation,
+    ribowaltz_psite_prediction,
 )
 
 from .metrics import (
@@ -231,34 +232,37 @@ def annotation_mode(
                 "nucleotide_count"
             ],
         )
-        results_dict["metrics"][
-            "terminal_nucleotide_bias_distribution_5_prime_metric"
-            ] = lbd_metric(
+        # Terminal nucleotide bias (standard + consolidated key aliases)
+        _lbd5 = lbd_metric(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["5_prime_bg"],
             prime="five_prime",
         )
-        results_dict["metrics"][
-            "terminal_nucleotide_bias_distribution_3_prime_metric"
-            ] = lbd_metric(
+        _lbd3 = lbd_metric(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["3_prime_bg"],
             prime="three_prime",
         )
-        results_dict["metrics"][
-            "terminal_nucleotide_bias_max_absolute_metric_5_prime_metric"
-            ] = lbmp_metric(
+        _lbm5 = lbmp_metric(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["5_prime_bg"],
             prime="five_prime",
         )
-        results_dict["metrics"][
-            "terminal_nucleotide_bias_max_absolute_metric_3_prime_metric"
-            ] = lbmp_metric(
+        _lbm3 = lbmp_metric(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["3_prime_bg"],
             prime="three_prime",
         )
+        # Legacy keys (preserve)
+        results_dict["metrics"]["terminal_nucleotide_bias_distribution_5_prime_metric"] = _lbd5
+        results_dict["metrics"]["terminal_nucleotide_bias_distribution_3_prime_metric"] = _lbd3
+        results_dict["metrics"]["terminal_nucleotide_bias_max_absolute_metric_5_prime_metric"] = _lbm5
+        results_dict["metrics"]["terminal_nucleotide_bias_max_absolute_metric_3_prime_metric"] = _lbm3
+        # Consolidated keys (new)
+        results_dict["metrics"]["terminal_bias_kl_5prime"] = _lbd5
+        results_dict["metrics"]["terminal_bias_kl_3prime"] = _lbd3
+        results_dict["metrics"]["terminal_bias_maxabs_5prime"] = _lbm5
+        results_dict["metrics"]["terminal_bias_maxabs_3prime"] = _lbm3
         if config["plots"][
                 "terminal_nucleotide_bias_distribution"][
                 "background_freq"]:
@@ -278,54 +282,115 @@ def annotation_mode(
         results_dict["nucleotide_composition"] = nucleotide_composition(
             sequence_data)
 
-    print("> read_frame_distribution")
-    if annotation:
-        coding_metagene = metagene_profile(
+        print("> read_frame_distribution")
+        if annotation:
+            coding_metagene = metagene_profile(
                 annotated_read_df,
                 target="start",
                 distance_range=[30, 117],
                 extend=True,
             )
 
-        #######################################################################
-        # Periodicity
-        #######################################################################
-        # Optional periodicity metrics (only if enabled)
-        if should_calculate_metric("periodicity_autocorrelation", config):
-            results_dict["metrics"][
-                "periodicity_autocorrelation"
-                ] = periodicity_autocorrelation(
-                coding_metagene.copy()
-            )
-        if should_calculate_metric("periodicity_fourier", config):
-            results_dict["metrics"]["periodicity_fourier"] = fourier_transform(
-                coding_metagene.copy()
+            # Optionally build P-site aligned metagene for spectral metrics
+            psite_aligned = None
+            if config.get("periodicity", {}).get("use_psite_aligned", False):
+                # Build 5'-end metagene around start codon for P-site detection
+                metagene_5p = metagene_profile(
+                    annotated_read_df,
+                    target="start",
+                    distance_range=[-50, 20],
+                    position="reference_start",
+                    extend=False,
+                )
+                # Predict P-site offsets (positive ints) per read length
+                try:
+                    psite_offsets = ribowaltz_psite_prediction(metagene_5p["start"])
+                except Exception:
+                    psite_offsets = {}
+
+                # Shift start metagene counts by offset so P-site at start codon maps to 0
+                aligned_start = {}
+                for rl, counts in metagene_5p["start"].items():
+                    off = psite_offsets.get(rl)
+                    if off is None:
+                        continue
+                    shifted = {}
+                    for pos, val in counts.items():
+                        new_pos = pos + off
+                        shifted[new_pos] = shifted.get(new_pos, 0) + val
+                    aligned_start[rl] = shifted
+                if aligned_start:
+                    psite_aligned = {"start": aligned_start, "stop": {}}
+
+            # read_frame_dist must be computed before periodicity metrics
+            exclude_nt = config["qc"]["read_frame_distribution"].get("exclude_codons", 9)
+            read_frame_dist = (
+                read_frame_distribution_annotated(cds_read_df, exclusion_length=exclude_nt)
+                if config["qc"]["use_cds_subset"]["read_frame_distribution"]
+                and annotation
+                else read_frame_distribution_annotated(annotated_read_df, exclusion_length=exclude_nt)
             )
 
-        results_dict["reading_frame_triangle"] = reading_frame_triangle(
-                annotated_read_df
-            )
-        exclude_nt = config["qc"]["read_frame_distribution"].get("exclude_codons", 9)
-        read_frame_dist = (
-            read_frame_distribution_annotated(cds_read_df, exclusion_length=exclude_nt)
-            if config["qc"]["use_cds_subset"]["read_frame_distribution"]
-            and annotation
-            else read_frame_distribution_annotated(annotated_read_df, exclusion_length=exclude_nt)
-            )
-        # Compute entropy-based periodicity on culled read lengths
-        culled_for_entropy = read_frame_cull(read_frame_dist, config)
-        frame_info_content_dict = rf_info_metric(culled_for_entropy)
-        results_dict["read_frame_distribution"] = read_frame_dist
-        results_dict["metrics"]["periodicity_information"] =\
-            information_metric_cutoff(
-                frame_info_content_dict,
-                config['qc']['read_frame_distribution']['3nt_count_cutoff']
-            )
+            # Spectral metagene: prefer P-site aligned if available
+            spectral_metagene = psite_aligned if psite_aligned else coding_metagene
 
-        results_dict["metrics"]["periodicity_information_weighted_score"] = \
-            read_frame_information_weighted_score(
-                frame_info_content_dict,
-            )
+            #######################################################################
+            # Periodicity
+            #######################################################################
+            if should_calculate_metric("periodicity_autocorrelation", config):
+                selected = select_read_lengths_for_global(
+                    read_frame_dist,
+                    results_dict["read_length_distribution"],
+                    config,
+                )
+                metagene_for_autocorr = spectral_metagene
+                if selected:
+                    reduced = {"start": {}, "stop": {}}
+                    for rl in selected:
+                        if rl in spectral_metagene["start"]:
+                            reduced["start"][rl] = spectral_metagene["start"][rl]
+                        if rl in spectral_metagene["stop"]:
+                            reduced["stop"][rl] = spectral_metagene["stop"][rl]
+                    metagene_for_autocorr = reduced
+                results_dict["metrics"]["periodicity_autocorrelation"] = periodicity_autocorrelation(
+                    metagene_for_autocorr.copy()
+                )
+            if should_calculate_metric("periodicity_fourier", config):
+                selected = select_read_lengths_for_global(
+                    read_frame_dist,
+                    results_dict["read_length_distribution"],
+                    config,
+                )
+                metagene_for_fourier = spectral_metagene
+                if selected:
+                    reduced = {"start": {}, "stop": {}}
+                    for rl in selected:
+                        if rl in spectral_metagene["start"]:
+                            reduced["start"][rl] = spectral_metagene["start"][rl]
+                        if rl in spectral_metagene["stop"]:
+                            reduced["stop"][rl] = spectral_metagene["stop"][rl]
+                    metagene_for_fourier = reduced
+                results_dict["metrics"]["periodicity_fourier"] = fourier_transform(
+                    metagene_for_fourier.copy()
+                )
+
+            results_dict["reading_frame_triangle"] = reading_frame_triangle(
+                    annotated_read_df
+                )
+            # Compute entropy-based periodicity on culled read lengths
+            culled_for_entropy = read_frame_cull(read_frame_dist, config)
+            frame_info_content_dict = rf_info_metric(culled_for_entropy)
+            results_dict["read_frame_distribution"] = read_frame_dist
+            results_dict["metrics"]["periodicity_information"] =\
+                information_metric_cutoff(
+                    frame_info_content_dict,
+                    config['qc']['read_frame_distribution']['3nt_count_cutoff']
+                )
+
+            results_dict["metrics"]["periodicity_information_weighted_score"] = \
+                read_frame_information_weighted_score(
+                    frame_info_content_dict,
+                )
 
         print("> mRNA_distribution")
         results_dict["mRNA_distribution"] = mRNA_distribution(
@@ -372,43 +437,41 @@ def annotation_mode(
         # COVERAGE
         #######################################################################
         print("> cds_coverage_metric")
-        results_dict["metrics"]["CDS_coverage_metric"] = cds_coverage_metric(
+        _cds_cov = cds_coverage_metric(
             cds_read_df,
             minimum_reads=1,
             in_frame_coverage=config["qc"]["cds_coverage"]["in_frame_coverage"]
             )
-        results_dict["metrics"][
-            "CDS_coverage_metric_not_inframe_1read_1000tx"
-            ] = cds_coverage_metric(
+        results_dict["metrics"]["CDS_coverage_metric"] = _cds_cov
+        results_dict["metrics"]["cds_coverage"] = _cds_cov
+        results_dict["metrics"]["CDS_coverage_metric_not_inframe_1read_1000tx"] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=1,
             in_frame_coverage=False,
             num_transcripts=1000
             )
-        results_dict["metrics"][
-            "CDS_coverage_metric_not_inframe_100read_100tx"
-            ] = cds_coverage_metric(
+        results_dict["metrics"]["cds_coverage_not_inframe_1read_1000tx"] = results_dict["metrics"]["CDS_coverage_metric_not_inframe_1read_1000tx"]
+        results_dict["metrics"]["CDS_coverage_metric_not_inframe_100read_100tx"] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=100,
             in_frame_coverage=False,
             num_transcripts=100
             )
-        results_dict["metrics"][
-            "CDS_coverage_metric_inframe_1read_1000tx"
-            ] = cds_coverage_metric(
+        results_dict["metrics"]["cds_coverage_not_inframe_100read_100tx"] = results_dict["metrics"]["CDS_coverage_metric_not_inframe_100read_100tx"]
+        results_dict["metrics"]["CDS_coverage_metric_inframe_1read_1000tx"] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=1,
             in_frame_coverage=True,
             num_transcripts=1000
             )
-        results_dict["metrics"][
-            "CDS_coverage_metric_inframe_100read_100tx"
-            ] = cds_coverage_metric(
+        results_dict["metrics"]["cds_coverage_inframe_1read_1000tx"] = results_dict["metrics"]["CDS_coverage_metric_inframe_1read_1000tx"]
+        results_dict["metrics"]["CDS_coverage_metric_inframe_100read_100tx"] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=100,
             in_frame_coverage=True,
             num_transcripts=100
             )
+        results_dict["metrics"]["cds_coverage_inframe_100read_100tx"] = results_dict["metrics"]["CDS_coverage_metric_inframe_100read_100tx"]
 
         #######################################################################
         # RNA REGIONAL SUPPORT
@@ -511,3 +574,29 @@ def sequence_mode(
     #     else read_frame_distribution(read_df)
 
     return results_dict
+def select_read_lengths_for_global(read_frame_dist: dict, read_length_distribution: dict, config: dict) -> list:
+    """Select read lengths to contribute to global spectral metrics.
+
+    Supports either top-N by mass or a cumulative mass threshold.
+    """
+    opts = config.get("qc", {}).get("read_frame_distribution", {})
+    top_n = opts.get("periodicity_top_n")
+    mass_threshold = opts.get("periodicity_mass_threshold")
+    if not top_n and not mass_threshold:
+        return sorted(read_frame_dist.keys())
+
+    # Build (len, mass) from read_length_distribution
+    pairs = sorted(read_length_distribution.items(), key=lambda kv: kv[1], reverse=True)
+    selected = []
+    if top_n:
+        selected = [int(k) for k, _ in pairs[: int(top_n)]]
+    elif mass_threshold:
+        total = sum(v for _, v in pairs)
+        acc = 0
+        for k, v in pairs:
+            selected.append(int(k))
+            acc += v
+            if acc / total >= float(mass_threshold):
+                break
+    # Intersect with available keys in read_frame_dist
+    return [l for l in selected if l in read_frame_dist]
