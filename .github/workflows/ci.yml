@@ -93,4 +93,4 @@ jobs:
 
       - name: Run mypy (fail on warnings)
         run: |
-          mypy --config-file RiboMetric/mypy.ini RiboMetric
+          mypy --config-file mypy.ini RiboMetric
