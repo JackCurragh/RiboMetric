@@ -1,11 +1,13 @@
 
 import os
 import yaml
+from typing import Dict, Any, cast
 import argparse
 from rich.emoji import Emoji
 
 
-def argument_parser():
+
+def argument_parser() -> argparse.ArgumentParser:
     """
     Parse the command line arguments and return the parser object
 
@@ -282,7 +284,7 @@ def argument_parser():
     return parser
 
 
-def open_config(args) -> dict:
+def open_config(args: argparse.Namespace) -> Dict[str, Any]:
     """
     Opens config and overrides config dictionary with commandline arguments
 
@@ -295,14 +297,14 @@ def open_config(args) -> dict:
     """
     if os.path.exists(args.config):
         with open(args.config, "r") as yml:
-            config = yaml.load(yml, Loader=yaml.Loader)
+            config = cast(Dict[str, Any], yaml.load(yml, Loader=yaml.Loader))
     else:
         # load default config file
         project_dir = os.path.dirname(os.path.abspath(__file__))
         config_file_path = os.path.join(project_dir, 'config.yml')
 
         with open(config_file_path, "r") as yml:
-            config = yaml.load(yml, Loader=yaml.Loader)
+            config = cast(Dict[str, Any], yaml.load(yml, Loader=yaml.Loader))
 
     if args.command == "run" and args.all:
         args.json = True

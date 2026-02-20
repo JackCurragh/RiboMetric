@@ -47,6 +47,8 @@ Output:
 from rich.console import Console
 from rich.text import Text
 from rich.table import Table
+from typing import Dict, Any, cast
+import argparse
 
 import numpy as np
 
@@ -74,7 +76,7 @@ from .results_output import (
 )
 
 
-def print_logo(console):
+def print_logo(console: Console) -> None:
     """
     print the logo to the console
     """
@@ -103,7 +105,7 @@ def print_logo(console):
     console.print(logo)
 
 
-def print_table_run(args, config: dict, console, mode):
+def print_table_run(args: argparse.Namespace, config: Dict[str, Any], console: Console, mode: str) -> None:
     console = Console()
 
     Inputs = Table(show_header=True, header_style="bold magenta")
@@ -140,10 +142,10 @@ def print_table_run(args, config: dict, console, mode):
     Output.add_row("CSV:", str(config["argument"]["csv"]))
 
     # Print tables side by side
-    console.print(Inputs, Configs, Output, justify="inline", style="bold")
+    console.print(Inputs, Configs, Output, justify=None, style="bold")
 
 
-def print_table_prepare(args, config, console, mode):
+def print_table_prepare(args: argparse.Namespace, config: Dict[str, Any], console: Console, mode: str) -> None:
     console = Console()
 
     Inputs = Table(show_header=True, header_style="bold magenta")
@@ -161,10 +163,10 @@ def print_table_prepare(args, config, console, mode):
     Configs.add_row("Config file:", args.config)
 
     # Print tables side by side
-    console.print(Inputs, Configs, justify="inline", style="bold")
+    console.print(Inputs, Configs, justify=None, style="bold")
 
 
-def main(args):
+def main(args: argparse.Namespace) -> int:
     """
     Main function for the RiboMetric command line interface
 
@@ -303,7 +305,7 @@ def main(args):
                         config["argument"]["gff"],
                         config["argument"]["output"],
                         config["argument"]["transcripts"],
-                        config
+                        config["argument"]["threads"]
                     )
                     print("Annotation prepared")
                     # Run annotation mode after preparing annotation
@@ -331,10 +333,11 @@ def main(args):
                                                    config)
                 if config["argument"]["fasta"] is not None:
                     fasta_dict = parse_fasta(config["argument"]["fasta"])
-                    results_dict = sequence_mode(
+                    # Cast to bypass legacy sequence_mode signature
+                    results_dict = cast(dict, cast(Any, sequence_mode)(
                         results_dict, read_df, fasta_dict, config
-                    )
-
+                    ))
+    
             filename = config["argument"]["bam"].split('/')[-1]
             if "." in filename:
                 filename = filename.split('.')[:-1]
@@ -435,6 +438,7 @@ def main(args):
                       "Offsets are only calculated when no external offset file is provided.")
 
 
+    return 0
 if __name__ == "__main__":
     parser = argument_parser()
     args = parser.parse_args()

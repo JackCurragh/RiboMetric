@@ -192,7 +192,10 @@ def parse_bam(bam_file: str,
     return parsed_bam
 
 
-def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
+from typing import List
+
+
+def get_top_transcripts(read_df: pd.DataFrame, num_transcripts: int) -> List[str]:
     """
     Get the top N transcripts with the most reads
 
@@ -209,7 +212,8 @@ def get_top_transcripts(read_df: dict, num_transcripts: int) -> list:
                .sort_values("count", ascending=False)
     )
 
-    return count_sorted_df.index[:num_transcripts].tolist()
+    # Ensure a concrete list[str] is returned even if the index dtype is not string
+    return [str(x) for x in count_sorted_df.index[:num_transcripts].tolist()]
 
 
 def check_annotation(file_path: str) -> bool:
@@ -353,7 +357,10 @@ def parse_gff(gff_path: str, num_transcripts: int) -> pd.DataFrame:
 
 
 
-def gff_df_to_cds_df(gff_df, outpath=None):
+from typing import Optional
+
+
+def gff_df_to_cds_df(gff_df: pd.DataFrame, outpath: Optional[str] = None) -> pd.DataFrame:
     """
     Vectorized conversion of a GFF dataframe to a CDS annotation dataframe.
 

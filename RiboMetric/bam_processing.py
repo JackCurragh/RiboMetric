@@ -10,7 +10,7 @@ import os
 import pyarrow.ipc
 from .file_splitting import split_bam, format_progress
 from multiprocessing import Pool
-from typing import Dict
+from typing import Dict, List
 
 
 def validate_bam(bam_file: str) -> None:
@@ -305,11 +305,11 @@ def pattern_to_index(pattern: str) -> int:
     return index
 
 
-def calculate_background(sequence_array: np.array,
-                         sequences,
-                         pattern_length,
+def calculate_background(sequence_array: np.ndarray,
+                         sequences: List[str],
+                         pattern_length: int,
                          five_prime: bool
-                         ) -> dict:
+                         ) -> Dict[str, float]:
     """
     Calculate the background frequency for a list of sequences. The background
     frequency is the proportion of nucleotide patterns without the first or

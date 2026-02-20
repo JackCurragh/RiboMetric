@@ -13,13 +13,16 @@ import json
 import os
 
 
+from typing import List, Dict, Any, Tuple
+
+
 def generate_report(
-    plots: list,
-    config: dict,
+    plots: List[Dict[str, Any]],
+    config: Dict[str, Any],
     export_mode: str = "html",
     name: str = "RiboMetric_report",
     outdir: str = "",
-):
+) -> None:
     """
     Generates a report of the RiboMetric results with plots
 
@@ -70,9 +73,9 @@ def generate_report(
         output = outdir + "/" + name
 
     if export_mode == "both":
-        export_mode = ["html", "pdf"]
+        export_mode_list: List[str] = ["html", "pdf"]
     else:
-        export_mode = [export_mode]
+        export_mode_list = [export_mode]
 
     template = env.get_template("base.html")
     context = {
@@ -84,7 +87,7 @@ def generate_report(
         "favicon": base64_icon,
     }
 
-    for filetype in export_mode:
+    for filetype in export_mode_list:
         if filetype == "html":
             context["filetype"] = filetype
             jinja_render = template.render(context)
@@ -100,7 +103,7 @@ def generate_report(
             print(f"Your {filetype} report can be found in {out}")
 
 
-def int_keys_hook(data):
+def int_keys_hook(data: Dict[Any, Any]) -> Dict[Any, Any]:
     """
     Custom object_hook for JSON parsing that converts number strings into
     integers
@@ -111,7 +114,7 @@ def int_keys_hook(data):
     return data
 
 
-def parse_json_input(json_path: str) -> tuple:
+def parse_json_input(json_path: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Parse json input from a previous RiboMetric run for use in generating plots
 

@@ -73,3 +73,24 @@ jobs:
       
     # - name: Python flake8 Lint
     #   uses: py-actions/flake8@v2.2.1
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies for type checking
+        run: |
+          python -m pip install --upgrade pip
+          pip install mypy
+          pip install -r requirements.txt
+
+      - name: Run mypy (fail on warnings)
+        run: |
+          mypy --config-file RiboMetric/mypy.ini RiboMetric

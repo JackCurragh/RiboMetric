@@ -35,9 +35,12 @@ def run_samtools_idxstats(bam_file: str) -> pd.DataFrame:
     return df
 
 
+from typing import List
+
+
 def split_idxstats_df(idxstats_df: pd.DataFrame,
                       batch_size: int,
-                      num_reads: int) -> list:
+                      num_reads: int) -> List[pd.DataFrame]:
     """
     Split the idxstats data frame into a list of data frames limited to
     the max read count while also preparing the dataframe for conversion to
@@ -136,7 +139,7 @@ def split_bam(bam_file: str,
     return outfile
 
 
-def split_gff_file(input_file, outdir, num_files) -> list:
+def split_gff_file(input_file: str, outdir: str, num_files: int) -> List[str]:
     with open(input_file, 'r') as f:
         gff_lines = f.readlines()
 
@@ -171,7 +174,7 @@ def split_gff_file(input_file, outdir, num_files) -> list:
     return split_gffs
 
 
-def split_gff_df(gff_df: pd.DataFrame, split_num: int) -> list:
+def split_gff_df(gff_df: pd.DataFrame, split_num: int) -> List[pd.DataFrame]:
     """
     Split the gff dataframe into a list of dataframes limited to the max
 
@@ -230,7 +233,7 @@ def split_gff_df(gff_df: pd.DataFrame, split_num: int) -> list:
     return split_df_list
 
 
-def format_progress(percentage):
+def format_progress(percentage: float) -> str:
     round_percentage = round(percentage, 3)
     formatted_percentage = "{:.3f}%".format(round_percentage)
 
