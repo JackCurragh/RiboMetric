@@ -309,12 +309,12 @@ def annotation_mode(
                     psite_offsets = {}
 
                 # Shift start metagene counts by offset so P-site at start codon maps to 0
-                aligned_start = {}
+                aligned_start: Dict[int, Dict[int, int]] = {}
                 for rl, counts in metagene_5p["start"].items():
                     off = psite_offsets.get(rl)
                     if off is None:
                         continue
-                    shifted = {}
+                    shifted: Dict[int, int] = {}
                     for pos, val in counts.items():
                         new_pos = pos + off
                         shifted[new_pos] = shifted.get(new_pos, 0) + val
@@ -345,7 +345,7 @@ def annotation_mode(
                 )
                 metagene_for_autocorr = spectral_metagene
                 if selected:
-                    reduced = {"start": {}, "stop": {}}
+                    reduced: Dict[str, Dict[int, Dict[int, int]]] = {"start": {}, "stop": {}}
                     for rl in selected:
                         if rl in spectral_metagene["start"]:
                             reduced["start"][rl] = spectral_metagene["start"][rl]

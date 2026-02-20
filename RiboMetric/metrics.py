@@ -9,14 +9,13 @@ respective modules
 import pandas as pd
 import math
 import numpy as np
-
-from typing import Dict
-import numpy as np
+from typing import Dict, List, Tuple, Any
+import numpy.typing as npt
 from scipy.stats import skew, kurtosis, normaltest
 import scipy.signal as signal
 
 
-def find_category_by_cumulative_percentage(df, percentage):
+def find_category_by_cumulative_percentage(df: pd.DataFrame, percentage: float) -> int:
     """
     Calculate the read_length with cumulative percentages
     """
@@ -24,12 +23,12 @@ def find_category_by_cumulative_percentage(df, percentage):
                                    / df['read_count'].sum())
     read_length = df.loc[df['cumulative_percentage'] >= percentage,
                          'read_length'].iloc[0]
-    return read_length
+    return int(read_length)
 
 
 def read_length_distribution_IQR_normalised_metric(
-        rld_dict: dict,
-        ) -> pd.DataFrame:
+        rld_dict: Dict[int, int],
+        ) -> float:
     """
     Calculate the read length distribution metric from the output of
     the read_length_distribution module.
@@ -96,7 +95,7 @@ def read_length_distribution_coefficient_of_variation_metric(
     return 1 / (1 + coefficient_of_variation)
 
 
-def read_length_distribution_bimodality(data):
+def read_length_distribution_bimodality(data: Dict[int, int]) -> float:
     """
     Calculate the bimodality coefficient for a given dataset.
 
@@ -109,10 +108,10 @@ def read_length_distribution_bimodality(data):
     read_lens = np.array(list(data.keys()))
     counts = np.array(list(data.values()))
 
-    data = np.repeat(read_lens, counts)
-    n = len(data)
-    skew_value = skew(data)
-    kurt_value = kurtosis(data)
+    expanded = np.repeat(read_lens, counts)
+    n = len(expanded)
+    skew_value = skew(expanded)
+    kurt_value = kurtosis(expanded)
 
     numerator = (skew_value ** 2) + 1
     denominator = kurt_value + (3 * ((n - 1) ** 2 / ((n - 2) * (n - 3))))
@@ -124,7 +123,7 @@ def read_length_distribution_bimodality(data):
 
 
 def read_length_distribution_normality_metric(
-        rld_dict: dict,
+        rld_dict: Dict[int, int],
         ) -> float:
     """
     Calculate the read length distribution (non) normality metric from the output of
@@ -142,14 +141,20 @@ def read_length_distribution_normality_metric(
     read_lens = np.array(list(rld_dict.keys()))
     counts = np.array(list(rld_dict.values()))
 
-    data = np.repeat(read_lens, counts)
-    res = normaltest(data)
+    expanded = np.repeat(read_lens, counts)
+    try:
+        # SciPy >=1.9 returns a Result object with .pvalue
+        pvalue = float(normaltest(expanded).pvalue)
+    except Exception:
+        # Older SciPy returns tuple (stat, pvalue)
+        _, pvalue = normaltest(expanded)
+        pvalue = float(pvalue)
     # Non-normal distributions are expected; invert p-value so higher is better.
-    return max(0.0, min(1.0, 1 - res.pvalue))
+    return max(0.0, min(1.0, 1 - pvalue))
 
 
 def read_length_distribution_max_prop_metric(
-        rld_dict: dict,
+        rld_dict: Dict[int, int],
         num_top_readlens: int = 1,
         ) -> float:
     """
@@ -170,8 +175,8 @@ def read_length_distribution_max_prop_metric(
 
 
 def terminal_nucleotide_bias_KL_metric(
-        observed_freq: dict,
-        expected_freq: dict,
+        observed_freq: Dict[str, Dict[str, float]],
+        expected_freq: Dict[str, float] | Dict[str, Dict[str, float]],
         prime: str = "five_prime",
         ) -> float:
     """
@@ -198,8 +203,15 @@ def terminal_nucleotide_bias_KL_metric(
     # at least once are used (needs to be changed in ligation bias)
     kl_divergence = 0.0
 
+    exp_map: Dict[str, float]
+    ref = expected_freq.get(prime) if isinstance(expected_freq, dict) else None
+    if isinstance(ref, dict):
+        exp_map = ref
+    else:
+        exp_map = expected_freq  # type: ignore[assignment]
+
     for dinucleotide, observed_prob in observed_freq[prime].items():
-        expected_prob = expected_freq[dinucleotide]
+        expected_prob = exp_map[dinucleotide]
         kl_divergence += observed_prob * math.log2(
                                             observed_prob / expected_prob
                                             )
@@ -209,8 +221,8 @@ def terminal_nucleotide_bias_KL_metric(
 
 
 def terminal_nucleotide_bias_max_absolute_metric(
-        observed_freq: dict,
-        expected_freq: dict,
+        observed_freq: Dict[str, Dict[str, float]],
+        expected_freq: Dict[str, float] | Dict[str, Dict[str, float]],
         prime: str = "five_prime",
         ) -> float:
     """
@@ -229,8 +241,15 @@ def terminal_nucleotide_bias_max_absolute_metric(
         lbd_df: Dataframe containing the ligation bias metric in bits
     """
     scores = {}
+    exp_map2: Dict[str, float]
+    ref2 = expected_freq.get(prime) if isinstance(expected_freq, dict) else None
+    if isinstance(ref2, dict):
+        exp_map2 = ref2
+    else:
+        exp_map2 = expected_freq  # type: ignore[assignment]
+
     for dinucleotide, observed_prob in observed_freq[prime].items():
-        expected_prob = expected_freq[dinucleotide]
+        expected_prob = exp_map2[dinucleotide]
         scores[dinucleotide] = abs(
             observed_prob - expected_prob)
 
@@ -269,11 +288,14 @@ def cds_coverage_metric(
                                    "count"]].copy()
     if "count" not in cds_coverage_df.columns:
         cds_coverage_df["count"] = 1
-    cds_coverage_df["name_pos"] = (cds_coverage_df["transcript_id"]
-                                   .astype("object")
-                                   + cds_coverage_df["a_site"]
-                                   .astype(str)
-                                   ).astype("category")
+    # Build a stable string key "transcript_id_aSite" using Python strings to
+    # avoid Arrow-backed string arithmetic issues in some pandas builds.
+    a_site_num = pd.to_numeric(cds_coverage_df["a_site"], errors="coerce").fillna(-1).astype("int64")
+    cds_coverage_df["name_pos"] = (
+        cds_coverage_df["transcript_id"].astype("object").astype(str)
+        + "_"
+        + a_site_num.astype(str)
+    ).astype("category")
 
     top_transcripts = cds_coverage_df[
         "transcript_id"
@@ -307,10 +329,11 @@ def cds_coverage_metric(
         .groupby("name_pos", observed=True)["count"].sum()
     )
     cds_reads_count = int((pos_counts > minimum_reads).sum())
-    return cds_reads_count/cds_length_total
+    denom = float(cds_length_total) if float(cds_length_total) != 0 else 1.0
+    return float(cds_reads_count) / denom
 
 
-def calculate_3nt_periodicity_score(probabilities):
+def calculate_3nt_periodicity_score(probabilities: List[float]) -> float:
     '''
     Calculate the triplet periodicity score for a given probability of a read
     being in frame. The score is the square root of the bits of information in
@@ -327,17 +350,17 @@ def calculate_3nt_periodicity_score(probabilities):
         result (float): The triplet periodicity score.
     '''
     maximum_entropy = math.log2(3)
-    entropy = 0
+    entropy = 0.0
     for probability in probabilities:
         entropy += -(probability * math.log2(probability))
 
     result = math.sqrt((maximum_entropy - entropy) / maximum_entropy)
-    return result
+    return float(result)
 
 
 def read_frame_information_content(
-    read_frame_distribution: dict,
-        ) -> dict:
+    read_frame_distribution: Dict[int, Dict[int, int]],
+        ) -> Dict[int, Tuple[float, int]]:
     """
     Calculate the read frame distribution metric from the output of
     the read_frame_distribution module.
@@ -355,7 +378,7 @@ def read_frame_information_content(
                 frame
     """
     pseudocount = 1e-100
-    frame_info_content_dict = {}
+    frame_info_content_dict: Dict[int, Tuple[float, int]] = {}
     for read_length in read_frame_distribution:
         total_count = sum(read_frame_distribution[read_length].values())
 
@@ -372,9 +395,9 @@ def read_frame_information_content(
 
 
 def information_metric_cutoff(
-    frame_info_content_dict: dict,
+    frame_info_content_dict: Dict[int, Tuple[float, int]],
     min_count_threshold: float = 0.05,
-) -> dict:
+) -> Dict[int | str, float]:
     """
     Apply the cut off to the information content metric and calculate a global score
 
@@ -388,13 +411,13 @@ def information_metric_cutoff(
         information_content_metric: Dictionary containing the information
                 content metric for each read length and a global score
     """
-    information_content_metric = {}
+    information_content_metric: Dict[int | str, float] = {}
     total_reads = sum(
         frame_info_content_dict[key][1]
         for key in frame_info_content_dict
     )
-    total_weighted_score = 0
-    total_count_above_threshold = 0
+    total_weighted_score: float = 0.0
+    total_count_above_threshold: float = 0.0
 
     for read_length in frame_info_content_dict:
         score, count = frame_info_content_dict[read_length]
@@ -407,7 +430,7 @@ def information_metric_cutoff(
     if total_count_above_threshold > 0:
         global_score = total_weighted_score / total_count_above_threshold
     else:
-        global_score = 0
+        global_score = 0.0
 
     # Add global score to the output dictionary
     information_content_metric['global'] = global_score
@@ -416,8 +439,8 @@ def information_metric_cutoff(
 
 
 def read_frame_information_weighted_score(
-    frame_info_content_dict: dict,
-        ):
+    frame_info_content_dict: Dict[int, Tuple[float, int]],
+        ) -> float:
     '''
     Produce a single metric for the triplet periodicity by taking the weighted
     average of the scores for each read length.
@@ -442,11 +465,11 @@ def read_frame_information_weighted_score(
 
 
 def region_region_ratio_metric(
-    mRNA_distribution: dict,
+    mRNA_distribution: Dict[int, Dict[str, int]],
     region1: str = "leader",
     region2: str = "CDS",
     read_length_range: tuple = (20, 40),
-    ) -> dict:
+    ) -> Dict[int | str, float]:
     """
     Calculate the region-region ratio metric. This metric is the ratio of
     reads in region1 relative to region2.
@@ -462,7 +485,7 @@ def region_region_ratio_metric(
     Outputs:
     region_region_ratio: Dictionary containing the region-region ratio metric
     """
-    region_region_ratio: Dict[str, float] = {}
+    region_region_ratio: Dict[int | str, float] = {}
     region1_total, region2_total = 0, 0
     read_lengths = [i for i in range(
         read_length_range[0], read_length_range[1]
@@ -485,9 +508,9 @@ def region_region_ratio_metric(
 
 
 def proportion_of_reads_in_region(
-        mRNA_distribution: dict,
+        mRNA_distribution: Dict[int, Dict[str, int]],
         region: str = "CDS",
-        ):
+        ) -> Dict[int | str, float]:
     """
     Calculate the proportion of reads in a specific region
 
@@ -499,22 +522,27 @@ def proportion_of_reads_in_region(
     Outputs:
     proportion: Dictionary containing the proportion of reads in the region
     """
-    proportion = {}
+    proportion: Dict[int | str, float] = {}
     total = 0
-    read_len_total = {}
+    read_len_total: Dict[int, int] = {}
     for read_len in mRNA_distribution:
         read_len_total[read_len] = sum(mRNA_distribution[read_len].values())
         total += read_len_total[read_len]
 
     for read_len in mRNA_distribution:
-        proportion[read_len] = mRNA_distribution[read_len][region] / read_len_total[read_len] if read_len_total[read_len] > 0 else 0
-    proportion["global"] = sum(
-        mRNA_distribution[read_len][region] for read_len in mRNA_distribution
-    ) / total
+        proportion[read_len] = (
+            mRNA_distribution[read_len][region] / read_len_total[read_len]
+            if read_len_total[read_len] > 0 else 0.0
+        )
+    total_reads = float(total)
+    proportion["global"] = (
+        float(sum(mRNA_distribution[rl][region] for rl in mRNA_distribution)) / total_reads
+        if total_reads > 0 else 0.0
+    )
     return proportion
 
 
-def autocorrelate(signal: np.array) -> np.ndarray:
+def autocorrelate(signal: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.float64]:
     """
     Computes the autocorrelation of a signal
 
@@ -531,14 +559,14 @@ def autocorrelate(signal: np.array) -> np.ndarray:
     autocorr = autocorr[len(signal)-1:].astype(float)
     autocorr /= autocorr[0]
     np.seterr(divide='warn', invalid='warn')  # reset to default
-    return autocorr
+    return autocorr.astype(np.float64)
 
 
 def autocorrelate_counts(
-        metagene_profile: dict,
+        metagene_profile: Dict[int, Dict[int, int]],
         mode: str = "uniformity",
         lag: int = 0
-        ) -> dict:
+        ) -> Dict[int | str, float]:
     """
     Computes the autocorrelation of the ribosome counts at a given lag.
 
@@ -555,12 +583,12 @@ def autocorrelate_counts(
     read_length_scores: dict
         The autocorrelation scores at the given lag.
     """
-    read_length_scores = {}
-    global_counts = None
+    read_length_scores: Dict[int | str, float] = {}
+    global_counts: npt.NDArray[np.float64] | None = None
 
     for read_length in metagene_profile:
         counts = list(metagene_profile[read_length].values())
-        counts_arr = np.array(counts)
+        counts_arr = np.array(counts, dtype=float)
         if global_counts is None:
             global_counts = counts_arr.copy()
         else:
@@ -571,13 +599,13 @@ def autocorrelate_counts(
                 triplet_counts = [
                     sum(counts[i:i+3]) for i in range(0, len(counts), 3)
                     ]
-                count_list = np.array(triplet_counts)
+                count_list = np.array(triplet_counts, dtype=float)
                 auto_correlation = autocorrelate(count_list)
                 read_length_scores[read_length] = float(
                     auto_correlation[:5].mean()
                 )
             elif mode == "periodicity":
-                count_list = np.array(counts)
+                count_list = np.array(counts, dtype=float)
                 auto_correlation = autocorrelate(count_list)
                 read_length_scores[read_length] = auto_correlation[lag]
         else:
@@ -588,10 +616,10 @@ def autocorrelate_counts(
         return read_length_scores
 
     if mode == "uniformity" and global_counts.sum() > 0:
-        triplet_counts = np.array([
+        triplet_arr = np.array([
             global_counts[i:i+3].sum() for i in range(0, len(global_counts), 3)
-        ])
-        global_auto_correlation = autocorrelate(triplet_counts)
+        ], dtype=float)
+        global_auto_correlation = autocorrelate(triplet_arr)
         read_length_scores['global'] = float(global_auto_correlation[:5].mean())
     elif mode == "periodicity" and global_counts.sum() > 0:
         global_auto_correlation = autocorrelate(global_counts)
@@ -603,7 +631,7 @@ def autocorrelate_counts(
     return read_length_scores
 
 
-def periodicity_autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
+def periodicity_autocorrelation(metagene_profile: Dict[str, Dict[int, Dict[int, int]]], lag: int = 3) -> Dict[int | str, float]:
     """
     Computes the autocorrelation of the ribosome counts at a given lag.
 
@@ -622,7 +650,7 @@ def periodicity_autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
     return autocorrelate_counts(metagene_profile['start'], mode="periodicity", lag=lag)
 
 
-def uniformity_autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
+def uniformity_autocorrelation(metagene_profile: Dict[str, Dict[int, Dict[int, int]]], lag: int = 3) -> Dict[int | str, float]:
     """
     Computes the autocorrelation of the ribosome counts at a given lag.
 
@@ -641,7 +669,7 @@ def uniformity_autocorrelation(metagene_profile: dict, lag: int = 3) -> dict:
     return autocorrelate_counts(metagene_profile['start'], mode="uniformity")
 
 
-def uniformity_entropy(metagene_profile: dict) -> dict:
+def uniformity_entropy(metagene_profile: Dict[str, Dict[int, Dict[int, int]]]) -> Dict[int | str, float]:
     """
     Computes the uniformity of the metagene profile. Inspired by ORQAS
 
@@ -653,9 +681,9 @@ def uniformity_entropy(metagene_profile: dict) -> dict:
         read_length_scores: dict
             The uniformity scores for each read length.
     """
-    read_len_uniformity = {}
+    read_len_uniformity: Dict[int | str, float] = {}
 
-    global_counts = []
+    global_counts: List[int] = []
     for read_len in metagene_profile['start']:
         if not global_counts:
             global_counts = list(metagene_profile['start'][read_len].values())
@@ -695,10 +723,13 @@ def uniformity_entropy(metagene_profile: dict) -> dict:
     return read_len_uniformity
 
 
+from typing import Mapping
+
+
 def uniformity_theil_index(
-        profile,
-        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
-        ):
+        profile: Mapping[str, Dict[int, Dict[int, int]]],
+        read_lengths: List[int] = [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+        ) -> Dict[int | str, float]:
     """
     Calculates the Theil index for a Ribo-Seq profile.
 
@@ -709,8 +740,8 @@ def uniformity_theil_index(
     Returns:
         dict: The Theil index for the given profile.
     """
-    theils = {}
-    global_counts = []
+    theils: Dict[int | str, float] = {}
+    global_counts: List[int] = []
     global_sum = 0
     for read_len in profile['start']:
         if read_len in read_lengths:
@@ -727,7 +758,7 @@ def uniformity_theil_index(
         total_sum = sum(read_len_counts)
         global_sum += total_sum if read_len in read_lengths else 0
 
-        theil_sum = 0
+        theil_sum = 0.0
 
         for i in range(0, len(read_len_counts), 3):
             triplet_counts = read_len_counts[i:i+3]
@@ -748,7 +779,7 @@ def uniformity_theil_index(
 
         theils[read_len] = 1 / (1 + theil_sum)
 
-    global_theil_sum = 0
+    global_theil_sum: float = 0.0
     for i in range(0, len(global_counts), 3):
         triplet_counts = global_counts[i:i+3]
         total_triplet_sum = sum(triplet_counts)
@@ -771,7 +802,7 @@ def uniformity_theil_index(
     return theils
 
 
-def uniformity_gini_index(profile):
+def uniformity_gini_index(profile: Mapping[str, Dict[int, Dict[int, int]]]) -> Dict[int | str, float]:
     """
 
     Calculates the Gini index for a Ribo-Seq profile.
@@ -785,8 +816,8 @@ def uniformity_gini_index(profile):
     Returns:
         dict: The Gini index for the given profile.
     """
-    ginis = {}
-    global_raw_counts = []
+    ginis: Dict[int | str, float] = {}
+    global_raw_counts: List[int] = []
 
     for read_len in profile['start']:
         if not global_raw_counts:
@@ -815,9 +846,9 @@ def uniformity_gini_index(profile):
         gini_value = max(0, min(1, gini_value))
         ginis[read_len] = 1 - gini_value
 
-    global_counts = [
-        sum(counts[i:i+3]) for i in range(0, len(global_raw_counts), 3)
-        ]
+    global_counts: List[int] = [
+        sum(global_raw_counts[i:i+3]) for i in range(0, len(global_raw_counts), 3)
+    ]
     global_counts.sort()
 
     global_gini_sum = 0
@@ -834,7 +865,7 @@ def uniformity_gini_index(profile):
     return ginis
 
 
-def periodicity_dominance(read_frame_dict):
+def periodicity_dominance(read_frame_dict: Dict[int, Dict[int, int]]) -> Dict[int | str, float]:
     """
     Calculate the read frame dominance metric from the output of
     the read_frame_distribution module.
@@ -848,17 +879,15 @@ def periodicity_dominance(read_frame_dict):
     Outputs:
         read_frame_dominance: Dictionary containing the read frame dominance
     """
-    read_frame_dominance = {}
-    global_total = 0
-    global_max_frame = 0
+    read_frame_dominance: Dict[int | str, float] = {}
+    global_total: int = 0
+    global_max_frame: int = 0
     for read_length in read_frame_dict:
         total_count = sum(read_frame_dict[read_length].values())
         if total_count == 0:
             read_frame_dominance[read_length] = 0
             continue
-        max_frame = max(
-            read_frame_dict[read_length], key=read_frame_dict[read_length].get
-            )
+        max_frame = max(read_frame_dict[read_length], key=lambda k: read_frame_dict[read_length][k])
         read_frame_dominance[read_length] = read_frame_dict[
             read_length][max_frame] / total_count if total_count > 0 else 0
 
@@ -896,9 +925,9 @@ def counts_to_codon_proportions(counts: list) -> list:
 
 
 def fourier_transform(
-        metagene_profile,
-        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
-        ):
+        metagene_profile: Dict[str, Dict[int, Dict[int, int]]],
+        read_lengths: List[int] = [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+        ) -> Dict[int | str, float]:
     """
     Calculate the Fourier transform of the metagene profile and extract the
     amplitude at the expected 3nt periodicity frequency.
@@ -914,12 +943,12 @@ def fourier_transform(
             The Fourier transform scores for each read length, including the
             amplitude at the expected 3nt periodicity frequency.
     """
-    fourier_scores = {}
-    global_counts = []
+    fourier_scores: Dict[int | str, float] = {}
+    global_counts: List[int] = []
     read_lengths = [i for i in read_lengths if i in metagene_profile['start'].keys()]
 
     if not read_lengths:
-        read_lengths = metagene_profile['start'].keys()
+        read_lengths = list(metagene_profile['start'].keys())
 
     for read_len in read_lengths:
         series = metagene_profile['start'][read_len]
@@ -979,10 +1008,10 @@ def fourier_transform(
 
 
 def multitaper(
-        metagene_profile,
-        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
-        nperseg=8,
-        noverlap=4):
+        metagene_profile: Dict[str, Dict[int, Dict[int, int]]],
+        read_lengths: List[int] = [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+        nperseg: int = 8,
+        noverlap: int = 4) -> Dict[int | str, float]:
     """
     Calculate the multitaper transform of the metagene profile.
 
@@ -1012,12 +1041,12 @@ def multitaper(
         for each read length, indicating the strength of periodicity in the metagene
         profile at different read lengths.
     """
-    multitaper_scores = {}
-    global_counts = []
+    multitaper_scores: Dict[int | str, float] = {}
+    global_counts: List[int] = []
     read_lengths = [i for i in read_lengths if i in metagene_profile['start'].keys()]
 
     if not read_lengths:
-        read_lengths = metagene_profile['start'].keys()
+        read_lengths = list(metagene_profile['start'].keys())
         
     for read_len in read_lengths:
         if not global_counts:
@@ -1031,11 +1060,11 @@ def multitaper(
                     ]
         counts = list(metagene_profile['start'][read_len].values())
         multitaper_transform = signal.spectrogram(
-                                        np.array(counts),
-                                        window='hann',
-                                        nperseg=nperseg,
-                                        noverlap=noverlap
-                                        )
+                                            np.array(counts),
+                                            window='hann',
+                                            nperseg=nperseg,
+                                            noverlap=noverlap
+                                            )
         multitaper_scores[read_len] = np.max(multitaper_transform[2])
 
     global_multitaper_transform = signal.spectrogram(
@@ -1049,9 +1078,9 @@ def multitaper(
 
 
 def wavelet_transform(
-        metagene_profile,
-        read_lengths=[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
-        ):
+        metagene_profile: Dict[str, Dict[int, Dict[int, int]]],
+        read_lengths: List[int] = [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+        ) -> Dict[int | str, float]:
     """
     Calculate the wavelet transform of the metagene profile.
 
@@ -1063,12 +1092,12 @@ def wavelet_transform(
         wavelet_scores: dict
             The wavelet transform scores for each read length.
     """
-    wavelet_scores = {}
-    global_counts = []
+    wavelet_scores: Dict[int | str, float] = {}
+    global_counts: List[int] = []
     read_lengths = [i for i in read_lengths if i in metagene_profile['start'].keys()]
 
     if not read_lengths:
-        read_lengths = metagene_profile['start'].keys()
+        read_lengths = list(metagene_profile['start'].keys())
 
     for read_len in read_lengths:
         if not global_counts:
@@ -1081,11 +1110,11 @@ def wavelet_transform(
                     )
                     ]
         counts = list(metagene_profile['start'][read_len].values())
-        wavelet_transform = signal.cwt(np.array(counts), signal.ricker, [1])
-        total_abs_wavelet = np.sum(np.abs(wavelet_transform))
-        wavelet_scores[read_len] = np.max(wavelet_transform) / total_abs_wavelet if total_abs_wavelet > 0 else 0
+        wave = signal.cwt(np.array(counts), signal.ricker, [1])
+        total_abs_wavelet = np.sum(np.abs(wave))
+        wavelet_scores[read_len] = float(np.max(wave) / total_abs_wavelet) if total_abs_wavelet > 0 else 0.0
 
-    global_wavelet_transform = signal.cwt(np.array(global_counts), signal.ricker, [1])
-    global_total_abs_wavelet = np.sum(np.abs(global_wavelet_transform))
-    wavelet_scores["global"] = np.max(global_wavelet_transform) / global_total_abs_wavelet if global_total_abs_wavelet > 0 else 0
+    global_wave = signal.cwt(np.array(global_counts), signal.ricker, [1])
+    global_total_abs_wavelet = np.sum(np.abs(global_wave))
+    wavelet_scores["global"] = float(np.max(global_wave) / global_total_abs_wavelet) if global_total_abs_wavelet > 0 else 0.0
     return wavelet_scores

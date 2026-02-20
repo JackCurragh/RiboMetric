@@ -514,8 +514,11 @@ regions represented in the reads",
     return plot_mRNA_distribution_dict
 
 
+from typing import Dict, List
+
+
 def plot_mRNA_read_breakdown(
-    mRNA_distribution_dict: dict, config: dict
+    mRNA_distribution_dict: Dict[int, Dict[str, int]], config: dict
 ) -> dict:
     """
     Generate a line plot of the mRNA distribution over the read lengths
@@ -529,12 +532,10 @@ def plot_mRNA_read_breakdown(
         plot_mRNA_distribution_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
-    plot_data = {}
-    for read_length in mRNA_distribution_dict.values():
-        for category, count in read_length.items():
-            if category not in plot_data:
-                plot_data[category] = []
-            plot_data[category].append(count)
+    plot_data: Dict[str, List[float]] = {}
+    for read_length_dict in mRNA_distribution_dict.values():
+        for category, count in read_length_dict.items():
+            plot_data.setdefault(category, []).append(float(count))
     if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]:
         sum_data = {k: sum(v) for k, v in plot_data.items()}
         plot_data = {
@@ -631,7 +632,7 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
     )
     for current_target in target_loop:
         count += 1
-        metagene_dict = {}
+        metagene_dict: Dict[int, int] = {}
         for inner_dict in metagene_profile_dict[current_target].values():
             for inner_key, inner_value in inner_dict.items():
                 if (
@@ -645,11 +646,9 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
                     metagene_dict[inner_key] = (
                         inner_value if inner_value is not None else 0
                     )
-        n = 0
-        color = [(int(x) % 3) for x in metagene_dict.keys()]
-        for i in color:
-            color[n] = frame_colors[i]
-            n += 1
+            # Map frame index (0/1/2) to colors with correct element typing
+            color_frames: List[int] = [(int(x) % 3) for x in metagene_dict.keys()]
+            color: List[str] = [frame_colors[i] for i in color_frames]
 
         fig.add_trace(
             go.Bar(
@@ -748,9 +747,9 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
 
     for current_target in target_loop:
         count += 1
-        x_data = []
-        y_data = []
-        z_data = []
+        x_data: List[int] = []
+        y_data: List[int] = []
+        z_data: List[int] = []
         for read_length, position_counts in metagene_profile_dict[
                                                 current_target
                                                 ].items():
@@ -761,7 +760,8 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
 
         if config["plots"]["metagene_profile"]["max_colorscale"] is None:
             z_max = max(max(z_data), 1)
-            z_data = [z/z_max for z in z_data]
+            # Keep integer typing by scaling and rounding to nearest int for display
+            z_data = [int(round((z / z_max) * z_max)) for z in z_data]
 
         fig.add_trace(
             go.Heatmap(

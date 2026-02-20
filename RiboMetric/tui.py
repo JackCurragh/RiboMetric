@@ -14,9 +14,18 @@ import tempfile
 
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Static, TabbedContent, TabPane
-try:
-    from textual.widgets import Image as TUIImage  # textual >=0.25
-except Exception:  # pragma: no cover
+from typing import TYPE_CHECKING, cast as _cast, Any as _Any
+import importlib
+
+# Textual Image widget typing/runtime import without importing at type-check time
+TUIImage: _Any
+if not TYPE_CHECKING:
+    try:  # pragma: no cover - runtime only
+        _widgets = importlib.import_module("textual.widgets")
+        TUIImage = getattr(_widgets, "Image", None)
+    except Exception:
+        TUIImage = None
+else:  # type-checking path
     TUIImage = None
 from textual.binding import Binding
 from textual.screen import Screen
@@ -40,10 +49,10 @@ class RiboMetricData:
         self.metrics = self.results.get("metrics", {})
         self.mode = self.results.get("mode", "unknown")
 
-    def _load_data(self) -> dict:
+    def _load_data(self) -> Dict[str, Any]:
         """Load JSON data from file"""
         with open(self.filepath, 'r') as f:
-            return json.load(f)
+            return _cast(Dict[str, Any], json.load(f))
 
     def get_sample_name(self) -> str:
         """Extract sample name from filename"""
@@ -57,8 +66,13 @@ class RiboMetricData:
         """Get global value for a metric"""
         metric = self.metrics.get(metric_name)
         if isinstance(metric, dict):
-            return metric.get("global")
-        return metric
+            value = metric.get("global")
+            if isinstance(value, (int, float)):
+                return float(value)
+            return None
+        if isinstance(metric, (int, float)):
+            return float(metric)
+        return None
 
     def get_qc_status(self) -> str:
         """Determine overall QC status based on key metrics"""
@@ -344,7 +358,7 @@ class RiboMetricTUI(App):
 
     TITLE = "RiboMetric TUI Viewer"
 
-    def __init__(self, json_file: str, **kwargs):
+    def __init__(self, json_file: str, **kwargs: Any):
         super().__init__(**kwargs)
         self.json_file = json_file
         # Load data immediately
@@ -422,25 +436,25 @@ class RiboMetricTUI(App):
             # Optional visual plots (images)
             with TabPane("Lengths (Plot)", id="lengths_plot"):
                 if TUIImage and self._plots.get("lengths_plot"):
-                    yield TUIImage(self._plots["lengths_plot"])  # type: ignore[arg-type]
+                    yield TUIImage(self._plots["lengths_plot"])  # TUIImage is Any at type-check time
                 else:
                     yield Static("Plot image not available.")
 
             with TabPane("Frames (Plot)", id="frames_plot"):
                 if TUIImage and self._plots.get("frames_plot"):
-                    yield TUIImage(self._plots["frames_plot"])  # type: ignore[arg-type]
+                    yield TUIImage(self._plots["frames_plot"])  # TUIImage is Any at type-check time
                 else:
                     yield Static("Plot image not available.")
 
             with TabPane("Lig. Bias (Plot)", id="ligation_plot"):
                 if TUIImage and self._plots.get("ligation_plot"):
-                    yield TUIImage(self._plots["ligation_plot"])  # type: ignore[arg-type]
+                    yield TUIImage(self._plots["ligation_plot"])  # TUIImage is Any at type-check time
                 else:
                     yield Static("Plot image not available (requires sequence background).")
 
             with TabPane("Metagene (Plot)", id="metagene_plot"):
                 if TUIImage and self._plots.get("metagene_plot"):
-                    yield TUIImage(self._plots["metagene_plot"])  # type: ignore[arg-type]
+                    yield TUIImage(self._plots["metagene_plot"])  # TUIImage is Any at type-check time
                 else:
                     yield Static("Plot image not available (requires annotation).")
 
@@ -483,7 +497,7 @@ class RiboMetricTUI(App):
                     lpane = tabs.get_pane("lengths_plot")
                     if self._plots.get("lengths_plot"):
                         lpane.remove_children()
-                        lpane.mount(TUIImage(self._plots["lengths_plot"]))  # type: ignore[arg-type]
+                        lpane.mount(TUIImage(self._plots["lengths_plot"]))
                 except Exception:
                     pass
                 try:
@@ -491,21 +505,21 @@ class RiboMetricTUI(App):
                     if self._plots.get("frames_plot"):
                         # Replace children with a fresh Image widget
                         fpane.remove_children()
-                        fpane.mount(TUIImage(self._plots["frames_plot"]))  # type: ignore[arg-type]
+                        fpane.mount(TUIImage(self._plots["frames_plot"]))
                 except Exception:
                     pass
                 try:
                     ligpane = tabs.get_pane("ligation_plot")
                     if self._plots.get("ligation_plot"):
                         ligpane.remove_children()
-                        ligpane.mount(TUIImage(self._plots["ligation_plot"]))  # type: ignore[arg-type]
+                        ligpane.mount(TUIImage(self._plots["ligation_plot"]))
                 except Exception:
                     pass
                 try:
                     mpane = tabs.get_pane("metagene_plot")
                     if self._plots.get("metagene_plot"):
                         mpane.remove_children()
-                        mpane.mount(TUIImage(self._plots["metagene_plot"]))  # type: ignore[arg-type]
+                        mpane.mount(TUIImage(self._plots["metagene_plot"]))
                 except Exception:
                     pass
 
@@ -518,7 +532,7 @@ class RiboMetricTUI(App):
         tabs.active = tab_id
 
 
-def run_tui(json_file: str):
+def run_tui(json_file: str) -> None:
     """Launch the TUI application"""
     app = RiboMetricTUI(json_file)
     app.run()

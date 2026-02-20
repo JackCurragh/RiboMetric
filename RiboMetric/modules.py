@@ -6,6 +6,7 @@ of the RibosomeProfiler pipeline
 
 import pandas as pd
 import numpy as np
+import numpy.typing as npt
 from collections import Counter
 
 try:
@@ -299,7 +300,10 @@ def normalise_ligation_bias(
     return terminal_nucleotide_bias_dict_norm
 
 
-def slicer_vectorized(array: np.ndarray, start: int, end: int):
+from typing import Dict, List, Optional, Callable
+
+
+def slicer_vectorized(array: np.ndarray, start: int, end: int) -> np.ndarray:
     """
     String slicer for numpy arrays
 
@@ -558,7 +562,7 @@ def chunked_annotate_reads(a_site_df: pd.DataFrame,
     return annotated_read_df
 
 
-def assign_mRNA_category(annotated_read_df) -> pd.DataFrame:
+def assign_mRNA_category(annotated_read_df: pd.DataFrame) -> pd.DataFrame:
 
     """
     Adds the mRNA category column to the annotated_read_df, labelling the read
@@ -596,7 +600,7 @@ def assign_mRNA_category(annotated_read_df) -> pd.DataFrame:
     return annotated_read_df
 
 
-def mRNA_distribution(annotated_read_df: pd.DataFrame) -> dict:
+def mRNA_distribution(annotated_read_df: pd.DataFrame) -> Dict[int, Dict[str, int]]:
     """
     Calculate the distribution of the mRNA categories over the read length
 
@@ -832,7 +836,16 @@ def proportion_of_kmer(
         return [int(f1), int(f2), int(f3)]
 
 
-def get_cart_point(ternary_point, vertices=[[0.0, 0.0], [1.0, 0.0], [0.5, 1]]):
+from numpy.typing import NDArray
+
+
+from typing import cast as _cast
+
+
+def get_cart_point(
+    ternary_point: List[float],
+    vertices: List[List[float]] = [[0.0, 0.0], [1.0, 0.0], [0.5, 1]],
+) -> NDArray[np.float64]:
     '''
     Get the cartesian coordinates of a point in ternary space
 
@@ -843,15 +856,15 @@ def get_cart_point(ternary_point, vertices=[[0.0, 0.0], [1.0, 0.0], [0.5, 1]]):
     Outputs:
         cartesian_point: Point in cartesian space
     '''
-    point = np.array(ternary_point)
-    verts = np.array(vertices)
-
-    return np.dot(point, verts)
+    point = np.array(ternary_point, dtype=float)
+    verts = np.array(vertices, dtype=float)
+    # Ensure a float64 ndarray is returned for stable typing
+    return _cast(NDArray[np.float64], np.dot(point, verts).astype(np.float64))
 
 
 def reading_frame_triangle(
         annotated_read_df: pd.DataFrame,
-) -> dict:
+) -> Dict[str, List[int]]:
     '''
     Get the cartesian coordinates of the triangle plot for the reading frame
 
@@ -879,7 +892,7 @@ def reading_frame_triangle(
 
 def sequence_slice(
     read_df: pd.DataFrame, nt_start: int = 0, nt_count: int = 15
-) -> dict:
+) -> Dict[str, str]:
     sequence_slice_dict = {
         k: v[nt_start: nt_start + nt_count]
         for k, v in read_df["sequence"].to_dict().items()
@@ -887,7 +900,7 @@ def sequence_slice(
     return sequence_slice_dict
 
 
-def convert_html_to_pdf(source_html, output_filename):
+def convert_html_to_pdf(source_html: str, output_filename: str) -> int:
     if not HAS_PDF:
         raise ImportError(
             "PDF export requires xhtml2pdf. Install with: pip install RiboMetric[pdf]"
@@ -896,7 +909,11 @@ def convert_html_to_pdf(source_html, output_filename):
 
     pisa_status = pisa.CreatePDF(source_html, dest=result_file)
     result_file.close()
-    return pisa_status.err
+    # xhtml2pdf does not provide type hints; coerce to int explicitly
+    try:
+        return int(getattr(pisa_status, 'err'))
+    except Exception:
+        return 1
 
 
 # Deprecated
@@ -949,7 +966,7 @@ def change_point_analysis(
         change_point: The position of the change point, or None if no
             significant change point is found
     """
-    change_points = {}
+    change_points: Dict[int, int] = {}
 
     positions = range(surrounding_range[0], surrounding_range[1])
     counts = np.array([read_counts.get(pos, 0) for pos in positions])
@@ -959,12 +976,13 @@ def change_point_analysis(
         right_window = counts[i:i+window_size]
 
         t_statistic, _ = stats.ttest_ind(left_window, right_window)
-        change_points[positions[i]] = abs(t_statistic)
+        # Store absolute t-stat multiplied by 1000 as an int score to satisfy type
+        change_points[positions[i]] = int(abs(float(t_statistic)) * 1000)
 
     return change_points
 
 
-def ribowaltz_psite_prediction(read_counts, flanking_length=9):
+def ribowaltz_psite_prediction(read_counts: Dict[int, Dict[int, int]], flanking_length: int = 9) -> Dict[int, Optional[int]]:
     """
     Predict P-site offsets for each read length from a 5'-end metagene.
 
@@ -982,14 +1000,14 @@ def ribowaltz_psite_prediction(read_counts, flanking_length=9):
     Returns:
         psite_offsets (dict): {read_length: psite_offset (positive int or None)}
     """
-    psite_offsets = {}
+    psite_offsets: Dict[int, Optional[int]] = {}
     read_lengths = sorted(read_counts.keys())
 
     # Step 1: Find the upstream peak for each read length.
     # In the 5'-end metagene the P-site signal is upstream (negative positions):
     # when a ribosome has its P-site at the start codon, the 5' end of the read
     # sits ~P-site-offset nt upstream, giving a peak at position -(P-site offset).
-    candidate_offsets = {}
+    candidate_offsets: Dict[int, Optional[int]] = {}
     for read_length in read_lengths:
         counts = read_counts[read_length]
         positions = sorted(counts.keys())
@@ -1005,11 +1023,13 @@ def ribowaltz_psite_prediction(read_counts, flanking_length=9):
             candidate_offsets[read_length] = None
 
     # Step 2: Determine consensus offset as fallback for sparse read lengths.
-    offset_votes: dict = {}
+    offset_votes: Dict[int, int] = {}
     for offset in candidate_offsets.values():
         if offset is not None:
             offset_votes[offset] = offset_votes.get(offset, 0) + 1
-    consensus_offset = max(offset_votes, key=offset_votes.get) if offset_votes else None
+    consensus_offset: Optional[int] = (
+        max(offset_votes, key=lambda k: offset_votes[k]) if offset_votes else None
+    )
 
     # Step 3: Assign per-read-length offsets, falling back to consensus if needed.
     for read_length in read_lengths:
@@ -1023,7 +1043,7 @@ def ribowaltz_psite_prediction(read_counts, flanking_length=9):
 
 def trips_asite_prediction(
         read_counts: Dict[int, Dict[int, int]],
-        ) -> Dict[int, int]:
+        ) -> Dict[int, Optional[int]]:
     """
     Predict A-site offsets for each read length using the Trips-Viz algorithm.
 
@@ -1036,13 +1056,13 @@ def trips_asite_prediction(
                               Format: {read_length: offset}
     """
 
-    asite_offsets = {}
+    asite_offsets: Dict[int, Optional[int]] = {}
     for read_length, counts in read_counts.items():
         # exclude counts within 10 nt of the start codon
         counts = {pos: count for pos, count in counts.items() if abs(pos) > 10}
 
         if counts:
-            max_pos = max(counts, key=counts.get)
+            max_pos = max(counts, key=lambda k: counts[k])
         else:
             max_pos = None
         asite_offsets[read_length] = max_pos
@@ -1108,8 +1128,9 @@ def asite_calculation_per_readlength(
             if peak_count == 0:
                 offset = default_offset
             else:
-                peak_pos = max(candidate_positions, key=candidate_positions.get)
-                offset = abs(peak_pos) + 3  # P-site offset + 1 codon = A-site
+                peak_pos = max(candidate_positions, key=lambda k: candidate_positions[k])
+                # Ensure type of offset is int
+                offset = int(abs(peak_pos) + 3)
 
         elif method == "ribowaltz":
             # ribowaltz_psite_prediction now returns a positive P-site offset
@@ -1122,15 +1143,17 @@ def asite_calculation_per_readlength(
             if psite_offset is None:
                 offset = default_offset
             else:
-                offset = psite_offset + 3  # P-site offset + 1 codon = A-site offset
+                offset = int(psite_offset + 3)  # P-site offset + 1 codon = A-site offset
 
         elif method == "tripsviz":
-            offset = trips_asite_prediction(
+            t = trips_asite_prediction(
                 {read_length: read_length_metagene["start"][read_length]}
             )[read_length]
 
-            if offset is None:
+            if t is None:
                 offset = default_offset
+            else:
+                offset = int(t)
 
         else:
             raise ValueError(f"Invalid method: {method}")

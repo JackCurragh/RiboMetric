@@ -27,7 +27,7 @@ def generate_json(
     config: dict,
     name: str = "RiboMetric_data.json",
     output_directory: str = "",
-):
+) -> None:
     """
     Generate a machine readable format of the RiboMetric results
     (Legacy function - kept for backwards compatibility)
@@ -84,7 +84,7 @@ def generate_csv(
     config: dict,
     name: str = "RiboMetric_data.json",
     output_directory: str = "",
-):
+) -> None:
     """
     Generate a csv file containing the different metrics and their
     corresponding score
@@ -160,7 +160,7 @@ def generate_summary_tsv(
     sample_name: str,
     name: str = "RiboMetric_summary.tsv",
     output_directory: str = "",
-):
+) -> None:
     """
     Generate a single-line TSV summary perfect for pipeline integration.
     Can be concatenated across samples for easy comparison.
@@ -220,7 +220,7 @@ def generate_qc_status(
     thresholds: Optional[Dict] = None,
     name: str = "RiboMetric_qc_status.json",
     output_directory: str = "",
-):
+) -> None:
     """
     Generate a QC status file with pass/warning/fail indicators for pipeline decision-making.
 
@@ -327,7 +327,7 @@ def generate_comparison_ready_csv(
     sample_name: str,
     name: str = "RiboMetric_comparison.csv",
     output_directory: str = "",
-):
+) -> None:
     """
     Generate a CSV optimized for comparing multiple samples.
     Wide format with one row per sample, all metrics as columns.
@@ -392,7 +392,7 @@ def generate_metrics_table_csv(
     sample_name: str,
     name: str = "RiboMetric_metrics_table.csv",
     output_directory: str = "",
-):
+) -> None:
     """
     Generate a comprehensive CSV table with all metrics, including per-read-length.
     Better organized than the original CSV format.
@@ -465,7 +465,7 @@ def generate_all_outputs(
     sample_name: str,
     output_directory: str = "",
     thresholds: Optional[Dict] = None,
-):
+) -> None:
     """
     Convenience function to generate all improved output formats at once.
 

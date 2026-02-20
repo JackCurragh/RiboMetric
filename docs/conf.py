@@ -108,7 +108,9 @@ htmlhelp_basename = "RiboMetricdoc"
 
 # -- Options for LaTeX output ------------------------------------------
 
-latex_elements = {
+from typing import Dict, Any
+
+latex_elements: Dict[str, Any] = {
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',
