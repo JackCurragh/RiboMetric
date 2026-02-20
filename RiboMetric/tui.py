@@ -9,11 +9,24 @@ import json
 import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
+import base64
+import tempfile
 
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Static, TabbedContent, TabPane
+try:
+    from textual.widgets import Image as TUIImage  # textual >=0.25
+except Exception:  # pragma: no cover
+    TUIImage = None
 from textual.binding import Binding
 from textual.screen import Screen
+
+from .plots import (
+    plot_read_frame_distribution,
+    plot_metagene_heatmap,
+    plot_read_length_distribution,
+    plot_terminal_nucleotide_bias_distribution,
+)
 
 
 class RiboMetricData:
@@ -340,10 +353,48 @@ class RiboMetricTUI(App):
         except Exception as e:
             print(f"Error loading file: {e}")
             sys.exit(1)
+        # Temp dir and plot cache
+        self._plot_tmpdir = Path(tempfile.mkdtemp(prefix="ribometric_tui_"))
+        self._plots: Dict[str, Optional[Path]] = {}
+
+    def _write_image_from_b64(self, b64: str, name: str) -> Optional[Path]:
+        if not b64:
+            return None
+        try:
+            img_bytes = base64.b64decode(b64)
+            path = self._plot_tmpdir / f"{name}.jpg"
+            path.write_bytes(img_bytes)
+            return path
+        except Exception:
+            return None
+
+    def _build_plots(self) -> None:
+        """Build plot images for available data; safe if disabled in CI."""
+        try:
+            cfg = self.data.config or {}
+            res = self.data.results or {}
+            self._plots.clear()
+            if res.get("read_frame_distribution"):
+                p = plot_read_frame_distribution(res["read_frame_distribution"], cfg)
+                self._plots["frames_plot"] = self._write_image_from_b64(p.get("fig_image", ""), "frames_plot")
+            if res.get("read_length_distribution"):
+                p = plot_read_length_distribution(res["read_length_distribution"], cfg)
+                self._plots["lengths_plot"] = self._write_image_from_b64(p.get("fig_image", ""), "lengths_plot")
+            if res.get("terminal_nucleotide_bias_distribution"):
+                p = plot_terminal_nucleotide_bias_distribution(res["terminal_nucleotide_bias_distribution"], cfg)
+                self._plots["ligation_plot"] = self._write_image_from_b64(p.get("fig_image", ""), "ligation_plot")
+            if res.get("metagene_profile"):
+                p = plot_metagene_heatmap(res["metagene_profile"], cfg)
+                self._plots["metagene_plot"] = self._write_image_from_b64(p.get("fig_image", ""), "metagene_plot")
+        except Exception:
+            # Non-fatal if images disabled or deps missing
+            self._plots.clear()
 
     def on_mount(self) -> None:
         """Set subtitle when app starts"""
         self.sub_title = f"File: {Path(self.json_file).name}"
+        # Build plots on start
+        self._build_plots()
 
     def compose(self) -> ComposeResult:
         """Create the main layout"""
@@ -368,6 +419,31 @@ class RiboMetricTUI(App):
             with TabPane("Raw Data", id="raw"):
                 yield Static(render_raw_data(self.data))
 
+            # Optional visual plots (images)
+            with TabPane("Lengths (Plot)", id="lengths_plot"):
+                if TUIImage and self._plots.get("lengths_plot"):
+                    yield TUIImage(self._plots["lengths_plot"])  # type: ignore[arg-type]
+                else:
+                    yield Static("Plot image not available.")
+
+            with TabPane("Frames (Plot)", id="frames_plot"):
+                if TUIImage and self._plots.get("frames_plot"):
+                    yield TUIImage(self._plots["frames_plot"])  # type: ignore[arg-type]
+                else:
+                    yield Static("Plot image not available.")
+
+            with TabPane("Lig. Bias (Plot)", id="ligation_plot"):
+                if TUIImage and self._plots.get("ligation_plot"):
+                    yield TUIImage(self._plots["ligation_plot"])  # type: ignore[arg-type]
+                else:
+                    yield Static("Plot image not available (requires sequence background).")
+
+            with TabPane("Metagene (Plot)", id="metagene_plot"):
+                if TUIImage and self._plots.get("metagene_plot"):
+                    yield TUIImage(self._plots["metagene_plot"])  # type: ignore[arg-type]
+                else:
+                    yield Static("Plot image not available (requires annotation).")
+
         yield Footer()
 
     def action_help(self) -> None:
@@ -379,6 +455,7 @@ class RiboMetricTUI(App):
         try:
             self.data = RiboMetricData(self.json_file)
             self.notify("Data reloaded successfully", severity="information")
+            self._build_plots()
 
             # Update all tab contents
             tabs = self.query_one(TabbedContent)
@@ -399,6 +476,38 @@ class RiboMetricTUI(App):
 
             raw_static = tabs.get_pane("raw").query_one(Static)
             raw_static.update(render_raw_data(self.data))
+
+            # Update image panes
+            if TUIImage:
+                try:
+                    lpane = tabs.get_pane("lengths_plot")
+                    if self._plots.get("lengths_plot"):
+                        lpane.remove_children()
+                        lpane.mount(TUIImage(self._plots["lengths_plot"]))  # type: ignore[arg-type]
+                except Exception:
+                    pass
+                try:
+                    fpane = tabs.get_pane("frames_plot")
+                    if self._plots.get("frames_plot"):
+                        # Replace children with a fresh Image widget
+                        fpane.remove_children()
+                        fpane.mount(TUIImage(self._plots["frames_plot"]))  # type: ignore[arg-type]
+                except Exception:
+                    pass
+                try:
+                    ligpane = tabs.get_pane("ligation_plot")
+                    if self._plots.get("ligation_plot"):
+                        ligpane.remove_children()
+                        ligpane.mount(TUIImage(self._plots["ligation_plot"]))  # type: ignore[arg-type]
+                except Exception:
+                    pass
+                try:
+                    mpane = tabs.get_pane("metagene_plot")
+                    if self._plots.get("metagene_plot"):
+                        mpane.remove_children()
+                        mpane.mount(TUIImage(self._plots["metagene_plot"]))  # type: ignore[arg-type]
+                except Exception:
+                    pass
 
         except Exception as e:
             self.notify(f"Error reloading data: {e}", severity="error")
