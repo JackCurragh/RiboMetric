@@ -77,14 +77,23 @@ def a_site_calculation(read_df: pd.DataFrame,
         print("Calculating offsets")
         a_site_df = a_site_calculation_variable_offset(read_df)
     elif offset_type == "read_length":
-        # TSV with two columns: read_length<tab>offset (no header)
+        # TSV with two columns: read_length<tab>offset.
+        # Accepts an optional header row (e.g., "read_len\toffset").
         rl_table = pd.read_csv(
-            offset_file, sep="\t", header=None, names=["read_length", "offset"]
+            offset_file,
+            sep="\t",
+            header=None,
+            names=["read_length", "offset"],
+            dtype={"read_length": str, "offset": str},
         )
-        offset_dict = {
-            int(rl): int(off)
-            for rl, off in zip(rl_table["read_length"].tolist(), rl_table["offset"].tolist())
-        }
+        # Coerce to numeric; drop any non-numeric header-like rows
+        rl_table["read_length_num"] = pd.to_numeric(rl_table["read_length"], errors="coerce")
+        rl_table["offset_num"] = pd.to_numeric(rl_table["offset"], errors="coerce")
+        rl_table = rl_table.dropna(subset=["read_length_num", "offset_num"]).astype({
+            "read_length_num": int,
+            "offset_num": int,
+        })
+        offset_dict = dict(zip(rl_table["read_length_num"], rl_table["offset_num"]))
         a_site_df = a_site_calculation_variable_offset(read_df, offset_dict)
     elif offset_type == "global":
         df = read_df.copy()
