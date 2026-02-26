@@ -171,14 +171,30 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     batch_df = pd.DataFrame()
     batch_df['read_name'] = oxbow_df["qname"].astype("category")
 
-    # Use the aligned length (end - pos + 1) as read length.
-    # This excludes soft-clipped bases, so reads with residual adapter sequence
-    # (soft-clipped by the aligner) are not inflated into a longer length bin.
-    # For perfectly trimmed data any soft clips are 1-2 nt quality clips and the
-    # difference is negligible; for under-trimmed data this is the safer choice.
-    batch_df["read_length"] = pd.Series(
-        oxbow_df["end"] - oxbow_df["pos"] + 1, dtype="category"
-    )
+    # Compute read length from CIGAR as the number of read bases consumed by the
+    # alignment (M, =, X, I). This is robust to reference-side gaps (D) and avoids
+    # counting soft-clipped bases as part of the footprint.
+    # Falls back to SEQ length if CIGAR is missing/malformed.
+    def _read_len_from_cigar(cigar: str, seqlen: int) -> int:
+        try:
+            parts = [] if not isinstance(cigar, str) else cigar
+            # Find all (length, op) pairs
+            pairs = [] if not parts else [
+                (int(n), op) for n, op in __import__("re").findall(r"(\d+)([MIDNSHP=XB])", parts)
+            ]
+            if not pairs:
+                return seqlen
+            return int(sum(n for n, op in pairs if op in ("M", "=", "X", "I")))
+        except Exception:
+            return seqlen
+
+    seq_len_series = oxbow_df["seq"].str.len().fillna(0).astype(int)
+    cigar_series = oxbow_df["cigar"].astype(str)
+    rl_series = [
+        _read_len_from_cigar(cig, seqlen)
+        for cig, seqlen in zip(cigar_series.tolist(), seq_len_series.tolist())
+    ]
+    batch_df["read_length"] = pd.Series(rl_series, dtype="category")
 
     batch_df["reference_name"] = oxbow_df["rname"].astype("category")
 

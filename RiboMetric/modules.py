@@ -982,7 +982,12 @@ def change_point_analysis(
     return change_points
 
 
-def ribowaltz_psite_prediction(read_counts: Dict[int, Dict[int, int]], flanking_length: int = 9) -> Dict[int, Optional[int]]:
+def ribowaltz_psite_prediction(
+        read_counts: Dict[int, Dict[int, int]],
+        flanking_length: int = 9,
+        offset_range: Tuple[int, int] = (10, 18),
+        min_prominence: Optional[float] = None,
+    ) -> Dict[int, Optional[int]]:
     """
     Predict P-site offsets for each read length from a 5'-end metagene.
 
@@ -992,51 +997,69 @@ def ribowaltz_psite_prediction(read_counts: Dict[int, Dict[int, int]], flanking_
     representing the distance from the 5' end of the read to the P-site.
 
     Args:
-        read_counts (dict): {read_length: {metagene_position: count}}
+        read_counts: {read_length: {metagene_position: count}}
             Positions should be reference_start - cds_start (negative = upstream).
-        flanking_length (int): Positions within this distance of the start codon
-            are excluded to avoid the initiation peak noise.  Default is 9.
+        flanking_length: Exclude positions within this distance of the start codon
+            to avoid initiation peak noise. Default: 9.
+        offset_range: Allowed offsets (inclusive) in nucleotides. Default: (10, 18).
+        min_prominence: If provided, require (peak / median) >= min_prominence
+            within the search window; otherwise treat as missing and fall back
+            to consensus. Example useful range: 1.5–2.0.
 
     Returns:
-        psite_offsets (dict): {read_length: psite_offset (positive int or None)}
+        {read_length: psite_offset (positive int or None)}
     """
     psite_offsets: Dict[int, Optional[int]] = {}
     read_lengths = sorted(read_counts.keys())
 
-    # Step 1: Find the upstream peak for each read length.
-    # In the 5'-end metagene the P-site signal is upstream (negative positions):
-    # when a ribosome has its P-site at the start codon, the 5' end of the read
-    # sits ~P-site-offset nt upstream, giving a peak at position -(P-site offset).
+    lo, hi = offset_range
+    # Negative positions to search (e.g., -18..-10); inclusive bounds
+    window_positions = set(range(-hi, -lo + 1))
+
     candidate_offsets: Dict[int, Optional[int]] = {}
     for read_length in read_lengths:
         counts = read_counts[read_length]
-        positions = sorted(counts.keys())
+        # Strictly upstream positions past flanking, constrained to window
+        upstream_pos = [
+            p for p in counts.keys() if (p < -flanking_length and p in window_positions)
+        ]
 
-        upstream_pos = [p for p in positions if p < -flanking_length]
-        upstream_counts = [counts[p] for p in upstream_pos]
+        if not upstream_pos:
+            # Fallback: allow any upstream position past flanking if window empty
+            upstream_pos = [p for p in counts.keys() if p < -flanking_length]
 
-        if upstream_counts:
-            peak_idx = np.argmax(upstream_counts)
-            # P-site offset = distance from 5' end to P-site = |peak position|
-            candidate_offsets[read_length] = abs(upstream_pos[peak_idx])
-        else:
+        if not upstream_pos:
             candidate_offsets[read_length] = None
+            continue
 
-    # Step 2: Determine consensus offset as fallback for sparse read lengths.
-    offset_votes: Dict[int, int] = {}
-    for offset in candidate_offsets.values():
-        if offset is not None:
-            offset_votes[offset] = offset_votes.get(offset, 0) + 1
-    consensus_offset: Optional[int] = (
-        max(offset_votes, key=lambda k: offset_votes[k]) if offset_votes else None
-    )
+        upstream_pos.sort()
+        upstream_vals = np.array([counts.get(p, 0) for p in upstream_pos], dtype=float)
+        peak_idx = int(np.argmax(upstream_vals))
+        peak_pos = upstream_pos[peak_idx]
+        peak_cnt = upstream_vals[peak_idx]
 
-    # Step 3: Assign per-read-length offsets, falling back to consensus if needed.
-    for read_length in read_lengths:
-        if candidate_offsets[read_length] is not None:
-            psite_offsets[read_length] = candidate_offsets[read_length]
-        else:
-            psite_offsets[read_length] = consensus_offset
+        # Optional prominence check (peak vs. median of window)
+        if min_prominence is not None:
+            med = float(np.median(upstream_vals)) if upstream_vals.size else 0.0
+            med = med if med > 0 else 1.0
+            if (peak_cnt / med) < float(min_prominence):
+                candidate_offsets[read_length] = None
+                continue
+
+        # P-site offset = |peak position|
+        candidate_offsets[read_length] = abs(int(peak_pos))
+
+    # Consensus fallback across read lengths
+    votes: Dict[int, int] = {}
+    for off in candidate_offsets.values():
+        if off is not None:
+            votes[off] = votes.get(off, 0) + 1
+    consensus: Optional[int] = max(votes, key=votes.get) if votes else None
+
+    for rl in read_lengths:
+        psite_offsets[rl] = (
+            candidate_offsets[rl] if candidate_offsets[rl] is not None else consensus
+        )
 
     return psite_offsets
 
@@ -1074,7 +1097,8 @@ def asite_calculation_per_readlength(
         annotated_read_df: pd.DataFrame,
         method: str = "ribowaltz",
         offset_range: Tuple[int, int] = (10, 18),
-        default_offset: int = 15
+        default_offset: int = 15,
+        min_prominence: Optional[float] = None,
         ) -> Dict[int, int]:
     """
     Calculate offset values per read length for the A-site
@@ -1136,10 +1160,11 @@ def asite_calculation_per_readlength(
             # ribowaltz_psite_prediction now returns a positive P-site offset
             # (distance from 5' end to P-site).  Adding 3 converts to A-site.
             psite_offset = ribowaltz_psite_prediction(
-                {
-                    read_length: read_length_metagene["start"][read_length]
-                    }
-                )[read_length]
+                {read_length: read_length_metagene["start"][read_length]},
+                flanking_length=9,
+                offset_range=offset_range,
+                min_prominence=min_prominence,
+            )[read_length]
             if psite_offset is None:
                 offset = default_offset
             else:
