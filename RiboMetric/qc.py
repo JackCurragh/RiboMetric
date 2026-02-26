@@ -138,10 +138,18 @@ def annotation_mode(
 
             print("assigning mRNA categories")
             annotated_read_df = assign_mRNA_category(annotated_read_df)
+            # Optional safeguard for noisy metagenes: require a minimum
+            # peak prominence when calling riboWaltz-style offsets.
+            min_prom = (
+                config.get("qc", {})
+                .get("read_frame_distribution", {})
+                .get("psite_min_prominence")
+            )
             offsets = asite_calculation_per_readlength(
                 annotated_read_df,
-                method=config["argument"]["offset_calculation_method"]
-                )
+                method=config["argument"]["offset_calculation_method"],
+                min_prominence=min_prom,
+            )
             computed_offsets = offsets
             annotated_read_df = a_site_calculation_variable_offset(
                 annotated_read_df, offsets
