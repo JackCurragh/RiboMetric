@@ -106,41 +106,49 @@ def generate_csv(
             output_directory = output_directory[:-1]
         output = output_directory + "/" + name + ".csv"
 
+    def _range_for(metric_key: str):
+        """Look up [min,max] for a metric with robust fallbacks.
+
+        Order of preference:
+          1) exact key in config["max_mins"]
+          2) strip a trailing "_metric"
+          3) strip a trailing "_global"
+          4) None (caller should treat value as already-normalised)
+        """
+        mm = config.get("max_mins", {})
+        if metric_key in mm:
+            return mm[metric_key]
+        base = metric_key.replace("_metric", "")
+        if base in mm:
+            return mm[base]
+        if metric_key.endswith("_global") and metric_key[:-7] in mm:
+            return mm[metric_key[:-7]]
+        return None
+
     columns = ["Metric", "Score", "MaxMinScore"]
     metrics_dict = []
-    for key, value in results_dict["metrics"].items():
-        if isinstance(value, float) or isinstance(value, int):
-            if key not in config["max_mins"]:
-                max_min_score = value
-            else:
-                max_min_score = normalise_score(
-                    value,
-                    config["max_mins"]['_'.join(key.split("_")[:-1])][0],
-                    config["max_mins"]['_'.join(key.split("_")[:-1])][1]
-                )
-            metrics_dict.append(
-                {"Metric": key,
-                 "Score": value,
-                 "MaxMinScore": max_min_score,
-                 }
-                 )
+    for key, value in results_dict.get("metrics", {}).items():
+        if isinstance(value, (float, int)):
+            rng = _range_for(key)
+            max_min_score = (
+                normalise_score(value, rng[0], rng[1]) if rng else value
+            )
+            metrics_dict.append({
+                "Metric": key,
+                "Score": value,
+                "MaxMinScore": max_min_score,
+            })
         elif isinstance(value, dict):
+            rng = _range_for(key)
             for k, v in value.items():
-                if key not in config["max_mins"]:
-                    max_min_score = v
-                else:
-                    max_min_score = normalise_score(
-                        v,
-                        config["max_mins"][key][0],
-                        config["max_mins"][key][1]
-                    )
-                metrics_dict.append(
-                    {
-                        "Metric": f"{key}_{k}",
-                        "Score": v,
-                        "MaxMinScore": max_min_score
-                        }
-                        )
+                max_min_score = (
+                    normalise_score(v, rng[0], rng[1]) if rng else v
+                )
+                metrics_dict.append({
+                    "Metric": f"{key}_{k}",
+                    "Score": v,
+                    "MaxMinScore": max_min_score,
+                })
 
     with open(output, "w") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=columns)
