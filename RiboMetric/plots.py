@@ -77,13 +77,30 @@ def generate_plots(results_dict: dict, config: dict) -> list:
     return plots_list
 
 
+_IMG_WARNED = False
+_TRANSPARENT_PNG_1x1 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/axPpVwAAAAASUVORK5CYII="
+)
+
+
 def plotly_to_image(fig: go.Figure, width: int, height: int) -> str:
-    # Allow CI or headless runs to skip image rasterization
+    """Return a base64 PNG for PDF export, or a tiny placeholder if imaging is unavailable.
+
+    - Respects RIBOMETRIC_SKIP_IMAGES=1 to force placeholder (CI/headless).
+    - Catches Kaleido/Chrome RuntimeError and falls back silently to a 1x1 PNG.
+    """
+    global _IMG_WARNED
     if os.environ.get("RIBOMETRIC_SKIP_IMAGES") == "1":
-        return ""
-    return base64.b64encode(
-        pio.to_image(fig, format="jpg", width=width, height=height)
-    ).decode("ascii")
+        return _TRANSPARENT_PNG_1x1
+    try:
+        img = pio.to_image(fig, format="png", width=width, height=height)
+        return base64.b64encode(img).decode("ascii")
+    except Exception as e:
+        # Avoid noisy tracebacks when Chrome/Kaleido is missing; warn once.
+        if not _IMG_WARNED:
+            print("Note: static image export unavailable (", str(e).split("\n")[0], ") — continuing without images.")
+            _IMG_WARNED = True
+        return _TRANSPARENT_PNG_1x1
 
 
 def plot_read_length_distribution(
