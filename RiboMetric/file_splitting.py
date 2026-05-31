@@ -54,41 +54,40 @@ def split_idxstats_df(idxstats_df: pd.DataFrame,
     Outputs:
         split_dfs
     """
-    # Convert the 'Mapped_Reads' and 'Unmapped_Reads' columns to numpy arrays
-    mapped_reads = idxstats_df['Mapped_Reads'].astype(int).values
-    unmapped_reads = idxstats_df['Unmapped_Reads'].astype(int).values
+    def _bed_df(row_indices: List[int]) -> pd.DataFrame:
+        current_df = idxstats_df.iloc[row_indices, [0, 1]].copy()
+        current_df['Start'] = np.zeros(len(row_indices), dtype=np.int8)
+        return current_df[['Reference', 'Start', 'Length']]
 
-    split_dfs = []
+    split_dfs: List[pd.DataFrame] = []
+    current_indices: List[int] = []
     current_sum = 0
-    current_df = pd.DataFrame()
-    last_index = 0
-    split_num = 0
+    emitted_reads = 0
 
-    for i in range(len(mapped_reads)):
-        reads = mapped_reads[i] + unmapped_reads[i]
-        if current_sum + reads <= batch_size:
-            current_sum += reads
-            if (current_sum + (split_num * batch_size)) > num_reads:
+    for i, row in idxstats_df.iterrows():
+        reads = int(row['Mapped_Reads']) + int(row['Unmapped_Reads'])
+
+        if current_indices and current_sum > 0 and current_sum + reads > batch_size:
+            split_dfs.append(_bed_df(current_indices))
+            emitted_reads += current_sum
+            if emitted_reads >= num_reads:
                 break
-        else:
-            current_df = idxstats_df.iloc[last_index:i, [0, 1]].copy()
-            current_df['Start'] = np.zeros(i - last_index, dtype=np.int8)
-            current_df = current_df[['Reference',
-                                     'Start',
-                                     'Length']]
-            split_dfs.append(current_df)
-            split_num += 1
-            current_df = pd.DataFrame()
-            last_index = i
-            current_sum = reads
+            current_indices = []
+            current_sum = 0
 
-    # Add the last remaining DataFrame
-    current_df = idxstats_df.iloc[last_index:i, [0, 1]].copy()
-    current_df['Start'] = np.zeros(i - last_index, dtype=np.int8)
-    current_df = current_df[['Reference',
-                             'Start',
-                             'Length']]
-    split_dfs.append(current_df)
+        current_indices.append(i)
+        current_sum += reads
+
+        if current_sum >= batch_size:
+            split_dfs.append(_bed_df(current_indices))
+            emitted_reads += current_sum
+            if emitted_reads >= num_reads:
+                break
+            current_indices = []
+            current_sum = 0
+
+    if current_indices and emitted_reads < num_reads:
+        split_dfs.append(_bed_df(current_indices))
 
     return split_dfs
 

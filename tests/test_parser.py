@@ -1,6 +1,7 @@
 
 from RiboMetric.file_parser import parse_bam
 from RiboMetric.bam_processing import process_reads
+from RiboMetric.file_splitting import split_idxstats_df
 import pandas as pd
 
 
@@ -36,3 +37,18 @@ def test_process_reads_empty_schema_returns_typed_empty_batch():
     assert reads.empty
     assert "read_name" in reads.columns
     assert "reference_name" in reads.columns
+
+
+def test_split_idxstats_keeps_oversized_first_reference():
+    idxstats_df = pd.DataFrame({
+        "Reference": ["tx_empty", "tx_big", "tx_small"],
+        "Length": ["50", "1000", "100"],
+        "Mapped_Reads": ["0", "200", "1"],
+        "Unmapped_Reads": ["0", "0", "0"],
+    })
+
+    batches = split_idxstats_df(idxstats_df, batch_size=100, num_reads=100)
+
+    assert len(batches) == 1
+    assert len(batches[0]) == 2
+    assert batches[0]["Reference"].tolist() == ["tx_empty", "tx_big"]
