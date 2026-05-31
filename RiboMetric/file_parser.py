@@ -73,8 +73,10 @@ def parse_fasta(fasta_path: str) -> dict:
                          transcript information
     """
     transcript_dict = {}
-    for record in SeqIO.parse(fasta_path, "fasta"):
-        transcript_dict[record.id] = record
+    opener = gzip.open if fasta_path.endswith((".gz", ".bgz")) else open
+    with opener(fasta_path, "rt") as handle:
+        for record in SeqIO.parse(handle, "fasta"):
+            transcript_dict[record.id] = record
 
     return transcript_dict
 

@@ -56,17 +56,34 @@ ELONGATION_3_NT = 60   # nt to skip at CDS 3' end  (20 codons)
 MIN_PROFILE_LEN = 50   # minimum elongation-region nt to include a transcript
 
 
-def _lookup_seq(fasta_dict: dict, name: str) -> Optional[str]:
-    """Return the sequence string for *name*, trying several key variants."""
-    # Exact match
+def _lookup_seq(
+    fasta_dict: dict,
+    name: str,
+    base_index: Optional[Dict[str, str]] = None,
+) -> Optional[str]:
+    """Return the sequence string for *name*, trying several key variants.
+
+    Lookup order:
+    1. Exact match                        (e.g. ``ENST00000233.10``)
+    2. Pipe-stripped exact match          (e.g. ``ENST00000233.10|iso1`` -> ``ENST00000233.10``)
+    3. Version-stripped match via base_index (``ENST00000233.10`` -> ``ENST00000233``)
+       - needed when annotation and FASTA come from different releases.
+    """
+    def _seq(rec):
+        return str(rec.seq) if hasattr(rec, "seq") else str(rec)
+
+    # 1. Exact
     if name in fasta_dict:
-        rec = fasta_dict[name]
-        return str(rec.seq) if hasattr(rec, "seq") else str(rec)
-    # Strip pipe-delimited isoform suffix: 'NM_001|transcript' -> 'NM_001'
-    base = name.split("|")[0]
-    if base in fasta_dict:
-        rec = fasta_dict[base]
-        return str(rec.seq) if hasattr(rec, "seq") else str(rec)
+        return _seq(fasta_dict[name])
+    # 2. Pipe-stripped
+    base_pipe = name.split("|")[0]
+    if base_pipe in fasta_dict:
+        return _seq(fasta_dict[base_pipe])
+    # 3. Version-stripped (cross-release matching)
+    if base_index is not None:
+        base_ver = base_pipe.split(".")[0]
+        if base_ver in base_index:
+            return base_index[base_ver]
     return None
 
 
@@ -112,6 +129,20 @@ def compute_rust_metrics(
         ``transcripts_used`` : int
     """
     # ------------------------------------------------------------------ #
+    # 0.  Build version-stripped FASTA index for cross-release matching  #
+    # ------------------------------------------------------------------ #
+    # Annotation and FASTA may come from different Ensembl/GENCODE releases
+    # (e.g. annotation from Ensembl 114, FASTA from GENCODE v49).  Build a
+    # {base_id: seq_str} dict keyed on ENST without the ".N" version so
+    # _lookup_seq can fall back to it.
+    base_fasta_index: Dict[str, str] = {}
+    for fid, rec in fasta_dict.items():
+        base_id = fid.split("|")[0].split(".")[0]
+        if base_id not in base_fasta_index:
+            seq_str = str(rec.seq) if hasattr(rec, "seq") else str(rec)
+            base_fasta_index[base_id] = seq_str
+
+    # ------------------------------------------------------------------ #
     # 1.  Build per-transcript CDS lookup from annotation_df              #
     # ------------------------------------------------------------------ #
     ann_index: Dict[str, Tuple[int, int]] = {}
@@ -123,8 +154,15 @@ def compute_rust_metrics(
     # 2.  Pre-compute per-transcript A-site density (pandas groupby)      #
     # ------------------------------------------------------------------ #
     # We need CDS-only reads with integer A-site positions.
-    needed = {"reference_name", "a_site", "cds_start", "cds_end", "count"}
+    transcript_col = (
+        "reference_name" if "reference_name" in annotated_read_df.columns
+        else "transcript_id" if "transcript_id" in annotated_read_df.columns
+        else None
+    )
+    needed = {"a_site", "cds_start", "cds_end", "count"}
     missing = needed - set(annotated_read_df.columns)
+    if transcript_col is None:
+        missing.add("reference_name/transcript_id")
     if missing:
         log.warning("RUST: annotated_read_df missing columns %s; skipping.", missing)
         return _empty_result(window)
@@ -146,13 +184,13 @@ def compute_rust_metrics(
 
     # Group: (transcript, a_site) -> total weighted count
     density_series = (
-        cds_df.groupby(["reference_name", "a_site"], observed=True)["count"]
+        cds_df.groupby([transcript_col, "a_site"], observed=True)["count"]
         .sum()
     )
 
     # Per-transcript CDS boundaries (first occurrence suffices; they are constant)
     tx_info = (
-        cds_df.groupby("reference_name", observed=True)[["cds_start", "cds_end"]]
+        cds_df.groupby(transcript_col, observed=True)[["cds_start", "cds_end"]]
         .first()
     )
 
@@ -175,8 +213,8 @@ def compute_rust_metrics(
         cds_start = int(tx_info.loc[transcript, "cds_start"])
         cds_end = int(tx_info.loc[transcript, "cds_end"])
 
-        # Sequence lookup
-        seq = _lookup_seq(fasta_dict, str(transcript))
+        # Sequence lookup (tries exact -> pipe-stripped -> version-stripped)
+        seq = _lookup_seq(fasta_dict, str(transcript), base_index=base_fasta_index)
         if seq is None:
             continue
 

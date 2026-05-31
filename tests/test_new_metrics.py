@@ -286,6 +286,13 @@ class TestRustCompute:
         result = compute_rust_metrics(df, ann_df, fasta)
         assert result["transcripts_used"] >= 1
 
+    def test_accepts_transcript_id_column_from_annotation_merge(self):
+        from RiboMetric.rust import compute_rust_metrics
+        df, ann_df, fasta = self._make_inputs()
+        df = df.rename(columns={"reference_name": "transcript_id"})
+        result = compute_rust_metrics(df, ann_df, fasta)
+        assert result["transcripts_used"] >= 1
+
     def test_metagene_has_61_codons(self):
         from RiboMetric.rust import compute_rust_metrics, SENSE_CODONS
         df, ann_df, fasta = self._make_inputs()
