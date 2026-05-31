@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import math
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -69,7 +69,7 @@ def _lookup_seq(
     3. Version-stripped match via base_index (``ENST00000233.10`` -> ``ENST00000233``)
        - needed when annotation and FASTA come from different releases.
     """
-    def _seq(rec):
+    def _seq(rec: Any) -> str:
         return str(rec.seq) if hasattr(rec, "seq") else str(rec)
 
     # 1. Exact

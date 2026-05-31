@@ -15,7 +15,7 @@ try:
 except ImportError:
     HAS_PDF = False
 
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, cast
 from scipy import stats
 
 
@@ -1072,7 +1072,9 @@ def ribowaltz_psite_prediction(
     for off in candidate_offsets.values():
         if off is not None:
             votes[off] = votes.get(off, 0) + 1
-    consensus: Optional[int] = max(votes, key=votes.get) if votes else None
+    consensus: Optional[int] = (
+        max(votes, key=lambda off: cast(int, votes.get(off))) if votes else None
+    )
 
     for rl in read_lengths:
         psite_offsets[rl] = (

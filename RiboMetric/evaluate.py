@@ -9,7 +9,8 @@ outcome (0 = PASS, 1 = WARNING, 2 = FAIL) so it can be branched on in a workflow
 import csv
 import json
 from pathlib import Path
-from typing import Any, Dict
+from argparse import Namespace
+from typing import Any, Dict, cast
 
 import yaml
 
@@ -40,7 +41,7 @@ def _load_results(path: Path) -> Dict[str, Any]:
                 f"{path} does not contain a 'metrics' section; "
                 "is it a RiboMetric JSON output?"
             )
-        return results
+        return cast(Dict[str, Any], results)
     if suffix == ".csv":
         metrics: Dict[str, Any] = {}
         with open(path, newline="") as f:
@@ -81,10 +82,10 @@ def _load_thresholds(path: Path) -> Dict[str, Dict[str, float]]:
         raise ValueError(
             f"{path} must contain a mapping of metric -> {{pass, warn}} thresholds."
         )
-    return data
+    return cast(Dict[str, Dict[str, float]], data)
 
 
-def evaluate(args) -> int:
+def evaluate(args: Namespace) -> int:
     """Entry point for ``RiboMetric evaluate``. Returns a gating exit code."""
     results_path = Path(args.input)
     if not results_path.exists():

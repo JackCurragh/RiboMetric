@@ -15,7 +15,7 @@ import csv
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence, cast
 
 
 # =============================================================================
@@ -106,7 +106,7 @@ def generate_csv(
             output_directory = output_directory[:-1]
         output = output_directory + "/" + name + ".csv"
 
-    def _range_for(metric_key: str):
+    def _range_for(metric_key: str) -> Optional[Sequence[float]]:
         """Look up [min,max] for a metric with robust fallbacks.
 
         Order of preference:
@@ -115,7 +115,7 @@ def generate_csv(
           3) strip a trailing "_global"
           4) None (caller should treat value as already-normalised)
         """
-        mm = config.get("max_mins", {})
+        mm = cast(Dict[str, Sequence[float]], config.get("max_mins", {}))
         if metric_key in mm:
             return mm[metric_key]
         base = metric_key.replace("_metric", "")

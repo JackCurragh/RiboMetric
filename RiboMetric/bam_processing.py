@@ -10,7 +10,7 @@ import os
 import pyarrow.ipc
 from .file_splitting import split_bam, format_progress
 from multiprocessing import Pool
-from typing import Dict, List
+from typing import Dict, List, Iterable
 
 
 def validate_bam(bam_file: str) -> None:
@@ -99,6 +99,9 @@ def ox_parse_reads(bam_file: str,
           "\033[1A"*(split_num // print_columns),
           end="\r", flush=False, sep="")
 
+    if oxbow_df.empty and not set(_REQUIRED_OXBOW_COLUMNS).issubset(oxbow_df.columns):
+        return (_empty_read_batch(), {1: [], 2: []})
+
     batch_df = process_reads(oxbow_df)
 
     print("\n"*(split_num // print_columns),
@@ -153,6 +156,40 @@ def ox_parse_reads(bam_file: str,
     return (batch_df, sequence_data)
 
 
+_READ_NAME_COLUMNS = ("qname", "query_name", "read_name", "name")
+_REQUIRED_OXBOW_COLUMNS = ("seq", "cigar", "rname", "pos", "mapq")
+
+
+def _empty_read_batch() -> pd.DataFrame:
+    return pd.DataFrame({
+        "read_name": pd.Series(dtype="category"),
+        "read_length": pd.Series(dtype="category"),
+        "reference_name": pd.Series(dtype="category"),
+        "reference_start": pd.Series(dtype="float"),
+        "soft_clip_5": pd.Series(dtype="uint8"),
+        "first_dinucleotide": pd.Series(dtype="category"),
+        "last_dinucleotide": pd.Series(dtype="category"),
+        "count": pd.Series(dtype="category"),
+        "mapq": pd.Series(dtype="uint8"),
+    })
+
+
+def _get_oxbow_column(
+    oxbow_df: pd.DataFrame,
+    candidates: Iterable[str],
+    label: str,
+) -> pd.Series:
+    for column in candidates:
+        if column in oxbow_df.columns:
+            return oxbow_df[column]
+    if oxbow_df.empty:
+        return pd.Series(dtype="object")
+    raise KeyError(
+        f"Missing {label} column in oxbow BAM output. "
+        f"Available columns: {list(oxbow_df.columns)}"
+    )
+
+
 def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     """
     Process batches of reads from parse_bam, retrieving the data of interest
@@ -165,8 +202,12 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     Outputs:
         batch_df: Dataframe containing a processed batch of reads
     """
+    if oxbow_df.empty:
+        return _empty_read_batch()
+
     batch_df = pd.DataFrame()
-    batch_df['read_name'] = oxbow_df["qname"].astype("category")
+    read_names = _get_oxbow_column(oxbow_df, _READ_NAME_COLUMNS, "read name")
+    batch_df['read_name'] = read_names.astype("category")
 
     # Compute read length from CIGAR as the number of read bases consumed by the
     # alignment (M, =, X, I). This is robust to reference-side gaps (D) and avoids
@@ -215,7 +256,7 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
                                                                step=-1)
                                      .astype("category"))
     batch_df["count"] = pd.Series([int(query.split("_x")[-1]) if "_x" in query
-                                   else 1 for query in oxbow_df["qname"]],
+                                   else 1 for query in read_names],
                                   dtype="category")
     # MAPQ=255 in STAR output means uniquely mapped to one genomic locus.
     # Oxbow returns MAPQ=255 as NaN because 0xff is the BAM spec's
