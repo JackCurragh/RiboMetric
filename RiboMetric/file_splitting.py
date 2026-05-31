@@ -5,6 +5,7 @@
 import subprocess
 import pandas as pd
 import numpy as np
+import os
 
 
 def run_samtools_idxstats(bam_file: str) -> pd.DataFrame:
@@ -112,28 +113,48 @@ def split_bam(bam_file: str,
     """
     bedfile = f"{tempdir}/bed_{split_num}.bed"
     reference_df.to_csv(bedfile, sep="\t", header=False, index=False)
+    unsorted = f"{tempdir}/split_{split_num}.bam"
     outfile = f"{tempdir}/split_sorted_{split_num}.bam"
-    samview = subprocess.Popen(('samtools',
-                                'view',
-                                '-F 256',
-                                '-h',
-                                '-L',
-                                bedfile,
-                                bam_file),
-                               stdout=subprocess.PIPE)
-    with open("/dev/null", "w") as stderr:
-        subprocess.run(('samtools',
-                        'sort',
-                        '-O',
-                        'bam',
-                        '-o',
-                        outfile),
-                       stdin=samview.stdout,
-                       stderr=stderr)
-    samview.wait()
-    subprocess.run(('samtools',
-                    'index',
-                    outfile))
+    view = subprocess.run(
+        (
+            'samtools',
+            'view',
+            '-F', '256',
+            '-b',
+            '-L', bedfile,
+            '-o', unsorted,
+            bam_file,
+        ),
+        capture_output=True,
+        text=True,
+    )
+    if view.returncode != 0:
+        raise RuntimeError(f"samtools view failed: {view.stderr.strip()}")
+
+    sort = subprocess.run(
+        (
+            'samtools',
+            'sort',
+            '-O', 'bam',
+            '-o', outfile,
+            unsorted,
+        ),
+        capture_output=True,
+        text=True,
+    )
+    if sort.returncode != 0:
+        raise RuntimeError(f"samtools sort failed: {sort.stderr.strip()}")
+
+    index = subprocess.run(
+        ('samtools', 'index', outfile),
+        capture_output=True,
+        text=True,
+    )
+    if index.returncode != 0:
+        raise RuntimeError(f"samtools index failed: {index.stderr.strip()}")
+
+    if os.path.exists(unsorted):
+        os.remove(unsorted)
 
     return outfile
 
