@@ -218,6 +218,13 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     batch_df["count"] = pd.Series([int(query.split("_x")[-1]) if "_x" in query
                                    else 1 for query in oxbow_df["qname"]],
                                   dtype="category")
+    # MAPQ=255 in STAR output means uniquely mapped to one genomic locus.
+    # Oxbow returns MAPQ=255 as NaN because 0xff is the BAM spec's
+    # "not available" sentinel; we restore it to 255 here so STAR's unique-
+    # mapper convention is preserved.  For non-STAR BAMs this is harmless: any
+    # genuine "not available" value is also best treated as unique (255) rather
+    # than as a multimapper (0) to avoid false filtering.
+    batch_df["mapq"] = oxbow_df["mapq"].fillna(255).astype("uint8")
     return batch_df
 
 

@@ -89,6 +89,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/JackCurragh/RiboMetric",
-    version="0.1.15",
+    version="0.2.0",
     zip_safe=False,
 )

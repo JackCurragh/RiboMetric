@@ -31,6 +31,7 @@ from .modules import (
     a_site_calculation_variable_offset,
     a_site_calculation,
     ribowaltz_psite_prediction,
+    filter_unique_mappers,
 )
 
 from .metrics import (
@@ -145,10 +146,15 @@ def annotation_mode(
                 .get("read_frame_distribution", {})
                 .get("psite_min_prominence")
             )
+            unique_only = (
+                config.get("argument", {}).get("multimap_filter", "unique_only")
+                == "unique_only"
+            )
             offsets = asite_calculation_per_readlength(
                 annotated_read_df,
                 method=config["argument"]["offset_calculation_method"],
                 min_prominence=min_prom,
+                unique_only=unique_only,
             )
             computed_offsets = offsets
             annotated_read_df = a_site_calculation_variable_offset(
@@ -332,11 +338,15 @@ def annotation_mode(
 
             # read_frame_dist must be computed before periodicity metrics
             exclude_nt = config["qc"]["read_frame_distribution"].get("exclude_codons", 9)
+            unique_only = (
+                config.get("argument", {}).get("multimap_filter", "unique_only")
+                == "unique_only"
+            )
             read_frame_dist = (
-                read_frame_distribution_annotated(cds_read_df, exclusion_length=exclude_nt)
+                read_frame_distribution_annotated(cds_read_df, exclusion_length=exclude_nt, unique_only=unique_only)
                 if config["qc"]["use_cds_subset"]["read_frame_distribution"]
                 and annotation
-                else read_frame_distribution_annotated(annotated_read_df, exclusion_length=exclude_nt)
+                else read_frame_distribution_annotated(annotated_read_df, exclusion_length=exclude_nt, unique_only=unique_only)
             )
 
             # Spectral metagene: prefer P-site aligned if available

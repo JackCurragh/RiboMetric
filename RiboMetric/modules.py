@@ -32,6 +32,22 @@ def _get_weights(df: pd.DataFrame) -> Optional[pd.Series]:
     return df["count"].astype(int)
 
 
+def filter_unique_mappers(df: pd.DataFrame, enabled: bool = True) -> pd.DataFrame:
+    """Return only uniquely-mapped reads (MAPQ=255) when the column is present.
+
+    In STAR output MAPQ=255 means the read maps to exactly one genomic locus.
+    Isoform-level duplicates (same locus, multiple transcripts) are already
+    collapsed to a single primary alignment by the -F 256 filter applied during
+    BAM splitting, so MAPQ=255 rows are free of both kinds of multimapping noise.
+    Falls back to the full DataFrame when mapq is absent (e.g. genome BAMs or
+    aligners that do not use the 255 convention), or when enabled=False.
+    """
+    if not enabled or "mapq" not in df.columns:
+        return df
+    unique = df[df["mapq"] == 255]
+    return unique if not unique.empty else df
+
+
 def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     Convert the a_site_df to a cds_read_df by removing reads that do not
@@ -451,7 +467,8 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
 def read_frame_distribution_annotated(
         annotated_read_df: pd.DataFrame,
         exclusion_length: int = 0,
-        read_length_range: tuple = (20, 40)
+        read_length_range: tuple = (20, 40),
+        unique_only: bool = True,
         ) -> dict:
     """
     Calculate the distribution of the reading frame over the dataset
@@ -468,7 +485,8 @@ def read_frame_distribution_annotated(
         i for i in range(read_length_range[0], read_length_range[1])
         ]
 
-    df_slice = annotated_read_df[annotated_read_df["cds_start"] != 0]
+    df_slice = filter_unique_mappers(annotated_read_df, enabled=unique_only)
+    df_slice = df_slice[df_slice["cds_start"] != 0]
     df_slice = df_slice[
         (df_slice["a_site"] > df_slice["cds_start"] + exclusion_length) &
         (df_slice["a_site"] < df_slice["cds_end"] - exclusion_length)
@@ -1099,6 +1117,7 @@ def asite_calculation_per_readlength(
         offset_range: Tuple[int, int] = (10, 18),
         default_offset: int = 15,
         min_prominence: Optional[float] = None,
+        unique_only: bool = True,
         ) -> Dict[int, int]:
     """
     Calculate offset values per read length for the A-site
@@ -1116,7 +1135,10 @@ def asite_calculation_per_readlength(
     """
     offset_dict: Dict[int, int] = {}
     print(f"Running A-site calculation per read length with {method} method")
-    for read_length in annotated_read_df["read_length"].unique():
+    # Use only uniquely-mapped reads (MAPQ=255) to build the start-codon metagene.
+    # Genomic multimappers dilute the pile-up and produce noisy or incorrect offsets.
+    unique_df = filter_unique_mappers(annotated_read_df, enabled=unique_only)
+    for read_length in unique_df["read_length"].unique():
         # Build metagene using the 5' end of reads (reference_start) rather than
         # the preliminary a_site.  For typical A-site offsets of 12–18 nt the
         # start-codon pile-up sits at positions −12 to −17 in the 5'-end metagene,
@@ -1125,7 +1147,7 @@ def asite_calculation_per_readlength(
         # near position 0, inside the exclusion zone of both methods, so they
         # were detecting noise rather than signal.
         read_length_metagene = metagene_profile(
-            annotated_read_df[annotated_read_df["read_length"] == read_length],
+            unique_df[unique_df["read_length"] == read_length],
             target="start",
             distance_range=[-50, 20],
             position="reference_start",

@@ -16,6 +16,15 @@ argument:
   json: False                 # Output results as JSON
   csv: False                  # Output metrics as CSV
   offset_calculation_method: "ribowaltz"
+  # Filter reads used for frame-sensitive calculations (offset detection and
+  # periodicity).  "unique_only" restricts those calculations to reads with
+  # MAPQ=255, which in STAR output means exactly one genomic mapping locus.
+  # Isoform-level duplicates (same locus, different transcripts) are already
+  # collapsed to one primary alignment by the -F 256 filter applied during BAM
+  # splitting, so this setting removes genuine genomic multimappers without
+  # discarding isoform-equivalent reads.  Set to "none" to use all primary
+  # reads (pre-0.1.16 behaviour).
+  multimap_filter: "unique_only"
 
 plots:
   # Controls general plot theming and specific plot options

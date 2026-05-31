@@ -230,6 +230,22 @@ def argument_parser() -> argparse.ArgumentParser:
         help="Path to write per-read-length offsets TSV (read_len<tab>offset). "
              "Only written when offsets are calculated internally (not from --offset-read-length).",
     )
+    run_parser.add_argument(
+        "--multimap-filter",
+        type=str,
+        required=False,
+        default=None,  # None so config.yml controls the default
+        choices=["unique_only", "none"],
+        dest="multimap_filter",
+        help=(
+            "How to handle multimapping reads for frame-sensitive calculations "
+            "(offset detection and periodicity). "
+            "'unique_only' restricts those calculations to MAPQ=255 reads, which "
+            "in STAR output means exactly one genomic mapping locus. "
+            "'none' uses all primary reads (pre-0.2.0 behaviour). "
+            "If omitted, the value in config.yml is used (default: unique_only)."
+        ),
+    )
 
     # create the parser for the "prepare" command
     prepare_parser = subparsers.add_parser(
