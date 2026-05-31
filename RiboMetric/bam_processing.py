@@ -153,9 +153,6 @@ def ox_parse_reads(bam_file: str,
     return (batch_df, sequence_data)
 
 
-# Server mode path removed; parse_bam now raises NotImplementedError when requested.
-
-
 def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     """
     Process batches of reads from parse_bam, retrieving the data of interest
@@ -439,9 +436,18 @@ def join_batches(bam_batches: list) -> tuple:
                 total_weighted_sum += weighted_sum
                 total_count += count
 
+            # No sequence content (e.g. a BAM with no stored sequences):
+            # skip rather than dividing by zero. See issue #122.
+            if total_count == 0:
+                continue
             # Calculate the weighted average for the current key
             sequence_background[background][pattern] = \
                 total_weighted_sum / total_count
+
+    # If no background could be computed (sequence-less BAM), return empty
+    # dicts so sequence-based metrics are cleanly skipped downstream.
+    if not any(sequence_background.get(bg) for bg in sequence_background):
+        sequence_data, sequence_background = {}, {}
 
     return (read_df_pre, sequence_data, sequence_background)
 

@@ -596,12 +596,9 @@ def sequence_mode(
         "nucleotide_composition": nucleotide_composition(read_df),
         "read_frame_distribution": read_frame_distribution(read_df),
     }
-    # results_dict["read_frame_distribution"] = read_frame_distribution(
-    #   cds_read_df)\
-    #     if config["qc"]["use_cds_subset"]["read_frame_distribution"]\
-    #     else read_frame_distribution(read_df)
-
     return results_dict
+
+
 def select_read_lengths_for_global(read_frame_dist: dict, read_length_distribution: dict, config: dict) -> list:
     """Select read lengths to contribute to global spectral metrics.
 

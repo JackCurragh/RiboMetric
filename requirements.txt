@@ -1,8 +1,4 @@
--e .[test]
-# Ensure modern kaleido wheels for image export
-kaleido>=1.0.0
-numpy>=1.24,<2
-pandas>=2.0,<2.3
-pyarrow>=10
-pysam>=0.21
+# Runtime + test dependencies are declared in setup.py (single source of truth).
+# This file is for CI/dev: editable install with test extras, plus mypy stubs.
+-e .[dev]
 types-PyYAML>=6.0.12

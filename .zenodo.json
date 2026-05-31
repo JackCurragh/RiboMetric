@@ -1,0 +1,31 @@
+{
+  "title": "RiboMetric: A comprehensive quality assessment tool for ribosome profiling datasets",
+  "description": "RiboMetric is a Python command-line tool for quality assessment of ribosome profiling (Ribo-Seq) datasets. It calculates comprehensive QC metrics covering read-length distribution, 3-nucleotide periodicity, terminal nucleotide bias, metagene uniformity, CDS coverage, and regional read distribution, and produces interactive HTML reports, tabular outputs, and pipeline-ready QC gates.",
+  "license": "MIT",
+  "upload_type": "software",
+  "creators": [
+    {
+      "name": "Tierney, Jack",
+      "affiliation": "LAPTI Lab, School of Biochemistry and Cell Biology, University College Cork, Ireland"
+    },
+    {
+      "name": "Wierdsma, Lukas",
+      "affiliation": "Howest University of Applied Sciences, Bruges, Belgium"
+    }
+  ],
+  "keywords": [
+    "ribosome profiling",
+    "Ribo-Seq",
+    "translation",
+    "quality control",
+    "bioinformatics",
+    "Python"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/JackCurragh/RiboMetric",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}

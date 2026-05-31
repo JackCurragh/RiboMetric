@@ -119,6 +119,7 @@ bak*
 *.pdf
 !example-reports/*
 !test.json
+!.zenodo.json
 
 sample_data/transcriptome_collapsed.bam
 sample_data/transcriptome_collapsed.bam.bai
@@ -146,5 +147,4 @@ internal_docs/
 .pixi
 *.egg-info
 
-# Local project notes
-TODO.md
+# (TODO.md is now a tracked roadmap file)

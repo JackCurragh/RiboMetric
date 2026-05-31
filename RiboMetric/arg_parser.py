@@ -231,6 +231,17 @@ def argument_parser() -> argparse.ArgumentParser:
              "Only written when offsets are calculated internally (not from --offset-read-length).",
     )
     run_parser.add_argument(
+        "--skip-sequence-metrics",
+        action="store_true",
+        default=False,
+        dest="skip_sequence_metrics",
+        help=(
+            "Skip all sequence-based metrics (terminal nucleotide bias, "
+            "nucleotide composition). Use for BAMs with no stored sequences, "
+            "or to speed up runs where sequence metrics are not needed."
+        ),
+    )
+    run_parser.add_argument(
         "--multimap-filter",
         type=str,
         required=False,
@@ -284,6 +295,43 @@ def argument_parser() -> argparse.ArgumentParser:
         required=False,
         default="config.yml",
         help="Path to the config file (default: config.yml)",
+    )
+
+    # create the parser for the "evaluate" command
+    evaluate_parser = subparsers.add_parser(
+        "evaluate",
+        help="assess whether a result passes QC against expected thresholds",
+    )
+    evaluate_parser.add_argument(
+        "-i",
+        "--input",
+        type=str,
+        required=True,
+        help="Path to a RiboMetric result (JSON output or metrics-table CSV)",
+    )
+    evaluate_parser.add_argument(
+        "-e",
+        "--expected",
+        type=str,
+        required=False,
+        help=(
+            "Path to a YAML of expected thresholds "
+            "(metric -> {pass, warn}). If omitted, built-in defaults are used."
+        ),
+    )
+    evaluate_parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        required=False,
+        help="Optional path to write the evaluation result as JSON",
+    )
+    evaluate_parser.add_argument(
+        "-n",
+        "--name",
+        type=str,
+        required=False,
+        help="Sample name for the report (default: input filename stem)",
     )
 
     # create the parser for the "view" command

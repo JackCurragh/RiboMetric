@@ -94,6 +94,36 @@ Or pick specific ones:
     $ RiboMetric run -b bam.bam -a annotation.tsv \
         --summary-tsv --qc-status --comparison-csv --metrics-table
 
+Gate a pipeline on QC thresholds (exits 0/1/2 for PASS/WARN/FAIL):
+
+.. code-block:: console
+
+    $ RiboMetric evaluate -i sample_RiboMetric_data.json -e thresholds.yml
+
+The thresholds YAML lists per-metric ``pass`` and ``warn`` values::
+
+    thresholds:
+      periodicity_dominance: {pass: 0.7, warn: 0.5}
+      prop_reads_CDS:        {pass: 0.7, warn: 0.5}
+
+If ``-e`` is omitted, built-in defaults are used. Use ``-o`` to save the
+evaluation as JSON. Accepts either a RiboMetric JSON or a metrics-table CSV.
+
+For BAMs with no stored sequences, skip sequence-based metrics to avoid errors:
+
+.. code-block:: console
+
+    $ RiboMetric run -b no_seq.bam -a annotation.tsv --skip-sequence-metrics
+
+Control multimapper handling for STAR transcriptome alignments:
+
+.. code-block:: console
+
+    # Default: frame calculations use only uniquely-mapped reads (MAPQ=255)
+    $ RiboMetric run -b star.bam -a annotation.tsv --multimap-filter unique_only
+    # Pre-1.1 behaviour: use all primary reads
+    $ RiboMetric run -b star.bam -a annotation.tsv --multimap-filter none
+
 .. _documentation: https://ribometric.readthedocs.io/en/latest/?version=latest
 
 Features
@@ -156,16 +186,20 @@ Requirements
 Testing
 -------
 
-RiboMetric has a comprehensive test suite to ensure reliability:
+RiboMetric has a comprehensive test suite. The quickest way to run it is via
+`pixi <https://pixi.sh>`_ (all dependencies, including test extras, are
+resolved automatically):
 
 .. code-block:: console
 
-    $ pip install -r requirements_test.txt
+    $ pixi run test
+
+Or with a standard virtual environment:
+
+.. code-block:: console
+
+    $ pip install -e ".[dev]"
     $ pytest
-
-For more information, see TESTING.md_
-
-.. _TESTING.md: TESTING.md
 
 Credits
 -------

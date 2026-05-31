@@ -221,43 +221,38 @@ def generate_summary_tsv(
     print(f"Summary line written to {output}")
 
 
-def generate_qc_status(
+# Default pass/warn thresholds used when no override YAML is supplied.
+DEFAULT_QC_THRESHOLDS: Dict[str, Dict[str, float]] = {
+    "periodicity_dominance": {"pass": 0.7, "warn": 0.5},
+    "uniformity_entropy": {"pass": 0.7, "warn": 0.5},
+    "prop_reads_CDS": {"pass": 0.7, "warn": 0.5},
+    "read_length_distribution_IQR_metric": {"pass": 0.3, "warn": 0.2},
+}
+
+
+def evaluate_qc_status(
     results_dict: dict,
-    config: dict,
     sample_name: str,
     thresholds: Optional[Dict] = None,
-    name: str = "RiboMetric_qc_status.json",
-    output_directory: str = "",
-) -> None:
+) -> dict:
     """
-    Generate a QC status file with pass/warning/fail indicators for pipeline decision-making.
+    Score a results dict against pass/warn thresholds.
+
+    Pure function: performs no I/O. Used by both ``generate_qc_status`` (which
+    writes the result to disk during a run) and the ``evaluate`` subcommand.
 
     Input:
-        results_dict: Dictionary containing the results of the qc analysis
-        config: Dictionary containing the configuration information
+        results_dict: Dictionary containing the qc results (expects a "metrics" key)
         sample_name: Name of the sample
-        thresholds: Optional dict of thresholds for pass/warning/fail
-        name: Name of the output file
-        output_directory: Directory to write the output file to
+        thresholds: Optional dict of {metric: {"pass": x, "warn": y}}; falls back
+            to DEFAULT_QC_THRESHOLDS when None
 
     Output:
-        Writes a JSON file with QC status and recommendations
+        Dictionary with overall_status, per-check detail, summary counts and a
+        recommendation.
     """
-    if output_directory == "":
-        output = name
-    else:
-        if output_directory.endswith("/") and output_directory != "":
-            output_directory = output_directory[:-1]
-        output = output_directory + "/" + name
-
-    # Default thresholds (can be overridden)
     if thresholds is None:
-        thresholds = {
-            "periodicity_dominance": {"pass": 0.7, "warn": 0.5},
-            "uniformity_entropy": {"pass": 0.7, "warn": 0.5},
-            "prop_reads_CDS": {"pass": 0.7, "warn": 0.5},
-            "read_length_distribution_IQR_metric": {"pass": 0.3, "warn": 0.2},
-        }
+        thresholds = DEFAULT_QC_THRESHOLDS
 
     metrics = results_dict.get("metrics", {})
     qc_checks = []
@@ -296,7 +291,7 @@ def generate_qc_status(
             "threshold_warn": threshold_dict["warn"],
         })
 
-    qc_status = {
+    return {
         "sample": sample_name,
         "timestamp": datetime.now().isoformat(),
         "overall_status": overall_status,
@@ -310,11 +305,43 @@ def generate_qc_status(
         "recommendation": _get_recommendation(overall_status, qc_checks),
     }
 
+
+def generate_qc_status(
+    results_dict: dict,
+    config: dict,
+    sample_name: str,
+    thresholds: Optional[Dict] = None,
+    name: str = "RiboMetric_qc_status.json",
+    output_directory: str = "",
+) -> None:
+    """
+    Generate a QC status file with pass/warning/fail indicators for pipeline decision-making.
+
+    Input:
+        results_dict: Dictionary containing the results of the qc analysis
+        config: Dictionary containing the configuration information
+        sample_name: Name of the sample
+        thresholds: Optional dict of thresholds for pass/warning/fail
+        name: Name of the output file
+        output_directory: Directory to write the output file to
+
+    Output:
+        Writes a JSON file with QC status and recommendations
+    """
+    if output_directory == "":
+        output = name
+    else:
+        if output_directory.endswith("/") and output_directory != "":
+            output_directory = output_directory[:-1]
+        output = output_directory + "/" + name
+
+    qc_status = evaluate_qc_status(results_dict, sample_name, thresholds)
+
     with open(output, "w") as f:
         json.dump(qc_status, f, indent=2)
 
     print(f"QC status written to {output}")
-    print(f"Overall QC Status: {overall_status}")
+    print(f"Overall QC Status: {qc_status['overall_status']}")
 
 
 def _get_recommendation(status: str, checks: List[Dict]) -> str:

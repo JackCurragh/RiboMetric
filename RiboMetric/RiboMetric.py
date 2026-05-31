@@ -176,6 +176,11 @@ def main(args: argparse.Namespace) -> int:
     Outputs:
         None
     """
+    # Handle evaluate command separately (no logo or config needed)
+    if args.command == "evaluate":
+        from .evaluate import evaluate as run_evaluate
+        return run_evaluate(args)
+
     # Handle view command separately (no logo or config needed)
     if args.command == "view":
         from .tui import run_tui
@@ -269,6 +274,15 @@ def main(args: argparse.Namespace) -> int:
                 Please check the file and try again.
                 """)
             print("Reads parsed")
+
+            # Optionally drop sequence data so sequence-based metrics are
+            # skipped (explicit flag, or BAMs with no stored sequences). #122
+            if config["argument"].get("skip_sequence_metrics"):
+                print("Skipping sequence-based metrics (--skip-sequence-metrics)")
+                sequence_data, sequence_background = {}, {}
+            elif not sequence_background:
+                print("No stored sequences detected; "
+                      "sequence-based metrics will be skipped.")
 
             # Use weighted computations downstream instead of expanding rows
             if "count" not in read_df_pre.columns:

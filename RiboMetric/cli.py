@@ -33,8 +33,7 @@ def main() -> int:
     if not vars(args):
         parser.print_help()
 
-    m(args)
-    return 0
+    return m(args) or 0
 
 
 if __name__ == "__main__":

@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use RiboMetric in your research, please cite it as below."
+title: "RiboMetric: A comprehensive quality assessment tool for ribosome profiling datasets"
+version: 1.1.0
+date-released: "2026-05-31"
+license: MIT
+repository-code: "https://github.com/JackCurragh/RiboMetric"
+url: "https://ribometric.readthedocs.io"
+# doi: ""  # TODO: add Zenodo DOI after first tagged release is archived
+keywords:
+  - ribosome profiling
+  - Ribo-Seq
+  - translation
+  - quality control
+  - bioinformatics
+  - Python
+authors:
+  - family-names: Tierney
+    given-names: Jack
+    affiliation: "LAPTI Lab, School of Biochemistry and Cell Biology, University College Cork, Ireland"
+    email: jackcurragh@gmail.com
+  - family-names: Wierdsma
+    given-names: Lukas
+    affiliation: "Howest University of Applied Sciences, Bruges, Belgium"

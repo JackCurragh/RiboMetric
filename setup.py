@@ -2,10 +2,19 @@
 
 """The setup script."""
 
+import re
+from pathlib import Path
+
 from setuptools import setup, find_packages
 
 with open("README.rst") as readme_file:
     readme = readme_file.read()
+
+# Single source of truth for the version: RiboMetric/__init__.py
+_init = Path(__file__).parent / "RiboMetric" / "__init__.py"
+version = re.search(
+    r'^__version__\s*=\s*["\']([^"\']+)["\']', _init.read_text(), re.M
+).group(1)
 
 # Core dependencies needed to run RiboMetric
 requirements = [
@@ -14,9 +23,11 @@ requirements = [
     "Jinja2>=3.0",
     # Prefer newer Kaleido (>=1.0.0) to avoid deprecations and get wheels
     "kaleido>=1.0.0",  # Required for plotly image export
-    "numpy>=1.24",
+    # numpy<2 / pandas<2.3: upper caps reflect the tested-compatible range with
+    # oxbow/pyarrow. Revisit once validated against numpy 2.x.
+    "numpy>=1.24,<2",
     "oxbow>=0.3.0",
-    "pandas>=2.0",
+    "pandas>=2.0,<2.3",
     "plotly>=5.14",
     "pyarrow>=10.0.0",
     "pysam>=0.21.0",
@@ -45,6 +56,8 @@ dev_requirements = test_requirements + [
     "flake8>=6.0.0",
     "black>=23.0.0",
     "sphinx>=5.0.0",
+    "mypy>=1.0.0",
+    "types-PyYAML>=6.0.12",
 ]
 
 setup(
@@ -53,7 +66,7 @@ setup(
     # Align supported versions with CI and container images
     python_requires=">=3.10,<3.13",
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Natural Language :: English",
@@ -66,6 +79,7 @@ setup(
     entry_points={
         "console_scripts": [
             "RiboMetric=RiboMetric.cli:main",
+            "ribometric=RiboMetric.cli:main",
         ],
     },
     install_requires=requirements,
@@ -89,6 +103,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/JackCurragh/RiboMetric",
-    version="0.2.0",
+    version=version,
     zip_safe=False,
 )
