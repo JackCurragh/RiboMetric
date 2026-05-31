@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] — 2026-05-31
+
+### Added
+
+- **Alignment quality metrics** — calculated for every run, no flags required:
+  - `duplicate_rate` — fraction of reads that are PCR/library duplicates, derived
+    from the collapsed `count` column (`1 − unique_seqs / total_weighted`).
+  - `multimapper_rate` — fraction of reads with MAPQ < 255 (maps to multiple loci).
+  - `soft_clip_rate_5prime` — fraction of reads with 5′ soft-clipping; an indicator
+    of incomplete adapter trimming or read-through artefacts.
+  - All three are also surfaced in `results["alignment_stats"]` alongside the
+    flagstat totals (`total_reads`, `mapped_reads`, `unmapped_reads`).
+- **Di-some detection metrics** (default):
+  - `disome_proportion` — fraction of reads in the 50–70 nt window (di-some /
+    collision footprints).
+  - `read_length_distribution_bimodality` — bimodality coefficient; moved from
+    optional → default so di-some presence is always flagged.
+- **Codon-level translation quality metrics** (default, annotation required):
+  - `stop_codon_readthrough_ratio` — reads at positions +1…+30 relative to stop
+    codon divided by reads at −30…−1; elevated values indicate stop-codon
+    readthrough or frameshifting.
+  - `start_codon_enrichment_ratio` — reads at positions −5…+20 relative to start
+    codon divided by reads at +30…+50; very high values are a proxy for
+    harringtonine/LTM inhibitor treatment or initiation stalling.
+- **RUST metric** (optional, requires `--fasta`):
+  - `rust_mean_kl_divergence` — mean KL divergence across the 60-codon RUST
+    metagene window (O'Connor et al., *Nat Commun* 2016). Measures codon-specific
+    A-site accumulation along the ribosome elongation region. Enable with
+    `--enable-metric rust_mean_kl_divergence --fasta transcriptome.fa.gz`.
+  - Full RUST output (`metagene`, `kl_divergence`, `transcripts_used`) stored
+    under `results["rust"]` in the JSON.
+- **`--fasta` CLI flag** — path to a transcriptome FASTA (gzip supported); passed
+  to annotation mode for sequence-dependent metrics (RUST, future codon usage).
+- **Gzip FASTA support** — `parse_fasta()` now transparently handles `.gz`/`.bgz`
+  files; previously only uncompressed FASTA was accepted.
+
+### Changed
+
+- `read_length_distribution_bimodality` moved from the optional metric list to
+  default. Use `--disable-metric read_length_distribution_bimodality` to skip.
+
+---
+
 ## [1.1.0] — 2026-05-31
 
 ### Added

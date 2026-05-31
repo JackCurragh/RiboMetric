@@ -1,21 +1,70 @@
-..
-  Lukas: Another draft
-=====
+=======
 Results
-=====
+=======
 
-RiboMetric has four different output formats:
+Output formats
+--------------
 
-* HTML: 
-  The main output format is HTML, which includes interactive plots for different quality control metrics.
+RiboMetric produces several output formats depending on the flags passed:
 
-* PDF: 
-  An alternative is PDF output, which is based on the HTML lay-out, but uses static images for the plots.  
+**HTML** (default)
+    Interactive report with plots for each QC metric.  Open in any browser.
 
-* JSON: 
-  This format contains all the results created by RiboMetric before they are used to create plots. This also includes the config that was used to achieve these results.
- 
-* CSV: 
-  The CSV format only contains the scores for the different tested metrics and can be used to quickly compare multiple samples based on these scores.
-  
-Examples for each output format can be found on the `RiboMetric github <https://github.com/JackCurragh/RiboMetric>`_ under example-reports
+**JSON** (default)
+    Machine-readable file containing every metric value, the full metagene
+    profiles, and the config used.  Use ``--json`` to request JSON without
+    HTML, or omit flags to get both.
+
+    Key top-level sections:
+
+    - ``metrics`` — scalar QC scores (periodicity, coverage, alignment stats, etc.)
+    - ``alignment_stats`` — duplicate rate, multimapper rate, soft-clip rate,
+      total/mapped/unmapped read counts
+    - ``read_length_distribution`` — read count per length
+    - ``metagene_profile`` — per-position density around start/stop codons
+    - ``rust`` — RUST codon metagene and KL divergence (only when FASTA provided
+      and ``rust_mean_kl_divergence`` enabled)
+    - ``config`` — the full configuration used for this run
+
+**Summary TSV** (``--summary-tsv``)
+    One row per sample, one column per metric.  Convenient for multi-sample
+    comparisons in a spreadsheet or downstream script.
+
+**QC Status JSON** (``--qc-status``)
+    Machine-readable pass/warn/fail for each metric, using the built-in or
+    user-supplied thresholds.
+
+**Comparison CSV** (``--comparison-csv``)
+    Wide-format CSV suitable for multi-sample comparison tables.
+
+**Metrics Table CSV** (``--metrics-table``)
+    Detailed metrics with per-read-length breakdowns.
+
+**PDF**
+    Static version of the HTML report for archiving.  Requires the
+    ``RiboMetric[pdf]`` extras: ``pip install RiboMetric[pdf]``.
+
+Pipeline outputs
+----------------
+
+Use ``--improved-outputs`` to write all pipeline-friendly formats in one go::
+
+    RiboMetric run -b sample.bam -a annotation.tsv --improved-outputs
+
+Or combine specific flags::
+
+    RiboMetric run -b sample.bam -a annotation.tsv \
+        --summary-tsv \
+        --qc-status \
+        --metrics-table
+
+Example output files can be found in the
+`example-reports <https://github.com/JackCurragh/RiboMetric/tree/main/example-reports>`_
+directory on GitHub.
+
+See also
+--------
+
+:doc:`usage` for full CLI reference.
+
+``REPORTING_GUIDE.md`` in the repository root for format details and examples.

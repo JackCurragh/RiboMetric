@@ -4,48 +4,62 @@
 Installation
 ============
 
-
-Stable release
---------------
-
-To install RiboMetric, run this command in your terminal:
+From PyPI (recommended)
+------------------------
 
 .. code-block:: console
 
     $ pip install RiboMetric
 
-This is the preferred method to install RiboMetric, as it will always install the most recent stable release.
+This installs the latest stable release.  For PDF export support:
 
-If you don't have `pip`_ installed, this `Python installation guide`_ can guide
-you through the process.
+.. code-block:: console
 
-.. _pip: https://pip.pypa.io
-.. _Python installation guide: http://docs.python-guide.org/en/latest/starting/installation/
+    $ pip install RiboMetric[pdf]
 
+From source
+-----------
 
-From sources
+Clone the repository and install in editable mode:
+
+.. code-block:: console
+
+    $ git clone https://github.com/JackCurragh/RiboMetric
+    $ cd RiboMetric
+    $ pip install -e .
+
+For development (includes test and lint dependencies):
+
+.. code-block:: console
+
+    $ pip install -e ".[dev]"
+
+Using pixi
+----------
+
+`pixi <https://pixi.sh>`_ resolves all dependencies including test extras:
+
+.. code-block:: console
+
+    $ git clone https://github.com/JackCurragh/RiboMetric
+    $ cd RiboMetric
+    $ pixi run test   # installs everything and runs the test suite
+
+Docker
+------
+
+A Docker image is built and pushed on every tagged release:
+
+.. code-block:: console
+
+    $ docker pull ghcr.io/jackcurragh/ribometric:latest
+    $ docker run --rm -v $(pwd):/data \
+        ghcr.io/jackcurragh/ribometric:latest \
+        RiboMetric run -b /data/sample.bam
+
+Requirements
 ------------
 
-The sources for RiboMetric can be downloaded from the `Github repo`_.
-
-You can either clone the public repository:
-
-.. code-block:: console
-
-    $ git clone git://github.com/JackCurragh/RiboMetric
-
-Or download the `tarball`_:
-
-.. code-block:: console
-
-    $ curl -OJL https://github.com/JackCurragh/RiboMetric/tarball/master
-
-Once you have a copy of the source, you can install it with:
-
-.. code-block:: console
-
-    $ python setup.py install
-
-
-.. _Github repo: https://github.com/JackCurragh/RiboMetric
-.. _tarball: https://github.com/JackCurragh/RiboMetric/tarball/master
+* Python 3.10, 3.11, or 3.12
+* ``samtools`` >= 1.10 on your PATH (used for BAM indexing and idxstats)
+* A coordinate-sorted, indexed BAM file aligned to a transcriptome reference

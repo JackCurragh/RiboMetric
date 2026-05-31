@@ -109,6 +109,14 @@ The thresholds YAML lists per-metric ``pass`` and ``warn`` values::
 If ``-e`` is omitted, built-in defaults are used. Use ``-o`` to save the
 evaluation as JSON. Accepts either a RiboMetric JSON or a metrics-table CSV.
 
+Enable the RUST metric (requires a transcriptome FASTA, gzip supported):
+
+.. code-block:: console
+
+    $ RiboMetric run -b sample.bam -a annotation.tsv \
+        -f transcriptome.fa.gz \
+        --enable-metric rust_mean_kl_divergence
+
 For BAMs with no stored sequences, skip sequence-based metrics to avoid errors:
 
 .. code-block:: console
@@ -132,19 +140,22 @@ Features
 RiboMetric calculates comprehensive quality metrics for Ribo-Seq data:
 
 **Default Metrics (Standard Ribo-Seq QC):**
-  * Read length distribution (IQR, coefficient of variation, max proportion)
-  * Terminal nucleotide bias (5' and 3' ligation bias detection)
+  * Read length distribution (IQR, CV, max proportion, bimodality)
+  * Terminal nucleotide bias (5′ and 3′ ligation bias detection)
   * 3-nt periodicity (frame dominance and information content)
   * Metagene uniformity (entropy-based)
-  * CDS coverage
-  * Regional distribution (5'UTR, CDS, 3'UTR proportions and ratios)
+  * CDS coverage and regional distribution (5′UTR, CDS, 3′UTR)
+  * **Alignment quality** — duplicate rate, multimapper rate, 5′ soft-clip rate
+  * **Di-some detection** — bimodality coefficient + disome proportion (50–70 nt reads)
+  * **Codon-level translation** — stop-codon readthrough ratio, start-codon enrichment ratio
 
-**Optional Metrics (Theoretical/Experimental):**
+**Optional Metrics (require explicit ``--enable-metric``):**
+  * RUST mean KL divergence — codon-specific A-site accumulation (requires ``--fasta``)
   * Alternative periodicity methods (autocorrelation, Fourier transform, Trips-Viz)
   * Alternative uniformity methods (autocorrelation, Theil index, Gini index)
-  * Additional read length metrics (bimodality, normality tests)
+  * Additional read length metrics (normality test)
 
-Use ``--enable-optional-metrics`` to calculate all metrics, or ``--enable-metric <name>`` for specific ones.
+Use ``--enable-optional-metrics`` to calculate all optional metrics, or ``--enable-metric <name>`` for specific ones.
 
 Output Formats
 --------------
