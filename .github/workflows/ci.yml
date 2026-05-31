@@ -1,9 +1,7 @@
-name: Build and Deploy Package
+name: CI
 
 on:
   push:
-    tags:
-      - '*'
     branches:
       - main
       - dev

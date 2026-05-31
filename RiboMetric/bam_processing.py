@@ -8,6 +8,7 @@ import oxbow as ox
 import io
 import os
 import pyarrow.ipc
+import pysam
 from .file_splitting import split_bam, format_progress
 from multiprocessing import Pool
 from typing import Dict, List, Iterable
@@ -80,8 +81,27 @@ def ox_parse_reads(bam_file: str,
           "\033[1A"*(split_num // print_columns),
           end="\r", flush=False, sep="")
 
+    oxbow_df = read_oxbow_df(tmp_bam)
+
+    print("\n"*(split_num // print_columns),
+          "\033[25C"*(split_num % print_columns),
+          f"thread {formatted_num}: to pandas.. | ",
+          "\033[1A"*(split_num // print_columns),
+          end="\r", flush=False, sep="")
+
+    return process_oxbow_batch(oxbow_df, split_num, formatted_num, print_columns)
+
+
+def ox_parse_entire_bam(bam_file: str) -> tuple:
+    """Parse a BAM directly without first creating a split BAM."""
+    validate_bam(bam_file)
+    oxbow_df = read_oxbow_df(bam_file)
+    return process_oxbow_batch(oxbow_df)
+
+
+def read_oxbow_df(bam_file: str) -> pd.DataFrame:
     try:
-        arrow_ipc = ox.read_bam(tmp_bam)
+        arrow_ipc = ox.read_bam(bam_file)
     except Exception as e:
         if "InvalidReferenceSequenceName" in str(e):
             raise Exception("InvalidReferenceSequenceName - \
@@ -92,15 +112,44 @@ def ox_parse_reads(bam_file: str,
 
     oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
     del arrow_ipc
+    oxbow_df.attrs["bam_file"] = bam_file
+    return oxbow_df
 
-    print("\n"*(split_num // print_columns),
-          "\033[25C"*(split_num % print_columns),
-          f"thread {formatted_num}: to pandas.. | ",
-          "\033[1A"*(split_num // print_columns),
-          end="\r", flush=False, sep="")
 
+def read_pysam_df(bam_file: str) -> pd.DataFrame:
+    """Fallback BAM reader for oxbow empty/no-schema outputs."""
+    records = []
+    with pysam.AlignmentFile(bam_file, "rb") as bam:
+        for read in bam.fetch(until_eof=True):
+            if read.is_secondary:
+                continue
+            records.append({
+                "qname": read.query_name,
+                "seq": read.query_sequence or "",
+                "cigar": read.cigarstring or "",
+                "rname": bam.get_reference_name(read.reference_id),
+                "pos": (
+                    float(read.reference_start + 1)
+                    if read.reference_start is not None else np.nan
+                ),
+                "mapq": read.mapping_quality,
+            })
+    return pd.DataFrame.from_records(
+        records,
+        columns=["qname", "seq", "cigar", "rname", "pos", "mapq"],
+    )
+
+
+def process_oxbow_batch(
+        oxbow_df: pd.DataFrame,
+        split_num: int = 0,
+        formatted_num: str = "01",
+        print_columns: int = 4,
+        ) -> tuple:
     if oxbow_df.empty and not set(_REQUIRED_OXBOW_COLUMNS).issubset(oxbow_df.columns):
-        return (_empty_read_batch(), {1: [], 2: []})
+        oxbow_df = read_pysam_df(oxbow_df.attrs["bam_file"])
+        if oxbow_df.empty:
+            return (_empty_read_batch(), {1: [], 2: []})
 
     batch_df = process_reads(oxbow_df)
 
@@ -523,6 +572,12 @@ def get_batch_data(
             sequence_data[pattern_length] = [result.get() for result
                                              in bam_batches[1][pattern_length]
                                              ]
+
+    elif isinstance(bam_batches[0], tuple):
+        bam_tuples = bam_batches
+
+        read_batches = [data[0] for data in bam_tuples]
+        full_sequence_batches = [data[1] for data in bam_tuples]
 
     else:
         bam_tuples = [result.get() for result in bam_batches]
