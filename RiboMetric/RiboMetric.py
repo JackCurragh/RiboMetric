@@ -47,7 +47,7 @@ Output:
 from rich.console import Console
 from rich.text import Text
 from rich.table import Table
-from typing import Dict, Any, cast
+from typing import Dict, Any
 import argparse
 
 import numpy as np
@@ -62,7 +62,7 @@ from .file_parser import (
     check_annotation
 )
 from .arg_parser import argument_parser, open_config
-from .qc import annotation_mode, sequence_mode
+from .qc import annotation_mode
 from .plots import generate_plots
 from .html_report import generate_report, parse_json_input
 from .results_output import (
@@ -251,8 +251,6 @@ def main(args: argparse.Namespace) -> int:
                     RiboMetric prepare -g <gff_file>
                     """)
 
-            # To Do:
-            # Ensure Flagstat is written to the report
             flagstat = flagstat_bam(config["argument"]["bam"])
             if (config["argument"]["subsample"] is None
                     or flagstat['mapped_reads'] < config[
@@ -290,12 +288,22 @@ def main(args: argparse.Namespace) -> int:
             read_df = read_df_pre
             del read_df_pre
 
+            # Parse FASTA up-front so it can be passed into annotation_mode
+            # for RUST and other sequence-level metrics.
+            fasta_dict = None
+            if config["argument"]["fasta"] is not None:
+                print("Parsing FASTA for sequence-level metrics...")
+                fasta_dict = parse_fasta(config["argument"]["fasta"])
+
             if (config["argument"]["gff"] is None and
                     config["argument"]["annotation"] is None):
-                results_dict = annotation_mode(read_df,
-                                               sequence_data,
-                                               sequence_background,
-                                               config=config)
+                results_dict = annotation_mode(
+                    read_df,
+                    sequence_data,
+                    sequence_background,
+                    config=config,
+                    fasta_dict=fasta_dict,
+                )
 
             else:
                 if (config["argument"]["annotation"] is not None and
@@ -311,6 +319,7 @@ def main(args: argparse.Namespace) -> int:
                         sequence_background,
                         annotation_df,
                         config,
+                        fasta_dict=fasta_dict,
                     )
                 elif (config["argument"]["annotation"] is None and
                         config["argument"]["gff"] is not None):
@@ -329,6 +338,7 @@ def main(args: argparse.Namespace) -> int:
                         sequence_background,
                         annotation_df,
                         config,
+                        fasta_dict=fasta_dict,
                     )
 
                 elif (config["argument"]["annotation"] is not None and
@@ -340,17 +350,18 @@ def main(args: argparse.Namespace) -> int:
                     print("Annotation parsed")
 
                     print("Running annotation mode")
-                    results_dict = annotation_mode(read_df,
-                                                   sequence_data,
-                                                   sequence_background,
-                                                   annotation_df,
-                                                   config)
-                if config["argument"]["fasta"] is not None:
-                    fasta_dict = parse_fasta(config["argument"]["fasta"])
-                    # Cast to bypass legacy sequence_mode signature
-                    results_dict = cast(dict, cast(Any, sequence_mode)(
-                        results_dict, read_df, fasta_dict, config
-                    ))
+                    results_dict = annotation_mode(
+                        read_df,
+                        sequence_data,
+                        sequence_background,
+                        annotation_df,
+                        config,
+                        fasta_dict=fasta_dict,
+                    )
+
+            # Merge samtools flagstat data into alignment_stats so the report
+            # can display total_reads, mapping_rate, etc.
+            results_dict.setdefault("alignment_stats", {}).update(flagstat)
     
             filename = config["argument"]["bam"].split('/')[-1]
             if "." in filename:

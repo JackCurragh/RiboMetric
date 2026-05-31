@@ -56,7 +56,7 @@ from .metrics import (
     read_length_distribution_bimodality,
     proportion_of_reads_in_region
 )
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 def should_calculate_metric(metric_name: str, config: dict) -> bool:
@@ -91,7 +91,8 @@ def annotation_mode(
     sequence_data: dict,
     sequence_background: dict,
     annotation_df: pd.DataFrame = pd.DataFrame(),
-    config: dict = {}
+    config: dict = {},
+    fasta_dict: Optional[dict] = None,
 ) -> dict:
     """
     Run the annotation mode of the qc analysis
@@ -99,9 +100,12 @@ def annotation_mode(
     Inputs:
         read_df: Dataframe containing the read information
                 (keys are the read names)
+        sequence_data: Dictionary containing the sequence data
+        sequence_background: Dictionary containing the sequence background
         annotation_df: Dataframe containing the annotation information
-        transcript_list: List of the top N transcripts
         config: Dictionary containing the configuration information
+        fasta_dict: Optional FASTA dict from parse_fasta; enables RUST metrics
+                    and RNase context analysis when provided.
 
     Outputs:
         results_dict: Dictionary containing the results of the qc analysis
@@ -187,6 +191,42 @@ def annotation_mode(
         }
 
     #######################################################################
+    # ALIGNMENT STATS  (from read_df columns computed during BAM parsing)
+    #######################################################################
+    _count_arr = read_df["count"].astype(int)
+    _total_weighted = int(_count_arr.sum())
+    _unique_reads = len(read_df)
+    _dup_rate = (
+        (1.0 - _unique_reads / _total_weighted) if _total_weighted > 0 else 0.0
+    )
+
+    _mapq_arr = read_df["mapq"].astype(int)
+    _multimap_mask = (_mapq_arr < 255).astype(int)
+    _multimapper_rate = (
+        float((_multimap_mask * _count_arr).sum() / _total_weighted)
+        if _total_weighted > 0 else 0.0
+    )
+
+    results_dict["alignment_stats"] = {
+        "total_reads_analysed": _total_weighted,
+        "unique_read_sequences": _unique_reads,
+        "duplicate_rate": round(_dup_rate, 4),
+        "multimapper_rate": round(_multimapper_rate, 4),
+    }
+    results_dict["metrics"]["duplicate_rate"] = _dup_rate
+    results_dict["metrics"]["multimapper_rate"] = _multimapper_rate
+
+    if "soft_clip_5" in read_df.columns:
+        _sc5 = read_df["soft_clip_5"].astype(int)
+        _sc5_mask = (_sc5 > 0).astype(int)
+        _sc5_rate = (
+            float((_sc5_mask * _count_arr).sum() / _total_weighted)
+            if _total_weighted > 0 else 0.0
+        )
+        results_dict["alignment_stats"]["soft_clip_rate_5prime"] = round(_sc5_rate, 4)
+        results_dict["metrics"]["soft_clip_rate_5prime"] = _sc5_rate
+
+    #######################################################################
     # READ LENGTH DISTRIBUTION
     #######################################################################
     print("> read_length_distribution")
@@ -230,6 +270,18 @@ def annotation_mode(
             ] = rldn_metric(
                 results_dict["read_length_distribution"]
             )
+
+    # Di-some proportion — fraction of reads in the 50–70 nt window.
+    # A bimodal distribution with a secondary peak here indicates di-some
+    # contamination or a mixed library.
+    _rld = results_dict["read_length_distribution"]
+    _total_rld = sum(_rld.values()) or 1
+    _disome_count = sum(
+        v for k, v in _rld.items() if 50 <= int(k) <= 70
+    )
+    results_dict["metrics"]["disome_proportion"] = round(
+        _disome_count / _total_rld, 4
+    )
 
     #######################################################################
     # TERMINAL NUCLEOTIDE BIAS
@@ -422,6 +474,53 @@ def annotation_mode(
                 config["plots"]["metagene_profile"]["distance_target"],
                 config["plots"]["metagene_profile"]["distance_range"],
             )
+
+            ###############################################################
+            # STOP CODON READTHROUGH RATIO
+            ###############################################################
+            _stop_meta = results_dict["metagene_profile"].get("stop", {})
+            if _stop_meta:
+                _before_stop = sum(
+                    v for rl_d in _stop_meta.values()
+                    for pos, v in rl_d.items()
+                    if -30 <= pos < 0
+                )
+                _after_stop = sum(
+                    v for rl_d in _stop_meta.values()
+                    for pos, v in rl_d.items()
+                    if 0 < pos <= 30
+                )
+                results_dict["metrics"]["stop_codon_readthrough_ratio"] = (
+                    round(_after_stop / _before_stop, 4)
+                    if _before_stop > 0 else None
+                )
+            else:
+                results_dict["metrics"]["stop_codon_readthrough_ratio"] = None
+
+            ###############################################################
+            # START CODON ENRICHMENT RATIO
+            # (proxy for translation-inhibitor treatment; high values
+            #  indicate harringtonine/LTM use or stalled initiation)
+            ###############################################################
+            _start_meta = results_dict["metagene_profile"].get("start", {})
+            if _start_meta:
+                _near_start = sum(
+                    v for rl_d in _start_meta.values()
+                    for pos, v in rl_d.items()
+                    if -5 <= pos <= 20
+                )
+                _body_start = sum(
+                    v for rl_d in _start_meta.values()
+                    for pos, v in rl_d.items()
+                    if 30 <= pos <= 50
+                )
+                results_dict["metrics"]["start_codon_enrichment_ratio"] = (
+                    round(_near_start / _body_start, 4)
+                    if _body_start > 0 else None
+                )
+            else:
+                results_dict["metrics"]["start_codon_enrichment_ratio"] = None
+
         else:
             results_dict["mRNA_distribution"] = {}
             results_dict["metagene_profile"] = {"start": {}, "stop": {}}
@@ -564,6 +663,32 @@ def annotation_mode(
             "periodicity_trips-viz"
             ] = read_frame_score_trips_viz(
             culled_read_frame_dict)
+
+    ###########################################################################
+    # RUST METRIC (requires FASTA + annotation)
+    ###########################################################################
+    if (
+        annotation
+        and fasta_dict is not None
+        and len(annotation_df) > 0
+        and should_calculate_metric("rust_mean_kl_divergence", config)
+    ):
+        print("> rust (Ribo-seq Unit Step Transformation)")
+        from .rust import compute_rust_metrics
+        try:
+            rust_result = compute_rust_metrics(
+                annotated_read_df,
+                annotation_df,
+                fasta_dict,
+            )
+            results_dict["rust"] = rust_result
+            results_dict["metrics"]["rust_mean_kl_divergence"] = (
+                rust_result["mean_kl_divergence"]
+            )
+        except Exception as exc:
+            print(f"Warning: RUST computation failed: {exc}")
+            results_dict["rust"] = {}
+            results_dict["metrics"]["rust_mean_kl_divergence"] = None
 
     return results_dict
 

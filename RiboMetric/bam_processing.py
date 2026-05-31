@@ -207,6 +207,8 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     )
     # Use float to preserve NaN for reads with no mapped position; NaN - int = NaN
     batch_df["reference_start"] = oxbow_df["pos"].astype("float") - soft_clip_5
+    # Store the 5' soft-clip count so downstream code can compute soft-clip rates.
+    batch_df["soft_clip_5"] = soft_clip_5.astype("uint8")
     batch_df["first_dinucleotide"] = (oxbow_df["seq"].str.slice(stop=2)
                                       .astype("category"))
     batch_df["last_dinucleotide"] = (oxbow_df["seq"].str.slice(stop=-3,

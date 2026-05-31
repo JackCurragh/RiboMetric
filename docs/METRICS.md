@@ -29,6 +29,19 @@ These metrics are calculated by default and represent the standard quality check
 - `region_ratios` - Ratios between different mRNA regions (CDS:5'UTR, CDS:3'UTR, etc.)
 - `region_proportions` - Proportion of reads in each region
 
+### Alignment Quality
+- `duplicate_rate` - Fraction of reads that are PCR/library duplicates (from collapsed count column)
+- `multimapper_rate` - Fraction of reads with MAPQ < 255 (multiple genomic loci)
+- `soft_clip_rate_5prime` - Fraction of reads with 5′ soft-clipping (adapter/trimming artefact indicator)
+
+### Di-some Detection
+- `read_length_distribution_bimodality` - Bimodality coefficient of the read length distribution
+- `disome_proportion` - Fraction of reads with length 50–70 nt (di-some / collision footprint window)
+
+### Codon-level Translation Metrics
+- `stop_codon_readthrough_ratio` - Reads downstream of stop codon (positions +1…+30) relative to upstream (-30…-1); elevated values indicate readthrough or frameshifting
+- `start_codon_enrichment_ratio` - Reads near start codon (-5…+20) relative to CDS body (positions +30…+50); very high values suggest harringtonine/LTM treatment or initiation stalling
+
 ## Optional Metrics
 
 These metrics are **only calculated when explicitly enabled** using `--enable-optional-metrics` or `--enable-metric <name>`. They represent alternative or more theoretical approaches:
@@ -44,8 +57,10 @@ These metrics are **only calculated when explicitly enabled** using `--enable-op
 - `uniformity_gini_index` - Gini coefficient across metagene profile
 
 ### Additional Read Length Metrics
-- `read_length_distribution_bimodality` - Bimodality coefficient
 - `read_length_distribution_normality` - Normality test p-value
+
+### RUST Metric (requires `--fasta`)
+- `rust_mean_kl_divergence` - Mean KL divergence across the 60-codon RUST metagene window; measures the extent of codon-specific A-site accumulation (O'Connor et al., Nat Commun 2016)
 
 ## Usage Examples
 

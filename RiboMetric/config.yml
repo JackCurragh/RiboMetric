@@ -88,6 +88,10 @@ metrics:
     - read_length_distribution_coefficient_of_variation
     - read_length_distribution_maxprop
 
+    # Di-some detection (bimodality + 50-70 nt fraction)
+    - read_length_distribution_bimodality
+    - disome_proportion
+
     # Terminal nucleotide bias
     - terminal_nucleotide_bias_KL_5prime
     - terminal_nucleotide_bias_KL_3prime
@@ -106,13 +110,24 @@ metrics:
     - region_ratios
     - region_proportions
 
+    # Alignment quality metrics
+    - duplicate_rate
+    - multimapper_rate
+    - soft_clip_rate_5prime
+
+    # Codon-level translation metrics (requires annotation)
+    - stop_codon_readthrough_ratio
+    - start_codon_enrichment_ratio
+
   # OPTIONAL METRICS (only calculated if enabled via --enable-optional-metrics or --enable-metric)
   optional:
     # Enable to build P-site aligned metagene for spectral metrics
     - periodicity_psite_aligned
     # Additional read length metrics
-    - read_length_distribution_bimodality
     - read_length_distribution_normality
+
+    # RUST codon-level metagene (requires --fasta)
+    - rust_mean_kl_divergence
 
     # Alternative periodicity metrics (more theoretical)
     - periodicity_autocorrelation
@@ -164,3 +179,10 @@ max_mins: # max mins from simulations for each metric github.com/JackCurragh/Met
   # read_length_distribution_normality: [0, 1]
   # read_length_distribution_coefficient_of_variation: [0, 1]
   # read_length_distribution_maxprop: [0, 1]
+  disome_proportion: [0, 1]
+  duplicate_rate: [0, 1]
+  multimapper_rate: [0, 1]
+  soft_clip_rate_5prime: [0, 1]
+  stop_codon_readthrough_ratio: [0, 5]
+  start_codon_enrichment_ratio: [0, 20]
+  # rust_mean_kl_divergence: [0, 1]
