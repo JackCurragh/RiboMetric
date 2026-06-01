@@ -32,6 +32,8 @@ from .modules import (
     a_site_calculation,
     ribowaltz_psite_prediction,
     filter_unique_mappers,
+    DEFAULT_OFFSET_BOUNDS,
+    DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
 )
 
 from .metrics import (
@@ -111,12 +113,27 @@ def annotation_mode(
         results_dict: Dictionary containing the results of the qc analysis
     """
     print("Calculating A site information...")
+    offset_bounds = (
+        int(config.get("argument", {}).get("offset_min", DEFAULT_OFFSET_BOUNDS[0])),
+        int(config.get("argument", {}).get("offset_max", DEFAULT_OFFSET_BOUNDS[1])),
+    )
+    max_read_length_fraction = config.get("argument", {}).get(
+        "offset_max_read_length_fraction",
+        DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+    )
+    max_read_length_fraction = (
+        None
+        if max_read_length_fraction is None
+        else float(max_read_length_fraction)
+    )
     if ("offset_read_length" in config["argument"]):
         print("Applying specified read length specific offsets")
         read_df = a_site_calculation(read_df,
                                      offset_file=config["argument"][
                                             "offset_read_length"],
-                                     offset_type="read_length")
+                                     offset_type="read_length",
+                                     offset_bounds=offset_bounds,
+                                     max_read_length_fraction=max_read_length_fraction)
 
     elif ("offset_read_specific" in config['argument']):
         print("Applying read specific offsets")
@@ -124,6 +141,8 @@ def annotation_mode(
                                      offset_file=config["argument"][
                                             "offset_read_specific"],
                                      offset_type="read_specific",
+                                     offset_bounds=offset_bounds,
+                                     max_read_length_fraction=max_read_length_fraction,
                                      )
     elif ("global_offset" in config["argument"]):
         print("Applying global offset")
@@ -131,6 +150,8 @@ def annotation_mode(
                                      global_offset=config["argument"][
                                         "global_offset"],
                                      offset_type="global",
+                                     offset_bounds=offset_bounds,
+                                     max_read_length_fraction=max_read_length_fraction,
                                      )
 
     computed_offsets = {}
@@ -138,7 +159,12 @@ def annotation_mode(
         annotation = True
         print("Merging annotation and reads")
         if "a_site" not in read_df.columns:
-            read_df = a_site_calculation(read_df, offset_type="global")
+            read_df = a_site_calculation(
+                read_df,
+                offset_type="global",
+                offset_bounds=offset_bounds,
+                max_read_length_fraction=max_read_length_fraction,
+            )
             annotated_read_df = chunked_annotate_reads(read_df, annotation_df)
 
             print("assigning mRNA categories")
@@ -157,12 +183,20 @@ def annotation_mode(
             offsets = asite_calculation_per_readlength(
                 annotated_read_df,
                 method=config["argument"]["offset_calculation_method"],
+                default_offset=config["argument"].get("global_offset", 15),
+                offset_bounds=offset_bounds,
+                max_read_length_fraction=max_read_length_fraction,
                 min_prominence=min_prom,
                 unique_only=unique_only,
             )
             computed_offsets = offsets
             annotated_read_df = a_site_calculation_variable_offset(
-                annotated_read_df, offsets
+                annotated_read_df,
+                offsets,
+                default_offset=config["argument"].get("global_offset", 15),
+                offset_bounds=offset_bounds,
+                max_read_length_fraction=max_read_length_fraction,
+                validate_offsets=True,
                 )
         else:
             annotated_read_df = chunked_annotate_reads(read_df, annotation_df)
@@ -176,7 +210,12 @@ def annotation_mode(
 
     else:
         annotation = False
-        read_df = a_site_calculation(read_df, offset_type="global")
+        read_df = a_site_calculation(
+            read_df,
+            offset_type="global",
+            offset_bounds=offset_bounds,
+            max_read_length_fraction=max_read_length_fraction,
+        )
 
     print("Running modules")
 

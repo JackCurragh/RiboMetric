@@ -88,6 +88,30 @@ def argument_parser() -> argparse.ArgumentParser:
         help="Global offset to be used for all read lengths (default: 15)",
     )
     run_parser.add_argument(
+        "--offset-min",
+        type=int,
+        required=False,
+        default=None,
+        help="Minimum plausible per-read-length offset (default: config.yml, 8)",
+    )
+    run_parser.add_argument(
+        "--offset-max",
+        type=int,
+        required=False,
+        default=None,
+        help="Maximum plausible per-read-length offset (default: config.yml, 20)",
+    )
+    run_parser.add_argument(
+        "--offset-max-read-length-fraction",
+        type=float,
+        required=False,
+        default=None,
+        help=(
+            "Maximum plausible offset as a fraction of read length "
+            "(default: config.yml, 0.6667)"
+        ),
+    )
+    run_parser.add_argument(
         "--offset-calculation-method",
         type=str,
         required=False,

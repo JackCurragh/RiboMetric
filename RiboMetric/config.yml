@@ -16,6 +16,9 @@ argument:
   json: False                 # Output results as JSON
   csv: False                  # Output metrics as CSV
   offset_calculation_method: "ribowaltz"
+  offset_min: 8               # Minimum plausible final offset from the read 5' end
+  offset_max: 20              # Maximum plausible final offset from the read 5' end
+  offset_max_read_length_fraction: 0.6667  # Relative ceiling; 27nt reads cap at 18
   # Filter reads used for frame-sensitive calculations (offset detection and
   # periodicity).  "unique_only" restricts those calculations to reads with
   # MAPQ=255, which in STAR output means exactly one genomic mapping locus.

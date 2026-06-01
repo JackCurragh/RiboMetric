@@ -18,6 +18,9 @@ except ImportError:
 from typing import List, Dict, Tuple, Optional, cast
 from scipy import stats
 
+DEFAULT_OFFSET_BOUNDS: Tuple[int, int] = (8, 20)
+DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION = 2 / 3
+
 
 def _get_weights(df: pd.DataFrame) -> Optional[pd.Series]:
     """Return integer weights if unexpanded; otherwise None.
@@ -48,6 +51,87 @@ def filter_unique_mappers(df: pd.DataFrame, enabled: bool = True) -> pd.DataFram
     return unique if not unique.empty else df
 
 
+def is_valid_offset(
+        read_length: int,
+        offset: Optional[int],
+        offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
+        max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+        ) -> bool:
+    """Return True when an offset is numeric and plausible for a read length."""
+    if offset is None:
+        return False
+    try:
+        read_length_i = int(read_length)
+        offset_i = int(offset)
+    except (TypeError, ValueError):
+        return False
+
+    min_offset, max_offset = offset_bounds
+    if max_read_length_fraction is not None:
+        max_offset = min(
+            max_offset,
+            int(np.floor(read_length_i * float(max_read_length_fraction))),
+        )
+
+    return (
+        offset_i > 0
+        and offset_i < read_length_i
+        and min_offset <= offset_i <= max_offset
+    )
+
+
+def sanitise_offset(
+        read_length: int,
+        offset: Optional[int],
+        default_offset: int = 15,
+        offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
+        max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+        ) -> int:
+    """Return a usable offset, falling back when a caller produced noise."""
+    if is_valid_offset(
+        read_length,
+        offset,
+        offset_bounds,
+        max_read_length_fraction,
+    ):
+        return int(cast(int, offset))
+    if is_valid_offset(
+        read_length,
+        default_offset,
+        offset_bounds,
+        max_read_length_fraction,
+    ):
+        return int(default_offset)
+
+    min_offset, max_offset = offset_bounds
+    if max_read_length_fraction is not None:
+        max_offset = min(
+            max_offset,
+            int(np.floor(int(read_length) * float(max_read_length_fraction))),
+        )
+    bounded_default = min(max(int(default_offset), min_offset), max_offset)
+    return min(bounded_default, int(read_length) - 1)
+
+
+def sanitise_offset_dict(
+        offset_dict: Dict[int, int],
+        default_offset: int = 15,
+        offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
+        max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+        ) -> Dict[int, int]:
+    """Validate per-read-length offsets and replace implausible calls."""
+    return {
+        int(read_length): sanitise_offset(
+            int(read_length),
+            int(offset),
+            default_offset=default_offset,
+            offset_bounds=offset_bounds,
+            max_read_length_fraction=max_read_length_fraction,
+        )
+        for read_length, offset in offset_dict.items()
+    }
+
+
 def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     Convert the a_site_df to a cds_read_df by removing reads that do not
@@ -69,7 +153,10 @@ def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
 def a_site_calculation(read_df: pd.DataFrame,
                        offset_file: str = "None",
                        offset_type: str = "calculate",
-                       global_offset: int = 15) -> pd.DataFrame:
+                       global_offset: int = 15,
+                       offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
+                       max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+                       ) -> pd.DataFrame:
     """
     Adds a column to the read_df containing the A-site for the reads
 
@@ -92,7 +179,12 @@ def a_site_calculation(read_df: pd.DataFrame,
 
     if offset_type == "calculate":
         print("Calculating offsets")
-        a_site_df = a_site_calculation_variable_offset(read_df)
+        a_site_df = a_site_calculation_variable_offset(
+            read_df,
+            default_offset=global_offset,
+            offset_bounds=offset_bounds,
+            max_read_length_fraction=max_read_length_fraction,
+        )
     elif offset_type == "read_length":
         # TSV with two columns: read_length<tab>offset.
         # Accepts an optional header row (e.g., "read_len\toffset").
@@ -111,7 +203,13 @@ def a_site_calculation(read_df: pd.DataFrame,
             "offset_num": int,
         })
         offset_dict = dict(zip(rl_table["read_length_num"], rl_table["offset_num"]))
-        a_site_df = a_site_calculation_variable_offset(read_df, offset_dict)
+        a_site_df = a_site_calculation_variable_offset(
+            read_df,
+            offset_dict,
+            default_offset=global_offset,
+            offset_bounds=offset_bounds,
+            max_read_length_fraction=max_read_length_fraction,
+        )
     elif offset_type == "global":
         df = read_df.copy()
         # Coerce again for safety under different pandas versions
@@ -147,6 +245,10 @@ def a_site_calculation(read_df: pd.DataFrame,
 def a_site_calculation_variable_offset(
         read_df: pd.DataFrame,
         offset_dict: Optional[dict] = None,
+        default_offset: int = 15,
+        offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
+        max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+        validate_offsets: bool = False,
         ) -> pd.DataFrame:
     """
     Adds a column to the read_df containing the A-site for the reads
@@ -162,14 +264,31 @@ def a_site_calculation_variable_offset(
         asite_df: Dataframe containing the read information with an added
                     column for the A-site
     """
+    default_offset = sanitise_offset(
+        10**9,
+        default_offset,
+        default_offset,
+        offset_bounds,
+        max_read_length_fraction,
+    )
+
     # If offset_dict is not provided, use default offset of
     # 15 for all read lengths
     if offset_dict is None:
-        offset = 15
+        offset = default_offset
     else:
+        if validate_offsets:
+            offset_dict = sanitise_offset_dict(
+                offset_dict,
+                default_offset=default_offset,
+                offset_bounds=offset_bounds,
+                max_read_length_fraction=max_read_length_fraction,
+            )
         # Map offsets to corresponding read lengths (cast to built-in int to avoid numpy int hash mismatch)
         read_len_int = read_df['read_length'].astype(int)
-        read_df['offset'] = read_len_int.map(lambda l: int(offset_dict.get(int(l), 15)))
+        read_df['offset'] = read_len_int.map(
+            lambda l: int(offset_dict.get(int(l), default_offset))
+        )
         read_df['offset'] = read_df['offset'].astype('int64')
         offset = read_df['offset']
 
@@ -1118,6 +1237,8 @@ def asite_calculation_per_readlength(
         method: str = "ribowaltz",
         offset_range: Tuple[int, int] = (10, 18),
         default_offset: int = 15,
+        offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
+        max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
         min_prominence: Optional[float] = None,
         unique_only: bool = True,
         ) -> Dict[int, int]:
@@ -1156,7 +1277,13 @@ def asite_calculation_per_readlength(
             extend=False
         )
         if read_length not in read_length_metagene["start"]:
-            offset_dict[read_length] = default_offset
+            offset_dict[read_length] = sanitise_offset(
+                int(read_length),
+                default_offset,
+                default_offset=default_offset,
+                offset_bounds=offset_bounds,
+                max_read_length_fraction=max_read_length_fraction,
+            )
             continue
 
         if method == "changepoint":
@@ -1207,6 +1334,20 @@ def asite_calculation_per_readlength(
         else:
             raise ValueError(f"Invalid method: {method}")
 
-        offset_dict[read_length] = abs(offset)
+        raw_offset = abs(int(offset))
+        offset_dict[read_length] = sanitise_offset(
+            int(read_length),
+            raw_offset,
+            default_offset=default_offset,
+            offset_bounds=offset_bounds,
+            max_read_length_fraction=max_read_length_fraction,
+        )
+        if offset_dict[read_length] != raw_offset:
+            print(
+                "Warning: computed offset "
+                f"{raw_offset} for read length {int(read_length)} is outside "
+                f"bounds {offset_bounds[0]}-{offset_bounds[1]} or not below "
+                f"read length; using {offset_dict[read_length]}"
+            )
 
     return offset_dict
