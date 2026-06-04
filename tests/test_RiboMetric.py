@@ -9,6 +9,7 @@ import pytest
 from io import StringIO
 import sys
 import os
+import json
 
 
 def test_main_prepare():
@@ -67,6 +68,14 @@ def test_main_run():
     # Assert that the expected output was produced
     assert 'Annotation parsed' in output
     assert 'Running modules' in output
+
+    with open(f"{file_path}/test_RiboMetric.json") as result_file:
+        results = json.load(result_file)["results"]
+
+    metrics = results["metrics"]
+    assert metrics["prop_reads_CDS"]["global"] == 1.0
+    assert metrics["prop_reads_leader"]["global"] == 0.0
+    assert metrics["prop_reads_trailer"]["global"] == 0.0
 
 
 def test_main_run_no_server_flag_anymore():

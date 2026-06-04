@@ -10,7 +10,6 @@ Three main modes:
 """
 
 import pandas as pd
-from numbers import Number
 
 from .modules import (
     chunked_annotate_reads,
@@ -661,23 +660,17 @@ def annotation_mode(
                 region="CDS",
             )
 
-        leader_prop = proportion_of_reads_in_region(
-            mRNA_distribution=results_dict["mRNA_distribution"],
-            region="five_leader",
-        )
-        results_dict["metrics"]["prop_reads_leader"] = {
-            key: (1 - value if isinstance(value, Number) else value)
-            for key, value in leader_prop.items()
-        }
+        results_dict["metrics"]["prop_reads_leader"] =\
+            proportion_of_reads_in_region(
+                mRNA_distribution=results_dict["mRNA_distribution"],
+                region="five_leader",
+            )
 
-        trailer_prop = proportion_of_reads_in_region(
-            mRNA_distribution=results_dict["mRNA_distribution"],
-            region="three_trailer",
-        )
-        results_dict["metrics"]["prop_reads_trailer"] = {
-            key: (1 - value if isinstance(value, Number) else value)
-            for key, value in trailer_prop.items()
-        }
+        results_dict["metrics"]["prop_reads_trailer"] =\
+            proportion_of_reads_in_region(
+                mRNA_distribution=results_dict["mRNA_distribution"],
+                region="three_trailer",
+            )
         
         # Ensure read_frame_dist exists when annotation is False but sequence_background is present
         # so downstream culling and periodicity dominance always have input.
