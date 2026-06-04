@@ -329,10 +329,11 @@ RiboMetric run -b sample.bam -a annotation.tsv \
 
 | Metric | Good Range | Interpretation |
 |--------|------------|----------------|
-| `periodicity_dominance` | > 0.7 | Strong 3-nt periodicity, good ribosome footprints |
-| `uniformity_entropy` | > 0.7 | Uniform CDS coverage, no major biases |
+| `periodicity_dominance` | > 0.7 | Strong 3-nt periodicity in one dominant global frame |
+| `uniformity_entropy` | > 0.7 | Even signal across the codon-binned start-codon metagene window |
 | `prop_reads_CDS` | > 0.7 | Most reads map to coding regions |
-| `terminal_nucleotide_bias_5prime` | < 1.0 | Low adapter ligation bias |
+| `terminal_bias_kl_5prime_score` | near 1.0 | Low adapter ligation bias |
+| `terminal_bias_kl_5prime_raw` | near 0.0 | Raw 5' terminal KL divergence |
 
 ### Warning Signs
 

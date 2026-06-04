@@ -170,6 +170,11 @@ max_mins: # max mins from simulations for each metric github.com/JackCurragh/Met
   # Consolidated bias metric names
   terminal_bias_kl_5prime: [0, 1]
   terminal_bias_kl_3prime: [0, 1]
+  terminal_bias_kl_5prime_score: [0, 1]
+  terminal_bias_kl_3prime_score: [0, 1]
+  # Raw KL divergence keys are intentionally not normalized here.
+  # terminal_bias_kl_5prime_raw: [0, 1]
+  # terminal_bias_kl_3prime_raw: [0, 1]
   # Optional: max-abs bias consolidated names
   terminal_bias_maxabs_5prime: [0, 1]
   terminal_bias_maxabs_3prime: [0, 1]

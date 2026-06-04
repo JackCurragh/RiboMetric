@@ -12,17 +12,19 @@ These metrics are calculated by default and represent the standard quality check
 - `read_length_distribution_maxprop` - Proportion of reads at most frequent length
 
 ### Terminal Nucleotide Bias
-- `terminal_nucleotide_bias_KL_5prime` - Kullback-Leibler divergence for 5' end
-- `terminal_nucleotide_bias_KL_3prime` - Kullback-Leibler divergence for 3' end
+- `terminal_bias_kl_5prime_score` - Normalized 5' terminal nucleotide bias score derived from KL divergence; 1 means observed matches expected
+- `terminal_bias_kl_3prime_score` - Normalized 3' terminal nucleotide bias score derived from KL divergence; 1 means observed matches expected
+- `terminal_bias_kl_5prime_raw` - Raw 5' terminal Kullback-Leibler divergence in bits
+- `terminal_bias_kl_3prime_raw` - Raw 3' terminal Kullback-Leibler divergence in bits
 - `terminal_nucleotide_bias_max_absolute_5prime` - Maximum deviation from expected for 5' end
 - `terminal_nucleotide_bias_max_absolute_3prime` - Maximum deviation from expected for 3' end
 
 ### 3-nt Periodicity
-- **`periodicity_dominance`** - Proportion of reads in dominant reading frame (recommended)
+- **`periodicity_dominance`** - Proportion of reads in the dominant reading frame; the global value uses one shared dominant frame across all read lengths (recommended)
 - `periodicity_information` - Shannon information content-based periodicity score
 
 ### Metagene Uniformity
-- **`uniformity_entropy`** - Entropy-based uniformity across metagene profile (recommended)
+- **`uniformity_entropy`** - Entropy-based uniformity across the codon-binned start-codon metagene window, not whole-CDS coverage uniformity (recommended)
 
 ### Coverage & Regional Distribution
 - `CDS_coverage` - Proportion of CDS covered by reads
@@ -85,7 +87,7 @@ RiboMetric run -b sample.bam -a annotation.tsv \
 
 For standard Ribo-Seq QC, the **default metrics** provide comprehensive coverage:
 - **Periodicity**: Use `periodicity_dominance` (simple, interpretable)
-- **Uniformity**: Use `uniformity_entropy` (standard information-theoretic approach)
+- **Uniformity**: Use `uniformity_entropy` for local metagene-window uniformity; use `CDS_coverage` for whole-CDS coverage
 
 The optional metrics are useful for:
 - Method comparison studies

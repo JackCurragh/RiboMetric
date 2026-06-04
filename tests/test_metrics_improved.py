@@ -20,6 +20,7 @@ from RiboMetric.metrics import (
     information_metric_cutoff,
     read_frame_information_weighted_score,
     terminal_nucleotide_bias_KL_metric,
+    terminal_nucleotide_bias_KL_divergence,
     terminal_nucleotide_bias_max_absolute_metric,
     cds_coverage_metric,
     region_region_ratio_metric,
@@ -120,6 +121,19 @@ class TestPeriodicityMetrics:
 
         # Global metric should be low (weak dominance)
         assert metric["global"] < 0.5
+
+    def test_global_dominance_uses_one_shared_frame(self):
+        """Global dominance should not sum different dominant frames."""
+        mixed_periodicity = {
+            28: {0: 90, 1: 10, 2: 0},
+            29: {0: 10, 1: 90, 2: 0},
+        }
+        metric = periodicity_dominance(mixed_periodicity)
+
+        assert metric[28] == pytest.approx(0.9)
+        assert metric[29] == pytest.approx(0.9)
+        assert metric["global"] == pytest.approx(0.5)
+        assert metric["global_by_read_length_max"] == pytest.approx(0.9)
 
     def test_dominance_no_reads(self):
         """Test dominance metric with zero reads"""
@@ -241,10 +255,14 @@ class TestTerminalNucleotideBias:
         metric_3 = terminal_nucleotide_bias_KL_metric(
             observed, sample_sequence_background["3_prime_bg"], "three_prime"
         )
+        raw_5 = terminal_nucleotide_bias_KL_divergence(
+            observed, sample_sequence_background["5_prime_bg"], "five_prime"
+        )
 
         # No divergence from expected
         assert metric_5 == pytest.approx(1.0)
         assert metric_3 == pytest.approx(1.0)
+        assert raw_5 == pytest.approx(0.0)
 
     def test_kl_divergence_with_bias(self, sample_sequence_background):
         """Test KL divergence with bias"""
@@ -264,9 +282,13 @@ class TestTerminalNucleotideBias:
         metric = terminal_nucleotide_bias_KL_metric(
             observed, sample_sequence_background["5_prime_bg"], "five_prime"
         )
+        raw = terminal_nucleotide_bias_KL_divergence(
+            observed, sample_sequence_background["5_prime_bg"], "five_prime"
+        )
 
         # Should have significant divergence
         assert metric < 0.9
+        assert raw > 0
 
     def test_max_absolute_metric(self, sample_sequence_background):
         """Test maximum absolute deviation metric"""

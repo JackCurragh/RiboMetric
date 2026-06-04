@@ -76,6 +76,9 @@ def test_main_run():
     assert metrics["prop_reads_CDS"]["global"] == 1.0
     assert metrics["prop_reads_leader"]["global"] == 0.0
     assert metrics["prop_reads_trailer"]["global"] == 0.0
+    assert "terminal_bias_kl_5prime_score" in metrics
+    assert "terminal_bias_kl_5prime_raw" in metrics
+    assert metrics["terminal_bias_kl_5prime"] == metrics["terminal_bias_kl_5prime_score"]
 
 
 def test_main_run_no_server_flag_anymore():

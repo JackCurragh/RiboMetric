@@ -174,7 +174,7 @@ def read_length_distribution_max_prop_metric(
     return max_count / total_count
 
 
-def terminal_nucleotide_bias_KL_metric(
+def terminal_nucleotide_bias_KL_divergence(
         observed_freq: Dict[str, Dict[str, float]],
         expected_freq: Dict[str, float] | Dict[str, Dict[str, float]],
         prime: str = "five_prime",
@@ -195,7 +195,7 @@ def terminal_nucleotide_bias_KL_metric(
         prime: The prime end to consider
 
     Outputs:
-        lbd_df: Dataframe containing the ligation bias metric in bits
+        kl_divergence: Raw Kullback-Leibler divergence in bits.
     """
     # Needs possible rewrite using normalised ligation bias.
     # Current iteration only accounts for five_prime
@@ -212,10 +212,33 @@ def terminal_nucleotide_bias_KL_metric(
 
     for dinucleotide, observed_prob in observed_freq[prime].items():
         expected_prob = exp_map[dinucleotide]
+        if observed_prob <= 0:
+            continue
+        if expected_prob <= 0:
+            continue
         kl_divergence += observed_prob * math.log2(
                                             observed_prob / expected_prob
                                             )
-    kl_divergence = max(0.0, kl_divergence)
+    return max(0.0, kl_divergence)
+
+
+def terminal_nucleotide_bias_KL_metric(
+        observed_freq: Dict[str, Dict[str, float]],
+        expected_freq: Dict[str, float] | Dict[str, Dict[str, float]],
+        prime: str = "five_prime",
+        ) -> float:
+    """
+    Calculate a normalized terminal nucleotide bias score from raw KL divergence.
+
+    The returned value is a goodness score, not the raw divergence: 1.0 means
+    observed terminal dinucleotide frequencies match the expected background,
+    and lower values indicate stronger bias.
+    """
+    kl_divergence = terminal_nucleotide_bias_KL_divergence(
+        observed_freq,
+        expected_freq,
+        prime=prime,
+    )
     # Higher values signal less bias; map divergence to (0,1].
     return 1 / (1 + kl_divergence)
 
@@ -881,7 +904,8 @@ def periodicity_dominance(read_frame_dict: Dict[int, Dict[int, int]]) -> Dict[in
     """
     read_frame_dominance: Dict[int | str, float] = {}
     global_total: int = 0
-    global_max_frame: int = 0
+    global_by_read_length_max: int = 0
+    global_frame_counts: Dict[int, int] = {0: 0, 1: 0, 2: 0}
     for read_length in read_frame_dict:
         total_count = sum(read_frame_dict[read_length].values())
         if total_count == 0:
@@ -892,10 +916,19 @@ def periodicity_dominance(read_frame_dict: Dict[int, Dict[int, int]]) -> Dict[in
             read_length][max_frame] / total_count if total_count > 0 else 0
 
         global_total += total_count
-        global_max_frame += read_frame_dict[read_length][max_frame]
+        global_by_read_length_max += read_frame_dict[read_length][max_frame]
+        for frame, count in read_frame_dict[read_length].items():
+            global_frame_counts[int(frame)] = (
+                global_frame_counts.get(int(frame), 0) + int(count)
+            )
 
-    read_frame_dominance[
-        "global"] = global_max_frame / global_total if global_total > 0 else 0
+    read_frame_dominance["global"] = (
+        max(global_frame_counts.values()) / global_total
+        if global_total > 0 else 0
+    )
+    read_frame_dominance["global_by_read_length_max"] = (
+        global_by_read_length_max / global_total if global_total > 0 else 0
+    )
     return read_frame_dominance
 
 

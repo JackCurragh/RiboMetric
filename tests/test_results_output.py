@@ -35,6 +35,7 @@ def sample_results_dict():
             "prop_reads_CDS": 0.78,
             "read_length_distribution_IQR_metric": 0.25,
             "terminal_nucleotide_bias_distribution_5_prime_metric": 0.15,
+            "ratio_cds:leader": {"global": 12.0},
         },
     }
 
@@ -124,6 +125,9 @@ class TestLegacyFunctions:
         assert "Score" in df.columns
         assert "MaxMinScore" in df.columns
         assert len(df) > 0
+
+        ratio_row = df[df["Metric"] == "ratio_cds:leader_global"].iloc[0]
+        assert pd.isna(ratio_row["MaxMinScore"])
 
 
 # =============================================================================
@@ -475,7 +479,10 @@ class TestMetricsTableCSV:
 
         df = pd.read_csv(output_file)
         periodicity_row = df[df["metric"] == "periodicity_dominance"].iloc[0]
-        assert periodicity_row["description"] == "Proportion of reads in dominant reading frame"
+        assert (
+            periodicity_row["description"]
+            == "Proportion of reads in dominant reading frame; global uses one shared dominant frame"
+        )
 
     def test_global_metrics_labeled_correctly(self, sample_results_dict, sample_config, tmp_path):
         """Test that global metrics are labeled as 'global'"""

@@ -131,7 +131,7 @@ def generate_csv(
         if isinstance(value, (float, int)):
             rng = _range_for(key)
             max_min_score = (
-                normalise_score(value, rng[0], rng[1]) if rng else value
+                normalise_score(value, rng[0], rng[1]) if rng else None
             )
             metrics_dict.append({
                 "Metric": key,
@@ -142,7 +142,7 @@ def generate_csv(
             rng = _range_for(key)
             for k, v in value.items():
                 max_min_score = (
-                    normalise_score(v, rng[0], rng[1]) if rng else v
+                    normalise_score(v, rng[0], rng[1]) if rng else None
                 )
                 metrics_dict.append({
                     "Metric": f"{key}_{k}",
@@ -454,13 +454,21 @@ def generate_metrics_table_csv(
 
     # Metric descriptions for context
     descriptions = {
-        "periodicity_dominance": "Proportion of reads in dominant reading frame",
-        "uniformity_entropy": "Shannon entropy of metagene distribution",
+        "periodicity_dominance": "Proportion of reads in dominant reading frame; global uses one shared dominant frame",
+        "uniformity_entropy": "Shannon entropy of codon-binned start-codon metagene window",
         "read_length_distribution_IQR_metric": "Normalized IQR of read length distribution",
-        "terminal_nucleotide_bias_distribution_5_prime_metric": "KL divergence for 5' nucleotide bias",
-        "terminal_nucleotide_bias_distribution_3_prime_metric": "KL divergence for 3' nucleotide bias",
+        "terminal_nucleotide_bias_distribution_5_prime_metric": "Normalized 5' terminal bias score from KL divergence",
+        "terminal_nucleotide_bias_distribution_3_prime_metric": "Normalized 3' terminal bias score from KL divergence",
+        "terminal_bias_kl_5prime": "Normalized 5' terminal bias score from KL divergence",
+        "terminal_bias_kl_3prime": "Normalized 3' terminal bias score from KL divergence",
+        "terminal_bias_kl_5prime_score": "Normalized 5' terminal bias score from KL divergence",
+        "terminal_bias_kl_3prime_score": "Normalized 3' terminal bias score from KL divergence",
+        "terminal_bias_kl_5prime_raw": "Raw 5' terminal KL divergence in bits",
+        "terminal_bias_kl_3prime_raw": "Raw 3' terminal KL divergence in bits",
         "CDS_coverage_metric": "Proportion of CDS covered by reads",
         "prop_reads_CDS": "Proportion of reads mapping to CDS",
+        "prop_reads_leader": "Proportion of reads mapping to 5' leader",
+        "prop_reads_trailer": "Proportion of reads mapping to 3' trailer",
         "ratio_cds:leader": "Ratio of CDS to 5'UTR reads",
     }
 

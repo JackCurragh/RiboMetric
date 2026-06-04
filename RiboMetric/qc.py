@@ -39,7 +39,7 @@ from .metrics import (
     read_length_distribution_IQR_normalised_metric as rld_metric,
     read_length_distribution_coefficient_of_variation_metric as rldv_metric,
     read_length_distribution_normality_metric as rldn_metric,
-    terminal_nucleotide_bias_KL_metric as lbd_metric,
+    terminal_nucleotide_bias_KL_divergence as lbd_raw,
     terminal_nucleotide_bias_max_absolute_metric as lbmp_metric,
     read_frame_information_content as rf_info_metric,
     read_frame_information_weighted_score,
@@ -337,16 +337,18 @@ def annotation_mode(
             ],
         )
         # Terminal nucleotide bias (standard + consolidated key aliases)
-        _lbd5 = lbd_metric(
+        _lbd5_raw = lbd_raw(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["5_prime_bg"],
             prime="five_prime",
         )
-        _lbd3 = lbd_metric(
+        _lbd3_raw = lbd_raw(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["3_prime_bg"],
             prime="three_prime",
         )
+        _lbd5 = 1 / (1 + _lbd5_raw)
+        _lbd3 = 1 / (1 + _lbd3_raw)
         _lbm5 = lbmp_metric(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["5_prime_bg"],
@@ -365,6 +367,10 @@ def annotation_mode(
         # Consolidated keys (new)
         results_dict["metrics"]["terminal_bias_kl_5prime"] = _lbd5
         results_dict["metrics"]["terminal_bias_kl_3prime"] = _lbd3
+        results_dict["metrics"]["terminal_bias_kl_5prime_score"] = _lbd5
+        results_dict["metrics"]["terminal_bias_kl_3prime_score"] = _lbd3
+        results_dict["metrics"]["terminal_bias_kl_5prime_raw"] = _lbd5_raw
+        results_dict["metrics"]["terminal_bias_kl_3prime_raw"] = _lbd3_raw
         results_dict["metrics"]["terminal_bias_maxabs_5prime"] = _lbm5
         results_dict["metrics"]["terminal_bias_maxabs_3prime"] = _lbm3
         if config["plots"][
