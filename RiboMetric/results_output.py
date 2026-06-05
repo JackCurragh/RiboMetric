@@ -227,7 +227,41 @@ DEFAULT_QC_THRESHOLDS: Dict[str, Dict[str, float]] = {
     "uniformity_entropy": {"pass": 0.7, "warn": 0.5},
     "prop_reads_CDS": {"pass": 0.7, "warn": 0.5},
     "read_length_distribution_IQR_metric": {"pass": 0.3, "warn": 0.2},
+    "recommended_read_proportion": {"pass": 0.5, "warn": 0.3},
 }
+
+# Metrics where a *lower* value is better, so a sample passes when its value is
+# at or below the "pass" threshold. Everything else is treated as higher-is-
+# better. A thresholds YAML can override this per metric with
+# ``direction: lower`` / ``direction: higher``.
+LOWER_IS_BETTER_METRICS = frozenset({
+    "duplicate_rate",
+    "multimapper_rate",
+    "soft_clip_rate_5prime",
+    "disome_proportion",
+    "terminal_bias_kl_5prime_raw",
+    "terminal_bias_kl_3prime_raw",
+    "stop_codon_readthrough_ratio",
+    # High marginal discovery = library still un-saturated (under-sequenced).
+    "marginal_position_discovery_rate",
+    # High FLOSS heterogeneity = more transcripts with aberrant length profiles.
+    "floss_median",
+    "floss_aberrant_transcript_fraction",
+})
+
+
+def _metric_direction(metric_name: str, threshold_dict: Dict) -> str:
+    """Return 'higher' or 'lower' for a metric.
+
+    Honours an explicit ``direction`` key in the threshold spec; otherwise
+    falls back to LOWER_IS_BETTER_METRICS, defaulting to 'higher'.
+    """
+    explicit = threshold_dict.get("direction")
+    if explicit == "lower":
+        return "lower"
+    if explicit == "higher":
+        return "higher"
+    return "lower" if metric_name in LOWER_IS_BETTER_METRICS else "higher"
 
 
 def evaluate_qc_status(
@@ -272,21 +306,36 @@ def evaluate_qc_status(
         else:
             continue
 
-        # Determine status
-        if value >= threshold_dict["pass"]:
-            status = "PASS"
-        elif value >= threshold_dict["warn"]:
-            status = "WARNING"
-            if overall_status == "PASS":
-                overall_status = "WARNING"
+        # Determine status, respecting metric directionality. For lower-is-
+        # better metrics (e.g. duplicate_rate) a value at or below "pass" is a
+        # PASS; treating these as higher-is-better would let a bad sample pass.
+        direction = _metric_direction(metric_name, threshold_dict)
+        if direction == "lower":
+            if value <= threshold_dict["pass"]:
+                status = "PASS"
+            elif value <= threshold_dict["warn"]:
+                status = "WARNING"
+                if overall_status == "PASS":
+                    overall_status = "WARNING"
+            else:
+                status = "FAIL"
+                overall_status = "FAIL"
         else:
-            status = "FAIL"
-            overall_status = "FAIL"
+            if value >= threshold_dict["pass"]:
+                status = "PASS"
+            elif value >= threshold_dict["warn"]:
+                status = "WARNING"
+                if overall_status == "PASS":
+                    overall_status = "WARNING"
+            else:
+                status = "FAIL"
+                overall_status = "FAIL"
 
         qc_checks.append({
             "metric": metric_name,
             "value": value,
             "status": status,
+            "direction": direction,
             "threshold_pass": threshold_dict["pass"],
             "threshold_warn": threshold_dict["warn"],
         })

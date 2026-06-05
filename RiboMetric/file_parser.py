@@ -21,7 +21,6 @@ from tempfile import TemporaryDirectory
 
 from .bam_processing import (join_batches,
                              ox_parse_reads,
-                             validate_bam,
                              )
 from .file_splitting import (split_gff_df,
                              run_samtools_idxstats,
@@ -380,8 +379,14 @@ def gff_df_to_cds_df(gff_df: pd.DataFrame, outpath: Optional[str] = None) -> pd.
             columns=["transcript_id", "cds_start", "cds_end", "transcript_length"]
         )
 
-    # Transcript length = sum of exon lengths per transcript
-    exon_df["_exon_len"] = exon_df["end"] - exon_df["start"]
+    # Transcript length = sum of exon lengths per transcript.
+    # GFF3 coordinates are 1-based and inclusive, so an exon spanning [start, end]
+    # contains (end - start + 1) nucleotides. The previous "end - start" form
+    # dropped one nucleotide per exon, which both undercounted transcript_length
+    # and — because the same arithmetic feeds the leader/trailer sums below —
+    # shifted cds_start by the number of complete UTR exons, scrambling the
+    # reading frame for multi-exon transcripts.
+    exon_df["_exon_len"] = exon_df["end"] - exon_df["start"] + 1
     transcript_length = exon_df.groupby("transcript_id")["_exon_len"].sum()
 
     # Strand per transcript
@@ -411,26 +416,31 @@ def gff_df_to_cds_df(gff_df: pd.DataFrame, outpath: Optional[str] = None) -> pd.
     plus = exon_df["_strand"] == "+"
     s, e = exon_df["start"], exon_df["end"]
 
-    # Leader contribution per exon (exon nucleotides before the CDS start):
-    #   + strand: max(0, min(exon_end, cgs) - exon_start)
-    #   - strand: max(0, exon_end - max(exon_start, cgs))
+    # Leader contribution per exon (exon nucleotides strictly before the first
+    # CDS base). Counts are inclusive (1-based GFF3): the number of integer
+    # positions in [a, b] is (b - a + 1). cgs/cge are the genomic first/last CDS
+    # bases, so leader positions are < cgs (+) or > cgs (-).
+    #   + strand: positions s .. min(e, cgs-1)
+    #   - strand: positions max(s, cgs+1) .. e
     leader = pd.Series(0.0, index=exon_df.index)
     leader[plus] = np.maximum(
-        0, np.minimum(e[plus], exon_df.loc[plus, "_cgs"]) - s[plus]
+        0, np.minimum(e[plus], exon_df.loc[plus, "_cgs"] - 1) - s[plus] + 1
     )
     leader[~plus] = np.maximum(
-        0, e[~plus] - np.maximum(s[~plus], exon_df.loc[~plus, "_cgs"])
+        0, e[~plus] - np.maximum(s[~plus], exon_df.loc[~plus, "_cgs"] + 1) + 1
     )
 
-    # Trailer contribution per exon (exon nucleotides after the CDS end):
-    #   + strand: max(0, exon_end - max(exon_start, cge))
-    #   - strand: max(0, min(exon_end, cge) - exon_start)
+    # Trailer contribution per exon (exon nucleotides strictly after the last
+    # CDS base), counted inclusively as above. cge is the genomic last CDS base,
+    # so trailer positions are > cge (+) or < cge (-).
+    #   + strand: positions max(s, cge+1) .. e
+    #   - strand: positions s .. min(e, cge-1)
     trailer = pd.Series(0.0, index=exon_df.index)
     trailer[plus] = np.maximum(
-        0, e[plus] - np.maximum(s[plus], exon_df.loc[plus, "_cge"])
+        0, e[plus] - np.maximum(s[plus], exon_df.loc[plus, "_cge"] + 1) + 1
     )
     trailer[~plus] = np.maximum(
-        0, np.minimum(e[~plus], exon_df.loc[~plus, "_cge"]) - s[~plus]
+        0, np.minimum(e[~plus], exon_df.loc[~plus, "_cge"] - 1) - s[~plus] + 1
     )
 
     exon_df["_leader"] = leader

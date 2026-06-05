@@ -30,7 +30,9 @@ from .modules import (
     a_site_calculation_variable_offset,
     a_site_calculation,
     ribowaltz_psite_prediction,
-    filter_unique_mappers,
+    gene_body_coverage_ramp,
+    library_complexity_curve,
+    floss_library_heterogeneity,
     DEFAULT_OFFSET_BOUNDS,
     DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
 )
@@ -55,7 +57,9 @@ from .metrics import (
     periodicity_dominance,
     fourier_transform,
     read_length_distribution_bimodality,
-    proportion_of_reads_in_region
+    proportion_of_reads_in_region,
+    recommend_read_lengths,
+    classify_library_type,
 )
 from typing import Any, Dict, Optional
 
@@ -254,6 +258,16 @@ def annotation_mode(
     results_dict["metrics"]["duplicate_rate"] = _dup_rate
     results_dict["metrics"]["multimapper_rate"] = _multimapper_rate
 
+    # duplicate_rate is derived from per-read `count` weights, which are only
+    # >1 when read names carry a collapse suffix (e.g. ``..._x12``). For
+    # un-collapsed BAMs every count is 1, so the rate is necessarily 0 and not
+    # informative — flag that explicitly rather than reporting a misleading 0.
+    if _total_weighted == _unique_reads:
+        print(
+            "Note: reads are not collapsed (no '_xN' suffix); duplicate_rate "
+            "is reported as 0 and should be treated as not applicable."
+        )
+
     if "soft_clip_5" in read_df.columns:
         _sc5 = read_df["soft_clip_5"].astype(int)
         _sc5_mask = (_sc5 > 0).astype(int)
@@ -309,13 +323,17 @@ def annotation_mode(
                 results_dict["read_length_distribution"]
             )
 
-    # Di-some proportion — fraction of reads in the 50–70 nt window.
-    # A bimodal distribution with a secondary peak here indicates di-some
-    # contamination or a mixed library.
+    # Di-some proportion — fraction of reads in the di-some read-length window.
+    # A secondary peak here indicates di-some contamination or a mixed library.
+    # The window defaults to 50-70 nt (typical for mammalian di-somes) but is
+    # configurable for other organisms / nucleases via qc.disome.
+    _disome_cfg = config.get("qc", {}).get("disome", {}) if config else {}
+    _disome_lo = int(_disome_cfg.get("lower_limit", 50))
+    _disome_hi = int(_disome_cfg.get("upper_limit", 70))
     _rld = results_dict["read_length_distribution"]
     _total_rld = sum(_rld.values()) or 1
     _disome_count = sum(
-        v for k, v in _rld.items() if 50 <= int(k) <= 70
+        v for k, v in _rld.items() if _disome_lo <= int(k) <= _disome_hi
     )
     results_dict["metrics"]["disome_proportion"] = round(
         _disome_count / _total_rld, 4
@@ -728,37 +746,118 @@ def annotation_mode(
             results_dict["rust"] = {}
             results_dict["metrics"]["rust_mean_kl_divergence"] = None
 
-    return results_dict
+    ###########################################################################
+    # RECOMMENDED READ LENGTHS (which lengths to keep for downstream analysis)
+    ###########################################################################
+    _rec_cfg = config.get("qc", {}).get("recommend", {}) if config else {}
+    # --min-periodicity (config["argument"]) overrides the qc.recommend default.
+    _cli_min_periodicity = config.get("argument", {}).get("min_periodicity")
+    _min_periodicity = (
+        float(_cli_min_periodicity)
+        if _cli_min_periodicity is not None
+        else float(_rec_cfg.get("min_periodicity", 0.5))
+    )
+    recommended = recommend_read_lengths(
+        results_dict["read_frame_distribution"],
+        results_dict["read_length_distribution"],
+        offsets=computed_offsets or None,
+        min_periodicity=_min_periodicity,
+        min_read_proportion=float(_rec_cfg.get("min_read_proportion", 0.05)),
+    )
+    results_dict["recommended_read_lengths"] = recommended
+    results_dict["metrics"]["n_recommended_read_lengths"] = (
+        recommended["n_recommended"]
+    )
+    results_dict["metrics"]["recommended_read_proportion"] = (
+        recommended["recommended_read_proportion"]
+    )
 
+    ###########################################################################
+    # ANNOTATION-DERIVED SAMPLE DIAGNOSTICS
+    ###########################################################################
+    if annotation:
+        # Gene-body 5'->3' coverage ramp (relative CDS position metagene)
+        print("> gene_body_coverage_ramp")
+        ramp = gene_body_coverage_ramp(cds_read_df)
+        results_dict["gene_body_coverage"] = ramp
+        results_dict["metrics"]["five_prime_ramp_ratio"] = (
+            ramp["five_prime_ramp_ratio"]
+        )
+        results_dict["metrics"]["three_prime_drop_ratio"] = (
+            ramp["three_prime_drop_ratio"]
+        )
 
-def sequence_mode(
-    read_df: pd.DataFrame,
-    gff_path: str,
-    transcript_list: list,
-    fasta_path: str,
-    config: dict,
-) -> dict:
-    """
-    Run the sequence mode of the qc analysis
+        # Library complexity / saturation (analytic rarefaction)
+        print("> library_complexity_curve")
+        complexity = library_complexity_curve(annotated_read_df)
+        results_dict["library_complexity"] = complexity
+        results_dict["metrics"]["marginal_position_discovery_rate"] = (
+            complexity["marginal_discovery_rate"]
+        )
+        results_dict["metrics"]["complexity_distinct_positions"] = (
+            complexity["total_distinct_positions"]
+        )
 
-    Inputs:
-        read_df: dataframe containing the read information
-                (keys are the read names)
-        gff_path: Path to the gff file
-        transcript_list: List of the top N transcripts
-        fasta_path: Path to the transcriptome fasta file
-        config: Dictionary containing the configuration information
+        # Library-type classification (elongation / initiation / low quality)
+        _dom = results_dict["metrics"].get("periodicity_dominance", {})
+        _periodicity = (
+            _dom.get("global", 0.0) if isinstance(_dom, dict) else float(_dom)
+        )
+        _prop_cds = results_dict["metrics"].get("prop_reads_CDS", {})
+        _prop_cds = (
+            _prop_cds.get("global", 0.0)
+            if isinstance(_prop_cds, dict) else float(_prop_cds)
+        )
+        library_type = classify_library_type(
+            periodicity=_periodicity,
+            prop_reads_cds=_prop_cds,
+            start_codon_enrichment_ratio=results_dict["metrics"].get(
+                "start_codon_enrichment_ratio"
+            ),
+        )
+        results_dict["library_type"] = library_type
+        print(f"  Library type classified as: {library_type['label']}")
 
-    Outputs:
-        results_dict: Dictionary containing the results of the qc analysis
-    """
-    results_dict = {
-        "mode": "sequence_mode",
-        "read_length_distribution": read_length_distribution(read_df),
-        "terminal_nucleotide_bias_distribution": terminal_nucleotide_bias_distribution(read_df),
-        "nucleotide_composition": nucleotide_composition(read_df),
-        "read_frame_distribution": read_frame_distribution(read_df),
-    }
+        # FLOSS-style read-length heterogeneity (no FASTA required)
+        print("> floss_library_heterogeneity")
+        _floss_cfg = config.get("qc", {}).get("floss", {}) if config else {}
+        floss = floss_library_heterogeneity(
+            annotated_read_df,
+            min_reads_per_transcript=int(
+                _floss_cfg.get("min_reads_per_transcript", 20)
+            ),
+            floss_cutoff=float(_floss_cfg.get("cutoff", 0.3)),
+        )
+        results_dict["floss"] = floss
+        results_dict["metrics"]["floss_median"] = floss["floss_median"]
+        results_dict["metrics"]["floss_aberrant_transcript_fraction"] = (
+            floss["floss_aberrant_transcript_fraction"]
+        )
+
+        # A-site codon dwell-times / pause sites (requires FASTA)
+        if fasta_dict is not None and len(annotation_df) > 0:
+            print("> codon_dwell_times")
+            from .rust import compute_codon_dwell_times
+            _dwell_cfg = config.get("qc", {}).get("codon_dwell", {}) if config else {}
+            try:
+                dwell = compute_codon_dwell_times(
+                    annotated_read_df,
+                    annotation_df,
+                    fasta_dict,
+                    elongation_5_nt=int(_dwell_cfg.get("elongation_5_nt", 15)),
+                    elongation_3_nt=int(_dwell_cfg.get("elongation_3_nt", 15)),
+                )
+            except Exception as exc:
+                print(f"Warning: codon dwell-time computation failed: {exc}")
+                dwell = {}
+            results_dict["codon_dwell_times"] = dwell
+            results_dict["metrics"]["codon_dwell_cv"] = dwell.get("codon_dwell_cv")
+            results_dict["metrics"]["codon_dwell_p90_p10"] = dwell.get(
+                "codon_dwell_p90_p10"
+            )
+            results_dict["metrics"]["proline_dwell"] = dwell.get("proline_dwell")
+            results_dict["metrics"]["cga_dwell"] = dwell.get("cga_dwell")
+
     return results_dict
 
 

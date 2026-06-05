@@ -84,8 +84,11 @@ def argument_parser() -> argparse.ArgumentParser:
         "--offset-global",
         type=int,
         required=False,
-        default=15,
-        help="Global offset to be used for all read lengths (default: 15)",
+        default=None,
+        dest="global_offset",
+        help="Apply this fixed offset to every read length instead of "
+             "calculating per-read-length offsets. If omitted, offsets are "
+             "calculated automatically.",
     )
     run_parser.add_argument(
         "--offset-min",
@@ -119,6 +122,17 @@ def argument_parser() -> argparse.ArgumentParser:
         help=(
             "Method to calculate offsets. If omitted, the value in the active "
             "config.yml is used. Options: changepoint, ribowaltz"
+        ),
+    )
+    run_parser.add_argument(
+        "--min-periodicity",
+        type=float,
+        required=False,
+        default=None,  # None so config.yml controls the default
+        help=(
+            "Minimum dominant-frame fraction for a read length to be "
+            "recommended for downstream P-site/ORF analysis "
+            "(default: config.yml, 0.5)."
         ),
     )
     run_parser.add_argument(

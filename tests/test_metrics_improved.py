@@ -4,6 +4,7 @@ Improved and expanded tests for RiboMetric metrics
 
 import pytest
 import numpy as np
+import pandas as pd
 from RiboMetric.metrics import (
     read_length_distribution_IQR_normalised_metric,
     read_length_distribution_coefficient_of_variation_metric,
@@ -315,6 +316,96 @@ class TestTerminalNucleotideBias:
 
 class TestRegionalMetrics:
     """Tests for regional distribution metrics"""
+
+    def test_cds_coverage_counts_minimum_read_boundary(self):
+        """A position with exactly minimum_reads should count as covered."""
+        cds_reads = pd.DataFrame({
+            "transcript_id": ["tx1", "tx1", "tx1"],
+            "a_site": [1, 2, 3],
+            "cds_start": [0, 0, 0],
+            "cds_end": [4, 4, 4],
+            "count": [1, 1, 1],
+        })
+
+        coverage = cds_coverage_metric(
+            cds_reads,
+            minimum_reads=1,
+            in_frame_coverage=False,
+        )
+
+        assert coverage == pytest.approx(1.0)
+
+    def test_cds_coverage_uses_interior_cds_denominator(self):
+        """CDS coverage uses the same strict CDS interior as CDS read filtering."""
+        cds_reads = pd.DataFrame({
+            "transcript_id": ["tx1", "tx1"],
+            "a_site": [3, 6],
+            "cds_start": [0, 0],
+            "cds_end": [9, 9],
+            "count": [1, 1],
+        })
+
+        coverage = cds_coverage_metric(
+            cds_reads,
+            minimum_reads=1,
+            in_frame_coverage=True,
+        )
+
+        assert coverage == pytest.approx(1.0)
+
+    def test_cds_coverage_defaults_missing_count_to_one(self):
+        """Coverage accepts pre-weighting dataframes without an explicit count."""
+        cds_reads = pd.DataFrame({
+            "transcript_id": ["tx1", "tx1"],
+            "a_site": [1, 2],
+            "cds_start": [0, 0],
+            "cds_end": [3, 3],
+        })
+
+        coverage = cds_coverage_metric(
+            cds_reads,
+            minimum_reads=1,
+            in_frame_coverage=False,
+        )
+
+        assert coverage == pytest.approx(1.0)
+
+    def test_cds_coverage_accepts_categorical_count(self):
+        """Coverage coerces categorical parser output before summing counts."""
+        cds_reads = pd.DataFrame({
+            "transcript_id": ["tx1", "tx1"],
+            "a_site": [1, 2],
+            "cds_start": [0, 0],
+            "cds_end": [3, 3],
+            "count": pd.Categorical(["1", "1"]),
+        })
+
+        coverage = cds_coverage_metric(
+            cds_reads,
+            minimum_reads=1,
+            in_frame_coverage=False,
+        )
+
+        assert coverage == pytest.approx(1.0)
+
+    def test_cds_coverage_top_transcripts_use_weighted_counts(self):
+        """Transcript limiting ranks transcripts by read count, not row count."""
+        cds_reads = pd.DataFrame({
+            "transcript_id": ["low_rows", "low_rows", "high_weight"],
+            "a_site": [1, 2, 1],
+            "cds_start": [0, 0, 0],
+            "cds_end": [3, 3, 3],
+            "count": [1, 1, 100],
+        })
+
+        coverage = cds_coverage_metric(
+            cds_reads,
+            minimum_reads=1,
+            in_frame_coverage=False,
+            num_transcripts=1,
+        )
+
+        assert coverage == pytest.approx(0.5)
 
     def test_region_ratio(self):
         """Test region-to-region ratio metric"""

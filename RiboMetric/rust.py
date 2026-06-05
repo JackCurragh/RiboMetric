@@ -2,8 +2,9 @@
 RUST (Ribo-seq Unit Step Transformation) metric for RiboMetric.
 
 Implements the codon-level RUST metagene from:
-    O'Connor et al., Nat Commun 2016. "Comparative survey of the expression of
-    translation machinery components across diverse bacterial species."
+    O'Connor, Andreev & Baranov, Nat Commun 2016;7:12915.
+    "Comparative survey of the relative impact of mRNA features on local
+    ribosome profiling read density." doi:10.1038/ncomms12915
 
 Algorithm (O'Connor et al.):
     For each transcript with a valid CDS annotation:
@@ -343,12 +344,19 @@ def compute_rust_metrics(
     for win_pos in range(window):
         obs = [metagene[c][win_pos] for c in SENSE_CODONS]
         obs_sum = sum(obs)
-        if obs_sum == 0 or min(obs) == 0:
+        # Only a window position with no observed signal at all is undefined.
+        # Individual codons with a zero ratio are fine — they contribute a zero
+        # term to the sum (0 * log 0 -> 0) rather than discarding the position,
+        # which previously voided most positions given 61 sense codons.
+        if obs_sum == 0:
             kl_divergence.append(None)
             continue
         p_values = [v / obs_sum for v in obs]
+        # Standard Kullback-Leibler divergence D(P||Q) = Σ p·log2(p/q).
+        # The previous per-term abs() was not KL and could not be interpreted
+        # as an information divergence.
         kl = sum(
-            abs(p * math.log2(p / q))
+            p * math.log2(p / q)
             for p, q in zip(p_values, q_values)
             if p > 0 and q > 0
         )
@@ -375,4 +383,162 @@ def _empty_result(window: int) -> Dict:
         "transcripts_used": 0,
         "window_size": window,
         "asite_position_in_window": ASITE_IN_WINDOW,
+    }
+
+
+# Codon groups of interest for pause-site interpretation.
+PROLINE_CODONS = {"CCT", "CCC", "CCA", "CCG"}  # slow peptide-bond formation
+# CGA (Arg) is a well-documented inhibitory/"hard-to-decode" codon in yeast.
+INHIBITORY_CODONS = {"CGA"}
+
+
+def compute_codon_dwell_times(
+    annotated_read_df: pd.DataFrame,
+    annotation_df: pd.DataFrame,
+    fasta_dict: dict,
+    elongation_5_nt: int = 15,
+    elongation_3_nt: int = 15,
+    min_codon_exposure: int = 1,
+) -> Dict[str, Any]:
+    """A-site codon dwell-times and pause-site summary.
+
+    For every CDS read, the A-site codon is read off the transcript sequence and
+    its weight added to that codon's observed density. The dwell-time of a codon
+    is its observed A-site density relative to how often it is *available* to be
+    decoded (its frequency in the analysed elongation regions):
+
+        dwell(codon) = (observed_density / Σ observed) / (exposure / Σ exposure)
+
+    A value of 1 means ribosomes spend an average amount of time with that codon
+    in the A-site; >1 indicates relative slowing (a pause), <1 faster decoding.
+    The initiation peak and termination are excluded by trimming the CDS ends
+    (``elongation_5_nt`` / ``elongation_3_nt``).
+
+    Returns:
+        dwell_times          {codon: dwell}
+        codon_dwell_cv       coefficient of variation of dwell across codons
+        codon_dwell_p90_p10  robust dynamic range (90th/10th percentile)
+        proline_dwell        mean dwell over the four proline codons
+        cga_dwell            dwell of the inhibitory CGA codon (or None)
+        transcripts_used     number of transcripts contributing
+    """
+    empty: Dict[str, Any] = {
+        "dwell_times": {},
+        "codon_dwell_cv": None,
+        "codon_dwell_p90_p10": None,
+        "proline_dwell": None,
+        "cga_dwell": None,
+        "transcripts_used": 0,
+    }
+
+    transcript_col = (
+        "reference_name" if "reference_name" in annotated_read_df.columns
+        else "transcript_id" if "transcript_id" in annotated_read_df.columns
+        else None
+    )
+    needed = {"a_site", "cds_start", "cds_end", "count"}
+    if transcript_col is None or (needed - set(annotated_read_df.columns)):
+        log.warning("Codon dwell: required columns missing; skipping.")
+        return empty
+
+    base_fasta_index: Dict[str, str] = {}
+    for fid, rec in fasta_dict.items():
+        base_id = fid.split("|")[0].split(".")[0]
+        if base_id not in base_fasta_index:
+            base_fasta_index[base_id] = (
+                str(rec.seq) if hasattr(rec, "seq") else str(rec)
+            )
+
+    cds_df = annotated_read_df.dropna(subset=["a_site", "cds_start", "cds_end"])
+    cds_df = cds_df[
+        (cds_df["a_site"] >= cds_df["cds_start"])
+        & (cds_df["a_site"] < cds_df["cds_end"])
+    ].copy()
+    if cds_df.empty:
+        return empty
+    cds_df["a_site"] = cds_df["a_site"].astype(int)
+    cds_df["cds_start"] = cds_df["cds_start"].astype(int)
+    cds_df["count"] = cds_df["count"].astype(float)
+
+    density_series = (
+        cds_df.groupby([transcript_col, "a_site"], observed=True)["count"].sum()
+    )
+    tx_info = (
+        cds_df.groupby(transcript_col, observed=True)[["cds_start", "cds_end"]]
+        .first()
+    )
+
+    observed: Dict[str, float] = {c: 0.0 for c in ALL_CODONS}
+    exposure: Dict[str, float] = {c: 0.0 for c in ALL_CODONS}
+    transcripts_used = 0
+
+    for transcript in tx_info.index:
+        cds_start = int(tx_info.loc[transcript, "cds_start"])
+        seq = _lookup_seq(fasta_dict, str(transcript), base_index=base_fasta_index)
+        if seq is None:
+            continue
+        cds_end = int(tx_info.loc[transcript, "cds_end"])
+        cds_seq = seq[cds_start:cds_end].upper()
+        if len(cds_seq) < elongation_5_nt + elongation_3_nt + 3:
+            continue
+
+        elong_start = elongation_5_nt
+        elong_end = len(cds_seq) - elongation_3_nt
+
+        # Exposure: in-frame codons within the elongation region.
+        for codon_start in range(0, len(cds_seq) - 2, 3):
+            if not (elong_start <= codon_start < elong_end):
+                continue
+            codon = cds_seq[codon_start:codon_start + 3]
+            if codon in exposure and set(codon) <= set("ACGT"):
+                exposure[codon] += 1.0
+
+        # Observed: A-site reads mapped to their codon.
+        try:
+            tx_density = density_series.loc[transcript]
+        except KeyError:
+            continue
+        for a_abs, cnt in tx_density.items():
+            rel = int(a_abs) - cds_start
+            if rel < elong_start or rel >= elong_end:
+                continue
+            codon_start = (rel // 3) * 3
+            codon = cds_seq[codon_start:codon_start + 3]
+            if len(codon) == 3 and set(codon) <= set("ACGT"):
+                observed[codon] += float(cnt)
+        transcripts_used += 1
+
+    total_obs = sum(observed.values())
+    total_exp = sum(exposure.values())
+    if transcripts_used == 0 or total_obs == 0 or total_exp == 0:
+        return empty
+
+    dwell_times: Dict[str, float] = {}
+    for codon in SENSE_CODONS:
+        if exposure[codon] >= min_codon_exposure and observed[codon] > 0:
+            obs_freq = observed[codon] / total_obs
+            exp_freq = exposure[codon] / total_exp
+            if exp_freq > 0:
+                dwell_times[codon] = round(obs_freq / exp_freq, 4)
+
+    if not dwell_times:
+        return empty
+
+    values = np.array(list(dwell_times.values()), dtype=float)
+    mean = float(values.mean())
+    cv = float(values.std() / mean) if mean > 0 else None
+    p90, p10 = np.percentile(values, [90, 10])
+    p90_p10 = round(float(p90 / p10), 4) if p10 > 0 else None
+
+    pro_vals = [dwell_times[c] for c in PROLINE_CODONS if c in dwell_times]
+    proline_dwell = round(float(np.mean(pro_vals)), 4) if pro_vals else None
+    cga_dwell = dwell_times.get("CGA")
+
+    return {
+        "dwell_times": dwell_times,
+        "codon_dwell_cv": round(cv, 4) if cv is not None else None,
+        "codon_dwell_p90_p10": p90_p10,
+        "proline_dwell": proline_dwell,
+        "cga_dwell": cga_dwell,
+        "transcripts_used": transcripts_used,
     }
