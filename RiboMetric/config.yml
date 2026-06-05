@@ -78,6 +78,31 @@ qc:
     # psite_min_prominence: 1.5   # Minimum peak/median ratio to accept a P-site offset (fallback to consensus otherwise)
   cds_coverage:
     in_frame_coverage: True   # Only check in-frame coverage, otherwise check complete cds coverage
+  disome:
+    # Read-length window (nt) used for the di-some proportion metric. Defaults
+    # suit mammalian di-somes (~2x monosome footprint); widen/shift for other
+    # organisms or nucleases.
+    lower_limit: 50
+    upper_limit: 70
+  recommend:
+    # Thresholds for recommending which read lengths to keep for downstream
+    # P-site assignment / ORF calling. A read length is recommended when its
+    # dominant-frame fraction is >= min_periodicity and it carries at least
+    # min_read_proportion of all reads. Override min_periodicity on the CLI
+    # with --min-periodicity.
+    min_periodicity: 0.5
+    min_read_proportion: 0.05
+  floss:
+    # FLOSS-style read-length heterogeneity. Transcripts with fewer than
+    # min_reads_per_transcript reads are skipped; a transcript is "aberrant"
+    # when its FLOSS exceeds cutoff.
+    min_reads_per_transcript: 20
+    cutoff: 0.3
+  codon_dwell:
+    # Nucleotides trimmed from each CDS end before computing A-site codon
+    # dwell-times, to exclude initiation/termination peaks (requires --fasta).
+    elongation_5_nt: 15
+    elongation_3_nt: 15
 
 metrics:
   # Control which metrics are calculated
@@ -180,14 +205,32 @@ max_mins: # max mins from simulations for each metric github.com/JackCurragh/Met
   terminal_bias_maxabs_3prime: [0, 1]
   # Consolidated CDS coverage key
   cds_coverage: [0, 1]
+  CDS_coverage: [0, 1]
+  CDS_coverage_metric: [0, 1]
+  cds_coverage_not_inframe_1read_1000tx: [0, 1]
+  CDS_coverage_metric_not_inframe_1read_1000tx: [0, 1]
+  cds_coverage_not_inframe_100read_100tx: [0, 1]
+  CDS_coverage_metric_not_inframe_100read_100tx: [0, 1]
+  cds_coverage_inframe_1read_1000tx: [0, 1]
+  CDS_coverage_metric_inframe_1read_1000tx: [0, 1]
+  cds_coverage_inframe_100read_100tx: [0, 1]
+  CDS_coverage_metric_inframe_100read_100tx: [0, 1]
   # terminal_nucleotide_bias_max_absolute_metric_5_prime: [0, 1]
   # terminal_nucleotide_bias_max_absolute_metric_3_prime: [0, 1]
   read_length_distribution_IQR: [0, 1]
-  # read_length_distribution_bimodality: [0, 1]
-  # read_length_distribution_normality: [0, 1]
-  # read_length_distribution_coefficient_of_variation: [0, 1]
-  # read_length_distribution_maxprop: [0, 1]
+  read_length_distribution_coefficient_of_variation: [0, 1]
+  read_length_distribution_maxprop: [0, 1]
+  read_length_distribution_bimodality: [0, 1]
+  read_length_distribution_normality: [0, 1]
+  terminal_nucleotide_bias_max_absolute_5_prime: [0, 1]
+  terminal_nucleotide_bias_max_absolute_3_prime: [0, 1]
+  periodicity_information: [0, 1]
+  periodicity_information_weighted_score: [0, 1]
+  periodicity_trips-viz: [0, 1]
+  uniformity_theil_index: [0, 1]
+  uniformity_gini_index: [0, 1]
   disome_proportion: [0, 1]
+  recommended_read_proportion: [0, 1]
   duplicate_rate: [0, 1]
   multimapper_rate: [0, 1]
   soft_clip_rate_5prime: [0, 1]

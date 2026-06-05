@@ -9,10 +9,9 @@ respective modules
 import pandas as pd
 import math
 import numpy as np
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional
 import numpy.typing as npt
 from scipy.stats import skew, kurtosis, normaltest
-import scipy.signal as signal
 
 
 def find_category_by_cumulative_percentage(df: pd.DataFrame, percentage: float) -> int:
@@ -304,13 +303,14 @@ def cds_coverage_metric(
     """
     # Create the cds_coverage_df that contains only the required columns and
     # the "name_pos" column, combining the transcript_id and a_site
-    cds_coverage_df = cds_read_df[["transcript_id",
-                                   "a_site",
-                                   "cds_start",
-                                   "cds_end",
-                                   "count"]].copy()
+    required_columns = ["transcript_id", "a_site", "cds_start", "cds_end"]
+    optional_columns = ["count"] if "count" in cds_read_df.columns else []
+    cds_coverage_df = cds_read_df[required_columns + optional_columns].copy()
     if "count" not in cds_coverage_df.columns:
         cds_coverage_df["count"] = 1
+    cds_coverage_df["count"] = pd.to_numeric(
+        cds_coverage_df["count"], errors="coerce"
+    ).fillna(0).astype(int)
     # Build a stable string key "transcript_id_aSite" using Python strings to
     # avoid Arrow-backed string arithmetic issues in some pandas builds.
     a_site_num = pd.to_numeric(cds_coverage_df["a_site"], errors="coerce").fillna(-1).astype("int64")
@@ -320,38 +320,41 @@ def cds_coverage_metric(
         + a_site_num.astype(str)
     ).astype("category")
 
-    top_transcripts = cds_coverage_df[
-        "transcript_id"
-        ].value_counts().index[:num_transcripts]
+    top_transcripts = (
+        cds_coverage_df.groupby("transcript_id", observed=True)["count"]
+        .sum()
+        .sort_values(ascending=False)
+        .index[:num_transcripts]
+    )
     cds_coverage_df = cds_coverage_df[
         cds_coverage_df["transcript_id"].isin(top_transcripts)]
 
     # Calculate the total combined length of the CDS of transcripts that have
     # reads aligned to them
     cds_transcripts = cds_coverage_df.drop_duplicates("transcript_id").copy()
-    cds_transcripts["cds_length"] = (
-        cds_transcripts["cds_end"] - cds_transcripts["cds_start"]
-    )
-    cds_length_total = cds_transcripts["cds_length"].sum()
+    interior_cds_length = (
+        cds_transcripts["cds_end"] - cds_transcripts["cds_start"] - 1
+    ).clip(lower=0)
+    cds_length_total = int(interior_cds_length.sum())
+    if in_frame_coverage:
+        cds_length_total = int((interior_cds_length // 3).sum())
     del cds_transcripts
 
     # If in_frame_coverage is true, take only reads that are in frame for
-    # their transcript and divide the combined CDS length by 3
+    # their transcript.
     if in_frame_coverage:
         cds_coverage_df = cds_coverage_df[
             (cds_coverage_df["a_site"]
              - cds_coverage_df["cds_start"]
              ) % 3 == 0]
-        cds_length_total = cds_length_total/3
 
     # Calculate the count of nucleotides covered by the reads after filtering
     # Weighted “coverage”: sum positions whose weighted count exceeds threshold
     # Ensure numeric weights for aggregation
     pos_counts = (
-        cds_coverage_df.assign(count=cds_coverage_df["count"].astype(int))
-        .groupby("name_pos", observed=True)["count"].sum()
+        cds_coverage_df.groupby("name_pos", observed=True)["count"].sum()
     )
-    cds_reads_count = int((pos_counts > minimum_reads).sum())
+    cds_reads_count = int((pos_counts >= minimum_reads).sum())
     denom = float(cds_length_total) if float(cds_length_total) != 0 else 1.0
     return float(cds_reads_count) / denom
 
@@ -751,7 +754,7 @@ from typing import Mapping
 
 def uniformity_theil_index(
         profile: Mapping[str, Dict[int, Dict[int, int]]],
-        read_lengths: List[int] = [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+        read_lengths: Optional[List[int]] = None,
         ) -> Dict[int | str, float]:
     """
     Calculates the Theil index for a Ribo-Seq profile.
@@ -766,6 +769,9 @@ def uniformity_theil_index(
     theils: Dict[int | str, float] = {}
     global_counts: List[int] = []
     global_sum = 0
+    # Default to all observed read lengths rather than the human 25-35 nt window.
+    if read_lengths is None:
+        read_lengths = list(profile['start'].keys())
     for read_len in profile['start']:
         if read_len in read_lengths:
             if not global_counts:
@@ -959,7 +965,7 @@ def counts_to_codon_proportions(counts: list) -> list:
 
 def fourier_transform(
         metagene_profile: Dict[str, Dict[int, Dict[int, int]]],
-        read_lengths: List[int] = [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+        read_lengths: Optional[List[int]] = None,
         ) -> Dict[int | str, float]:
     """
     Calculate the Fourier transform of the metagene profile and extract the
@@ -978,10 +984,15 @@ def fourier_transform(
     """
     fourier_scores: Dict[int | str, float] = {}
     global_counts: List[int] = []
-    read_lengths = [i for i in read_lengths if i in metagene_profile['start'].keys()]
-
+    present = list(metagene_profile['start'].keys())
+    # Default to every observed read length rather than a hardcoded human
+    # monosome window (25-35 nt), which silently excluded sub-codon footprints
+    # and non-human / alternative-nuclease libraries.
+    read_lengths = present if read_lengths is None else [
+        i for i in read_lengths if i in present
+    ]
     if not read_lengths:
-        read_lengths = list(metagene_profile['start'].keys())
+        read_lengths = present
 
     for read_len in read_lengths:
         series = metagene_profile['start'][read_len]
@@ -1040,114 +1051,109 @@ def fourier_transform(
     return fourier_scores
 
 
-def multitaper(
-        metagene_profile: Dict[str, Dict[int, Dict[int, int]]],
-        read_lengths: List[int] = [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
-        nperseg: int = 8,
-        noverlap: int = 4) -> Dict[int | str, float]:
+def recommend_read_lengths(
+    read_frame_distribution: Dict[int, Dict[int, int]],
+    read_length_distribution: Dict[int, int],
+    offsets: Optional[Dict] = None,
+    min_periodicity: float = 0.5,
+    min_read_proportion: float = 0.05,
+) -> Dict[str, Any]:
+    """Recommend the read lengths carrying clean 3-nt periodicity.
+
+    Synthesises the per-read-length frame distribution and (when available)
+    computed P-site offsets into a single actionable recommendation: which read
+    lengths to keep for downstream P-site assignment / ORF calling, and the
+    fraction of the library they represent. A read length is recommended when
+    its dominant-frame fraction is at least ``min_periodicity`` and it carries at
+    least ``min_read_proportion`` of all reads (so a length with great
+    periodicity but only a handful of reads is not recommended).
+
+    Returns a dict with per-read-length detail plus library-level summaries:
+        recommended_lengths            sorted list of recommended read lengths
+        n_recommended                  count of recommended read lengths
+        recommended_read_proportion    fraction of all reads in those lengths
     """
-    Calculate the multitaper transform of the metagene profile.
+    total_reads = sum(read_length_distribution.values()) or 1
+    by_read_length: Dict[int, Dict[str, Any]] = {}
+    for read_length, frames in read_frame_distribution.items():
+        rl = int(read_length)
+        frame_total = sum(frames.values())
+        periodicity = (
+            max(frames.values()) / frame_total if frame_total > 0 else 0.0
+        )
+        proportion = read_length_distribution.get(rl, 0) / total_reads
+        recommended = (
+            periodicity >= min_periodicity
+            and proportion >= min_read_proportion
+        )
+        entry: Dict[str, Any] = {
+            "periodicity": round(periodicity, 4),
+            "read_proportion": round(proportion, 4),
+            "recommended": bool(recommended),
+        }
+        if offsets is not None and rl in offsets:
+            entry["offset"] = int(offsets[rl])
+        elif offsets is not None and str(rl) in offsets:
+            entry["offset"] = int(offsets[str(rl)])
+        by_read_length[rl] = entry
 
-    Inputs:
-        metagene_profile: dict
-            The metagene profile to compute the multitaper transform of.
+    recommended_lengths = sorted(
+        rl for rl, e in by_read_length.items() if e["recommended"]
+    )
+    recommended_read_proportion = (
+        sum(read_length_distribution.get(rl, 0) for rl in recommended_lengths)
+        / total_reads
+    )
+    return {
+        "by_read_length": by_read_length,
+        "recommended_lengths": recommended_lengths,
+        "n_recommended": len(recommended_lengths),
+        "recommended_read_proportion": round(recommended_read_proportion, 4),
+    }
 
-        read_lengths: list, optional
-            The list of read lengths to calculate the multitaper transform for.
-            Default is [28, 29, 30, 31, 32].
-        nperseg: int, optional
-            The length of the segments to use for the multitaper transform.
-            Default is 8.
-        noverlap: int, optional
-            The number of points of overlap between segments.
-            Default is 4.
 
-    Returns:
-        multitaper_scores: dict
-            The multitaper transform scores for each read length.
+def classify_library_type(
+    periodicity: float,
+    prop_reads_cds: float,
+    start_codon_enrichment_ratio: Optional[float],
+    min_periodicity: float = 0.4,
+    min_cds_proportion: float = 0.5,
+    initiation_ratio_cutoff: float = 3.0,
+) -> Dict[str, Any]:
+    """Heuristically classify the Ribo-Seq library type from summary metrics.
 
-    Explanation:
-        The multitaper transform is a spectral analysis technique that estimates
-        the power spectrum of a signal. In this case, the metagene profile is
-        transformed using the multitaper method for each specified read length.
-        The resulting scores represent the maximum power in the multitaper spectrum
-        for each read length, indicating the strength of periodicity in the metagene
-        profile at different read lengths.
+    Distinguishes three broad regimes that change how a dataset should be
+    interpreted downstream:
+
+    * ``low_quality``  — weak periodicity and/or little CDS enrichment; the
+      footprints do not look ribosome-protected (degraded RNA / RNA-seq-like).
+    * ``initiation``   — a sharp start-codon peak relative to the CDS body,
+      consistent with initiation-inhibitor treatment (harringtonine / LTM) or
+      heavy stalling at initiation.
+    * ``elongation``   — periodic, CDS-enriched, flat start/body ratio; the
+      standard elongating profile (cycloheximide / untreated).
+
+    Returns the label plus the evidence used, so the call is auditable rather
+    than a black box.
     """
-    multitaper_scores: Dict[int | str, float] = {}
-    global_counts: List[int] = []
-    read_lengths = [i for i in read_lengths if i in metagene_profile['start'].keys()]
-
-    if not read_lengths:
-        read_lengths = list(metagene_profile['start'].keys())
-        
-    for read_len in read_lengths:
-        if not global_counts:
-            global_counts = list(metagene_profile['start'][read_len].values())
-        else:
-            global_counts = [
-                i + j for i, j in zip(
-                    global_counts,
-                    list(metagene_profile['start'][read_len].values())
-                    )
-                    ]
-        counts = list(metagene_profile['start'][read_len].values())
-        multitaper_transform = signal.spectrogram(
-                                            np.array(counts),
-                                            window='hann',
-                                            nperseg=nperseg,
-                                            noverlap=noverlap
-                                            )
-        multitaper_scores[read_len] = np.max(multitaper_transform[2])
-
-    global_multitaper_transform = signal.spectrogram(
-                                        np.array(global_counts),
-                                        window='hann',
-                                        nperseg=nperseg,
-                                        noverlap=noverlap
-                                        )
-    multitaper_scores["global"] = np.max(global_multitaper_transform[2])
-    return multitaper_scores
-
-
-def wavelet_transform(
-        metagene_profile: Dict[str, Dict[int, Dict[int, int]]],
-        read_lengths: List[int] = [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
-        ) -> Dict[int | str, float]:
-    """
-    Calculate the wavelet transform of the metagene profile.
-
-    Inputs:
-        metagene_profile: dict
-            The metagene profile to compute the wavelet transform of.
-
-    Returns:
-        wavelet_scores: dict
-            The wavelet transform scores for each read length.
-    """
-    wavelet_scores: Dict[int | str, float] = {}
-    global_counts: List[int] = []
-    read_lengths = [i for i in read_lengths if i in metagene_profile['start'].keys()]
-
-    if not read_lengths:
-        read_lengths = list(metagene_profile['start'].keys())
-
-    for read_len in read_lengths:
-        if not global_counts:
-            global_counts = list(metagene_profile['start'][read_len].values())
-        else:
-            global_counts = [
-                i + j for i, j in zip(
-                    global_counts,
-                    list(metagene_profile['start'][read_len].values())
-                    )
-                    ]
-        counts = list(metagene_profile['start'][read_len].values())
-        wave = signal.cwt(np.array(counts), signal.ricker, [1])
-        total_abs_wavelet = np.sum(np.abs(wave))
-        wavelet_scores[read_len] = float(np.max(wave) / total_abs_wavelet) if total_abs_wavelet > 0 else 0.0
-
-    global_wave = signal.cwt(np.array(global_counts), signal.ricker, [1])
-    global_total_abs_wavelet = np.sum(np.abs(global_wave))
-    wavelet_scores["global"] = float(np.max(global_wave) / global_total_abs_wavelet) if global_total_abs_wavelet > 0 else 0.0
-    return wavelet_scores
+    if periodicity < min_periodicity or prop_reads_cds < min_cds_proportion:
+        label = "low_quality"
+    elif (
+        start_codon_enrichment_ratio is not None
+        and start_codon_enrichment_ratio >= initiation_ratio_cutoff
+    ):
+        label = "initiation"
+    else:
+        label = "elongation"
+    return {
+        "label": label,
+        "evidence": {
+            "periodicity": round(float(periodicity), 4),
+            "prop_reads_CDS": round(float(prop_reads_cds), 4),
+            "start_codon_enrichment_ratio": (
+                round(float(start_codon_enrichment_ratio), 4)
+                if start_codon_enrichment_ratio is not None
+                else None
+            ),
+        },
+    }

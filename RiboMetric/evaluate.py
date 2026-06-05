@@ -106,10 +106,11 @@ def evaluate(args: Namespace) -> int:
     # Human-readable report
     print(f"\nQC evaluation for '{sample_name}': {status['overall_status']}")
     for check in status["checks"]:
+        cmp = "<=" if check.get("direction") == "lower" else ">="
         print(
             f"  [{check['status']:<7}] {check['metric']} = "
             f"{check['value']:.4g} "
-            f"(pass>={check['threshold_pass']}, warn>={check['threshold_warn']})"
+            f"(pass{cmp}{check['threshold_pass']}, warn{cmp}{check['threshold_warn']})"
         )
     if not status["checks"]:
         print("  (no thresholded metrics were found in the results file)")

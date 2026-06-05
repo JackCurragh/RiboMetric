@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **A-site codon dwell-times / pause sites** (requires ``--fasta``) — per-codon
+  A-site occupancy relative to codon abundance, summarised as ``codon_dwell_cv``,
+  ``codon_dwell_p90_p10`` (dynamic range), ``proline_dwell`` and ``cga_dwell``.
+  Surfaces translation pausing distinct from RUST's information-divergence view,
+  with a sorted dwell-time plot (proline / CGA highlighted).
+- **FLOSS read-length heterogeneity** — per-transcript Fragment Length
+  Organization Similarity Score vs the library aggregate, summarised at the
+  sample level (``floss_median``, ``floss_aberrant_transcript_fraction``) with a
+  histogram. A library-level homogeneity QC, not an ORF/translation classifier.
+- **Recommended read lengths** — RiboMetric now reports which read lengths carry
+  clean 3-nt periodicity (and their P-site offsets), the count, and the fraction
+  of the library they represent (`recommended_read_proportion`). The periodicity
+  cutoff is configurable (`qc.recommend.min_periodicity` / `--min-periodicity`).
+  A "Recommended Read Lengths" plot highlights the selected lengths.
+- **Gene-body coverage ramp** — a metagene of A-site density across *relative*
+  CDS position (0–100%), exposing the 5′ translation ramp and 3′ drop-off, with
+  `five_prime_ramp_ratio` / `three_prime_drop_ratio` sample metrics and a plot.
+- **Library complexity / saturation** — an analytic rarefaction curve of distinct
+  A-site positions vs depth (`marginal_position_discovery_rate`,
+  `complexity_distinct_positions`) plus a plot, answering "was this sequenced
+  deeply enough?" without random subsampling.
+- **Library-type classification** — heuristic `elongation` / `initiation` /
+  `low_quality` label from periodicity, CDS enrichment and start-codon
+  enrichment, with the supporting evidence recorded.
+- `evaluate` ships a default threshold for `recommended_read_proportion`; all new
+  scalar metrics are thresholdable via the existing `-e` YAML.
+
+### Fixed
+
+- **GFF coordinate off-by-one** (`file_parser.gff_df_to_cds_df`) — exon lengths
+  were computed as `end - start` despite GFF3 being 1-based inclusive. This
+  undercounted `transcript_length` by one nt per exon and, because the same
+  arithmetic fed the leader/trailer sums, shifted `cds_start` by the number of
+  complete UTR exons — scrambling the reading frame (and therefore periodicity)
+  for multi-exon transcripts. CDS spans are now whole codons as expected.
+  **Annotation TSVs produced by `prepare` should be regenerated.**
+- **Terminal-bias 3′ background** (`bam_processing.calculate_background`) — the
+  `five_prime` flag was ignored, so the 5′ and 3′ ligation-bias backgrounds were
+  identical and the 3′ metric used the wrong reference distribution.
+- **`--offset-global` was silently ignored** — the CLI wrote `offset_global`
+  while the pipeline only read `global_offset`. The flag now applies a fixed
+  offset to all read lengths as documented; omit it to auto-calculate.
+- **`evaluate` ignored metric directionality** — lower-is-better metrics
+  (`duplicate_rate`, `multimapper_rate`, `disome_proportion`, …) were scored as
+  higher-is-better, so a bad sample could PASS. Direction is now handled per
+  metric and overridable with `direction: lower|higher` in the thresholds YAML.
+- **Bare `RiboMetric` crashed** with an AttributeError instead of printing help.
+- **RUST KL divergence** used a non-standard per-term `abs()` and voided most
+  window positions; it now computes a standard KL divergence over the observed
+  support.
+- Metagene zero-fill no longer drops the maximum read length.
+
+### Changed
+
+- Sequence-composition / terminal-bias backgrounds now use **all** subsampled
+  reads by default instead of a silent 1-in-10 sample
+  (`RIBOMETRIC_SEQUENCE_CHUNK_STRIDE` to opt back into sampling).
+- Spectral metrics (Fourier, Theil, Gini) default to **all observed read
+  lengths** rather than a hardcoded 25–35 nt human window; the di-some window is
+  configurable via `qc.disome`.
+- CI now runs on pull requests, not only pushes to protected branches.
+
+### Removed
+
+- Dead code: `multitaper`, `wavelet_transform` (used SciPy APIs removed in
+  ≥1.13), `change_point_analysis`, `calculate_expected_dinucleotide_freqs`,
+  and the unused `sequence_mode`.
+
+---
+
 ## [1.2.0] — 2026-05-31
 
 ### Added

@@ -109,6 +109,18 @@ The thresholds YAML lists per-metric ``pass`` and ``warn`` values::
 If ``-e`` is omitted, built-in defaults are used. Use ``-o`` to save the
 evaluation as JSON. Accepts either a RiboMetric JSON or a metrics-table CSV.
 
+Most RiboMetric metrics are normalised so that **higher is better** (e.g.
+``periodicity_dominance``, ``uniformity_entropy``, ``prop_reads_CDS``). A few are
+**lower is better** — ``duplicate_rate``, ``multimapper_rate``,
+``soft_clip_rate_5prime``, ``disome_proportion``, ``stop_codon_readthrough_ratio``
+and the raw terminal-bias divergences. ``evaluate`` knows these directions, so a
+high duplicate rate fails rather than passes. To force a direction for a custom
+metric, add ``direction: lower`` (or ``higher``) alongside its ``pass``/``warn``
+values in the thresholds YAML::
+
+    thresholds:
+      duplicate_rate: {pass: 0.3, warn: 0.5, direction: lower}
+
 Enable the RUST metric (requires a transcriptome FASTA, gzip supported):
 
 .. code-block:: console
@@ -148,6 +160,14 @@ RiboMetric calculates comprehensive quality metrics for Ribo-Seq data:
   * **Alignment quality** — duplicate rate, multimapper rate, 5′ soft-clip rate
   * **Di-some detection** — bimodality coefficient + disome proportion (50–70 nt reads)
   * **Codon-level translation** — stop-codon readthrough ratio, start-codon enrichment ratio
+  * **Recommended read lengths** — which lengths carry clean 3-nt periodicity (and their P-site offsets) for downstream ORF/P-site analysis; tune with ``--min-periodicity``
+  * **Gene-body coverage ramp** — 5′→3′ A-site density across relative CDS position (translation ramp / 3′ drop-off)
+  * **Library complexity** — analytic saturation curve ("was this sequenced deeply enough?")
+  * **Library-type classification** — elongation / initiation / low-quality call with supporting evidence
+  * **FLOSS read-length heterogeneity** — fraction of transcripts with aberrant footprint-length profiles (library homogeneity QC)
+
+**FASTA-dependent (computed automatically when ``--fasta`` is supplied):**
+  * **A-site codon dwell-times / pause sites** — per-codon occupancy and pausing summary (proline, CGA)
 
 **Optional Metrics (require explicit ``--enable-metric``):**
   * RUST mean KL divergence — codon-specific A-site accumulation (requires ``--fasta``)
@@ -185,7 +205,7 @@ RiboMetric now publishes both consolidated and legacy metric names to ease upgra
 
 Plots and summary normalization accept both. We recommend migrating dashboards and downstream code to the consolidated names.
 
-.. _REPORTING_GUIDE.md: REPORTING_GUIDE.md
+.. _REPORTING_GUIDE.md: docs/REPORTING_GUIDE.md
 
 Requirements
 ------------

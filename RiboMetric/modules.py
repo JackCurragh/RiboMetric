@@ -6,8 +6,6 @@ of the RibosomeProfiler pipeline
 
 import pandas as pd
 import numpy as np
-import numpy.typing as npt
-from collections import Counter
 
 try:
     from xhtml2pdf import pisa
@@ -16,7 +14,6 @@ except ImportError:
     HAS_PDF = False
 
 from typing import List, Dict, Tuple, Optional, cast
-from scipy import stats
 
 DEFAULT_OFFSET_BOUNDS: Tuple[int, int] = (8, 20)
 DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION = 2 / 3
@@ -382,14 +379,12 @@ def terminal_nucleotide_bias_distribution(
     for pattern in pattern_list:
         for prime in terminal_nucleotide_bias_dict:
             if pattern in categories[prime]:
+                # prime_counts[prime] is a pandas Series indexed by pattern;
+                # .get returns 0 for patterns absent from this batch.
                 val = prime_counts[prime].get(pattern, 0)
-                # pandas Series .get for index, or dict .get
-                if hasattr(prime_counts[prime], "get"):
-                    try:
-                        val = prime_counts[prime].get(pattern, 0)
-                    except Exception:
-                        val = prime_counts[prime][pattern] if pattern in prime_counts[prime] else 0
-                terminal_nucleotide_bias_dict[prime][pattern] = float(val) / float(total_counts) if total_counts else 0.0
+                terminal_nucleotide_bias_dict[prime][pattern] = (
+                    float(val) / float(total_counts) if total_counts else 0.0
+                )
 
     return terminal_nucleotide_bias_dict
 
@@ -433,9 +428,6 @@ def normalise_ligation_bias(
                     -= expected_distribution[prime][pattern]
 
     return terminal_nucleotide_bias_dict_norm
-
-
-from typing import Dict, List, Optional, Callable
 
 
 def slicer_vectorized(array: np.ndarray, start: int, end: int) -> np.ndarray:
@@ -923,7 +915,7 @@ def metagene_profile(
         max_length = int(max([x[0] for x
                               in list(pre_metaprofile_dict.keys())]))
 
-        for y in range(min_length, max_length):
+        for y in range(min_length, max_length + 1):
             if y not in [x[0] for x in list(pre_metaprofile_dict.keys())]:
                 pre_metaprofile_dict[(y, 0)] = 0
 
@@ -1051,72 +1043,6 @@ def convert_html_to_pdf(source_html: str, output_filename: str) -> int:
         return int(getattr(pisa_status, 'err'))
     except Exception:
         return 1
-
-
-# Deprecated
-def calculate_expected_dinucleotide_freqs(read_df: pd.DataFrame) -> dict:
-    """
-    Calculate the expected dinucleotide frequencies based on the
-    nucleotide frequencies in the aligned reads
-
-    Inputs:
-        read_df: Dataframe containing the read information
-
-    Outputs:
-        expected_dinucleotide_freqs: Dictionary containing the expected
-        dinucleotide frequencies
-    """
-    dinucleotides = []
-    for read in read_df["sequence"].drop_duplicates():
-        for i in range(len(read) - 1):
-            dinucleotides.append(read[i: i + 2])
-
-    observed_freq = Counter(dinucleotides)
-    total_count = sum(observed_freq.values())
-
-    expected_dinucleotide_freqs = {}
-    for dinucleotide, count in observed_freq.items():
-        expected_dinucleotide_freqs[dinucleotide] = count / total_count
-
-    return expected_dinucleotide_freqs
-
-
-def change_point_analysis(
-        read_counts: Dict[int, int],
-        surrounding_range: Tuple[int, int] = (-30, 10),
-        window_size: int = 4,
-        significance_threshold: float = 0.1
-        ) -> Optional[Dict[int, int]]:
-    """
-    Calculate the change point for the metagene profile using a t-test 
-    approach.
-    This should reflect where the CDS starts and as a result the offset
-    to apply to get A-site.
-
-    Inputs:
-        read_counts: Dictionary containing the read counts for each position
-        surrounding_range: Tuple of start and stop for change point analysis
-        window_size: Size of the window to use for t-test comparison
-        significance_threshold: P-value threshold for significance
-
-    Outputs:
-        change_point: The position of the change point, or None if no
-            significant change point is found
-    """
-    change_points: Dict[int, int] = {}
-
-    positions = range(surrounding_range[0], surrounding_range[1])
-    counts = np.array([read_counts.get(pos, 0) for pos in positions])
-
-    for i in range(window_size, len(counts) - window_size):
-        left_window = counts[i-window_size:i]
-        right_window = counts[i:i+window_size]
-
-        t_statistic, _ = stats.ttest_ind(left_window, right_window)
-        # Store absolute t-stat multiplied by 1000 as an int score to satisfy type
-        change_points[positions[i]] = int(abs(float(t_statistic)) * 1000)
-
-    return change_points
 
 
 def ribowaltz_psite_prediction(
@@ -1351,3 +1277,229 @@ def asite_calculation_per_readlength(
             )
 
     return offset_dict
+
+
+def gene_body_coverage_ramp(
+    cds_read_df: pd.DataFrame,
+    n_bins: int = 100,
+) -> Dict[str, object]:
+    """Metagene of A-site density across *relative* CDS position (0-100%).
+
+    Unlike the start/stop metagenes (which are anchored at the termini in
+    nucleotides), this profiles the whole CDS body in relative coordinates, so
+    transcripts of different lengths are comparable. It exposes:
+
+    * the 5' translation "ramp" — elevated density just after the start codon,
+      reflecting slower early elongation (and run-off artefacts);
+    * the 3' drop-off — declining density toward the stop codon.
+
+    Returns:
+        profile                 list[float] of length n_bins, mean-normalised so
+                                a flat profile is ~1.0 everywhere
+        five_prime_ramp_ratio   mean density in the first 10% / middle (40-60%)
+        three_prime_drop_ratio  mean density in the last 10% / middle (40-60%)
+    """
+    empty: Dict[str, object] = {
+        "profile": [0.0] * n_bins,
+        "five_prime_ramp_ratio": None,
+        "three_prime_drop_ratio": None,
+    }
+    if cds_read_df.empty:
+        return empty
+
+    df = cds_read_df
+    cds_len = (df["cds_end"] - df["cds_start"]).astype(float)
+    valid = cds_len > 0
+    if not valid.any():
+        return empty
+    df = df[valid]
+    cds_len = cds_len[valid]
+    rel = (df["a_site"].astype(float) - df["cds_start"].astype(float)) / cds_len
+    in_range = (rel >= 0) & (rel < 1)
+    if not in_range.any():
+        return empty
+    rel = rel[in_range]
+    weights = (
+        df.loc[in_range, "count"].astype(float)
+        if "count" in df.columns
+        else pd.Series(1.0, index=rel.index)
+    )
+
+    bin_idx = np.minimum((rel * n_bins).astype(int), n_bins - 1)
+    profile = np.zeros(n_bins, dtype=float)
+    np.add.at(profile, bin_idx.to_numpy(), weights.to_numpy())
+
+    mean_density = profile.mean()
+    if mean_density <= 0:
+        return empty
+    norm_profile = profile / mean_density
+
+    lo = max(1, n_bins // 10)
+    mid_lo, mid_hi = int(n_bins * 0.4), int(n_bins * 0.6)
+    middle = norm_profile[mid_lo:mid_hi].mean()
+    if middle <= 0:
+        ramp = drop = None
+    else:
+        ramp = round(float(norm_profile[:lo].mean() / middle), 4)
+        drop = round(float(norm_profile[-lo:].mean() / middle), 4)
+
+    return {
+        "profile": [round(float(x), 4) for x in norm_profile],
+        "five_prime_ramp_ratio": ramp,
+        "three_prime_drop_ratio": drop,
+    }
+
+
+def library_complexity_curve(
+    annotated_read_df: pd.DataFrame,
+    n_points: int = 10,
+) -> Dict[str, object]:
+    """Analytic rarefaction (saturation) curve of distinct A-site positions.
+
+    Answers "was this library sequenced deeply enough?" without random
+    subsampling: given the per-position read counts c_i, the expected number of
+    distinct (transcript, A-site) positions recovered when sampling a fraction f
+    of reads is sum_i [1 - (1 - f)^c_i]. A curve that has flattened by f=1 means
+    extra sequencing buys little new signal (low complexity / saturated); a still-
+    rising curve means the library is under-sequenced.
+
+    Returns:
+        fractions                       list of sampling fractions
+        distinct_positions              expected distinct positions at each f
+        total_distinct_positions        distinct positions at full depth
+        marginal_discovery_rate         fraction of reads at the margin (top 5%
+                                        of depth) landing on a new position;
+                                        high => still discovering (undersaturated)
+    """
+    empty: Dict[str, object] = {
+        "fractions": [],
+        "distinct_positions": [],
+        "total_distinct_positions": 0,
+        "marginal_discovery_rate": None,
+    }
+    if annotated_read_df.empty or "a_site" not in annotated_read_df.columns:
+        return empty
+    tx_col = (
+        "transcript_id" if "transcript_id" in annotated_read_df.columns
+        else "reference_name" if "reference_name" in annotated_read_df.columns
+        else None
+    )
+    if tx_col is None:
+        return empty
+
+    weights = _get_weights(annotated_read_df)
+    grp = annotated_read_df.assign(
+        _w=(weights if weights is not None else 1)
+    ).groupby([tx_col, "a_site"], observed=True)["_w"].sum()
+    counts = grp.to_numpy(dtype=float)
+    counts = counts[counts > 0]
+    if counts.size == 0:
+        return empty
+
+    total_reads = float(counts.sum())
+
+    def expected_distinct(frac: float) -> float:
+        # sum_i [1 - (1 - f)^c_i]; clamp base to [0,1] for safety.
+        base = max(0.0, min(1.0, 1.0 - frac))
+        return float(np.sum(1.0 - np.power(base, counts)))
+
+    fractions = [round((i + 1) / n_points, 4) for i in range(n_points)]
+    distinct = [round(expected_distinct(f), 2) for f in fractions]
+    total_distinct = distinct[-1]
+
+    d_full = expected_distinct(1.0)
+    d_margin = expected_distinct(0.95)
+    margin_reads = 0.05 * total_reads
+    marginal_rate = (
+        round(float((d_full - d_margin) / margin_reads), 4)
+        if margin_reads > 0 else None
+    )
+
+    return {
+        "fractions": fractions,
+        "distinct_positions": distinct,
+        "total_distinct_positions": int(round(total_distinct)),
+        "marginal_discovery_rate": marginal_rate,
+    }
+
+
+def floss_library_heterogeneity(
+    annotated_read_df: pd.DataFrame,
+    min_reads_per_transcript: int = 20,
+    floss_cutoff: float = 0.3,
+) -> Dict[str, object]:
+    """Library-level FLOSS-style read-length heterogeneity.
+
+    FLOSS (Fragment Length Organization Similarity Score; Ingolia et al. 2014)
+    measures how far a feature's footprint-length histogram departs from a
+    reference distribution:
+
+        FLOSS = 0.5 * Σ_l | F_transcript(l) - F_reference(l) |
+
+    Here the reference is the library's own aggregate CDS read-length
+    distribution. Computed per transcript and summarised across the library, it
+    becomes a *sample-level* QC of footprint-length homogeneity: a high fraction
+    of transcripts with aberrant length profiles indicates a heterogeneous or
+    contaminated library (non-ribosomal fragments, mixed protocols), even when
+    the aggregate length distribution looks fine. This is a QC summary, not an
+    ORF/translation classifier.
+
+    Returns:
+        floss_median                       median per-transcript FLOSS
+        floss_aberrant_transcript_fraction fraction of transcripts with
+                                           FLOSS > floss_cutoff
+        n_transcripts_scored               transcripts meeting min_reads
+    """
+    empty: Dict[str, object] = {
+        "floss_median": None,
+        "floss_aberrant_transcript_fraction": None,
+        "n_transcripts_scored": 0,
+    }
+    if "transcript_id" not in annotated_read_df.columns:
+        return empty
+    if annotated_read_df.empty:
+        return empty
+
+    weights = _get_weights(annotated_read_df)
+    df = annotated_read_df.assign(
+        _w=(weights if weights is not None else 1)
+    )
+    # Per (transcript, read_length) weighted counts -> length histograms.
+    grp = (
+        df.groupby(["transcript_id", "read_length"], observed=True)["_w"]
+        .sum()
+        .unstack(fill_value=0)
+    )
+    if grp.empty:
+        return empty
+
+    read_lengths = list(grp.columns)
+    totals = grp.sum(axis=1)
+    # Reference = aggregate distribution over all reads, normalised.
+    ref_counts = grp.sum(axis=0).to_numpy(dtype=float)
+    ref_total = ref_counts.sum()
+    if ref_total <= 0:
+        return empty
+    ref_dist = ref_counts / ref_total
+
+    floss_scores: List[float] = []
+    for transcript in grp.index:
+        n = float(totals.loc[transcript])
+        if n < min_reads_per_transcript:
+            continue
+        t_dist = grp.loc[transcript].to_numpy(dtype=float) / n
+        floss = 0.5 * float(np.abs(t_dist - ref_dist).sum())
+        floss_scores.append(floss)
+
+    if not floss_scores:
+        return empty
+
+    scores = np.array(floss_scores, dtype=float)
+    aberrant = float((scores > floss_cutoff).mean())
+    return {
+        "floss_median": round(float(np.median(scores)), 4),
+        "floss_aberrant_transcript_fraction": round(aberrant, 4),
+        "n_transcripts_scored": len(floss_scores),
+        "read_lengths": [int(x) for x in read_lengths],
+        "floss_scores": [round(float(s), 4) for s in floss_scores],
+    }

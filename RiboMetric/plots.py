@@ -74,7 +74,248 @@ def generate_plots(results_dict: dict, config: dict) -> list:
             ),
             ])
 
+    if results_dict.get("recommended_read_lengths"):
+        plots_list.append(
+            plot_recommended_read_lengths(
+                results_dict["recommended_read_lengths"], config
+            )
+        )
+    if results_dict.get("gene_body_coverage", {}).get("profile"):
+        plots_list.append(
+            plot_gene_body_coverage(results_dict["gene_body_coverage"], config)
+        )
+    if results_dict.get("library_complexity", {}).get("fractions"):
+        plots_list.append(
+            plot_library_complexity(results_dict["library_complexity"], config)
+        )
+    if results_dict.get("codon_dwell_times", {}).get("dwell_times"):
+        plots_list.append(
+            plot_codon_dwell_times(results_dict["codon_dwell_times"], config)
+        )
+    if results_dict.get("floss", {}).get("floss_scores"):
+        plots_list.append(
+            plot_floss_heterogeneity(results_dict["floss"], config)
+        )
+
     return plots_list
+
+
+def plot_codon_dwell_times(dwell: dict, config: dict) -> dict:
+    """Bar chart of A-site codon dwell-times, sorted from slowest to fastest."""
+    dwell_times = dwell.get("dwell_times", {})
+    items = sorted(dwell_times.items(), key=lambda kv: kv[1], reverse=True)
+    codons = [c for c, _ in items]
+    values = [v for _, v in items]
+    pro = {"CCT", "CCC", "CCA", "CCG"}
+    colors = [
+        "#c93434" if c == "CGA" else "#f0a81f" if c in pro else "#2e85db"
+        for c in codons
+    ]
+    fig = go.Figure()
+    fig.add_trace(
+        go.Bar(
+            x=codons, y=values, marker_color=colors, name="",
+            hovertemplate="<b>Codon</b>: %{x}"
+                          "<br><b>Dwell-time</b>: %{y:.2f}<extra></extra>",
+        )
+    )
+    fig.add_hline(y=1.0, line_dash="dash", line_color=config["plots"]["base_color"])
+    fig.update_layout(
+        title="A-site Codon Dwell-times",
+        xaxis_title="Codon (slowest -> fastest)",
+        yaxis_title="Dwell-time (observed / expected)",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=14,
+            color=config["plots"]["base_color"],
+        ),
+    )
+    return {
+        "name": "Codon Dwell-times",
+        "description": (
+            "A-site occupancy per codon relative to its abundance. Values >1 "
+            "(above the dashed line) are slow/pausing codons; proline codons are "
+            "orange and the inhibitory CGA codon is red."
+        ),
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0],
+            config["plots"]["image_size"][1]
+        ),
+    }
+
+
+def plot_floss_heterogeneity(floss: dict, config: dict) -> dict:
+    """Histogram of per-transcript FLOSS read-length heterogeneity scores."""
+    scores = floss.get("floss_scores", [])
+    fig = go.Figure()
+    fig.add_trace(
+        go.Histogram(
+            x=scores, nbinsx=30, name="",
+            hovertemplate="<b>FLOSS</b>: %{x:.2f}"
+                          "<br><b>Transcripts</b>: %{y}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        title=(
+            "FLOSS Read-length Heterogeneity "
+            f"(median {floss.get('floss_median')}, "
+            f"{floss.get('floss_aberrant_transcript_fraction', 0):.0%} aberrant)"
+        ),
+        xaxis_title="Per-transcript FLOSS (departure from library length profile)",
+        yaxis_title="Number of transcripts",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=16,
+            color=config["plots"]["base_color"],
+        ),
+    )
+    return {
+        "name": "FLOSS Heterogeneity",
+        "description": (
+            "Distribution of per-transcript FLOSS scores (footprint-length "
+            "departure from the library aggregate). A long right tail means many "
+            "transcripts have anomalous length profiles — a heterogeneous or "
+            "contaminated library."
+        ),
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0],
+            config["plots"]["image_size"][1]
+        ),
+    }
+
+
+def plot_recommended_read_lengths(recommended: dict, config: dict) -> dict:
+    """Bar chart of per-read-length periodicity, highlighting recommended lengths."""
+    by_rl = recommended.get("by_read_length", {})
+    read_lengths = sorted(by_rl.keys())
+    periodicity = [by_rl[rl]["periodicity"] for rl in read_lengths]
+    colors = [
+        "#2e85db" if by_rl[rl]["recommended"] else "#c9c9c9"
+        for rl in read_lengths
+    ]
+    customdata = [
+        [by_rl[rl].get("read_proportion", 0), by_rl[rl].get("offset", "n/a")]
+        for rl in read_lengths
+    ]
+    fig = go.Figure()
+    fig.add_trace(
+        go.Bar(
+            x=read_lengths,
+            y=periodicity,
+            marker_color=colors,
+            customdata=customdata,
+            hovertemplate=(
+                "<b>Read length</b>: %{x}"
+                "<br><b>Periodicity</b>: %{y:.3f}"
+                "<br><b>Read proportion</b>: %{customdata[0]:.3f}"
+                "<br><b>P-site offset</b>: %{customdata[1]}<extra></extra>"
+            ),
+        )
+    )
+    fig.update_layout(
+        title=(
+            "Recommended read lengths "
+            f"({recommended.get('n_recommended', 0)} selected, "
+            f"{recommended.get('recommended_read_proportion', 0):.0%} of reads)"
+        ),
+        xaxis_title="Read Length",
+        yaxis_title="Dominant-frame fraction (periodicity)",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
+        ),
+    )
+    return {
+        "name": "Recommended Read Lengths",
+        "description": (
+            "Per-read-length 3-nt periodicity. Blue bars are recommended for "
+            "downstream P-site assignment / ORF calling (periodic enough and "
+            "carrying enough reads); grey bars are not."
+        ),
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0],
+            config["plots"]["image_size"][1]
+        ),
+    }
+
+
+def plot_gene_body_coverage(gene_body: dict, config: dict) -> dict:
+    """Line plot of A-site density across relative CDS position (0-100%)."""
+    profile = gene_body.get("profile", [])
+    x = [round(100 * i / max(1, len(profile) - 1), 2) for i in range(len(profile))]
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=x, y=profile, mode="lines", name="",
+            hovertemplate="<b>CDS position</b>: %{x:.0f}%"
+                          "<br><b>Relative density</b>: %{y:.2f}<extra></extra>",
+        )
+    )
+    fig.add_hline(y=1.0, line_dash="dash", line_color=config["plots"]["base_color"])
+    fig.update_layout(
+        title="Gene-body Coverage (5'-&gt;3')",
+        xaxis_title="Relative position along CDS (%)",
+        yaxis_title="Mean-normalised A-site density",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
+        ),
+    )
+    return {
+        "name": "Gene-body Coverage",
+        "description": (
+            "A-site density across relative CDS position. A 5' bump is the "
+            "translation ramp; a 3' decline indicates drop-off. A flat line at "
+            "1.0 is perfectly uniform elongation."
+        ),
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0],
+            config["plots"]["image_size"][1]
+        ),
+    }
+
+
+def plot_library_complexity(complexity: dict, config: dict) -> dict:
+    """Rarefaction (saturation) curve of distinct A-site positions vs depth."""
+    fractions = complexity.get("fractions", [])
+    distinct = complexity.get("distinct_positions", [])
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=fractions, y=distinct, mode="lines+markers", name="",
+            hovertemplate="<b>Fraction of reads</b>: %{x:.0%}"
+                          "<br><b>Distinct positions</b>: %{y}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        title="Library Complexity (rarefaction)",
+        xaxis_title="Fraction of reads sampled",
+        yaxis_title="Expected distinct A-site positions",
+        font=dict(
+            family=config["plots"]["font_family"],
+            size=18,
+            color=config["plots"]["base_color"],
+        ),
+    )
+    return {
+        "name": "Library Complexity",
+        "description": (
+            "Expected distinct A-site positions recovered vs sequencing depth. "
+            "A curve that has flattened by full depth is saturated (extra "
+            "sequencing adds little); a still-rising curve is under-sequenced."
+        ),
+        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0],
+            config["plots"]["image_size"][1]
+        ),
+    }
 
 
 _IMG_WARNED = False
@@ -854,9 +1095,6 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     # Filter metrics based on max_mins keys (support consolidated + legacy)
     maxmin_keys = set(config["max_mins"].keys())
     df = df[df['Metric'].apply(lambda x: any(x.startswith(key) for key in maxmin_keys))]
-
-    # Get list of valid metrics after first filter
-    valid_metrics = df['Metric'].tolist()
 
     # normalise metrics between max_min values
     for metric in config["max_mins"]:

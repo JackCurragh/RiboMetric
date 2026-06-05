@@ -30,8 +30,11 @@ def main() -> int:
         level = logging.ERROR
     logging.basicConfig(level=level, format="[%(levelname)s] %(message)s")
 
-    if not vars(args):
+    # No subcommand given (or empty namespace): show help instead of crashing
+    # downstream in open_config, which expects run/prepare/evaluate/view args.
+    if not vars(args) or getattr(args, "command", None) is None:
         parser.print_help()
+        return 0
 
     return m(args) or 0
 

@@ -10,8 +10,12 @@ import os
 import pyarrow.ipc
 import pysam
 from .file_splitting import split_bam, format_progress
-from multiprocessing import Pool
 from typing import Dict, List, Iterable
+
+# Process 1-in-N read chunks when accumulating sequence composition and
+# terminal-bias backgrounds. 1 = use every read (accurate, the default);
+# increase to sample for speed on very large inputs.
+SEQUENCE_CHUNK_STRIDE = int(os.environ.get("RIBOMETRIC_SEQUENCE_CHUNK_STRIDE", "1"))
 
 
 def validate_bam(bam_file: str) -> None:
@@ -170,13 +174,19 @@ def process_oxbow_batch(
     if list_length < size and list_length != 0:
         size = list_length
 
+    # Stride over the chunks of `size` reads used to accumulate sequence
+    # composition / terminal-bias backgrounds. SEQUENCE_CHUNK_STRIDE = 1 uses
+    # every chunk (all reads); a larger value samples 1-in-N chunks to trade
+    # accuracy for speed on very large inputs. Reads are already capped by
+    # --subsample, so the default processes all of them rather than the silent
+    # 1-in-10 sample used previously.
     for pattern_length in sequence_data:
         count = -1
         progress = 0
 
         for i in range(0, len(sequence_list), size):
             count += 1
-            if count % 10 != 0:
+            if count % SEQUENCE_CHUNK_STRIDE != 0:
                 continue
             section = sequence_list[i:i+size]
             counts = count_list[i:i+size]
@@ -441,8 +451,22 @@ def calculate_background(sequence_array: np.ndarray,
     condensed_arrays = {}
     sequence_bg = np.copy(sequence_array)
 
+    # The background is the pattern composition of the read *excluding* the
+    # terminal pattern whose enrichment we are testing. For the 5' end that is
+    # the first position (index 0); for the 3' end it is the last populated
+    # position of each read. Previously this always zeroed index 0, which made
+    # the 5' and 3' backgrounds identical and gave the 3' ligation-bias metric
+    # the wrong reference distribution.
+    n_positions = sequence_bg.shape[1]
     for i, sequence in enumerate(sequences):
-        sequence_bg[i, 0, :] = 0
+        if five_prime:
+            sequence_bg[i, 0, :] = 0
+        else:
+            # Last valid pattern start for this read (patterns are length
+            # pattern_length; a read of length L has L-pattern_length+1 starts).
+            last_pos = len(sequence) - pattern_length
+            if 0 <= last_pos < n_positions:
+                sequence_bg[i, last_pos, :] = 0
 
     nucleotides = ["".join(nt) for nt in
                    itertools.product('ACGT', repeat=pattern_length)]

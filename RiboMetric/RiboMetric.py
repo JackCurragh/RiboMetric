@@ -50,8 +50,6 @@ from rich.table import Table
 from typing import Dict, Any
 import argparse
 
-import numpy as np
-
 from .file_parser import (
     parse_bam,
     parse_fasta,
@@ -468,13 +466,12 @@ if __name__ == "__main__":
     parser = argument_parser()
     args = parser.parse_args()
 
-    if not vars(args):
+    # -b/--bam vs -j/--json-in exclusivity is enforced by argparse's
+    # mutually-exclusive group on the `run` subparser; no manual check needed
+    # here (the previous one assumed those attributes existed for every
+    # subcommand and crashed for prepare/evaluate/view).
+    if getattr(args, "command", None) is None:
         parser.print_help()
+        raise SystemExit(0)
 
-    if args.bam and args.json_in:
-        parser.error(
-            "Only one of -b/--bam or -j/--json-in should be specified.")
-    elif not args.bam and not args.json_in:
-        parser.error("Either -b/--bam or -j/--json-in must be specified.")
-
-    main(args)
+    raise SystemExit(main(args) or 0)
