@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-06-10
+
 ### Added
 
 - **A-site codon dwell-times / pause sites** (requires ``--fasta``) — per-codon
@@ -88,10 +90,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Alignment quality metrics** — calculated for every run, no flags required:
   - `duplicate_rate` — fraction of reads that are PCR/library duplicates, derived
     from the collapsed `count` column (`1 − unique_seqs / total_weighted`).
-  - `multimapper_rate` — fraction of reads with MAPQ < 255 (maps to multiple loci).
+  - `multimapper_rate` — backwards-compatible alias for the weighted RPF-level
+    multimapper rate.
+  - `rpf_multimapper_rate` — fraction of weighted ribosome protected fragments
+    with evidence of multiple genomic loci; uses `NH:i:N` when present and
+    falls back to STAR-style `MAPQ < 255`.
+  - `unique_rpf_rate` — fraction of weighted ribosome protected fragments that
+    are uniquely mapped.
+  - `alignment_multimapper_rate` — fraction of reported alignment rows whose
+    read/fragment has evidence of another genomic alignment.
   - `soft_clip_rate_5prime` — fraction of reads with 5′ soft-clipping; an indicator
     of incomplete adapter trimming or read-through artefacts.
-  - All three are also surfaced in `results["alignment_stats"]` alongside the
+  - These are also surfaced in `results["alignment_stats"]` alongside the
     flagstat totals (`total_reads`, `mapped_reads`, `unmapped_reads`).
 - **Di-some detection metrics** (default):
   - `disome_proportion` — fraction of reads in the 50–70 nt window (di-some /

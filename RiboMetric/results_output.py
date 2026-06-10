@@ -237,6 +237,8 @@ DEFAULT_QC_THRESHOLDS: Dict[str, Dict[str, float]] = {
 LOWER_IS_BETTER_METRICS = frozenset({
     "duplicate_rate",
     "multimapper_rate",
+    "rpf_multimapper_rate",
+    "alignment_multimapper_rate",
     "soft_clip_rate_5prime",
     "disome_proportion",
     "terminal_bias_kl_5prime_raw",

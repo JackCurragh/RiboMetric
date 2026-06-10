@@ -1,0 +1,54 @@
+{
+  "sample": "example_report",
+  "timestamp": "2026-06-07T19:06:12.146311",
+  "overall_status": "FAIL",
+  "checks": [
+    {
+      "metric": "periodicity_dominance",
+      "value": 0.36604434072345393,
+      "status": "FAIL",
+      "direction": "higher",
+      "threshold_pass": 0.7,
+      "threshold_warn": 0.5
+    },
+    {
+      "metric": "uniformity_entropy",
+      "value": 0.9173325310965127,
+      "status": "PASS",
+      "direction": "higher",
+      "threshold_pass": 0.7,
+      "threshold_warn": 0.5
+    },
+    {
+      "metric": "prop_reads_CDS",
+      "value": 0.5684655658477648,
+      "status": "WARNING",
+      "direction": "higher",
+      "threshold_pass": 0.7,
+      "threshold_warn": 0.5
+    },
+    {
+      "metric": "read_length_distribution_IQR_metric",
+      "value": 0.4,
+      "status": "PASS",
+      "direction": "higher",
+      "threshold_pass": 0.3,
+      "threshold_warn": 0.2
+    },
+    {
+      "metric": "recommended_read_proportion",
+      "value": 0.0,
+      "status": "FAIL",
+      "direction": "higher",
+      "threshold_pass": 0.5,
+      "threshold_warn": 0.3
+    }
+  ],
+  "summary": {
+    "total_checks": 5,
+    "passed": 2,
+    "warnings": 1,
+    "failed": 2
+  },
+  "recommendation": "Sample failed QC for: periodicity_dominance, recommended_read_proportion. Consider excluding from analysis or investigating issues."
+}
