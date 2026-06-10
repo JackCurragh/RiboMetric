@@ -35,6 +35,8 @@ from .modules import (
     floss_library_heterogeneity,
     DEFAULT_OFFSET_BOUNDS,
     DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+    filter_unique_mappers,
+    sanitise_offset,
 )
 
 from .metrics import (
@@ -61,7 +63,127 @@ from .metrics import (
     recommend_read_lengths,
     classify_library_type,
 )
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
+
+# Fallback P-/A-site offsets (nt from the read 5' end) used when no per-read-length
+# offset has been predicted. 12 nt places the P-site on the ribosome's P codon and
+# 15 nt the A-site, for the canonical ~28-30 nt monosome footprint.
+DEFAULT_P_SITE_OFFSET = 12
+DEFAULT_A_SITE_OFFSET = 15
+
+
+def _default_offset_for_target(config: dict) -> int:
+    if "global_offset" in config.get("argument", {}):
+        return int(config["argument"]["global_offset"])
+    offset_target = config.get("argument", {}).get("offset_target", "a_site")
+    return DEFAULT_P_SITE_OFFSET if offset_target == "p_site" else DEFAULT_A_SITE_OFFSET
+
+
+def calculate_alignment_stats(read_df: pd.DataFrame) -> dict:
+    """Calculate duplicate and multimapping rates from parsed read rows.
+
+    ``rpf_multimapper_rate`` is weighted by collapsed read counts and answers:
+    what fraction of protected fragments are multi-mapping?
+
+    ``alignment_multimapper_rate`` is row-based and answers: what fraction of
+    reported alignment rows belong to fragments with evidence of another
+    reported alignment?
+
+    Note on transcriptome BAMs: "multi-mapping" here means a fragment reported
+    at more than one alignment location. On a transcriptome alignment that
+    includes a read mapping to multiple isoforms of the same gene, so these
+    rates measure alignment/transcript multiplicity, not distinct genomic loci.
+    """
+    count_arr = read_df["count"].astype(int)
+    if "read_name" in read_df.columns:
+        unique_fragment_df = read_df.drop_duplicates("read_name")
+        fragment_count_arr = unique_fragment_df["count"].astype(int)
+        total_weighted = int(fragment_count_arr.sum())
+    else:
+        unique_fragment_df = read_df
+        fragment_count_arr = count_arr
+        total_weighted = int(count_arr.sum())
+    unique_reads = len(read_df)
+    dup_rate = (
+        (1.0 - len(unique_fragment_df) / total_weighted)
+        if total_weighted > 0 else 0.0
+    )
+
+    if "nh" in read_df.columns and read_df["nh"].notna().any():
+        nh_arr = read_df["nh"].astype(float)
+        alignment_multimapper_mask = (nh_arr > 1).astype(int)
+        fragment_multimapper_mask = (
+            read_df.assign(_multi=alignment_multimapper_mask)
+            .drop_duplicates("read_name")["_multi"]
+            if "read_name" in read_df.columns
+            else alignment_multimapper_mask
+        )
+        method = "nh"
+    elif "xa" in read_df.columns and read_df["xa"].notna().any():
+        xa_arr = read_df["xa"].astype(float)
+        alignment_multimapper_mask = (xa_arr > 0).astype(int)
+        fragment_multimapper_mask = (
+            read_df.assign(_multi=alignment_multimapper_mask)
+            .drop_duplicates("read_name")["_multi"]
+            if "read_name" in read_df.columns
+            else alignment_multimapper_mask
+        )
+        method = "star_transcriptome_xa"
+    elif "mapq" in read_df.columns and (
+        "mapq_available" not in read_df.columns
+        or read_df["mapq_available"].astype(bool).any()
+    ):
+        mapq_available = (
+            read_df["mapq_available"].astype(bool)
+            if "mapq_available" in read_df.columns
+            else pd.Series(True, index=read_df.index)
+        )
+        mapq_arr = read_df["mapq"].astype(int)
+        alignment_multimapper_mask = (mapq_arr < 255).astype(int)
+        alignment_multimapper_mask = alignment_multimapper_mask.where(mapq_available, 0)
+        fragment_multimapper_mask = (
+            read_df.assign(_multi=alignment_multimapper_mask)
+            .drop_duplicates("read_name")["_multi"]
+            if "read_name" in read_df.columns
+            else alignment_multimapper_mask
+        )
+        method = (
+            "star_mapq_recovered"
+            if (
+                "mapq_recovered_from_pysam" in read_df.columns
+                and read_df["mapq_recovered_from_pysam"].astype(bool).any()
+            )
+            else "star_mapq"
+        )
+    else:
+        alignment_multimapper_mask = pd.Series(0, index=read_df.index, dtype=int)
+        fragment_multimapper_mask = pd.Series(0, index=unique_fragment_df.index, dtype=int)
+        method = "unavailable"
+
+    rpf_multimapper_rate = (
+        float((fragment_multimapper_mask.to_numpy() * fragment_count_arr.to_numpy()).sum() / total_weighted)
+        if total_weighted > 0 else 0.0
+    )
+    alignment_multimapper_rate = (
+        float(alignment_multimapper_mask.sum() / unique_reads)
+        if unique_reads > 0 else 0.0
+    )
+
+    return {
+        "total_reads_analysed": total_weighted,
+        "unique_read_sequences": len(unique_fragment_df),
+        "reported_alignment_rows": unique_reads,
+        "duplicate_rate": dup_rate,
+        "multimapper_rate": rpf_multimapper_rate,
+        "rpf_multimapper_rate": rpf_multimapper_rate,
+        "unique_rpf_rate": 1.0 - rpf_multimapper_rate,
+        "alignment_multimapper_rate": alignment_multimapper_rate,
+        "multimapper_detection_method": method,
+        "mapq_available_rate": (
+            float(read_df["mapq_available"].astype(bool).mean())
+            if "mapq_available" in read_df.columns and unique_reads > 0 else None
+        ),
+    }
 
 
 def should_calculate_metric(metric_name: str, config: dict) -> bool:
@@ -89,6 +211,118 @@ def should_calculate_metric(metric_name: str, config: dict) -> bool:
     ]
 
     return any(variant in enabled_metrics for variant in metric_variants)
+
+
+def _metagene_report_reads(annotated_read_df: pd.DataFrame, config: dict) -> pd.DataFrame:
+    """Return reads used for report metagene plots and derived metagene ratios."""
+    unique_only = (
+        config.get("argument", {}).get("multimap_filter", "unique_only")
+        == "unique_only"
+    )
+    return filter_unique_mappers(annotated_read_df, enabled=unique_only)
+
+
+def _weighted_read_count(read_df: pd.DataFrame) -> int:
+    if "count" in read_df.columns:
+        return int(read_df["count"].astype(int).sum())
+    return int(len(read_df))
+
+
+def _metagene_window_count(metagene_profile_dict: dict, target: str) -> int:
+    return int(
+        sum(
+            value
+            for read_length_counts in metagene_profile_dict.get(target, {}).values()
+            for value in read_length_counts.values()
+        )
+    )
+
+
+def _metagene_profile_stats(
+    annotated_read_df: pd.DataFrame,
+    metagene_read_df: pd.DataFrame,
+    metagene_profile_dict: dict,
+    config: dict,
+) -> dict:
+    filter_mode = config.get("argument", {}).get("multimap_filter", "unique_only")
+    return {
+        "multimap_filter": filter_mode,
+        "input_reads": _weighted_read_count(annotated_read_df),
+        "profile_reads": _weighted_read_count(metagene_read_df),
+        "start_window_reads": _metagene_window_count(metagene_profile_dict, "start"),
+        "stop_window_reads": _metagene_window_count(metagene_profile_dict, "stop"),
+    }
+
+
+def _frame_calibrated_offsets(
+    annotated_read_df: pd.DataFrame,
+    offsets: Dict[int, int],
+    config: dict,
+    offset_bounds: Tuple[int, int],
+    max_read_length_fraction: Optional[float],
+) -> Tuple[Dict[int, int], Dict[str, dict]]:
+    """Nudge confident non-zero dominant frames back to frame 0."""
+    frame_cfg = config.get("qc", {}).get("read_frame_distribution", {})
+    min_reads = int(frame_cfg.get("offset_frame_correction_min_reads", 50))
+    min_fraction = float(frame_cfg.get("offset_frame_correction_min_fraction", 0.6))
+    exclusion_length = int(frame_cfg.get("exclude_codons", 9))
+    unique_only = (
+        config.get("argument", {}).get("multimap_filter", "unique_only")
+        == "unique_only"
+    )
+    default_offset = _default_offset_for_target(config)
+
+    frame_dist = read_frame_distribution_annotated(
+        annotated_read_df,
+        exclusion_length=exclusion_length,
+        unique_only=unique_only,
+    )
+    calibrated = {int(k): int(v) for k, v in offsets.items()}
+    adjustments: Dict[str, dict] = {}
+
+    for read_length, frames in frame_dist.items():
+        rl = int(read_length)
+        if rl not in calibrated:
+            continue
+        frame_counts = {int(k): int(v) for k, v in frames.items()}
+        total = sum(frame_counts.values())
+        if total < min_reads:
+            continue
+        dominant_frame = max(frame_counts, key=frame_counts.get)
+        dominant_count = frame_counts[dominant_frame]
+        dominant_fraction = dominant_count / total if total else 0
+        if dominant_frame == 0 or dominant_fraction < min_fraction:
+            continue
+
+        # A-site frame changes one-for-one with offset. Prefer the smallest
+        # correction that maps the observed dominant frame back to frame 0.
+        shift = -1 if dominant_frame == 1 else 1
+        old_offset = calibrated[rl]
+        new_offset = sanitise_offset(
+            rl,
+            old_offset + shift,
+            default_offset=default_offset,
+            offset_bounds=offset_bounds,
+            max_read_length_fraction=max_read_length_fraction,
+        )
+        # Only apply the nudge if it lands exactly on ``old_offset + shift``.
+        # When ``old_offset + shift`` is out of bounds ``sanitise_offset`` falls
+        # back to the (clamped) default, which is not a single-frame step and
+        # could move the dominant frame onto the *other* non-zero frame. In that
+        # case leave the offset untouched rather than guess.
+        if new_offset != old_offset + shift:
+            continue
+
+        calibrated[rl] = new_offset
+        adjustments[str(rl)] = {
+            "old_offset": old_offset,
+            "new_offset": new_offset,
+            "dominant_frame": dominant_frame,
+            "dominant_fraction": round(dominant_fraction, 4),
+            "reads": total,
+        }
+
+    return calibrated, adjustments
 
 
 def annotation_mode(
@@ -129,6 +363,8 @@ def annotation_mode(
         if max_read_length_fraction is None
         else float(max_read_length_fraction)
     )
+    offset_target = config.get("argument", {}).get("offset_target", "a_site")
+    default_offset = _default_offset_for_target(config)
     if ("offset_read_length" in config["argument"]):
         print("Applying specified read length specific offsets")
         read_df = a_site_calculation(read_df,
@@ -158,6 +394,7 @@ def annotation_mode(
                                      )
 
     computed_offsets = {}
+    offset_frame_adjustments: Dict[str, dict] = {}
     if len(annotation_df) > 0:
         annotation = True
         print("Merging annotation and reads")
@@ -186,21 +423,41 @@ def annotation_mode(
             offsets = asite_calculation_per_readlength(
                 annotated_read_df,
                 method=config["argument"]["offset_calculation_method"],
-                default_offset=config["argument"].get("global_offset", 15),
+                default_offset=default_offset,
                 offset_bounds=offset_bounds,
                 max_read_length_fraction=max_read_length_fraction,
                 min_prominence=min_prom,
                 unique_only=unique_only,
+                offset_target=offset_target,
             )
             computed_offsets = offsets
             annotated_read_df = a_site_calculation_variable_offset(
                 annotated_read_df,
                 offsets,
-                default_offset=config["argument"].get("global_offset", 15),
+                default_offset=default_offset,
                 offset_bounds=offset_bounds,
                 max_read_length_fraction=max_read_length_fraction,
                 validate_offsets=True,
                 )
+            annotated_read_df = assign_mRNA_category(annotated_read_df)
+            calibrated_offsets, offset_frame_adjustments = _frame_calibrated_offsets(
+                annotated_read_df,
+                offsets,
+                config,
+                offset_bounds,
+                max_read_length_fraction,
+            )
+            if offset_frame_adjustments:
+                computed_offsets = calibrated_offsets
+                annotated_read_df = a_site_calculation_variable_offset(
+                    annotated_read_df,
+                    calibrated_offsets,
+                    default_offset=default_offset,
+                    offset_bounds=offset_bounds,
+                    max_read_length_fraction=max_read_length_fraction,
+                    validate_offsets=True,
+                )
+                annotated_read_df = assign_mRNA_category(annotated_read_df)
         else:
             annotated_read_df = chunked_annotate_reads(read_df, annotation_df)
             annotated_read_df = assign_mRNA_category(annotated_read_df)
@@ -231,44 +488,43 @@ def annotation_mode(
         results_dict["computed_offsets"] = {
             str(k): v for k, v in computed_offsets.items()
         }
+        results_dict["computed_offset_target"] = offset_target
+    if offset_frame_adjustments:
+        results_dict["offset_frame_adjustments"] = offset_frame_adjustments
 
     #######################################################################
     # ALIGNMENT STATS  (from read_df columns computed during BAM parsing)
     #######################################################################
-    _count_arr = read_df["count"].astype(int)
-    _total_weighted = int(_count_arr.sum())
-    _unique_reads = len(read_df)
-    _dup_rate = (
-        (1.0 - _unique_reads / _total_weighted) if _total_weighted > 0 else 0.0
-    )
-
-    _mapq_arr = read_df["mapq"].astype(int)
-    _multimap_mask = (_mapq_arr < 255).astype(int)
-    _multimapper_rate = (
-        float((_multimap_mask * _count_arr).sum() / _total_weighted)
-        if _total_weighted > 0 else 0.0
-    )
-
+    alignment_stats = calculate_alignment_stats(read_df)
     results_dict["alignment_stats"] = {
-        "total_reads_analysed": _total_weighted,
-        "unique_read_sequences": _unique_reads,
-        "duplicate_rate": round(_dup_rate, 4),
-        "multimapper_rate": round(_multimapper_rate, 4),
+        key: (round(value, 4) if isinstance(value, float) else value)
+        for key, value in alignment_stats.items()
     }
-    results_dict["metrics"]["duplicate_rate"] = _dup_rate
-    results_dict["metrics"]["multimapper_rate"] = _multimapper_rate
+    for metric_name in (
+        "duplicate_rate",
+        "multimapper_rate",
+        "rpf_multimapper_rate",
+        "unique_rpf_rate",
+        "alignment_multimapper_rate",
+    ):
+        results_dict["metrics"][metric_name] = alignment_stats[metric_name]
 
     # duplicate_rate is derived from per-read `count` weights, which are only
     # >1 when read names carry a collapse suffix (e.g. ``..._x12``). For
     # un-collapsed BAMs every count is 1, so the rate is necessarily 0 and not
     # informative — flag that explicitly rather than reporting a misleading 0.
-    if _total_weighted == _unique_reads:
+    if (
+        alignment_stats["total_reads_analysed"]
+        == alignment_stats["unique_read_sequences"]
+    ):
         print(
             "Note: reads are not collapsed (no '_xN' suffix); duplicate_rate "
             "is reported as 0 and should be treated as not applicable."
         )
 
     if "soft_clip_5" in read_df.columns:
+        _count_arr = read_df["count"].astype(int)
+        _total_weighted = alignment_stats["total_reads_analysed"]
         _sc5 = read_df["soft_clip_5"].astype(int)
         _sc5_mask = (_sc5 > 0).astype(int)
         _sc5_rate = (
@@ -531,10 +787,17 @@ def annotation_mode(
                 )
 
             print("> metagene_profile")
+            metagene_read_df = _metagene_report_reads(annotated_read_df, config)
             results_dict["metagene_profile"] = metagene_profile(
-                annotated_read_df,
+                metagene_read_df,
                 config["plots"]["metagene_profile"]["distance_target"],
                 config["plots"]["metagene_profile"]["distance_range"],
+            )
+            results_dict["metagene_profile_stats"] = _metagene_profile_stats(
+                annotated_read_df,
+                metagene_read_df,
+                results_dict["metagene_profile"],
+                config,
             )
 
             ###############################################################

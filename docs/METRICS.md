@@ -33,7 +33,10 @@ These metrics are calculated by default and represent the standard quality check
 
 ### Alignment Quality
 - `duplicate_rate` - Fraction of reads that are PCR/library duplicates (from collapsed count column)
-- `multimapper_rate` - Fraction of reads with MAPQ < 255 (multiple genomic loci)
+- `multimapper_rate` - Backwards-compatible alias for `rpf_multimapper_rate`
+- `rpf_multimapper_rate` - Fraction of weighted ribosome protected fragments reported at more than one alignment location; uses `NH:i:N` when present, then XA, and falls back to STAR-style `MAPQ < 255`. On a **transcriptome** BAM this counts alignment/transcript multiplicity (a read mapping to multiple isoforms of one gene), not distinct genomic loci — interpret accordingly.
+- `unique_rpf_rate` - Fraction of weighted ribosome protected fragments that are uniquely mapped
+- `alignment_multimapper_rate` - Fraction of reported alignment rows whose read/fragment has evidence of another reported alignment (same caveat: transcript multiplicity on a transcriptome BAM)
 - `soft_clip_rate_5prime` - Fraction of reads with 5′ soft-clipping (adapter/trimming artefact indicator)
 
 ### Di-some Detection

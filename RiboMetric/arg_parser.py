@@ -119,9 +119,21 @@ def argument_parser() -> argparse.ArgumentParser:
         type=str,
         required=False,
         default=None,  # None so config.yml controls the default
+        choices=["changepoint", "ribowaltz", "tripsviz"],
         help=(
             "Method to calculate offsets. If omitted, the value in the active "
-            "config.yml is used. Options: changepoint, ribowaltz"
+            "config.yml is used."
+        ),
+    )
+    run_parser.add_argument(
+        "--offset-target",
+        type=str,
+        required=False,
+        default=None,
+        choices=["a_site", "p_site"],
+        help=(
+            "Site represented by calculated offsets. Automatic methods infer "
+            "a P-site peak and convert to this target. Default: config.yml."
         ),
     )
     run_parser.add_argument(

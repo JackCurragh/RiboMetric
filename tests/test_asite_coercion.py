@@ -78,6 +78,61 @@ def test_tripsviz_offset_calculation_falls_back_for_extreme_offsets():
     assert offsets[32] == 15
 
 
+def test_automatic_offset_methods_share_a_site_target():
+    df = pd.DataFrame({
+        'read_name': [f'r{i}' for i in range(12)],
+        'reference_start': [-11] * 10 + [-13, -10],
+        'read_length': [30] * 12,
+        'cds_start': [0] * 12,
+        'cds_end': [300] * 12,
+        'mapq': [255] * 12,
+        'count': [1] * 12,
+    })
+
+    offsets = {
+        method: asite_calculation_per_readlength(
+            df,
+            method=method,
+            offset_target='a_site',
+        )[30]
+        for method in ['ribowaltz', 'changepoint', 'tripsviz']
+    }
+
+    assert offsets == {
+        'ribowaltz': 14,
+        'changepoint': 14,
+        'tripsviz': 14,
+    }
+
+
+def test_automatic_offset_methods_share_p_site_target():
+    df = pd.DataFrame({
+        'read_name': [f'r{i}' for i in range(12)],
+        'reference_start': [-11] * 10 + [-13, -10],
+        'read_length': [30] * 12,
+        'cds_start': [0] * 12,
+        'cds_end': [300] * 12,
+        'mapq': [255] * 12,
+        'count': [1] * 12,
+    })
+
+    offsets = {
+        method: asite_calculation_per_readlength(
+            df,
+            method=method,
+            offset_target='p_site',
+            default_offset=12,
+        )[30]
+        for method in ['ribowaltz', 'changepoint', 'tripsviz']
+    }
+
+    assert offsets == {
+        'ribowaltz': 11,
+        'changepoint': 11,
+        'tripsviz': 11,
+    }
+
+
 def test_asite_calculate_uses_variable_offset():
     # Just ensure it runs and produces numeric a_site
     df = make_df([10, 20, 30])

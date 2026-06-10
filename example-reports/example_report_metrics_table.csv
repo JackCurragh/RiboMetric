@@ -1,0 +1,240 @@
+sample,metric,read_length_or_region,value,description
+example_report,duplicate_rate,global,0.4766797725711446,
+example_report,multimapper_rate,global,0.0,
+example_report,rpf_multimapper_rate,global,0.0,
+example_report,unique_rpf_rate,global,1.0,
+example_report,alignment_multimapper_rate,global,0.0,
+example_report,soft_clip_rate_5prime,global,0.0,
+example_report,read_length_distribution_IQR_metric,global,0.4,Normalized IQR of read length distribution
+example_report,read_length_distribution_coefficient_of_variation_metric,global,0.9284711039130905,
+example_report,read_length_distribution_maxprop_metric,global,0.21142838836444405,
+example_report,read_length_distribution_bimodality_metric,global,0.9553431526923493,
+example_report,disome_proportion,global,0.0023,
+example_report,terminal_nucleotide_bias_distribution_5_prime_metric,global,0.9553150929368165,Normalized 5' terminal bias score from KL divergence
+example_report,terminal_nucleotide_bias_distribution_3_prime_metric,global,0.8919822192910314,Normalized 3' terminal bias score from KL divergence
+example_report,terminal_nucleotide_bias_max_absolute_metric_5_prime_metric,global,0.9564039855187138,
+example_report,terminal_nucleotide_bias_max_absolute_metric_3_prime_metric,global,0.9388904099003956,
+example_report,terminal_bias_kl_5prime,global,0.9553150929368165,Normalized 5' terminal bias score from KL divergence
+example_report,terminal_bias_kl_3prime,global,0.8919822192910314,Normalized 3' terminal bias score from KL divergence
+example_report,terminal_bias_kl_5prime_score,global,0.9553150929368165,Normalized 5' terminal bias score from KL divergence
+example_report,terminal_bias_kl_3prime_score,global,0.8919822192910314,Normalized 3' terminal bias score from KL divergence
+example_report,terminal_bias_kl_5prime_raw,global,0.0467750456300379,Raw 5' terminal KL divergence in bits
+example_report,terminal_bias_kl_3prime_raw,global,0.12109858063630875,Raw 3' terminal KL divergence in bits
+example_report,terminal_bias_maxabs_5prime,global,0.9564039855187138,
+example_report,terminal_bias_maxabs_3prime,global,0.9388904099003956,
+example_report,periodicity_information,28,0.08442164552083264,
+example_report,periodicity_information,29,0.12456909097907021,
+example_report,periodicity_information,30,0.04190411209919559,
+example_report,periodicity_information,31,0.12484332413048131,
+example_report,periodicity_information,32,0.1898454879551866,
+example_report,periodicity_information,33,0.22256689395838983,
+example_report,periodicity_information,global,0.12191152727330887,
+example_report,periodicity_information_weighted_score,global,0.1304523272255058,
+example_report,stop_codon_readthrough_ratio,global,1.0,
+example_report,start_codon_enrichment_ratio,global,2.3392,
+example_report,uniformity_entropy,15,0.18512616451558875,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,16,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,17,0.26158700359028414,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,18,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,19,0.2791235189093201,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,20,0.2933670084642842,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,21,0.18790182470910757,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,22,0.16218192977763235,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,23,0.2539763955946495,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,24,0.424255274298259,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,25,0.4693933292754329,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,26,0.6394145165549586,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,27,0.8334320590000611,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,28,0.8930714411244697,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,29,0.9134069686218736,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,30,0.9127944179063954,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,31,0.9129779932762531,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,32,0.911205988229306,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,33,0.9050038629268106,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,34,0.8420014584842425,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,35,0.5929503379162725,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,36,0.2722351016198479,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,51,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,37,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,38,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,39,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,40,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,41,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,42,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,43,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,44,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,45,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,46,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,47,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,48,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,49,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,50,0.0,Shannon entropy of codon-binned start-codon metagene window
+example_report,uniformity_entropy,global,0.9173325310965127,Shannon entropy of codon-binned start-codon metagene window
+example_report,CDS_coverage_metric,global,0.003105437199915876,Proportion of CDS covered by reads
+example_report,cds_coverage,global,0.003105437199915876,
+example_report,CDS_coverage_metric_not_inframe_1read_1000tx,global,0.0007626970981920056,
+example_report,cds_coverage_not_inframe_1read_1000tx,global,0.0007626970981920056,
+example_report,CDS_coverage_metric_not_inframe_100read_100tx,global,1.3423432739653019e-05,
+example_report,cds_coverage_not_inframe_100read_100tx,global,1.3423432739653019e-05,
+example_report,CDS_coverage_metric_inframe_1read_1000tx,global,0.0008110706271398422,
+example_report,cds_coverage_inframe_1read_1000tx,global,0.0008110706271398422,
+example_report,CDS_coverage_metric_inframe_100read_100tx,global,1.7898773486546833e-05,
+example_report,cds_coverage_inframe_100read_100tx,global,1.7898773486546833e-05,
+example_report,ratio_cds:leader,20,0.9666666666666667,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,21,0.5348837209302325,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,22,2.8461538461538463,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,23,1.1142857142857143,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,24,1.5185185185185186,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,25,1.2419354838709677,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,26,1.2106598984771573,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,27,1.2579762989972654,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,28,1.5083185840707964,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,29,1.3960720130932898,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,30,1.4016356201726488,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,31,1.3228833204547963,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,32,1.3021134916039374,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,33,1.1849166062364032,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,34,1.209077380952381,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,35,1.5782312925170068,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,36,1.6153846153846154,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,37,3.0,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:leader,global,1.340698452130709,Ratio of CDS to 5'UTR reads
+example_report,ratio_cds:trailer,20,29.0,
+example_report,ratio_cds:trailer,21,23.0,
+example_report,ratio_cds:trailer,22,37.0,
+example_report,ratio_cds:trailer,23,39.0,
+example_report,ratio_cds:trailer,24,123.0,
+example_report,ratio_cds:trailer,25,0.0,
+example_report,ratio_cds:trailer,26,119.25,
+example_report,ratio_cds:trailer,27,65.71428571428571,
+example_report,ratio_cds:trailer,28,77.47272727272727,
+example_report,ratio_cds:trailer,29,91.09708737864078,
+example_report,ratio_cds:trailer,30,94.19847328244275,
+example_report,ratio_cds:trailer,31,94.36220472440945,
+example_report,ratio_cds:trailer,32,95.69148936170212,
+example_report,ratio_cds:trailer,33,84.51724137931035,
+example_report,ratio_cds:trailer,34,90.27777777777777,
+example_report,ratio_cds:trailer,35,77.33333333333333,
+example_report,ratio_cds:trailer,36,63.0,
+example_report,ratio_cds:trailer,37,0.0,
+example_report,ratio_cds:trailer,global,90.52741935483871,
+example_report,ratio_leader:trailer,20,30.0,
+example_report,ratio_leader:trailer,21,43.0,
+example_report,ratio_leader:trailer,22,13.0,
+example_report,ratio_leader:trailer,23,35.0,
+example_report,ratio_leader:trailer,24,81.0,
+example_report,ratio_leader:trailer,25,0.0,
+example_report,ratio_leader:trailer,26,98.5,
+example_report,ratio_leader:trailer,27,52.23809523809524,
+example_report,ratio_leader:trailer,28,51.36363636363637,
+example_report,ratio_leader:trailer,29,65.25242718446601,
+example_report,ratio_leader:trailer,30,67.20610687022901,
+example_report,ratio_leader:trailer,31,71.33070866141732,
+example_report,ratio_leader:trailer,32,73.48936170212765,
+example_report,ratio_leader:trailer,33,71.32758620689656,
+example_report,ratio_leader:trailer,34,74.66666666666667,
+example_report,ratio_leader:trailer,35,49.0,
+example_report,ratio_leader:trailer,36,39.0,
+example_report,ratio_leader:trailer,37,0.0,
+example_report,ratio_leader:trailer,global,67.52258064516128,
+example_report,prop_reads_CDS,global,0.5684655658477648,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,15,0.5342465753424658,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,16,0.5581395348837209,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,17,0.6363636363636364,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,18,0.456,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,19,0.4153846153846154,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,20,0.48333333333333334,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,21,0.34328358208955223,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,22,0.7254901960784313,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,23,0.52,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,24,0.6,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,25,0.5539568345323741,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,26,0.5445205479452054,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,27,0.5513383939272872,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,28,0.5962776378393507,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,29,0.5784476912644103,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,30,0.5797782371734637,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,31,0.5657099697885196,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,32,0.5622226389149322,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,33,0.5382081686429513,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,34,0.5420280186791194,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,35,0.6073298429319371,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,36,0.6116504854368932,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,37,0.75,Proportion of reads mapping to CDS
+example_report,prop_reads_CDS,51,0.41304347826086957,Proportion of reads mapping to CDS
+example_report,prop_reads_leader,global,0.4245569875151027,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,15,0.4657534246575342,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,16,0.4418604651162791,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,17,0.35909090909090907,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,18,0.544,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,19,0.5846153846153846,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,20,0.5,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,21,0.6417910447761194,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,22,0.2549019607843137,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,23,0.4666666666666667,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,24,0.3951219512195122,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,25,0.4460431654676259,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,26,0.4497716894977169,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,27,0.4382740711146624,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,28,0.39532605653512454,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,29,0.41433943653288946,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,30,0.41364405186994924,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,31,0.42763406344410876,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,32,0.43177698606162884,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,33,0.4542160737812912,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,34,0.4482988659106071,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,35,0.38481675392670156,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,36,0.3786407766990291,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,37,0.25,Proportion of reads mapping to 5' leader
+example_report,prop_reads_leader,51,0.5869565217391305,Proportion of reads mapping to 5' leader
+example_report,prop_reads_trailer,global,0.0062525171163914615,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,15,0.0,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,16,0.0,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,17,0.004545454545454545,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,18,0.0,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,19,0.0,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,20,0.016666666666666666,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,21,0.014925373134328358,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,22,0.0196078431372549,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,23,0.013333333333333334,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,24,0.004878048780487805,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,25,0.0,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,26,0.0045662100456621,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,27,0.008389932081502197,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,28,0.007696613490064372,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,29,0.006349793477590777,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,30,0.006154858109377936,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,31,0.005995090634441088,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,32,0.005875367210450653,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,33,0.006368028107158542,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,34,0.00600400266844563,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,35,0.007853403141361256,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,36,0.009708737864077669,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,37,0.0,Proportion of reads mapping to 3' trailer
+example_report,prop_reads_trailer,51,0.0,Proportion of reads mapping to 3' trailer
+example_report,periodicity_dominance,20,0.5,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,21,1.0,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,23,0.4,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,24,0.4,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,25,0.4375,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,26,0.48936170212765956,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,27,0.5,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,28,0.37065637065637064,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,29,0.4092797783933518,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,30,0.35232903865213083,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,31,0.3982392542723977,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,32,0.4465366509751177,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,33,0.47639484978540775,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,34,0.5441176470588235,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,35,0.42424242424242425,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,36,0.4,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,global,0.36604434072345393,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,periodicity_dominance,global_by_read_length_max,0.40851808634772463,Proportion of reads in dominant reading frame; global uses one shared dominant frame
+example_report,n_recommended_read_lengths,global,0.0,
+example_report,recommended_read_proportion,global,0.0,
+example_report,five_prime_ramp_ratio,global,46.5667,
+example_report,three_prime_drop_ratio,global,0.0728,
+example_report,marginal_position_discovery_rate,global,0.9844,
+example_report,complexity_distinct_positions,global,98488.0,
+example_report,floss_median,global,0.2077,
+example_report,floss_aberrant_transcript_fraction,global,0.1081,

@@ -29,6 +29,39 @@ def test_process_reads_accepts_query_name_alias():
 
     assert reads["read_name"].iloc[0] == "read1_x3"
     assert reads["count"].iloc[0] == 3
+    assert bool(reads["mapq_available"].iloc[0]) is True
+
+
+def test_process_reads_does_not_treat_missing_mapq_as_unique():
+    oxbow_df = pd.DataFrame({
+        "qname": ["read1"],
+        "seq": ["ACGT"],
+        "cigar": ["4M"],
+        "rname": ["tx1"],
+        "pos": [10],
+        "mapq": [pd.NA],
+    })
+
+    reads = process_reads(oxbow_df)
+
+    assert reads["mapq"].iloc[0] == 0
+    assert bool(reads["mapq_available"].iloc[0]) is False
+
+
+def test_process_reads_extracts_nh_tag_from_optional_fields():
+    oxbow_df = pd.DataFrame({
+        "qname": ["read1"],
+        "seq": ["ACGT"],
+        "cigar": ["4M"],
+        "rname": ["tx1"],
+        "pos": [10],
+        "mapq": [3],
+        "tags": ["AS:i:0\tNH:i:4"],
+    })
+
+    reads = process_reads(oxbow_df)
+
+    assert reads["nh"].iloc[0] == 4
 
 
 def test_process_reads_empty_schema_returns_typed_empty_batch():

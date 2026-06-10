@@ -17,6 +17,18 @@ from typing import List, Dict, Tuple, Optional, cast
 
 DEFAULT_OFFSET_BOUNDS: Tuple[int, int] = (8, 20)
 DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION = 2 / 3
+OFFSET_TARGET_SHIFTS: Dict[str, int] = {"p_site": 0, "a_site": 3}
+
+
+def offset_shift_for_target(offset_target: str) -> int:
+    """Return the nt shift from a P-site offset to the requested target."""
+    try:
+        return OFFSET_TARGET_SHIFTS[str(offset_target)]
+    except KeyError as exc:
+        raise ValueError(
+            "offset_target must be one of: "
+            f"{', '.join(sorted(OFFSET_TARGET_SHIFTS))}"
+        ) from exc
 
 
 def _get_weights(df: pd.DataFrame) -> Optional[pd.Series]:
@@ -33,19 +45,180 @@ def _get_weights(df: pd.DataFrame) -> Optional[pd.Series]:
 
 
 def filter_unique_mappers(df: pd.DataFrame, enabled: bool = True) -> pd.DataFrame:
-    """Return only uniquely-mapped reads (MAPQ=255) when the column is present.
+    """Return only uniquely-mapped reads when reliable metadata is present.
 
-    In STAR output MAPQ=255 means the read maps to exactly one genomic locus.
-    Isoform-level duplicates (same locus, multiple transcripts) are already
-    collapsed to a single primary alignment by the -F 256 filter applied during
-    BAM splitting, so MAPQ=255 rows are free of both kinds of multimapping noise.
-    Falls back to the full DataFrame when mapq is absent (e.g. genome BAMs or
-    aligners that do not use the 255 convention), or when enabled=False.
+    Prefer the SAM NH tag when available (NH=1), because it is aligner-neutral.
+    For STAR transcriptome BAMs the historical frame-sensitive behaviour was
+    MAPQ=255, which means exactly one genomic locus even if multiple transcript
+    rows are reported for that fragment. Keep that path for offset and
+    periodicity calculations so transcript-level alternate-hit metadata does
+    not discard reads that still belong to one genomic locus.
+
+    XA/NH can still be used elsewhere for multimapper reporting, but this
+    filter intentionally preserves the STAR MAPQ convention for frame-sensitive
+    analyses.
     """
-    if not enabled or "mapq" not in df.columns:
+    if not enabled:
         return df
-    unique = df[df["mapq"] == 255]
-    return unique if not unique.empty else df
+
+    if "nh" in df.columns and df["nh"].notna().any():
+        return df[df["nh"].astype(float) == 1]
+
+    if "mapq" not in df.columns:
+        return df.iloc[0:0].copy()
+    mapq_available = (
+        df["mapq_available"].astype(bool)
+        if "mapq_available" in df.columns
+        else pd.Series(True, index=df.index)
+    )
+    return df[mapq_available & (df["mapq"] == 255)]
+
+
+def filter_unique_mappers_strict(df: pd.DataFrame, enabled: bool = True) -> pd.DataFrame:
+    """Return a conservative unique-mapper set for frame-sensitive analyses.
+
+    MAPQ/NH remains the primary uniqueness signal. If a BAM still contains
+    multiple primary rows with the same read name after that filter, exclude
+    those names from offset and periodicity calculations rather than allowing
+    ambiguous loci to drive frame-sensitive metrics.
+    """
+    unique_df = filter_unique_mappers(df, enabled=enabled)
+    if not enabled or "read_name" not in unique_df.columns:
+        return unique_df
+    return unique_df[~unique_df["read_name"].duplicated(keep=False)]
+
+
+def _reference_metadata(reference_names: pd.Series) -> pd.DataFrame:
+    """Parse transcriptome reference metadata from STAR transcript IDs."""
+    ref_str = reference_names.astype(str)
+    parts = ref_str.str.split("|")
+    meta = pd.DataFrame(index=reference_names.index)
+    meta["transcript_id"] = parts.str[0]
+    meta["gene_id"] = parts.str[1].where(parts.str.len() > 1, parts.str[0])
+    meta["transcript_name"] = parts.str[4].where(parts.str.len() > 4, parts.str[0])
+    meta["gene_name"] = parts.str[5].where(parts.str.len() > 5, meta["gene_id"])
+    return meta
+
+
+def representative_transcripts_for_offset_metagene(
+        annotated_read_df: pd.DataFrame,
+        ) -> pd.DataFrame:
+    """Keep one representative transcript per gene and read length.
+
+    Representative transcripts are chosen from strict unique fragments using the
+    transcript with the highest weighted support for each ``gene_id`` and
+    ``read_length`` pair. This avoids multi-isoform genes contributing several
+    transcript-level start profiles to the offset metagene.
+    """
+    if annotated_read_df.empty:
+        return annotated_read_df
+    if "gene_id" not in annotated_read_df.columns or "transcript_id" not in annotated_read_df.columns:
+        return annotated_read_df
+
+    weights = (
+        annotated_read_df["count"].astype(int)
+        if "count" in annotated_read_df.columns
+        else pd.Series(1, index=annotated_read_df.index, dtype=int)
+    )
+    support = (
+        annotated_read_df.assign(_w=weights)
+        .groupby(["gene_id", "read_length", "transcript_id"], observed=True)["_w"]
+        .sum()
+        .reset_index()
+        .sort_values(
+            ["gene_id", "read_length", "_w", "transcript_id"],
+            ascending=[True, True, False, True],
+        )
+        .drop_duplicates(["gene_id", "read_length"], keep="first")
+    )
+    chosen = set(
+        zip(
+            support["gene_id"].astype(str),
+            support["read_length"].astype(str),
+            support["transcript_id"].astype(str),
+        )
+    )
+    keys = list(
+        zip(
+            annotated_read_df["gene_id"].astype(str),
+            annotated_read_df["read_length"].astype(str),
+            annotated_read_df["transcript_id"].astype(str),
+        )
+    )
+    mask = pd.Series([key in chosen for key in keys], index=annotated_read_df.index)
+    return annotated_read_df[mask]
+
+
+def unique_fragments_single_gene_for_offset_metagene(
+        annotated_read_df: pd.DataFrame,
+        ) -> pd.DataFrame:
+    """Keep fragments whose unique-mapper rows resolve to exactly one gene.
+
+    STAR transcriptome BAMs can emit several transcript rows for one fragment.
+    For offset calling, keep fragments only when all surviving unique-mapper
+    rows agree on one ``gene_id``. Ambiguous cross-gene fragments are excluded.
+    """
+    if annotated_read_df.empty:
+        return annotated_read_df
+    if "read_name" not in annotated_read_df.columns or "gene_id" not in annotated_read_df.columns:
+        return annotated_read_df
+
+    gene_counts = (
+        annotated_read_df.groupby("read_name", observed=True)["gene_id"]
+        .nunique(dropna=True)
+    )
+    keep_names = gene_counts[gene_counts == 1].index
+    return annotated_read_df[annotated_read_df["read_name"].isin(keep_names)]
+
+
+def frame_safe_unique_fragments(
+        annotated_read_df: pd.DataFrame,
+        ) -> pd.DataFrame:
+    """Collapse annotated reads to frame-safe fragments for periodicity.
+
+    Transcriptome BAMs can produce multiple annotated rows per fragment. For
+    frame-sensitive metrics, keep a fragment only when all surviving rows agree
+    on one gene, one transcript, and one CDS frame. This is the conservative
+    correctness-first path: transcript-ambiguous fragments are excluded even if
+    the alternate transcript rows happen to imply the same frame.
+    """
+    if annotated_read_df.empty:
+        return annotated_read_df
+    required = {"read_name", "gene_id", "transcript_id", "read_frame"}
+    if required - set(annotated_read_df.columns):
+        return annotated_read_df
+
+    group_cols = ["read_name"]
+    if "read_length" in annotated_read_df.columns:
+        group_cols.append("read_length")
+
+    # Vectorised equivalent of "keep groups that agree on one gene, one
+    # transcript and one frame, then collapse to a single row (count = max)".
+    # A per-group Python loop here is O(n_fragments) with a DataFrame slice and
+    # concat per group, which dominates runtime on deep libraries.
+    grouped = annotated_read_df.groupby(group_cols, observed=True, sort=False)
+    single_valued = (
+        (grouped["gene_id"].transform("nunique") == 1)
+        & (grouped["transcript_id"].transform("nunique") == 1)
+        & (grouped["read_frame"].transform("nunique") == 1)
+    )
+    base = annotated_read_df[single_valued]
+    if base.empty:
+        return annotated_read_df.iloc[0:0].copy()
+
+    if "count" in base.columns:
+        # ``count`` arrives as a (non-ordered) categorical from BAM parsing;
+        # pandas cannot aggregate ``max`` over an unordered Categorical, so cast
+        # to int *before* the grouped reduction rather than after.
+        max_count = (
+            base.assign(count=base["count"].astype(int))
+            .groupby(group_cols, observed=True, sort=False)["count"]
+            .transform("max")
+            .astype(int)
+        )
+        base = base.assign(count=max_count)
+
+    return base.drop_duplicates(group_cols, keep="first").reset_index(drop=True)
 
 
 def is_valid_offset(
@@ -602,8 +775,9 @@ def read_frame_distribution_annotated(
         (df_slice["a_site"] > df_slice["cds_start"] + exclusion_length) &
         (df_slice["a_site"] < df_slice["cds_end"] - exclusion_length)
     ]
-    weights = _get_weights(df_slice)
     base = df_slice.assign(read_frame=(df_slice.a_site - df_slice.cds_start).mod(3))
+    base = frame_safe_unique_fragments(base)
+    weights = _get_weights(base)
     if weights is not None:
         frame_df = base.assign(_w=weights).groupby(["read_length", "read_frame"], observed=True)["_w"].sum()
     else:
@@ -637,11 +811,17 @@ def annotate_reads(
         with an added column for the a-site location along
         with the columns from the gff file
     """
+    metadata = _reference_metadata(a_site_df.reference_name)
     annotated_read_df = a_site_df.assign(
-        transcript_id=a_site_df.reference_name.str.split("|").str[0]
+        transcript_id=metadata["transcript_id"],
+        gene_id=metadata["gene_id"],
+        transcript_name=metadata["transcript_name"],
+        gene_name=metadata["gene_name"],
     ).merge(annotation_df, on="transcript_id")
-    annotated_read_df["transcript_id"] = (annotated_read_df["transcript_id"]
-                                          .astype("category"))
+    annotated_read_df["transcript_id"] = annotated_read_df["transcript_id"].astype("category")
+    annotated_read_df["gene_id"] = annotated_read_df["gene_id"].astype("category")
+    annotated_read_df["transcript_name"] = annotated_read_df["transcript_name"].astype("category")
+    annotated_read_df["gene_name"] = annotated_read_df["gene_name"].astype("category")
     return annotated_read_df.drop(["reference_name"], axis=1)
 
 
@@ -674,13 +854,20 @@ def chunked_annotate_reads(a_site_df: pd.DataFrame,
         chunk = a_site_df.iloc[start_idx:end_idx]
 
         # Process the chunk
+        metadata = _reference_metadata(chunk.reference_name)
         chunk = chunk.assign(
-            transcript_id=chunk.reference_name.str.split("|").str[0]
+            transcript_id=metadata["transcript_id"],
+            gene_id=metadata["gene_id"],
+            transcript_name=metadata["transcript_name"],
+            gene_name=metadata["gene_name"],
         )
 
         chunk = chunk.drop(["reference_name"], axis=1)
         chunk = chunk.merge(annotation_df, on="transcript_id")
         chunk["transcript_id"] = chunk["transcript_id"].astype("category")
+        chunk["gene_id"] = chunk["gene_id"].astype("category")
+        chunk["transcript_name"] = chunk["transcript_name"].astype("category")
+        chunk["gene_name"] = chunk["gene_name"].astype("category")
 
         # Append the processed chunk to the list
         processed_chunks.append(chunk)
@@ -938,64 +1125,11 @@ def metagene_profile(
     return metagene_profile_dict
 
 
-def proportion_of_kmer(
-    annotated_read_df: pd.DataFrame,
-) -> list:
-    '''
-    get proportion of reads with predicted a-sites in each frame for
-    sequence of length k
-
-    Inputs:
-        annotated_read_df: Dataframe containing the read information
-        with an added column for the a-site location along with data from
-        the annotation file
-
-    '''
-    # Weighted by 'count' if available
-    if 'count' in annotated_read_df.columns:
-        w = annotated_read_df['count'].astype(int)
-        f1 = w[annotated_read_df['a_site'] % 3 == 0].sum()
-        f2 = w[annotated_read_df['a_site'] % 3 == 1].sum()
-        f3 = w[annotated_read_df['a_site'] % 3 == 2].sum()
-        return [int(f1), int(f2), int(f3)]
-    else:
-        f1 = (annotated_read_df['a_site'] % 3 == 0).sum()
-        f2 = (annotated_read_df['a_site'] % 3 == 1).sum()
-        f3 = (annotated_read_df['a_site'] % 3 == 2).sum()
-        return [int(f1), int(f2), int(f3)]
-
-
-from numpy.typing import NDArray
-
-
-from typing import cast as _cast
-
-
-def get_cart_point(
-    ternary_point: List[float],
-    vertices: List[List[float]] = [[0.0, 0.0], [1.0, 0.0], [0.5, 1]],
-) -> NDArray[np.float64]:
-    '''
-    Get the cartesian coordinates of a point in ternary space
-
-    Inputs:
-        ternary_point: Point in ternary space
-        vertices: Vertices of the triangle
-
-    Outputs:
-        cartesian_point: Point in cartesian space
-    '''
-    point = np.array(ternary_point, dtype=float)
-    verts = np.array(vertices, dtype=float)
-    # Ensure a float64 ndarray is returned for stable typing
-    return _cast(NDArray[np.float64], np.dot(point, verts).astype(np.float64))
-
-
 def reading_frame_triangle(
         annotated_read_df: pd.DataFrame,
 ) -> Dict[str, List[int]]:
     '''
-    Get the cartesian coordinates of the triangle plot for the reading frame
+    Get the per-transcript reading-frame counts used by the triangle plot.
 
     Inputs:
         annotated_read_df: Dataframe containing the read information
@@ -1003,20 +1137,37 @@ def reading_frame_triangle(
         the annotation file
 
     Outputs:
-        triangle_dict: Dictionary containing the cartesian coordinates
-        of the triangle plot for the reading frame
+        triangle_dict: Dictionary mapping each transcript_id to its raw
+        per-frame A-site counts ``[frame0, frame1, frame2]``. The conversion
+        to cartesian (ternary) coordinates happens in ``plots.py``.
     '''
-    triangle_dict = {}
-    for transcript, df in annotated_read_df.groupby('transcript_id', observed=True):
-        # Get the proportion of reads with predicted a-sites in each frame
-        proportion = proportion_of_kmer(df)
-        if len(proportion) < 3:
-            continue
+    if annotated_read_df.empty or "transcript_id" not in annotated_read_df.columns:
+        return {}
 
-        # triangle_dict[transcript] = get_cart_point(proportion[0])
-        triangle_dict[transcript] = proportion
+    # Vectorised per-transcript frame counts (a_site % 3), weighted by 'count'
+    # when present. Replaces a per-transcript Python groupby loop that scaled
+    # linearly in the number of transcripts (~hundreds of thousands).
+    frame = (annotated_read_df["a_site"].to_numpy() % 3).astype(int)
+    counts = pd.DataFrame({
+        "transcript_id": annotated_read_df["transcript_id"].to_numpy(),
+        "frame": frame,
+    })
+    if "count" in annotated_read_df.columns:
+        counts["w"] = annotated_read_df["count"].astype(int).to_numpy()
+        grouped = counts.groupby(["transcript_id", "frame"], observed=True)["w"].sum()
+    else:
+        grouped = counts.groupby(["transcript_id", "frame"], observed=True).size()
 
-    return triangle_dict
+    matrix = (
+        grouped.unstack("frame")
+        .reindex(columns=[0, 1, 2], fill_value=0)
+        .fillna(0)
+        .astype(int)
+    )
+    return {
+        tid: [int(row[0]), int(row[1]), int(row[2])]
+        for tid, row in zip(matrix.index, matrix.to_numpy())
+    }
 
 
 def sequence_slice(
@@ -1129,33 +1280,52 @@ def ribowaltz_psite_prediction(
     return psite_offsets
 
 
-def trips_asite_prediction(
+def trips_psite_prediction(
         read_counts: Dict[int, Dict[int, int]],
+        offset_range: Tuple[int, int] = (10, 18),
         ) -> Dict[int, Optional[int]]:
     """
-    Predict A-site offsets for each read length using the Trips-Viz algorithm.
+    Predict P-site offsets for each read length using a Trips-Viz-style peak.
+
+    The input is a 5' read-end metagene around the start codon. To keep all
+    automatic modes on the same target, this returns P-site offsets; callers
+    convert to A-site or P-site according to ``offset_target``.
 
     Args:
         read_counts (dict): Dictionary of read counts per position for each read length.
                             Format: {read_length: {position: count}}
 
     Returns:
-        asite_offsets (dict): Dictionary of A-site offsets for each read length.
+        psite_offsets (dict): Dictionary of P-site offsets for each read length.
                               Format: {read_length: offset}
     """
 
-    asite_offsets: Dict[int, Optional[int]] = {}
+    psite_offsets: Dict[int, Optional[int]] = {}
+    lo, hi = offset_range
+    window_positions = set(range(-hi, -lo + 1))
     for read_length, counts in read_counts.items():
-        # exclude counts within 10 nt of the start codon
-        counts = {pos: count for pos, count in counts.items() if abs(pos) > 10}
+        counts = {
+            int(pos): count
+            for pos, count in counts.items()
+            if int(pos) < 0 and int(pos) in window_positions
+        }
 
         if counts:
             max_pos = max(counts, key=lambda k: counts[k])
+            offset = abs(int(max_pos))
         else:
-            max_pos = None
-        asite_offsets[read_length] = max_pos
+            offset = None
+        psite_offsets[read_length] = offset
 
-    return asite_offsets
+    return psite_offsets
+
+
+def trips_asite_prediction(
+        read_counts: Dict[int, Dict[int, int]],
+        offset_range: Tuple[int, int] = (10, 18),
+        ) -> Dict[int, Optional[int]]:
+    """Compatibility wrapper for the old Trips helper name."""
+    return trips_psite_prediction(read_counts, offset_range=offset_range)
 
 
 def asite_calculation_per_readlength(
@@ -1167,6 +1337,7 @@ def asite_calculation_per_readlength(
         max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
         min_prominence: Optional[float] = None,
         unique_only: bool = True,
+        offset_target: str = "a_site",
         ) -> Dict[int, int]:
     """
     Calculate offset values per read length for the A-site
@@ -1183,10 +1354,16 @@ def asite_calculation_per_readlength(
                     each read length
     """
     offset_dict: Dict[int, int] = {}
-    print(f"Running A-site calculation per read length with {method} method")
-    # Use only uniquely-mapped reads (MAPQ=255) to build the start-codon metagene.
-    # Genomic multimappers dilute the pile-up and produce noisy or incorrect offsets.
+    print(
+        "Running offset calculation per read length "
+        f"with {method} method targeting {offset_target}"
+    )
+    target_shift = offset_shift_for_target(offset_target)
+    # Build the offset-calling metagene from fragment-level unique reads that
+    # resolve to one gene, then choose one representative transcript per gene.
     unique_df = filter_unique_mappers(annotated_read_df, enabled=unique_only)
+    unique_df = unique_fragments_single_gene_for_offset_metagene(unique_df)
+    unique_df = representative_transcripts_for_offset_metagene(unique_df)
     for read_length in unique_df["read_length"].unique():
         # Build metagene using the 5' end of reads (reference_start) rather than
         # the preliminary a_site.  For typical A-site offsets of 12–18 nt the
@@ -1214,28 +1391,27 @@ def asite_calculation_per_readlength(
 
         if method == "changepoint":
             # Find the position with the highest read count in the upstream
-            # region of the 5'-end metagene.  The pile-up from ribosomes
-            # stalled at the start codon appears at position -(P_site_offset)
-            # (negative = upstream).  Adding 3 converts P-site → A-site offset.
-            # This is equivalent to the ribowaltz peak-detection step but
-            # applied independently per read length (no consensus fallback).
+            # region of the 5'-end metagene. The pile-up from ribosomes
+            # stalled at the start codon appears at position -(P-site offset)
+            # (negative = upstream). The caller-selected target controls
+            # whether that P-site offset is used directly or shifted to A-site.
             counts = read_length_metagene["start"][read_length]
             # Search positions corresponding to P-site offsets in offset_range
             candidate_positions = {
                 pos: counts.get(pos, 0)
-                for pos in range(-offset_range[1] + 1, -offset_range[0] + 1)
+                for pos in range(-offset_range[1], -offset_range[0] + 1)
             }
             peak_count = max(candidate_positions.values(), default=0)
             if peak_count == 0:
                 offset = default_offset
             else:
                 peak_pos = max(candidate_positions, key=lambda k: candidate_positions[k])
-                # Ensure type of offset is int
-                offset = int(abs(peak_pos) + 3)
+                psite_offset = abs(int(peak_pos))
+                offset = int(psite_offset + target_shift)
 
         elif method == "ribowaltz":
-            # ribowaltz_psite_prediction now returns a positive P-site offset
-            # (distance from 5' end to P-site).  Adding 3 converts to A-site.
+            # ribowaltz_psite_prediction returns a positive P-site offset
+            # (distance from 5' end to P-site). Shift according to target.
             psite_offset = ribowaltz_psite_prediction(
                 {read_length: read_length_metagene["start"][read_length]},
                 flanking_length=9,
@@ -1245,17 +1421,18 @@ def asite_calculation_per_readlength(
             if psite_offset is None:
                 offset = default_offset
             else:
-                offset = int(psite_offset + 3)  # P-site offset + 1 codon = A-site offset
+                offset = int(psite_offset + target_shift)
 
         elif method == "tripsviz":
-            t = trips_asite_prediction(
-                {read_length: read_length_metagene["start"][read_length]}
+            t = trips_psite_prediction(
+                {read_length: read_length_metagene["start"][read_length]},
+                offset_range=offset_range,
             )[read_length]
 
             if t is None:
                 offset = default_offset
             else:
-                offset = int(t)
+                offset = int(t + target_shift)
 
         else:
             raise ValueError(f"Invalid method: {method}")

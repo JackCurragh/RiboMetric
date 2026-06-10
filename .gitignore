@@ -118,6 +118,9 @@ bak*
 *.json
 *.pdf
 !example-reports/*
+
+# Scratch validation runs from release-readiness audit
+reports/
 !test.json
 !.zenodo.json
 

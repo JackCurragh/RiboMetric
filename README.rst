@@ -112,11 +112,12 @@ evaluation as JSON. Accepts either a RiboMetric JSON or a metrics-table CSV.
 Most RiboMetric metrics are normalised so that **higher is better** (e.g.
 ``periodicity_dominance``, ``uniformity_entropy``, ``prop_reads_CDS``). A few are
 **lower is better** — ``duplicate_rate``, ``multimapper_rate``,
-``soft_clip_rate_5prime``, ``disome_proportion``, ``stop_codon_readthrough_ratio``
-and the raw terminal-bias divergences. ``evaluate`` knows these directions, so a
-high duplicate rate fails rather than passes. To force a direction for a custom
-metric, add ``direction: lower`` (or ``higher``) alongside its ``pass``/``warn``
-values in the thresholds YAML::
+``rpf_multimapper_rate``, ``alignment_multimapper_rate``,
+``soft_clip_rate_5prime``, ``disome_proportion``,
+``stop_codon_readthrough_ratio`` and the raw terminal-bias divergences.
+``evaluate`` knows these directions, so a high duplicate rate fails rather than
+passes. To force a direction for a custom metric, add ``direction: lower`` (or
+``higher``) alongside its ``pass``/``warn`` values in the thresholds YAML::
 
     thresholds:
       duplicate_rate: {pass: 0.3, warn: 0.5, direction: lower}
@@ -135,11 +136,16 @@ For BAMs with no stored sequences, skip sequence-based metrics to avoid errors:
 
     $ RiboMetric run -b no_seq.bam -a annotation.tsv --skip-sequence-metrics
 
-Control multimapper handling for STAR transcriptome alignments:
+Multimapper metrics use ``NH:i:N`` when the tag is present. Otherwise they fall
+back to the STAR convention where ``MAPQ=255`` is unique and ``MAPQ<255`` is
+multi-mapping. ``multimapper_rate`` is retained as an alias for the weighted
+RPF-level metric, while ``alignment_multimapper_rate`` is row-based.
+
+Control multimapper handling for frame-sensitive calculations:
 
 .. code-block:: console
 
-    # Default: frame calculations use only uniquely-mapped reads (MAPQ=255)
+    # Default: use NH=1 when available, otherwise STAR MAPQ=255
     $ RiboMetric run -b star.bam -a annotation.tsv --multimap-filter unique_only
     # Pre-1.1 behaviour: use all primary reads
     $ RiboMetric run -b star.bam -a annotation.tsv --multimap-filter none

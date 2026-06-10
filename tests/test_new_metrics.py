@@ -11,6 +11,8 @@ import pandas as pd
 import numpy as np
 import pytest
 
+from RiboMetric.qc import calculate_alignment_stats
+
 # ------------------------------------------------------------------ #
 # Helpers                                                              #
 # ------------------------------------------------------------------ #
@@ -18,6 +20,7 @@ import pytest
 def _make_read_df(
     n_reads=100,
     mapq_frac_multi=0.1,   # fraction with MAPQ < 255
+    nh_frac_multi=None,    # fraction with NH > 1; when set, overrides MAPQ
     dup_count=2,            # collapsed count for half the reads
     soft_clip_frac=0.2,    # fraction with soft_clip_5 > 0
 ):
@@ -25,9 +28,12 @@ def _make_read_df(
     rng = np.random.default_rng(42)
     counts = [dup_count if i < n_reads // 2 else 1 for i in range(n_reads)]
     mapq = [0 if i < int(n_reads * mapq_frac_multi) else 255 for i in range(n_reads)]
+    nh = None
+    if nh_frac_multi is not None:
+        nh = [2 if i < int(n_reads * nh_frac_multi) else 1 for i in range(n_reads)]
     soft_clips = [3 if i < int(n_reads * soft_clip_frac) else 0 for i in range(n_reads)]
     rl = rng.integers(28, 33, size=n_reads).tolist()
-    df = pd.DataFrame({
+    data = {
         "read_length": pd.Categorical(rl),
         "reference_name": pd.Categorical(["tx1"] * n_reads),
         "reference_start": list(range(n_reads)),
@@ -35,7 +41,10 @@ def _make_read_df(
         "mapq": mapq,
         "soft_clip_5": soft_clips,
         "a_site": list(range(n_reads)),
-    })
+    }
+    if nh is not None:
+        data["nh"] = nh
+    df = pd.DataFrame(data)
     return df
 
 
@@ -59,32 +68,100 @@ class TestAlignmentStats:
     def test_duplicate_rate_computation(self):
         """dup_rate = 1 - (unique_reads / total_weighted)."""
         df = _make_read_df(n_reads=100, dup_count=2)
-        count_arr = df["count"].astype(int)
-        total = int(count_arr.sum())
-        unique = len(df)
-        dup_rate = (1.0 - unique / total) if total > 0 else 0.0
+        stats = calculate_alignment_stats(df)
         # 50 reads with count=2, 50 with count=1 → total=150, unique=100
-        assert total == 150
-        assert unique == 100
-        assert abs(dup_rate - (1.0 - 100 / 150)) < 1e-9
+        assert stats["total_reads_analysed"] == 150
+        assert stats["unique_read_sequences"] == 100
+        assert abs(stats["duplicate_rate"] - (1.0 - 100 / 150)) < 1e-9
 
     def test_multimapper_rate_zero(self):
         df = _make_read_df(n_reads=50, mapq_frac_multi=0.0)
-        count_arr = df["count"].astype(int)
-        total = int(count_arr.sum())
-        mapq_arr = df["mapq"].astype(int)
-        mm_mask = (mapq_arr < 255).astype(int)
-        rate = float((mm_mask * count_arr).sum() / total) if total > 0 else 0.0
-        assert rate == 0.0
+        stats = calculate_alignment_stats(df)
+        assert stats["multimapper_detection_method"] == "star_mapq"
+        assert stats["rpf_multimapper_rate"] == 0.0
+        assert stats["unique_rpf_rate"] == 1.0
 
     def test_multimapper_rate_nonzero(self):
         df = _make_read_df(n_reads=100, mapq_frac_multi=0.2, dup_count=1)
-        count_arr = df["count"].astype(int)
-        total = int(count_arr.sum())
-        mapq_arr = df["mapq"].astype(int)
-        mm_mask = (mapq_arr < 255).astype(int)
-        rate = float((mm_mask * count_arr).sum() / total)
-        assert abs(rate - 0.2) < 1e-9
+        stats = calculate_alignment_stats(df)
+        assert abs(stats["rpf_multimapper_rate"] - 0.2) < 1e-9
+        assert abs(stats["alignment_multimapper_rate"] - 0.2) < 1e-9
+        assert stats["multimapper_rate"] == stats["rpf_multimapper_rate"]
+
+    def test_nh_takes_precedence_and_keeps_weighted_rpf_rate(self):
+        df = _make_read_df(
+            n_reads=100,
+            mapq_frac_multi=0.0,
+            nh_frac_multi=0.2,
+            dup_count=2,
+        )
+        stats = calculate_alignment_stats(df)
+        # First 20 reads are multimappers and have count=2, so the weighted
+        # fragment rate is 40 / 150 while the row-level alignment rate is 20%.
+        assert stats["multimapper_detection_method"] == "nh"
+        assert abs(stats["rpf_multimapper_rate"] - (40 / 150)) < 1e-9
+        assert abs(stats["alignment_multimapper_rate"] - 0.2) < 1e-9
+
+    def test_xa_alt_locus_count_drives_multimapper_rate(self):
+        """XA falls between NH and MAPQ: an alt-locus count > 0 is multimapping."""
+        df = pd.DataFrame(
+            {
+                "read_name": [f"r{i}" for i in range(10)],
+                "count": [1] * 10,
+                # No NH column, so the XA branch is selected. 3 of 10 fragments
+                # have alternative loci.
+                "xa": [2.0, 1.0, 3.0] + [0.0] * 7,
+                "mapq": [255] * 10,
+            }
+        )
+        stats = calculate_alignment_stats(df)
+        assert stats["multimapper_detection_method"] == "star_transcriptome_xa"
+        assert abs(stats["rpf_multimapper_rate"] - 0.3) < 1e-9
+
+
+class TestXATagParsing:
+    """``_parse_xa_value`` must reduce both STAR and BWA XA forms to a count."""
+
+    def test_bwa_string_list_counts_alternative_loci(self):
+        from RiboMetric.bam_processing import _parse_xa_value
+
+        assert _parse_xa_value("XA:Z:chr1,+100,30M,2;chr2,-200,30M,1;") == 2.0
+        assert _parse_xa_value("chr1,+100,30M,2;") == 1.0
+
+    def test_star_integer_form(self):
+        from RiboMetric.bam_processing import _parse_xa_value
+
+        assert _parse_xa_value("XA:i:3") == 3.0
+        assert _parse_xa_value(2) == 2.0
+
+    def test_absent_or_empty_is_nan(self):
+        from RiboMetric.bam_processing import _parse_xa_value
+
+        assert np.isnan(_parse_xa_value(None))
+        assert np.isnan(_parse_xa_value(""))
+        assert np.isnan(_parse_xa_value(float("nan")))
+
+
+class TestUniqueMapperFiltering:
+    """Graceful behaviour when there is no uniqueness signal (no NH, no MAPQ)."""
+
+    def test_filter_returns_empty_when_no_signal(self):
+        from RiboMetric.modules import filter_unique_mappers
+
+        df = pd.DataFrame({"read_name": ["a", "b"], "count": [1, 1]})
+        out = filter_unique_mappers(df)
+        # No NH, no MAPQ column -> nothing can be asserted unique -> empty frame
+        # (this is the input that previously crashed plot_read_frame_distribution).
+        assert out.empty
+        assert list(out.columns) == list(df.columns)
+
+    def test_alignment_stats_handle_signalless_frame(self):
+        """The metric layer must not crash on a no-signal read_df."""
+        df = pd.DataFrame({"read_name": ["a", "b"], "count": [1, 1]})
+        stats = calculate_alignment_stats(df)
+        # With neither NH/XA/MAPQ evidence, multimapper rate is well-defined (0).
+        assert stats["rpf_multimapper_rate"] == 0.0
+        assert stats["unique_rpf_rate"] == 1.0
 
     def test_soft_clip_rate(self):
         df = _make_read_df(n_reads=100, soft_clip_frac=0.3, dup_count=1)

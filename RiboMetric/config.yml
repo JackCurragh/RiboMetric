@@ -16,6 +16,7 @@ argument:
   json: False                 # Output results as JSON
   csv: False                  # Output metrics as CSV
   offset_calculation_method: "ribowaltz"
+  offset_target: "a_site"     # Site represented by calculated offsets: "a_site" or "p_site"
   offset_min: 8               # Minimum plausible final offset from the read 5' end
   offset_max: 20              # Maximum plausible final offset from the read 5' end
   offset_max_read_length_fraction: 0.6667  # Relative ceiling; 27nt reads cap at 18
@@ -76,6 +77,8 @@ qc:
     # periodicity_top_n: 5        # Keep top-N read lengths by mass (commented = disabled)
     # periodicity_mass_threshold: 0.8  # Keep minimal set of lengths covering this fraction of reads (disabled by default)
     # psite_min_prominence: 1.5   # Minimum peak/median ratio to accept a P-site offset (fallback to consensus otherwise)
+    offset_frame_correction_min_reads: 50      # Min unique CDS reads to nudge a non-zero dominant frame back to frame 0
+    offset_frame_correction_min_fraction: 0.6  # Dominant-frame fraction required before nudging an offset by +/-1 nt
   cds_coverage:
     in_frame_coverage: True   # Only check in-frame coverage, otherwise check complete cds coverage
   disome:
@@ -141,6 +144,9 @@ metrics:
     # Alignment quality metrics
     - duplicate_rate
     - multimapper_rate
+    - rpf_multimapper_rate
+    - unique_rpf_rate
+    - alignment_multimapper_rate
     - soft_clip_rate_5prime
 
     # Codon-level translation metrics (requires annotation)
@@ -233,6 +239,9 @@ max_mins: # max mins from simulations for each metric github.com/JackCurragh/Met
   recommended_read_proportion: [0, 1]
   duplicate_rate: [0, 1]
   multimapper_rate: [0, 1]
+  rpf_multimapper_rate: [0, 1]
+  unique_rpf_rate: [0, 1]
+  alignment_multimapper_rate: [0, 1]
   soft_clip_rate_5prime: [0, 1]
   stop_codon_readthrough_ratio: [0, 5]
   start_codon_enrichment_ratio: [0, 20]
