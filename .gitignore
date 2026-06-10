@@ -118,6 +118,9 @@ bak*
 *.json
 *.pdf
 !example-reports/*
+
+# Scratch validation runs from release-readiness audit
+reports/
 !test.json
 !.zenodo.json
 
@@ -148,3 +151,4 @@ internal_docs/
 *.egg-info
 
 # (TODO.md is now a tracked roadmap file)
+.example_regen/

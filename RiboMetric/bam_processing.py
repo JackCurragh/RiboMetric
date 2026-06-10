@@ -10,7 +10,7 @@ import os
 import pyarrow.ipc
 import pysam
 from .file_splitting import split_bam, format_progress
-from typing import Dict, List, Iterable
+from typing import Any, Dict, List, Iterable
 
 # Process 1-in-N read chunks when accumulating sequence composition and
 # terminal-bias backgrounds. 1 = use every read (accurate, the default);
@@ -117,7 +117,72 @@ def read_oxbow_df(bam_file: str) -> pd.DataFrame:
     oxbow_df = pyarrow.ipc.open_file(io.BytesIO(arrow_ipc)).read_pandas()
     del arrow_ipc
     oxbow_df.attrs["bam_file"] = bam_file
+    _recover_alignment_tags_from_pysam(oxbow_df, bam_file)
     return oxbow_df
+
+
+def _recover_alignment_tags_from_pysam(oxbow_df: pd.DataFrame, bam_file: str) -> None:
+    """Recover alignment tags that oxbow does not expose.
+
+    Oxbow/Arrow treats BAM's 0xff sentinel as null, but STAR uses 255 as the
+    unique-mapper code.  Recover the original integer values from pysam so
+    unique-only filtering is based on real BAM MAPQ, not a fill value.  STAR
+    transcriptome BAMs can also carry alternate-hit evidence in XA:i while all
+    reported transcript rows have MAPQ=255, so recover XA for multimapper
+    filtering and reporting.
+    """
+    if oxbow_df.empty:
+        oxbow_df.attrs["mapq_recovered_from_pysam"] = False
+        return
+
+    recovered_mapq = []
+    recovered_nh = []
+    recovered_xa = []
+    recovered_qname = []
+    with pysam.AlignmentFile(bam_file, "rb") as bam:
+        for read in bam.fetch(until_eof=True):
+            if read.is_secondary:
+                continue
+            recovered_mapq.append(read.mapping_quality)
+            recovered_nh.append(read.get_tag("NH") if read.has_tag("NH") else np.nan)
+            recovered_xa.append(_parse_xa_value(read.get_tag("XA")) if read.has_tag("XA") else np.nan)
+            recovered_qname.append(read.query_name)
+            if len(recovered_mapq) >= len(oxbow_df):
+                break
+
+    if len(recovered_mapq) != len(oxbow_df):
+        oxbow_df.attrs["mapq_recovered_from_pysam"] = False
+        return
+
+    # Row order is only trustworthy when oxbow and pysam enumerate primary reads
+    # identically. That holds for STAR transcriptome BAMs (no secondaries), but
+    # not necessarily for genome BAMs or BAMs with secondary alignments, where
+    # oxbow's row order can diverge from ``fetch(until_eof=True)`` minus
+    # secondaries. Verify per-read identity by qname before trusting the
+    # positional join; bail out (leaving oxbow's values untouched) on any drift.
+    name_column = next(
+        (c for c in _READ_NAME_COLUMNS if c in oxbow_df.columns), None
+    )
+    if name_column is not None:
+        oxbow_names = oxbow_df[name_column].astype(str).to_numpy()
+        if not np.array_equal(oxbow_names, np.asarray(recovered_qname, dtype=str)):
+            oxbow_df.attrs["mapq_recovered_from_pysam"] = False
+            return
+
+    if "mapq" in oxbow_df.columns:
+        missing = oxbow_df["mapq"].isna()
+        if missing.any():
+            recovered_series = pd.Series(recovered_mapq, index=oxbow_df.index, dtype="float")
+            oxbow_df.loc[missing, "mapq"] = recovered_series[missing]
+            oxbow_df.attrs["mapq_recovered_from_pysam"] = True
+        else:
+            oxbow_df.attrs["mapq_recovered_from_pysam"] = False
+    else:
+        oxbow_df.attrs["mapq_recovered_from_pysam"] = False
+    if "nh" not in oxbow_df.columns and any(not pd.isna(x) for x in recovered_nh):
+        oxbow_df["nh"] = pd.Series(recovered_nh, index=oxbow_df.index, dtype="float")
+    if "xa" not in oxbow_df.columns and any(not pd.isna(x) for x in recovered_xa):
+        oxbow_df["xa"] = pd.Series(recovered_xa, index=oxbow_df.index)
 
 
 def read_pysam_df(bam_file: str) -> pd.DataFrame:
@@ -137,10 +202,12 @@ def read_pysam_df(bam_file: str) -> pd.DataFrame:
                     if read.reference_start is not None else np.nan
                 ),
                 "mapq": read.mapping_quality,
+                "nh": read.get_tag("NH") if read.has_tag("NH") else np.nan,
+                "xa": _parse_xa_value(read.get_tag("XA")) if read.has_tag("XA") else np.nan,
             })
     return pd.DataFrame.from_records(
         records,
-        columns=["qname", "seq", "cigar", "rname", "pos", "mapq"],
+        columns=["qname", "seq", "cigar", "rname", "pos", "mapq", "nh", "xa"],
     )
 
 
@@ -219,6 +286,95 @@ _READ_NAME_COLUMNS = ("qname", "query_name", "read_name", "name")
 _REQUIRED_OXBOW_COLUMNS = ("seq", "cigar", "rname", "pos", "mapq")
 
 
+def _parse_nh_tag_value(value: Any) -> float:
+    """Return NH as a float, or NaN when the tag is absent/unparseable."""
+    if value is None:
+        return np.nan
+    if isinstance(value, float) and np.isnan(value):
+        return np.nan
+    if isinstance(value, (int, np.integer)):
+        return float(value)
+    if isinstance(value, (float, np.floating)):
+        return float(value)
+    if isinstance(value, dict):
+        return _parse_nh_tag_value(value.get("NH") or value.get("nh"))
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            parsed = _parse_nh_tag_value(item)
+            if not np.isnan(parsed):
+                return parsed
+        return np.nan
+
+    text = str(value)
+    if text.isdigit():
+        return float(text)
+    for marker in ("NH:i:", "NH:Z:", "NH="):
+        if marker in text:
+            tail = text.split(marker, 1)[1]
+            digits = []
+            for char in tail:
+                if char.isdigit():
+                    digits.append(char)
+                elif digits:
+                    break
+            if digits:
+                return float("".join(digits))
+    return np.nan
+
+
+def _parse_xa_value(value: Any) -> float:
+    """Return the number of *alternative* loci encoded by an XA tag, or NaN.
+
+    XA appears in two incompatible forms:
+
+    * STAR transcriptome BAMs write ``XA:i:N`` — an integer count of alternative
+      alignments, surfaced here directly as ``float(N)``.
+    * BWA writes ``XA:Z:`` — a semicolon-terminated list of alternative loci
+      (``chr,pos,CIGAR,NM;...``). The alt-locus count is the number of list
+      entries.
+
+    The downstream multimapper test is ``alt_loci > 0``, so both forms must
+    reduce to a numeric count. Previously the string form was coerced to NaN,
+    silently disabling XA-based multimapper detection on BWA BAMs.
+    """
+    if value is None:
+        return np.nan
+    if isinstance(value, float) and np.isnan(value):
+        return np.nan
+    if isinstance(value, (int, np.integer)):
+        return float(value)
+    if isinstance(value, (float, np.floating)):
+        return float(value)
+    if isinstance(value, (list, tuple)):
+        # Already a list of alternative loci.
+        return float(len([item for item in value if item not in (None, "")]))
+
+    text = str(value).strip()
+    # Strip a leading SAM tag prefix if present (``XA:Z:`` / ``XA:i:``).
+    for marker in ("XA:Z:", "XA:i:", "XA="):
+        if text.startswith(marker):
+            text = text[len(marker):]
+            break
+    if text == "":
+        return np.nan
+    if text.lstrip("-").isdigit():
+        # Integer count (STAR ``XA:i:``).
+        return float(text)
+    # BWA ``XA:Z:`` semicolon-terminated list of loci.
+    return float(len([locus for locus in text.split(";") if locus]))
+
+
+def _extract_nh_column(oxbow_df: pd.DataFrame) -> pd.Series:
+    """Extract the SAM NH tag from common oxbow/pysam tag representations."""
+    for column in ("nh", "NH", "tag_NH", "tags.NH", "aux_NH"):
+        if column in oxbow_df.columns:
+            return pd.to_numeric(oxbow_df[column], errors="coerce")
+    for column in ("tags", "aux", "optional_fields"):
+        if column in oxbow_df.columns:
+            return oxbow_df[column].map(_parse_nh_tag_value)
+    return pd.Series(np.nan, index=oxbow_df.index, dtype="float")
+
+
 def _empty_read_batch() -> pd.DataFrame:
     return pd.DataFrame({
         "read_name": pd.Series(dtype="category"),
@@ -230,6 +386,10 @@ def _empty_read_batch() -> pd.DataFrame:
         "last_dinucleotide": pd.Series(dtype="category"),
         "count": pd.Series(dtype="category"),
         "mapq": pd.Series(dtype="uint8"),
+        "mapq_available": pd.Series(dtype="bool"),
+        "mapq_recovered_from_pysam": pd.Series(dtype="bool"),
+        "nh": pd.Series(dtype="float"),
+        "xa": pd.Series(dtype="float"),
     })
 
 
@@ -317,13 +477,19 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     batch_df["count"] = pd.Series([int(query.split("_x")[-1]) if "_x" in query
                                    else 1 for query in read_names],
                                   dtype="category")
-    # MAPQ=255 in STAR output means uniquely mapped to one genomic locus.
-    # Oxbow returns MAPQ=255 as NaN because 0xff is the BAM spec's
-    # "not available" sentinel; we restore it to 255 here so STAR's unique-
-    # mapper convention is preserved.  For non-STAR BAMs this is harmless: any
-    # genuine "not available" value is also best treated as unique (255) rather
-    # than as a multimapper (0) to avoid false filtering.
-    batch_df["mapq"] = oxbow_df["mapq"].fillna(255).astype("uint8")
+    mapq_values = pd.to_numeric(oxbow_df["mapq"], errors="coerce")
+    mapq_available = mapq_values.notna()
+    batch_df["mapq"] = mapq_values.fillna(0).astype("uint8")
+    batch_df["mapq_available"] = mapq_available.astype("bool")
+    batch_df["mapq_recovered_from_pysam"] = bool(
+        oxbow_df.attrs.get("mapq_recovered_from_pysam", False)
+    )
+    batch_df["nh"] = _extract_nh_column(oxbow_df).astype("float")
+    batch_df["xa"] = (
+        oxbow_df["xa"].map(_parse_xa_value).astype("float")
+        if "xa" in oxbow_df.columns
+        else pd.Series(np.nan, index=oxbow_df.index, dtype="float")
+    )
     return batch_df
 
 

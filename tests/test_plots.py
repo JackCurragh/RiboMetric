@@ -68,3 +68,21 @@ def test_plots():
             config)["fig_html"]):
         errors.append("Read frame distribution plot html output error")
     assert not errors, "errors occurred:\n{}".format("\n".join(errors))
+
+
+def test_plot_read_frame_distribution_empty():
+    """An empty frame dict (e.g. no reads survived CDS filtering) must not
+    crash the plot with an UnboundLocalError on the x-axis range."""
+    with open("RiboMetric/config.yml", "r") as ymlfile:
+        config = yaml.load(ymlfile, Loader=yaml.Loader)
+    result = plot_read_frame_distribution({}, config)
+    assert_plotly_html(result["fig_html"])
+
+
+def test_plot_read_frame_distribution_all_below_buffer():
+    """Frames present but all counts tiny/zero must also not crash."""
+    with open("RiboMetric/config.yml", "r") as ymlfile:
+        config = yaml.load(ymlfile, Loader=yaml.Loader)
+    frame_dict = {29: {0: 0, 1: 0, 2: 0}, 30: {0: 0, 1: 0, 2: 0}}
+    result = plot_read_frame_distribution(frame_dict, config)
+    assert_plotly_html(result["fig_html"])

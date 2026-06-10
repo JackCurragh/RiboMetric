@@ -2,6 +2,10 @@
 
 Status as of the v1.1.0 release effort.
 
+> **See also:** [`docs/AUDIT_NOTES.md`](docs/AUDIT_NOTES.md) — release-readiness
+> audit (2026-06-09): what remains unscrutinised, optimisation targets, and
+> code-cleanliness debt from the annotation-coordinate / offset-calibration work.
+
 ---
 
 ## Resolved (shipping in v1.1.0)

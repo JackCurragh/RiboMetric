@@ -15,6 +15,28 @@ import plotly.express as px
 import pandas as pd
 
 
+def _prepare_report_figure(fig: go.Figure) -> go.Figure:
+    """Apply report-wide sizing that leaves room for axis labels."""
+    fig.update_layout(
+        autosize=True,
+        height=460,
+        margin=dict(l=78, r=36, t=76, b=92),
+    )
+    fig.update_xaxes(automargin=True, title_standoff=18)
+    fig.update_yaxes(automargin=True, title_standoff=18)
+    return fig
+
+
+def plotly_to_html(fig: go.Figure) -> str:
+    """Return a report plot fragment without embedding Plotly.js repeatedly."""
+    return pio.to_html(
+        _prepare_report_figure(fig),
+        full_html=False,
+        include_plotlyjs=False,
+        config={"responsive": True},
+    )
+
+
 def generate_plots(results_dict: dict, config: dict) -> list:
     """
     Wrapper function generating plots based on the results_dict from qc.py
@@ -40,10 +62,12 @@ def generate_plots(results_dict: dict, config: dict) -> list:
                 plot_metagene_profile(
                     results_dict["metagene_profile"],
                     config,
+                    results_dict.get("metagene_profile_stats"),
                 ),
                 plot_metagene_heatmap(
                     results_dict["metagene_profile"],
-                    config
+                    config,
+                    results_dict.get("metagene_profile_stats"),
                 ),
                 plot_mRNA_distribution(
                     results_dict["mRNA_distribution"],
@@ -137,7 +161,7 @@ def plot_codon_dwell_times(dwell: dict, config: dict) -> dict:
             "(above the dashed line) are slow/pausing codons; proline codons are "
             "orange and the inhibitory CGA codon is red."
         ),
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(
             fig, config["plots"]["image_size"][0],
             config["plots"]["image_size"][1]
@@ -178,7 +202,7 @@ def plot_floss_heterogeneity(floss: dict, config: dict) -> dict:
             "transcripts have anomalous length profiles — a heterogeneous or "
             "contaminated library."
         ),
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(
             fig, config["plots"]["image_size"][0],
             config["plots"]["image_size"][1]
@@ -235,7 +259,7 @@ def plot_recommended_read_lengths(recommended: dict, config: dict) -> dict:
             "downstream P-site assignment / ORF calling (periodic enough and "
             "carrying enough reads); grey bars are not."
         ),
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(
             fig, config["plots"]["image_size"][0],
             config["plots"]["image_size"][1]
@@ -273,7 +297,7 @@ def plot_gene_body_coverage(gene_body: dict, config: dict) -> dict:
             "translation ramp; a 3' decline indicates drop-off. A flat line at "
             "1.0 is perfectly uniform elongation."
         ),
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(
             fig, config["plots"]["image_size"][0],
             config["plots"]["image_size"][1]
@@ -310,7 +334,7 @@ def plot_library_complexity(complexity: dict, config: dict) -> dict:
             "A curve that has flattened by full depth is saturated (extra "
             "sequencing adds little); a still-rising curve is under-sequenced."
         ),
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(
             fig, config["plots"]["image_size"][0],
             config["plots"]["image_size"][1]
@@ -334,6 +358,7 @@ def plotly_to_image(fig: go.Figure, width: int, height: int) -> str:
     if os.environ.get("RIBOMETRIC_SKIP_IMAGES") == "1":
         return _TRANSPARENT_PNG_1x1
     try:
+        _prepare_report_figure(fig)
         img = pio.to_image(fig, format="png", width=width, height=height)
         return base64.b64encode(img).decode("ascii")
     except Exception as e:
@@ -381,7 +406,7 @@ def plot_read_length_distribution(
     plot_read_length_dict = {
         "name": "Read Length Distribution",
         "description": "Distribution of read lengths for the full dataset",
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(fig,
                                      config["plots"]["image_size"][0],
                                      config["plots"]["image_size"][1]),
@@ -481,7 +506,7 @@ def plot_terminal_nucleotide_bias_distribution(
     plot_terminal_nucleotide_bias_dict = {
         "name": "Ligation Bias Distribution",
         "description": "Distribution of end bases for the full dataset",
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(fig,
                                      config["plots"]["image_size"][0],
                                      config["plots"]["image_size"][1]),
@@ -526,7 +551,7 @@ def plot_nucleotide_composition(
     plot_nucleotide_composition_dict = {
         "name": "Nucleotide Composition",
         "description": "Nucleotide composition of the reads",
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(fig,
                                      config["plots"]["image_size"][0],
                                      config["plots"]["image_size"][1]),
@@ -575,7 +600,7 @@ def plot_nucleotide_distribution(
         "name": "Nucleotide Distribution",
         "description": "Nucleotide distribution across specified reads \
 (default: first 15 read)",
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(fig,
                                      config["plots"]["image_size"][0],
                                      config["plots"]["image_size"][1]),
@@ -680,6 +705,13 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
             xanchor="left",
         )
 
+    # Trim the x-axis to the populated read-length range. Guard against an
+    # empty frame dict (e.g. no reads survived annotation/CDS filtering) and the
+    # case where every bar is below the buffer, both of which would otherwise
+    # leave lower_limit/upper_limit unbound.
+    all_y = fig.data[0].y + fig.data[1].y + fig.data[2].y
+    y_buffer = (max(all_y) * 0.05) if all_y else 0
+    lower_limit = upper_limit = None
     for idx in enumerate(culled_read_frame_dict):
         count_sum = (
             fig.data[0].y[idx[0]]
@@ -696,11 +728,12 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         if count_sum > y_buffer:
             upper_limit = (idx[1])
             break
-    fig.update_xaxes(range=[lower_limit-0.5, upper_limit+0.5])
+    if lower_limit is not None and upper_limit is not None:
+        fig.update_xaxes(range=[lower_limit-0.5, upper_limit+0.5])
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
         "description": "Frame distribution per read length",
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(fig,
                                      config["plots"]["image_size"][0],
                                      config["plots"]["image_size"][1]),
@@ -764,7 +797,7 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
         "name": "mRNA Reads Breakdown",
         "description": "Shows the proportion of the different transcript \
 regions represented in the reads",
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(fig,
                                      config["plots"]["image_size"][0],
                                      config["plots"]["image_size"][1]),
@@ -845,7 +878,7 @@ def plot_mRNA_read_breakdown(
         "name": "mRNA Reads Breakdown over Read Length",
         "description": "Shows the proportion of the different transcript \
 regions represented in the reads over the different read lengths.",
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(fig,
                                      config["plots"]["image_size"][0],
                                      config["plots"]["image_size"][1]),
@@ -853,7 +886,35 @@ regions represented in the reads over the different read lengths.",
     return plot_mRNA_read_breakdown_dict
 
 
-def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
+def _metagene_stats_label(stats: dict | None) -> str:
+    if not stats:
+        return ""
+    if stats.get("multimap_filter") == "unique_only":
+        population = "MAPQ=255 unique reads"
+    else:
+        population = "all primary alignments"
+    start_n = stats.get("start_window_reads", 0)
+    stop_n = stats.get("stop_window_reads", 0)
+    profile_n = stats.get("profile_reads", 0)
+    input_n = stats.get("input_reads", 0)
+    return (
+        f"{population}; profile reads n={profile_n:,}/{input_n:,}; "
+        f"window reads: start n={start_n:,}, stop n={stop_n:,}"
+    )
+
+
+def _metagene_description(base: str, stats: dict | None) -> str:
+    stats_label = _metagene_stats_label(stats)
+    if not stats_label:
+        return base
+    return f"{base} {stats_label}."
+
+
+def plot_metagene_profile(
+    metagene_profile_dict: dict,
+    config: dict,
+    stats: dict | None = None,
+) -> dict:
     """
     Generate a plot of the distribution of reads depending on their distance
     to a target (default: start codon)
@@ -893,25 +954,23 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
         metagene_dict: Dict[int, int] = {}
         for inner_dict in metagene_profile_dict[current_target].values():
             for inner_key, inner_value in inner_dict.items():
+                position = int(inner_key)
+                count_value = inner_value if inner_value is not None else 0
                 if (
-                    inner_key in metagene_dict
-                    and metagene_dict[inner_key] is not None
+                    position in metagene_dict
+                    and metagene_dict[position] is not None
                 ):
-                    metagene_dict[inner_key] += (
-                        inner_value if inner_value is not None else 0
-                    )
+                    metagene_dict[position] += count_value
                 else:
-                    metagene_dict[inner_key] = (
-                        inner_value if inner_value is not None else 0
-                    )
-            # Map frame index (0/1/2) to colors with correct element typing
-            color_frames: List[int] = [(int(x) % 3) for x in metagene_dict.keys()]
-            color: List[str] = [frame_colors[i] for i in color_frames]
+                    metagene_dict[position] = count_value
+        sorted_positions = sorted(metagene_dict)
+        color_frames: List[int] = [position % 3 for position in sorted_positions]
+        color: List[str] = [frame_colors[i] for i in color_frames]
 
         fig.add_trace(
             go.Bar(
-                x=list(metagene_dict.keys()),
-                y=list(metagene_dict.values()),
+                x=sorted_positions,
+                y=[metagene_dict[position] for position in sorted_positions],
                 name="Distance from 5'"
                 if current_target == "start"
                 else "Distance from 3'",
@@ -958,9 +1017,12 @@ def plot_metagene_profile(metagene_profile_dict: dict, config: dict) -> dict:
     )
     plot_metagene_profile_dict = {
         "name": "Metagene Profile",
-        "description": "Metagene profile showing the distance count of \
-reads per distance away from a target (default: start codon).",
-        "fig_html": pio.to_html(fig, full_html=False),
+        "description": _metagene_description(
+            "Metagene profile showing read counts by distance from the selected "
+            "target. The plotted read population follows the multimap filter.",
+            stats,
+        ),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(fig,
                                      config["plots"]["image_size"][0],
                                      config["plots"]["image_size"][1]),
@@ -968,7 +1030,11 @@ reads per distance away from a target (default: start codon).",
     return plot_metagene_profile_dict
 
 
-def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
+def plot_metagene_heatmap(
+    metagene_profile_dict: dict,
+    config: dict,
+    stats: dict | None = None,
+) -> dict:
     """
     Generate a heatmap of the reads depending on their distance
     to a target, read length and count
@@ -1015,9 +1081,14 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
                 x_data.append(int(position))
                 y_data.append(int(read_length))
                 z_data.append(int(counts))
+        if x_data:
+            ordered = sorted(zip(x_data, y_data, z_data), key=lambda row: (row[1], row[0]))
+            x_data = [row[0] for row in ordered]
+            y_data = [row[1] for row in ordered]
+            z_data = [row[2] for row in ordered]
 
         if config["plots"]["metagene_profile"]["max_colorscale"] is None:
-            z_max = max(max(z_data), 1)
+            z_max = max(max(z_data, default=0), 1)
             # Keep integer typing by scaling and rounding to nearest int for display
             z_data = [int(round((z / z_max) * z_max)) for z in z_data]
 
@@ -1059,9 +1130,13 @@ def plot_metagene_heatmap(metagene_profile_dict: dict, config: dict) -> dict:
 
     plot_metagene_heatmap = {
         "name": "Metagene Heatmap",
-        "description": "Metagene heatmap showing the distance between the \
-            A-site and a target per read length and the counts in colorscale.",
-        "fig_html": pio.to_html(fig, full_html=False),
+        "description": _metagene_description(
+            "Metagene heatmap showing A-site distance from the selected target "
+            "by read length. The plotted read population follows the multimap "
+            "filter.",
+            stats,
+        ),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(fig,
                                      config["plots"]["image_size"][0],
                                      config["plots"]["image_size"][1]),
@@ -1124,7 +1199,7 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
     fig.update_layout(showlegend=False)
 
     # Convert the plot to HTML or an image as needed
-    fig_html = pio.to_html(fig, full_html=False)
+    fig_html = plotly_to_html(fig)
     fig_image = plotly_to_image(fig, width, height)
 
     # Only include metrics that passed all filtering steps
@@ -1138,7 +1213,7 @@ def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
             "fig_html": fig_html,
             "fig_image": fig_image,
         },
-        "metrics": [{"name": k.replace("_", " ").capitalize(), "score": round(v, 3)}
+        "metrics": [{"key": k, "name": k.replace("_", " ").capitalize(), "score": round(v, 3)}
                     for k, v in filtered_metrics.items()]
     }
 
@@ -1178,7 +1253,7 @@ def plot_read_frame_triangle(
         "name": "Read Frame Triangle",
         "description": "Triangle plot showing the distribution of read frames \
 for the full dataset",
-        "fig_html": pio.to_html(fig, full_html=False),
+        "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(fig,
                                      config["plots"]["image_size"][0],
                                      config["plots"]["image_size"][1]),

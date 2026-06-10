@@ -1,0 +1,54 @@
+{
+  "sample": "example_report",
+  "timestamp": "2026-06-10T14:00:20.575853",
+  "overall_status": "PASS",
+  "checks": [
+    {
+      "metric": "periodicity_dominance",
+      "value": 0.7912878516715585,
+      "status": "PASS",
+      "direction": "higher",
+      "threshold_pass": 0.7,
+      "threshold_warn": 0.5
+    },
+    {
+      "metric": "uniformity_entropy",
+      "value": 0.9966844172373964,
+      "status": "PASS",
+      "direction": "higher",
+      "threshold_pass": 0.7,
+      "threshold_warn": 0.5
+    },
+    {
+      "metric": "prop_reads_CDS",
+      "value": 0.9199063533177156,
+      "status": "PASS",
+      "direction": "higher",
+      "threshold_pass": 0.7,
+      "threshold_warn": 0.5
+    },
+    {
+      "metric": "read_length_distribution_IQR_metric",
+      "value": 0.6666666666666667,
+      "status": "PASS",
+      "direction": "higher",
+      "threshold_pass": 0.3,
+      "threshold_warn": 0.2
+    },
+    {
+      "metric": "recommended_read_proportion",
+      "value": 0.8058,
+      "status": "PASS",
+      "direction": "higher",
+      "threshold_pass": 0.5,
+      "threshold_warn": 0.3
+    }
+  ],
+  "summary": {
+    "total_checks": 5,
+    "passed": 5,
+    "warnings": 0,
+    "failed": 0
+  },
+  "recommendation": "Sample passed all QC checks. Proceed with downstream analysis."
+}

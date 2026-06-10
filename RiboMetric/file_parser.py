@@ -27,14 +27,19 @@ from .file_splitting import (split_gff_df,
                              split_idxstats_df,
                              )
 
+# Fraction of transcripts whose CDS may overrun the spliced transcript length
+# before the annotation is rejected as non-transcript-relative (see
+# ``validate_annotation_coordinates``). A handful of malformed rows is tolerated;
+# a systematic violation (coordinates in genomic/unspliced space) is not.
+CDS_OVERRUN_TOLERANCE = 0.01
+
 
 def parse_annotation(annotation_path: str) -> pd.DataFrame:
     """
     Read an annotation TSV and return a DataFrame.
 
-    Accepts both minimal and extended schemas. Required columns:
-    transcript_id, cds_start, cds_end, transcript_length.
-    Optional columns (ignored if missing): genomic_cds_starts, genomic_cds_ends.
+    Accepts annotation TSVs produced by ``ribometric prepare``.  Required
+    columns: transcript_id, cds_start, cds_end, transcript_length.
     """
     df = pd.read_csv(annotation_path, sep="\t")
 
@@ -45,18 +50,66 @@ def parse_annotation(annotation_path: str) -> pd.DataFrame:
             f"Annotation file missing required columns: {sorted(missing)}"
         )
 
-    # Coerce dtypes for required columns
     df["transcript_id"] = df["transcript_id"].astype(str)
     for c in ["cds_start", "cds_end", "transcript_length"]:
         df[c] = df[c].astype(int)
 
-    # Ensure optional cols exist as strings
-    for c in ["genomic_cds_starts", "genomic_cds_ends"]:
-        if c not in df.columns:
-            df[c] = ""
-        df[c] = df[c].astype(str)
+    validate_annotation_coordinates(df, annotation_path)
 
     return df
+
+
+def validate_annotation_coordinates(df: pd.DataFrame, annotation_path: str = "") -> None:
+    """Reject annotations whose CDS coordinates are not transcript-relative.
+
+    RiboMetric computes reading frame as ``(a_site - cds_start) % 3`` where
+    ``a_site`` is a position in the *spliced* transcript the reads were aligned
+    against. ``cds_start``/``cds_end`` must therefore be 0-based offsets into the
+    spliced transcript, bounded by ``transcript_length``.
+
+    A common corruption is an annotation built in genomic/unspliced coordinates
+    (e.g. ``transcript_length`` is the gene's genomic span and ``cds_end`` is
+    ``cds_start + transcript_length``). Such a file silently scrambles the
+    reading frame and drives periodicity to background (~1/3). Catch it here
+    rather than letting it produce a meaningless report.
+    """
+    if df.empty:
+        return
+
+    n = len(df)
+    cds_start = df["cds_start"].to_numpy()
+    cds_end = df["cds_end"].to_numpy()
+    tx_len = df["transcript_length"].to_numpy()
+
+    # Hard invariant for transcript-relative coordinates: the CDS cannot extend
+    # past the end of the spliced transcript it lives in. Genomic/unspliced
+    # coordinates (the common corruption) violate this for most transcripts.
+    # A tiny fraction of malformed rows is tolerated; a systematic violation
+    # (e.g. coordinates in the wrong space) is rejected.
+    overrun_mask = cds_end > tx_len
+    overruns = int(overrun_mask.sum())
+    overrun_frac = overruns / n if n else 0.0
+
+    problems = []
+    if overrun_frac > CDS_OVERRUN_TOLERANCE:
+        problems.append(
+            f"{overruns}/{n} ({overrun_frac:.1%}) transcripts have cds_end > "
+            f"transcript_length, i.e. the CDS overruns the spliced transcript. "
+            f"This usually means the coordinates are genomic/unspliced rather "
+            f"than transcript-relative"
+        )
+
+    if problems:
+        src = f" ({annotation_path})" if annotation_path else ""
+        raise ValueError(
+            f"Annotation coordinates appear invalid{src}:\n  - "
+            + "\n  - ".join(problems)
+            + "\n\nCDS coordinates must be 0-based offsets into the spliced "
+            "transcript (0 <= cds_start < cds_end <= transcript_length).\n"
+            "Regenerate the annotation from a GFF3 matching the transcriptome "
+            "used for alignment, e.g.:\n"
+            "  RiboMetric prepare -g <annotation.gff3> -o <out_dir>"
+        )
 
 
 def parse_fasta(fasta_path: str) -> dict:
