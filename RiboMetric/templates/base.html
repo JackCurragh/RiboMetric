@@ -206,6 +206,26 @@
       .main { padding: 24px 18px 42px; }
       .summary-grid { grid-template-columns: 1fr; }
     }
+    .context-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 20px;
+      margin-top: 16px;
+      padding: 10px 14px;
+      background: #eef3f8;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #4b5b68;
+    }
+    .ctx-item b { color: #2d3a45; margin-right: 4px; }
+    .tier-section { margin-bottom: 28px; }
+    .tier-section h2 { font-size: 20px; margin-bottom: 4px; }
+    .tier-subtitle {
+      margin: 0 0 12px;
+      color: #657383;
+      font-size: 13px;
+      max-width: 760px;
+    }
     {% if filetype == "pdf" %}
     .layout { display: block; }
     .sidenav { display: none; }
@@ -241,6 +261,14 @@
     <div class="sidenav">
         <a href="#"><img src="data:image/png;base64,{{logo}}" alt="RiboMetric"></a>
         <a href="#summary">Summary</a>
+        {% if report_context.tier_sections %}
+          {% for section in report_context.tier_sections %}
+          <a href="#tier{{section.tier}}" style="padding-left:14px;font-size:13px">Tier {{section.tier}}</a>
+          {% endfor %}
+        {% endif %}
+        {% if report_context.diagnostics %}
+        <a href="#diagnostics" style="padding-left:14px;font-size:13px">Diagnostics</a>
+        {% endif %}
         {% for plot in plots %}
         <a href="#{{plot.name}}">{{plot.name}}</a>
         {% endfor %}
@@ -252,55 +280,120 @@
           <img src="data:image/png;base64,{{logo}}" alt="RiboMetric">
         </div>
         {% endif %}
+
+        {# ── Hero ───────────────────────────────────────────────────── #}
         <section class="hero" id="summary">
             <h1>RiboMetric Report</h1>
             <p class="run-meta">Analysis of <b>{{file_names.bam}}</b>{% if 'annotation' in file_names %} with <b>{{file_names.annotation}}</b>{% endif %}. Completed {{completion_time}}.</p>
             <span class="status-pill status-{{report_context.overall_status}}">{{report_context.overall_status}}</span>
             <p class="interpretation">{{report_context.interpretation}}</p>
+
+            {# ── Context strip ───────────────────────────────────────── #}
+            {% if report_context.context_strip %}
+            <div class="context-strip">
+              <span class="ctx-item"><b>Library type</b> {{report_context.context_strip.library_type}}</span>
+              <span class="ctx-item"><b>Dominant read length</b> {{report_context.context_strip.dominant_read_length}}</span>
+              <span class="ctx-item"><b>Total reads</b> {{report_context.context_strip.total_reads}}</span>
+              <span class="ctx-item"><b>Annotation</b> {{report_context.context_strip.annotation}}</span>
+            </div>
+            {% endif %}
         </section>
 
-        {% if report_context.top_cards %}
-        <section class="cards">
-          {% for metric in report_context.top_cards %}
-          <div class="card">
-            <div class="card-title">{{metric.label}}</div>
-            <span class="card-score">{{metric.score_label}}</span>
-            <span class="badge badge-{{metric.status}}">{{metric.status}}</span>
-          </div>
-          {% endfor %}
-        </section>
-        {% endif %}
-
+        {# ── Tier tables + summary bar chart side-by-side ────────────── #}
         <section class="summary-grid">
-            <div>
-                <h2>Metric Summary</h2>
-                {% for group in report_context.grouped_metrics %}
+          <div>
+            {% if report_context.tier_sections %}
+              {% for section in report_context.tier_sections %}
+              <div class="tier-section" id="tier{{section.tier}}">
+                <h2>{{section.heading}}</h2>
+                <p class="tier-subtitle">{{section.subtitle}}</p>
                 <div class="metric-group">
-                  <h3>{{group.name}}</h3>
                   <table>
                     <thead>
-                      <tr><th>Metric</th><th>Summary</th><th>Score</th><th>Status</th></tr>
+                      <tr>
+                        <th>Metric</th>
+                        <th>Raw value</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                      </tr>
                     </thead>
                     <tbody>
-                    {% for metric in group.metrics %}
+                    {% for metric in section.metrics %}
                       <tr>
-                        <td title="{{metric.direction}}">{{metric.label}}</td>
-                        <td class="metric-description">{{metric.description}}</td>
-                        <td>{{metric.score_label}}</td>
+                        <td>
+                          <div style="font-weight:600">{{metric.label}}</div>
+                          <div class="metric-description">{{metric.description}}</div>
+                        </td>
+                        <td style="font-variant-numeric:tabular-nums;white-space:nowrap">{{metric.raw_label}}</td>
+                        <td style="font-variant-numeric:tabular-nums;white-space:nowrap">{{metric.score_label}}</td>
                         <td><span class="badge badge-{{metric.status}}">{{metric.status}}</span></td>
                       </tr>
                     {% endfor %}
                     </tbody>
                   </table>
                 </div>
-                {% endfor %}
-            </div>
-            {% if filetype == "html" %}
-            <div class="plot-box">
-                {{summary.plot.fig_html}}
-            </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              {# fallback: old grouped layout if tier data is absent #}
+              <h2>Metric Summary</h2>
+              {% for group in report_context.grouped_metrics %}
+              <div class="metric-group">
+                <h3>{{group.name}}</h3>
+                <table>
+                  <thead>
+                    <tr><th>Metric</th><th>Raw</th><th>Score</th><th>Status</th></tr>
+                  </thead>
+                  <tbody>
+                  {% for metric in group.metrics %}
+                    <tr>
+                      <td title="{{metric.direction}}">{{metric.label}}</td>
+                      <td>{{metric.raw_label}}</td>
+                      <td>{{metric.score_label}}</td>
+                      <td><span class="badge badge-{{metric.status}}">{{metric.status}}</span></td>
+                    </tr>
+                  {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% endfor %}
             {% endif %}
+          </div>
+
+          {% if filetype == "html" %}
+          <div class="plot-box" style="align-self:start">
+            {{summary.plot.fig_html}}
+          </div>
+          {% endif %}
         </section>
+
+        {# ── Diagnostics ─────────────────────────────────────────────── #}
+        {% if report_context.diagnostics %}
+        <section class="plot-section" id="diagnostics">
+          <h2>Diagnostics</h2>
+          <p>These values describe shape, context, or experiment-specific behaviour.
+             They are shown as raw measurements — not scored — because their
+             interpretation depends on protocol or library type.</p>
+          <div class="metric-group">
+            <table>
+              <thead>
+                <tr><th>Metric</th><th>Value</th><th>Note</th></tr>
+              </thead>
+              <tbody>
+              {% for d in report_context.diagnostics %}
+                <tr>
+                  <td style="font-weight:600">{{d.label}}</td>
+                  <td style="font-variant-numeric:tabular-nums">{{d.raw_label}}</td>
+                  <td class="metric-description">{% if d.caption %}{{d.caption}}{% endif %}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        {% endif %}
+
+        {# ── Plots ───────────────────────────────────────────────────── #}
         {% for plot in plots %}
           <section class="plot-section">
             <h2 id="{{plot.name}}">{{plot.name}}</h2>
