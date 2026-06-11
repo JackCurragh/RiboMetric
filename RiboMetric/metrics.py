@@ -362,12 +362,18 @@ def cds_coverage_metric(
 def calculate_3nt_periodicity_score(probabilities: List[float]) -> float:
     '''
     Calculate the triplet periodicity score for a given probability of a read
-    being in frame. The score is the square root of the bits of information in
-    the triplet distribution.
+    being in frame. The score is the normalised entropy reduction of the
+    triplet distribution: 0 = random (maximum entropy), 1 = perfect
+    single-frame occupancy (zero entropy).
 
     Numerator is the Maximum Entropy of the triplet distribution minus the
     entropy of the triplet distribution.
     Denominator is the Maximum Entropy of the triplet distribution.
+
+    The previous implementation took the square root of this ratio, which
+    inflated middling values without adding interpretability (see
+    docs/METRICS_DESIGN.md, periodicity_information). The ratio is already
+    naturally anchored, so it is returned directly.
 
     Inputs:
         probability (float): The probability of a read being in frame.
@@ -380,7 +386,7 @@ def calculate_3nt_periodicity_score(probabilities: List[float]) -> float:
     for probability in probabilities:
         entropy += -(probability * math.log2(probability))
 
-    result = math.sqrt((maximum_entropy - entropy) / maximum_entropy)
+    result = (maximum_entropy - entropy) / maximum_entropy
     return float(result)
 
 
@@ -1157,3 +1163,55 @@ def classify_library_type(
             ),
         },
     }
+
+
+def cds_enrichment_ratio(annotated_read_df: pd.DataFrame) -> Optional[float]:
+    """CDS enrichment ratio E = observed_CDS_fraction / expected_CDS_fraction.
+
+    Per METRICS_DESIGN.md §5 (R-O1). Returns None if required columns are
+    absent, no reads are present, or the expected fraction cannot be computed.
+    Self-consistency: uniform-per-nucleotide reads ⇒ E ≈ 1.
+    """
+    required = {"transcript_id", "mRNA_category", "cds_start", "cds_end", "transcript_length"}
+    if not required.issubset(annotated_read_df.columns):
+        return None
+    if len(annotated_read_df) == 0:
+        return None
+
+    total_reads = len(annotated_read_df)
+    cds_reads = int((annotated_read_df["mRNA_category"] == "CDS").sum())
+    observed_fraction = cds_reads / total_reads
+
+    # Per-transcript annotation: one row per transcript (cds_start/end/length)
+    tx_ann = (
+        annotated_read_df[["transcript_id", "cds_start", "cds_end", "transcript_length"]]
+        .drop_duplicates("transcript_id")
+        .set_index("transcript_id")
+    )
+    tx_reads = annotated_read_df.groupby("transcript_id", observed=True).size()
+
+    # Eligibility: transcript_length > 0 and CDS body length > 0
+    tx_ann = tx_ann[tx_ann["transcript_length"] > 0].copy()
+    tx_ann["cds_body_len"] = (
+        (tx_ann["cds_end"] - tx_ann["cds_start"] - 1).clip(lower=0)
+    )
+    tx_ann = tx_ann[tx_ann["cds_body_len"] > 0]
+
+    common = tx_ann.index.intersection(tx_reads.index)
+    if len(common) == 0:
+        return None
+    tx_ann = tx_ann.loc[common]
+    tx_reads_common = tx_reads.loc[common]
+
+    total_weighted = float(tx_reads_common.sum())
+    if total_weighted == 0:
+        return None
+
+    expected_fraction = float(
+        (tx_reads_common * (tx_ann["cds_body_len"] / tx_ann["transcript_length"])).sum()
+        / total_weighted
+    )
+    if expected_fraction <= 0:
+        return None
+
+    return float(observed_fraction / expected_fraction)

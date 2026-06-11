@@ -62,6 +62,7 @@ from .metrics import (
     proportion_of_reads_in_region,
     recommend_read_lengths,
     classify_library_type,
+    cds_enrichment_ratio,
 )
 from typing import Any, Dict, Optional, Tuple
 
@@ -946,6 +947,14 @@ def annotation_mode(
                 mRNA_distribution=results_dict["mRNA_distribution"],
                 region="CDS",
             )
+
+        # CDS enrichment ratio (Tier-1 gate; see METRICS_DESIGN.md §5 / R-O1)
+        try:
+            results_dict["metrics"]["cds_enrichment_ratio"] = cds_enrichment_ratio(
+                annotated_read_df
+            )
+        except Exception:
+            results_dict["metrics"]["cds_enrichment_ratio"] = None
 
         results_dict["metrics"]["prop_reads_leader"] =\
             proportion_of_reads_in_region(

@@ -27,9 +27,9 @@ RiboMetric provides multiple output formats optimized for different use cases:
 **Format:** One line per sample, easily concatenated
 
 ```tsv
-sample	timestamp	mode	total_reads	periodicity_dominance	uniformity_entropy	prop_reads_CDS
-Sample1	2025-01-15T10:30:00	annotation	1500000	0.85	0.78	0.82
-Sample2	2025-01-15T11:45:00	annotation	1200000	0.72	0.65	0.75
+sample	timestamp	mode	total_reads	periodicity_dominance	uniformity_entropy	cds_enrichment_ratio
+Sample1	2025-01-15T10:30:00	annotation	1500000	0.85	0.78	3.12
+Sample2	2025-01-15T11:45:00	annotation	1200000	0.72	0.65	1.80
 ```
 
 **Usage in pipelines:**
@@ -126,10 +126,10 @@ fi
 **Format:** Wide format with all metrics as columns
 
 ```csv
-sample,timestamp,periodicity_dominance_global,uniformity_entropy_global,prop_reads_CDS_global,...
-Sample1,2025-01-15T10:30:00,0.85,0.78,0.82,...
-Sample2,2025-01-15T11:45:00,0.72,0.65,0.75,...
-Sample3,2025-01-15T13:00:00,0.91,0.82,0.88,...
+sample,timestamp,periodicity_dominance_global,uniformity_entropy_global,cds_enrichment_ratio,...
+Sample1,2025-01-15T10:30:00,0.85,0.78,3.12,...
+Sample2,2025-01-15T11:45:00,0.72,0.65,1.80,...
+Sample3,2025-01-15T13:00:00,0.91,0.82,4.20,...
 ```
 
 **Usage:**
@@ -144,7 +144,7 @@ metrics <- read_csv("all_samples_comparison.csv")
 # Quick overview
 metrics %>%
   select(sample, periodicity_dominance_global,
-         uniformity_entropy_global, prop_reads_CDS_global) %>%
+         uniformity_entropy_global, cds_enrichment_ratio) %>%
   summary()
 
 # Identify outliers
@@ -268,33 +268,33 @@ generate_all_outputs(
 
 Create a `qc_thresholds.yaml` file:
 
+Thresholds live in the `scoring:` section of `config.yml` (or a custom config passed via `--config`). Each entry sets the 0–1 score thresholds — the raw value is always preserved alongside the score:
+
 ```yaml
-periodicity_dominance:
-  pass: 0.7  # > 0.7 = PASS
-  warn: 0.5  # 0.5-0.7 = WARNING, < 0.5 = FAIL
+scoring:
+  periodicity_dominance:
+    method: identity
+    status: {pass: 0.70, warn: 0.50}   # raw in-frame fraction
 
-uniformity_entropy:
-  pass: 0.7
-  warn: 0.5
+  cds_enrichment_ratio:
+    method: enrichment_ratio            # score = 1 - 1/E
+    status: {pass: 0.60, warn: 0.30}   # E ≈ 2.5 to pass
 
-prop_reads_CDS:
-  pass: 0.7
-  warn: 0.5
+  uniformity_entropy:
+    method: identity
+    status: {pass: 0.70, warn: 0.50}
 
-read_length_distribution_IQR_metric:
-  pass: 0.3
-  warn: 0.2
-
-terminal_nucleotide_bias_distribution_5_prime_metric:
-  pass: 1.0  # Lower is better (less bias)
-  warn: 2.0
+  terminal_bias_kl_5prime_raw:
+    method: inverse_linear
+    params: {max_value: 2.0}            # KL in bits; 0 = no bias, ≥2 → score 0
+    status: {pass: 0.70, warn: 0.40}
 ```
 
 Use with:
 
 ```bash
 RiboMetric run -b sample.bam -a annotation.tsv \
-    --qc-thresholds qc_thresholds.yaml
+    --config my_config.yml
 ```
 
 ## Best Practices
@@ -325,22 +325,36 @@ RiboMetric run -b sample.bam -a annotation.tsv \
 
 ## Interpreting Metrics
 
-### Critical Metrics (Always Review)
+### Tier 1 — Ribo-seq Identity (gated: failures block overall PASS)
 
-| Metric | Good Range | Interpretation |
+| Metric | Good range | Interpretation |
 |--------|------------|----------------|
-| `periodicity_dominance` | > 0.7 | Strong 3-nt periodicity in one dominant global frame |
-| `uniformity_entropy` | > 0.7 | Even signal across the codon-binned start-codon metagene window |
-| `prop_reads_CDS` | > 0.7 | Most reads map to coding regions |
-| `terminal_bias_kl_5prime_score` | near 1.0 | Low adapter ligation bias |
-| `terminal_bias_kl_5prime_raw` | near 0.0 | Raw 5' terminal KL divergence |
+| `periodicity_dominance` | > 0.70 | Raw in-frame fraction; 1/3 = random baseline |
+| `cds_enrichment_ratio` | E > ~2.5 | CDS enrichment above length-weighted expectation |
+| `periodicity_information` | > 0.70 | Shannon information cross-check on frame signal |
+
+### Tier 2 — Usability
+
+| Metric | Good range | Interpretation |
+|--------|------------|----------------|
+| `recommended_read_proportion` | > 0.70 | Fraction of library with clean 3-nt periodicity |
+| `uniformity_entropy` | > 0.70 | Even signal across the start-codon metagene window |
+
+### Tier 3 — Technical Caveats (informational, not gated)
+
+| Metric | Good range | Interpretation |
+|--------|------------|----------------|
+| `terminal_bias_kl_5prime_raw` | < 0.5 bits | Raw 5′ terminal KL divergence; > 2.0 bits = strong ligation bias |
+| `terminal_bias_kl_3prime_raw` | < 0.5 bits | Raw 3′ terminal KL divergence |
+| `duplicate_rate` | < 0.5 | PCR/library duplication fraction |
+| `rpf_multimapper_rate` | protocol-dependent | Multi-mapping fraction; expected high on transcriptome BAMs |
 
 ### Warning Signs
 
 - **Low periodicity** (< 0.5): RNA contamination, poor digestion, wrong read lengths
+- **Low CDS enrichment** (E < 1.5): rRNA contamination, poor mapping, or annotation mismatch
 - **Low uniformity** (< 0.5): Biased coverage, PCR artifacts, degradation
-- **Low CDS proportion** (< 0.5): rRNA contamination, poor mapping
-- **High terminal bias** (> 2.0): Adapter ligation artifacts
+- **High terminal KL** (> 2.0 bits): Adapter ligation artifacts
 
 ## Example Workflows
 

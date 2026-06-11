@@ -266,6 +266,47 @@ def _metric_direction(metric_name: str, threshold_dict: Dict) -> str:
     return "lower" if metric_name in LOWER_IS_BETTER_METRICS else "higher"
 
 
+def _evaluate_qc_status_scored(results_dict: dict, sample_name: str) -> dict:
+    """QC status from the unified scoring resolver (default path).
+
+    The overall verdict uses only the gated (Tier-1) metrics; non-gated
+    metrics are reported as checks but do not fail the sample.
+    """
+    from .scoring import build_scored_metrics, overall_gate_status
+
+    scored = build_scored_metrics(results_dict, None)
+    overall_status = overall_gate_status(scored)
+
+    qc_checks = [
+        {
+            "metric": m["key"],
+            "value": m["raw"],
+            "score": m["score"],
+            "status": m["status"],
+            "gate": m["gate"],
+            "tier": m["tier"],
+        }
+        for m in scored
+    ]
+    gated_checks = [c for c in qc_checks if c["gate"]]
+    return {
+        "sample": sample_name,
+        "timestamp": datetime.now().isoformat(),
+        "overall_status": overall_status,
+        "checks": qc_checks,
+        "summary": {
+            "total_checks": len(qc_checks),
+            "gated_checks": len(gated_checks),
+            "passed": sum(1 for c in qc_checks if c["status"] == "PASS"),
+            "warnings": sum(1 for c in qc_checks if c["status"] == "WARNING"),
+            "failed": sum(1 for c in qc_checks if c["status"] == "FAIL"),
+        },
+        "recommendation": _get_recommendation(
+            overall_status, [c for c in gated_checks]
+        ),
+    }
+
+
 def evaluate_qc_status(
     results_dict: dict,
     sample_name: str,
@@ -287,8 +328,12 @@ def evaluate_qc_status(
         Dictionary with overall_status, per-check detail, summary counts and a
         recommendation.
     """
+    # Default path: use the single scoring resolver (scoring.py) so the gate
+    # agrees with the report cards/badges and respects per-metric gate
+    # membership. An explicit thresholds dict (e.g. an external --expected YAML
+    # for the `evaluate` subcommand) keeps the legacy raw-value comparison.
     if thresholds is None:
-        thresholds = DEFAULT_QC_THRESHOLDS
+        return _evaluate_qc_status_scored(results_dict, sample_name)
 
     metrics = results_dict.get("metrics", {})
     qc_checks = []
@@ -397,6 +442,8 @@ def generate_qc_status(
 
 def _get_recommendation(status: str, checks: List[Dict]) -> str:
     """Generate a recommendation based on QC status"""
+    if status == "INFO":
+        return "No gated (Tier-1) metrics were available to score; provide an annotation for an automatic QC verdict."
     if status == "PASS":
         return "Sample passed all QC checks. Proceed with downstream analysis."
     elif status == "WARNING":

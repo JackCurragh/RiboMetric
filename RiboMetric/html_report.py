@@ -178,6 +178,26 @@ def _format_score(score: Any) -> str:
     return f"{score:.3g}"
 
 
+_RAW_BITS_KEYS = {"terminal_bias_kl_5prime_raw", "terminal_bias_kl_3prime_raw"}
+_RAW_RATIO_KEYS = {"cds_enrichment_ratio", "start_codon_enrichment_ratio",
+                   "stop_codon_readthrough_ratio"}
+
+
+def _format_raw(key: str, raw: Any) -> str:
+    """Format a raw value in its natural units for display beside the score."""
+    if raw is None:
+        return "n/a"
+    if not isinstance(raw, (int, float)):
+        return str(raw)
+    if key in _RAW_BITS_KEYS:
+        return f"{raw:.3f} bits"
+    if key in _RAW_RATIO_KEYS:
+        return f"E = {raw:.2f}"
+    if 0 <= raw <= 1:
+        return f"{raw:.1%}"
+    return f"{raw:.3g}"
+
+
 def _metric_status(metric_key: str, score: Any) -> str:
     if not isinstance(score, (float, int)):
         return "info"
@@ -201,23 +221,78 @@ def _group_for_metric(metric_key: str) -> str:
     return "Other"
 
 
+# Map the resolver's status vocabulary to the short forms used as CSS classes.
+_STATUS_SHORT = {
+    "PASS": "pass",
+    "WARNING": "warn",
+    "FAIL": "fail",
+    "INFO": "info",
+}
+
+
 def build_report_context(summary: Dict[str, Any]) -> Dict[str, Any]:
-    """Build presentation-only report structures from the summary plot payload."""
+    """Build presentation-only report structures from the summary plot payload.
+
+    Status and score come pre-resolved from the single scoring resolver
+    (scoring.py) via the summary payload; this function no longer re-derives
+    them, so badges, cards, and the QC gate cannot disagree. Older payloads
+    without a precomputed status fall back to the local heuristic.
+    """
     rows = []
     for metric in summary.get("metrics", []):
         key = _metric_key(metric)
         score = metric.get("score")
+        raw = metric.get("raw")
+        resolver_status = metric.get("status")
+        if resolver_status in _STATUS_SHORT:
+            status = _STATUS_SHORT[resolver_status]
+        else:
+            status = _metric_status(key, score)
         rows.append({
             "key": key,
             "label": _metric_label(key),
             "score": score,
             "score_label": _format_score(score),
-            "status": _metric_status(key, score),
-            "direction": "Lower is better" if key in LOWER_IS_BETTER else "Higher is better",
-            "description": _metric_description(key),
+            "raw": raw,
+            "raw_label": _format_raw(key, raw),
+            "status": status,
+            "gate": bool(metric.get("gate", False)),
+            "tier": int(metric["tier"]) if metric.get("tier") is not None else None,
+            "direction": "Higher is better",
+            "description": metric.get("decision") or _metric_description(key),
             "group": _group_for_metric(key),
         })
 
+    # --- Tier-based grouping (new primary layout) ---
+    def _tier_rows(tier_num):
+        return [r for r in rows if r.get("tier") == tier_num]
+
+    tier_sections = [
+        {
+            "tier": 1,
+            "heading": "Tier 1 — Is this Ribo-seq?",
+            "subtitle": "These metrics decide whether frame-dependent analysis is defensible. "
+                        "Failures here mean P-site assignment and ORF calling should not proceed.",
+            "metrics": _tier_rows(1),
+        },
+        {
+            "tier": 2,
+            "heading": "Tier 2 — Is it usable for my analysis?",
+            "subtitle": "These metrics describe whether enough usable signal remains after filtering. "
+                        "Weak scores are caveats, not identity failures.",
+            "metrics": _tier_rows(2),
+        },
+        {
+            "tier": 3,
+            "heading": "Tier 3 — Technical caveats",
+            "subtitle": "These describe technical distortions and loss of usable depth. "
+                        "They colour interpretation but do not automatically fail the sample.",
+            "metrics": _tier_rows(3),
+        },
+    ]
+    tier_sections = [s for s in tier_sections if s["metrics"]]
+
+    # --- Legacy grouped view (kept for backwards-compat; not shown in new layout) ---
     grouped_metrics = []
     for group_name in list(METRIC_GROUPS.keys()) + ["Other"]:
         group_rows = [row for row in rows if row["group"] == group_name]
@@ -230,37 +305,62 @@ def build_report_context(summary: Dict[str, Any]) -> Dict[str, Any]:
     ][:5]
 
     status_rank = {"fail": 3, "warn": 2, "pass": 1, "info": 0}
+    gated_rows = [row for row in rows if row.get("gate")]
+    verdict_rows = gated_rows if gated_rows else rows
     overall_status = "info"
-    if rows:
-        overall_status = max(rows, key=lambda row: status_rank[row["status"]])["status"]
+    if verdict_rows:
+        overall_status = max(
+            verdict_rows, key=lambda row: status_rank[row["status"]]
+        )["status"]
 
-    recommended = metric_map.get("recommended_read_proportion")
+    # Three-way framing per METRICS_DESIGN.md §4
     periodicity = metric_map.get("periodicity_dominance")
-    cds = metric_map.get("prop_reads_CDS")
+    cds = metric_map.get("cds_enrichment_ratio") or metric_map.get("prop_reads_CDS")
+    recommended = metric_map.get("recommended_read_proportion")
     if overall_status == "pass":
-        interpretation = "This sample has a strong ribosome profiling QC profile across the scored metrics."
+        interpretation = "Passed Ribo-seq identity checks."
     elif overall_status == "warn":
-        interpretation = "This sample is usable but has one or more QC signals worth reviewing before downstream interpretation."
+        interpretation = "Borderline on one or more Ribo-seq identity checks — review before frame-dependent analysis."
     elif overall_status == "fail":
-        interpretation = "This sample has material QC concerns; inspect the flagged metrics and plots before using it as a reference example."
+        interpretation = "Fails one or more Ribo-seq identity checks — frame-dependent analysis not advised without investigation."
     else:
-        interpretation = "Scored summary metrics were not available for automatic interpretation."
-
+        interpretation = "Gated identity metrics were not available."
     details = []
-    if periodicity:
-        details.append(f"periodicity {periodicity['score_label']}")
-    if cds:
-        details.append(f"CDS enrichment {cds['score_label']}")
-    if recommended:
-        details.append(f"recommended read proportion {recommended['score_label']}")
+    if periodicity and periodicity.get("raw") is not None:
+        details.append(f"periodicity {periodicity['raw_label']}")
+    if cds and cds.get("raw") is not None:
+        details.append(f"CDS enrichment E={cds['raw_label']}")
+    if recommended and recommended.get("raw") is not None:
+        details.append(f"recommended-read proportion {recommended['raw_label']}")
     if details:
-        interpretation = f"{interpretation} Top-line values: {', '.join(details)}."
+        interpretation = f"{interpretation} Top-line: {', '.join(details)}."
+
+    # --- Context strip --------------------------------------------------
+    raw_context = summary.get("context", {})
+    lib_label = raw_context.get("library_type") or "unknown"
+    dom_rl = raw_context.get("dominant_read_length")
+    total_reads = raw_context.get("total_reads")
+    annotation = raw_context.get("annotation")
+    bam = raw_context.get("bam", "")
+    context_strip = {
+        "library_type": lib_label,
+        "dominant_read_length": f"{dom_rl} nt" if dom_rl else "n/a",
+        "total_reads": f"{total_reads:,}" if total_reads else "n/a",
+        "annotation": annotation.split("/")[-1] if annotation else "none",
+        "bam": bam.split("/")[-1] if bam else "n/a",
+    }
+
+    # --- Diagnostics list -----------------------------------------------
+    diagnostics = summary.get("diagnostics", [])
 
     return {
         "top_cards": top_cards,
-        "grouped_metrics": grouped_metrics,
+        "tier_sections": tier_sections,
+        "grouped_metrics": grouped_metrics,   # kept for backwards-compat
         "overall_status": overall_status,
         "interpretation": interpretation,
+        "context_strip": context_strip,
+        "diagnostics": diagnostics,
     }
 
 
