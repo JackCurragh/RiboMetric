@@ -289,7 +289,7 @@ def _frame_calibrated_offsets(
         total = sum(frame_counts.values())
         if total < min_reads:
             continue
-        dominant_frame = max(frame_counts, key=frame_counts.get)
+        dominant_frame = max(frame_counts, key=lambda k: frame_counts[k])
         dominant_count = frame_counts[dominant_frame]
         dominant_fraction = dominant_count / total if total else 0
         if dominant_frame == 0 or dominant_fraction < min_fraction:

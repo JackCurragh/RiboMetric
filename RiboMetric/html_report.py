@@ -133,7 +133,7 @@ METRIC_DESCRIPTIONS = {
 
 
 def _metric_key(metric: Dict[str, Any]) -> str:
-    return metric.get("key") or metric.get("name", "").lower().replace(" ", "_")
+    return str(metric.get("key") or metric.get("name", "").lower().replace(" ", "_"))
 
 
 def _metric_label(metric_key: str) -> str:
@@ -264,7 +264,7 @@ def build_report_context(summary: Dict[str, Any]) -> Dict[str, Any]:
         })
 
     # --- Tier-based grouping (new primary layout) ---
-    def _tier_rows(tier_num):
+    def _tier_rows(tier_num: int) -> list:
         return [r for r in rows if r.get("tier") == tier_num]
 
     tier_sections = [

@@ -29,12 +29,12 @@ def _prepare_report_figure(fig: go.Figure) -> go.Figure:
 
 def plotly_to_html(fig: go.Figure) -> str:
     """Return a report plot fragment without embedding Plotly.js repeatedly."""
-    return pio.to_html(
+    return str(pio.to_html(
         _prepare_report_figure(fig),
         full_html=False,
         include_plotlyjs=False,
         config={"responsive": True},
-    )
+    ))
 
 
 def generate_plots(results_dict: dict, config: dict) -> list:
@@ -1243,7 +1243,7 @@ def plot_metrics_summary(results_dict: dict, config: dict) -> dict:
         "three_prime_drop_ratio": "3′ drop ratio",
     }
 
-    def _disome_caption(raw, lib_type):
+    def _disome_caption(raw: float, lib_type: str | None) -> str:
         if lib_type == "disome":
             return "Expected/desirable in disome-focused experiments."
         if lib_type in ("elongation", "initiation", "low_quality"):
