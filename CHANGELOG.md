@@ -9,6 +9,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-06-11
+
+### Added
+
+- **Unified scoring module** (`RiboMetric/scoring.py`) — all metrics now resolved
+  through a single config-driven scorer. Every score is anchored 0 (random/null
+  baseline) → 1 (ideal). Raw value travels with the score in all outputs. Score
+  methods: `identity`, `one_minus_rate`, `inverse_linear`, `enrichment_ratio`.
+  Gate (`gate: true`) determines which metrics contribute to the overall pass/fail
+  verdict; only Tier 1 metrics are gated by default.
+
+- **CDS enrichment ratio** (`cds_enrichment_ratio`) — replaces raw `prop_reads_CDS`
+  as the Tier 1 CDS gate. Formula: E = observed_CDS_body_fraction /
+  length-weighted_expected_fraction. Normalises for transcript-length distribution,
+  removing the organism-level confound present in the raw proportion.
+
+- **New terminal-bias scored metrics** — `terminal_bias_kl_5prime_raw` and
+  `terminal_bias_kl_3prime_raw` now scored via `inverse_linear` (KL_max = 2.0 bits;
+  KL = 1 bit → score 0.5, ≥ 2 bits → score 0). Raw bits shown in report.
+  `terminal_bias_maxabs_5prime` / `_3prime` scored via `one_minus_rate`.
+
+- **Tier 1/2/3 report layout** — HTML report reorganised into three labelled
+  sections: Tier 1 (Ribo-seq identity, gated), Tier 2 (usability), Tier 3
+  (technical caveats). Raw value and anchored score shown side-by-side.
+
+- **Context strip** — report header now shows library type, dominant read length,
+  total reads, and annotation source at a glance.
+
+- **Diagnostics section** — nine context-dependent metrics demoted from scored
+  table to a plain-value diagnostics section: `disome_proportion`,
+  `read_length_distribution_*_metric` (IQR, CV, max-prop, bimodality),
+  `start_codon_enrichment_ratio`, `stop_codon_readthrough_ratio`,
+  `five_prime_ramp_ratio`, `three_prime_drop_ratio`. No pass/fail badge; captions
+  are library-type-aware (e.g. disome_proportion caption differs for disome vs
+  elongation experiments).
+
+### Changed
+
+- **`periodicity_dominance` scoring** — switched from `frame_dominance_rescaled`
+  (`(d − 1/3) / (2/3)`) to `identity` (raw in-frame fraction). Score now equals
+  the interpretable number a user already reads (0.79 = 79 % of A-sites in frame).
+  The 1/3 random-frame baseline is shown as a dashed reference line on the
+  periodicity plot rather than subtracted into the score.
+
+- **`scoring:` block in `config.yml`** — all default thresholds now live here and
+  override code defaults. User-supplied configs are merged over this block, so
+  individual thresholds can be changed without touching code.
+
+- **Overall QC gate** — only Tier 1 metrics (`gate: true`) determine
+  `overall_status`. Tier 2 / Tier 3 failures are visible in the report but do not
+  block a PASS verdict.
+
 ## [1.3.0] — 2026-06-10
 
 ### Added

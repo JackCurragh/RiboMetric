@@ -246,3 +246,104 @@ max_mins: # max mins from simulations for each metric github.com/JackCurragh/Met
   stop_codon_readthrough_ratio: [0, 5]
   start_codon_enrichment_ratio: [0, 20]
   # rust_mean_kl_divergence: [0, 1]
+
+# Unified scoring (see docs/METRICS_DESIGN.md). Single source of truth for how
+# raw metrics become anchored 0-1, higher-is-better scores and PASS/WARNING/
+# FAIL statuses. Used by the summary cards, the per-metric badges, and the QC
+# gate. Code defaults live in scoring.py (DEFAULT_SCORING); entries here are
+# merged over those defaults per metric, so you can override status thresholds
+# or gate membership without code changes.
+#   method   : identity | one_minus_rate | frame_dominance_rescaled |
+#              inverse_linear | enrichment_ratio
+#   status   : score thresholds {pass, warn}
+#   gate     : true => counts toward the overall QC verdict (Tier-1 only)
+#   tier     : 1 identity | 2 usability | 3 technical caveat
+# Phase 1A/1B metrics only; CDS enrichment (1C) and terminal-bias (1D) are
+# added here when those phases land.
+scoring:
+  # Tier 1 - is this Ribo-seq-like? (gated)
+  periodicity_dominance:
+    method: identity
+    status: {pass: 0.70, warn: 0.50}
+    gate: true
+    tier: 1
+  periodicity_information:
+    method: identity
+    status: {pass: 0.60, warn: 0.30}
+    gate: true
+    tier: 1
+  cds_enrichment_ratio:
+    method: enrichment_ratio
+    status: {pass: 0.60, warn: 0.30}
+    gate: true
+    tier: 1
+  # Tier 2 - usable for my analysis? (not gated)
+  recommended_read_proportion:
+    method: identity
+    status: {pass: 0.60, warn: 0.30}
+    gate: false
+    tier: 2
+  uniformity_entropy:
+    method: identity
+    status: {pass: 0.60, warn: 0.30}
+    gate: false
+    tier: 2
+  marginal_position_discovery_rate:
+    method: one_minus_rate
+    status: {pass: 0.60, warn: 0.30}
+    gate: false
+    tier: 2
+  # Tier 3 - technical caveats (not gated)
+  duplicate_rate:
+    method: one_minus_rate
+    status: {pass: 0.60, warn: 0.30}
+    gate: false
+    tier: 3
+  rpf_multimapper_rate:
+    method: one_minus_rate
+    status: {pass: 0.60, warn: 0.30}
+    gate: false
+    tier: 3
+  multimapper_rate:
+    method: one_minus_rate
+    status: {pass: 0.60, warn: 0.30}
+    gate: false
+    tier: 3
+  alignment_multimapper_rate:
+    method: one_minus_rate
+    status: {pass: 0.60, warn: 0.30}
+    gate: false
+    tier: 3
+  unique_rpf_rate:
+    method: identity
+    status: {pass: 0.60, warn: 0.30}
+    gate: false
+    tier: 3
+  soft_clip_rate_5prime:
+    method: one_minus_rate
+    status: {pass: 0.60, warn: 0.30}
+    gate: false
+    tier: 3
+  # Terminal bias (S4): scored via raw KL bits; 1/(1+KL) _score variants retired
+  terminal_bias_kl_5prime_raw:
+    method: inverse_linear
+    params: {max_value: 2.0}
+    status: {pass: 0.70, warn: 0.40}
+    gate: false
+    tier: 3
+  terminal_bias_kl_3prime_raw:
+    method: inverse_linear
+    params: {max_value: 2.0}
+    status: {pass: 0.70, warn: 0.40}
+    gate: false
+    tier: 3
+  terminal_bias_maxabs_5prime:
+    method: one_minus_rate
+    status: {pass: 0.70, warn: 0.40}
+    gate: false
+    tier: 3
+  terminal_bias_maxabs_3prime:
+    method: one_minus_rate
+    status: {pass: 0.70, warn: 0.40}
+    gate: false
+    tier: 3

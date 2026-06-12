@@ -1412,16 +1412,16 @@ def asite_calculation_per_readlength(
         elif method == "ribowaltz":
             # ribowaltz_psite_prediction returns a positive P-site offset
             # (distance from 5' end to P-site). Shift according to target.
-            psite_offset = ribowaltz_psite_prediction(
+            rw_offset: Optional[int] = ribowaltz_psite_prediction(
                 {read_length: read_length_metagene["start"][read_length]},
                 flanking_length=9,
                 offset_range=offset_range,
                 min_prominence=min_prominence,
             )[read_length]
-            if psite_offset is None:
+            if rw_offset is None:
                 offset = default_offset
             else:
-                offset = int(psite_offset + target_shift)
+                offset = int(rw_offset + target_shift)
 
         elif method == "tripsviz":
             t = trips_psite_prediction(

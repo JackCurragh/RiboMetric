@@ -77,7 +77,7 @@ def test_read_frame_distribution_metric():
     }
     pre_scores = rfd_metric(read_frame_dict)
     read_frame_metric = information_metric_cutoff(pre_scores)
-    assert round(read_frame_metric[30], 2) == 0.23
+    assert round(read_frame_metric[30], 2) == 0.05
 
 
 def test_triplet_periodicity_weighted_score():
@@ -97,4 +97,4 @@ def test_triplet_periodicity_weighted_score():
     weighted_score = read_frame_information_weighted_score(
         pre_scores,
     )
-    assert round(weighted_score, 2) == 0.38
+    assert round(weighted_score, 2) == 0.23

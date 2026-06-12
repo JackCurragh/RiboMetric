@@ -7,7 +7,7 @@ import os
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from .modules import read_frame_cull, read_frame_score_trips_viz, sum_mRNA_distribution
-from .results_output import normalise_score
+from .scoring import build_scored_metrics
 import plotly.io as pio
 import base64
 
@@ -29,12 +29,12 @@ def _prepare_report_figure(fig: go.Figure) -> go.Figure:
 
 def plotly_to_html(fig: go.Figure) -> str:
     """Return a report plot fragment without embedding Plotly.js repeatedly."""
-    return pio.to_html(
+    return str(pio.to_html(
         _prepare_report_figure(fig),
         full_html=False,
         include_plotlyjs=False,
         config={"responsive": True},
-    )
+    ))
 
 
 def generate_plots(results_dict: dict, config: dict) -> list:
@@ -50,7 +50,7 @@ def generate_plots(results_dict: dict, config: dict) -> list:
 
     """
     print("Generating plots")
-    plots_list = [plot_metrics_summary(results_dict["metrics"].copy(), config)]
+    plots_list = [plot_metrics_summary(results_dict, config)]
     plots_list.append(
             plot_read_frame_distribution(
                 results_dict["read_frame_distribution"], config
@@ -237,6 +237,16 @@ def plot_recommended_read_lengths(recommended: dict, config: dict) -> dict:
                 "<br><b>P-site offset</b>: %{customdata[1]}<extra></extra>"
             ),
         )
+    )
+    # 1/3 random-frame baseline: present the floor so the user reads the raw
+    # periodicity value against it rather than having it hidden in scaling.
+    fig.add_hline(
+        y=1 / 3,
+        line_dash="dash",
+        line_color="#aaaaaa",
+        annotation_text="Random-frame baseline (1/3 ≈ 0.33)",
+        annotation_position="right",
+        annotation_font_size=12,
     )
     fig.update_layout(
         title=(
@@ -1144,80 +1154,145 @@ def plot_metagene_heatmap(
     return plot_metagene_heatmap
 
 
-def plot_metrics_summary(metrics_dict: dict, config: dict) -> dict:
+def plot_metrics_summary(results_dict: dict, config: dict) -> dict:
     '''
-    generate the metrics summary plot that is a bar chart of the metrics
-    found at the top of the report
+    Generate the metrics summary payload used by the HTML/PDF report.
 
-    Inputs:
-        metrics_dict: Dictionary containing the metrics and their scores
-        config: Dictionary containing the configuration information
+    Accepts either the full results_dict (preferred) or a plain metrics dict
+    for backwards compatibility.
 
-    Outputs:
-        plot_metrics_summary_dict: Dictionary containing the plot name,
-        description and plotly figure for html and pdf export
+    Returns a dict with:
+        plot    — bar-chart of anchored 0-1 scores
+        metrics — scored records (key, score, raw, status, gate, tier, decision)
+        context — context-strip data for the report header
+        diagnostics — non-scored raw values shown as plain labels
     '''
-    # for any entry in metrics_dict with a dict as value (these are where the
-    # metrics are per read length) get average of the top 3 values of that dict
-    for key, value in metrics_dict.items():
-        if isinstance(value, dict):
-            metrics_dict[key] = value.get('global', sum(sorted(value.values(), reverse=True)[:3])/3)
+    # Accept either full results_dict or bare metrics dict (legacy callers).
+    if "metrics" in results_dict:
+        metrics_dict = results_dict["metrics"]
+    else:
+        metrics_dict = results_dict
+        results_dict = {}
 
+    # Anchored scores come from the single scoring resolver (scoring.py).
+    scored = build_scored_metrics({"metrics": metrics_dict}, config)
 
-    # Convert the metrics_dict to a DataFrame for easier plotting
-    df = pd.DataFrame(list(metrics_dict.items()), columns=['Metric', 'Score'])
+    # Drop any metrics explicitly excluded from the summary plot.
+    excluded = set(config.get("plots", {}).get("exclude_metrics", []))
+    scored = [m for m in scored if m["key"] not in excluded]
 
-    # Filter metrics based on max_mins keys (support consolidated + legacy)
-    maxmin_keys = set(config["max_mins"].keys())
-    df = df[df['Metric'].apply(lambda x: any(x.startswith(key) for key in maxmin_keys))]
-
-    # normalise metrics between max_min values
-    for metric in config["max_mins"]:
-        matching_rows = df['Metric'].str.startswith(metric)
-        if matching_rows.any():
-            df.loc[matching_rows, 'Score'] = normalise_score(
-                df.loc[matching_rows, 'Score'].values[0],
-                config["max_mins"][metric][0],
-                config["max_mins"][metric][1]
-            )
-
-    # Filter out excluded metrics
-    df = df[~df['Metric'].isin(config["plots"]["exclude_metrics"])]
-
-    # Get final list of valid metrics after all filtering
-    final_valid_metrics = df['Metric'].tolist()
+    # Only metrics that produced a score are plottable on the 0-1 bar chart.
+    plottable = [m for m in scored if m["score"] is not None]
+    df = pd.DataFrame(
+        [{"Metric": m["key"], "Score": round(m["score"], 3)} for m in plottable]
+    )
 
     width = 750
     height = 320
-    # Create a bar chart using Plotly Express
     fig = px.bar(df, x='Metric', y='Score', title="Summary Scores",
                  labels={'Score': 'Score'},
                  hover_data={'Metric': True, 'Score': ':.3f'},
                  height=400)
-
-    # Customize the layout if needed
+    fig.update_yaxes(range=[0, 1])
     fig.update_layout(showlegend=False)
-
-    # Convert the plot to HTML or an image as needed
     fig_html = plotly_to_html(fig)
     fig_image = plotly_to_image(fig, width, height)
 
-    # Only include metrics that passed all filtering steps
-    filtered_metrics = {k: v for k, v in metrics_dict.items() 
-                       if k in final_valid_metrics and isinstance(v, float)}
+    # --- Context strip ---------------------------------------------------
+    rl_dist = results_dict.get("read_length_distribution", {})
+    total_reads = int(sum(rl_dist.values())) if rl_dist else None
+    dominant_rl = (
+        max(rl_dist, key=rl_dist.__getitem__) if rl_dist else None
+    )
+    lib_type_data = results_dict.get("library_type")
+    library_type_label = lib_type_data["label"] if isinstance(lib_type_data, dict) else None
+    context = {
+        "library_type": library_type_label,
+        "dominant_read_length": dominant_rl,
+        "total_reads": total_reads,
+        "annotation": (
+            config.get("argument", {}).get("annotation")
+            or config.get("argument", {}).get("gff")
+        ),
+        "bam": config.get("argument", {}).get("bam"),
+    }
 
-    plot_metrics_summary_dict = {
+    # --- Diagnostics (non-scored values shown as plain labels) -----------
+    # These are metrics whose "good direction" depends on experiment type or
+    # that don't belong on a universal pass/fail scale.
+    _DIAG_KEYS = [
+        "disome_proportion",
+        "read_length_distribution_IQR_metric",
+        "read_length_distribution_coefficient_of_variation_metric",
+        "read_length_distribution_maxprop_metric",
+        "read_length_distribution_bimodality_metric",
+        "start_codon_enrichment_ratio",
+        "stop_codon_readthrough_ratio",
+        "five_prime_ramp_ratio",
+        "three_prime_drop_ratio",
+    ]
+    _DIAG_LABELS = {
+        "disome_proportion": "Di-some proportion",
+        "read_length_distribution_IQR_metric": "Read-length IQR score",
+        "read_length_distribution_coefficient_of_variation_metric": "Read-length CV",
+        "read_length_distribution_maxprop_metric": "Read-length max-proportion",
+        "read_length_distribution_bimodality_metric": "Read-length bimodality",
+        "start_codon_enrichment_ratio": "Start-codon enrichment ratio",
+        "stop_codon_readthrough_ratio": "Stop-codon read-through ratio",
+        "five_prime_ramp_ratio": "5′ ramp ratio",
+        "three_prime_drop_ratio": "3′ drop ratio",
+    }
+
+    def _disome_caption(raw: float, lib_type: str | None) -> str:
+        if lib_type == "disome":
+            return "Expected/desirable in disome-focused experiments."
+        if lib_type in ("elongation", "initiation", "low_quality"):
+            return "High values may indicate disome contamination or incomplete size selection."
+        return "Interpretation depends on library type (monosome: high = potential contamination; disome: expected)."
+
+    diagnostics = []
+    for key in _DIAG_KEYS:
+        raw = metrics_dict.get(key)
+        if raw is None:
+            continue
+        if isinstance(raw, dict):
+            raw = raw.get("global", raw.get("ratio"))
+        if raw is None:
+            continue
+        entry = {
+            "key": key,
+            "label": _DIAG_LABELS.get(key, key.replace("_", " ").capitalize()),
+            "raw": raw,
+            "raw_label": f"{raw:.3f}" if isinstance(raw, float) else str(raw),
+            "caption": None,
+        }
+        if key == "disome_proportion":
+            entry["caption"] = _disome_caption(raw, library_type_label)
+        diagnostics.append(entry)
+
+    return {
         "plot": {
             "name": "Summary of Metrics",
-            "description": "Bar chart showing the difference scores ranging from 0 to 1.",
+            "description": "Bar chart showing anchored 0-1 scores (higher is better).",
             "fig_html": fig_html,
             "fig_image": fig_image,
         },
-        "metrics": [{"key": k, "name": k.replace("_", " ").capitalize(), "score": round(v, 3)}
-                    for k, v in filtered_metrics.items()]
+        "metrics": [
+            {
+                "key": m["key"],
+                "name": m["key"].replace("_", " ").capitalize(),
+                "score": round(m["score"], 3) if m["score"] is not None else None,
+                "raw": m["raw"],
+                "status": m["status"],
+                "gate": m["gate"],
+                "tier": m["tier"],
+                "decision": m["decision"],
+            }
+            for m in scored
+        ],
+        "context": context,
+        "diagnostics": diagnostics,
     }
-
-    return plot_metrics_summary_dict
 
 
 def plot_read_frame_triangle(
