@@ -15,6 +15,7 @@ from RiboMetric.results_output import (
     generate_qc_status,
     generate_comparison_ready_csv,
     generate_metrics_table_csv,
+    generate_offsets_tsv,
     generate_all_outputs,
 )
 
@@ -519,6 +520,7 @@ class TestGenerateAllOutputs:
         assert (tmp_path / "Sample1_metrics_table.csv").exists()
         assert (tmp_path / "Sample1_qc_status.json").exists()
         assert (tmp_path / "Sample1_comparison.csv").exists()
+        assert (tmp_path / "Sample1_offsets.tsv").exists()
 
     def test_files_have_correct_content(self, sample_results_dict, sample_config, qc_thresholds, tmp_path):
         """Test that generated files have correct content"""
@@ -546,3 +548,48 @@ class TestGenerateAllOutputs:
         # Verify metrics table
         metrics_df = pd.read_csv(tmp_path / "Sample1_metrics_table.csv")
         assert "Sample1" in metrics_df["sample"].values
+
+        # Verify offsets table
+        offsets_df = pd.read_csv(tmp_path / "Sample1_offsets.tsv", sep="\t")
+        assert "Sample1" in offsets_df["sample"].values
+
+
+class TestGenerateOffsetsTsv:
+    """Test flat applied-offset audit output"""
+
+    def test_offsets_tsv_contains_applied_offsets(self, tmp_path):
+        results = {
+            "offsets": {
+                "source": "computed_per_read_length",
+                "target": "a_site",
+                "offset_calculation_method": "ribowaltz",
+                "computed_offsets": {"28": 15},
+                "applied_by_read_length": {
+                    "28": {
+                        "n_reads": 100,
+                        "n_unique_offsets": 1,
+                        "offsets": [15],
+                    }
+                },
+                "frame_adjustments": {
+                    "28": {
+                        "old_offset": 14,
+                        "new_offset": 15,
+                        "dominant_frame": 2,
+                        "dominant_fraction": 0.8,
+                        "reads": 100,
+                    }
+                },
+            }
+        }
+
+        generate_offsets_tsv(results, "Sample1", "offsets.tsv", str(tmp_path))
+
+        df = pd.read_csv(tmp_path / "offsets.tsv", sep="\t")
+        row = df.iloc[0]
+        assert row["sample"] == "Sample1"
+        assert row["offset_source"] == "computed_per_read_length"
+        assert row["read_length"] == 28
+        assert str(row["applied_offsets"]) == "15"
+        assert row["computed_offset"] == 15
+        assert row["frame_adjusted"]

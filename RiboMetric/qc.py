@@ -229,6 +229,87 @@ def _weighted_read_count(read_df: pd.DataFrame) -> int:
     return int(len(read_df))
 
 
+def _offset_source(config: dict, computed_offsets: Dict[int, int]) -> str:
+    args = config.get("argument", {})
+    if "offset_read_specific" in args:
+        return "read_specific_file"
+    if "offset_read_length" in args:
+        return "read_length_file"
+    if "global_offset" in args:
+        return "global"
+    if computed_offsets:
+        return "computed_per_read_length"
+    return "default_global"
+
+
+def _offsets_used_by_read_length(read_df: pd.DataFrame) -> Dict[str, dict]:
+    """Summarise the actual offsets applied without bloating JSON for read-specific offsets."""
+    if read_df.empty or "read_length" not in read_df.columns or "offset" not in read_df.columns:
+        return {}
+
+    out: Dict[str, dict] = {}
+    offset_df = read_df[["read_length", "offset"]].copy()
+    offset_df["read_length"] = pd.to_numeric(
+        offset_df["read_length"], errors="coerce"
+    )
+    offset_df["offset"] = pd.to_numeric(offset_df["offset"], errors="coerce")
+    offset_df = offset_df.dropna(subset=["read_length", "offset"])
+    if offset_df.empty:
+        return {}
+
+    for read_length, group in offset_df.groupby("read_length", observed=True):
+        offsets = sorted({int(v) for v in group["offset"].astype(int).tolist()})
+        key = str(int(read_length))
+        record = {
+            "n_reads": int(len(group)),
+            "n_unique_offsets": int(len(offsets)),
+        }
+        if len(offsets) <= 20:
+            record["offsets"] = offsets
+        else:
+            record["min_offset"] = int(offsets[0])
+            record["max_offset"] = int(offsets[-1])
+        out[key] = record
+    return out
+
+
+def _offset_audit_record(
+    read_df: pd.DataFrame,
+    config: dict,
+    computed_offsets: Dict[int, int],
+    offset_frame_adjustments: Dict[str, dict],
+    offset_bounds: Tuple[int, int],
+    max_read_length_fraction: Optional[float],
+    offset_target: str,
+    default_offset: int,
+) -> dict:
+    """Record enough offset provenance to reproduce and audit frame-sensitive calls."""
+    args = config.get("argument", {})
+    source = _offset_source(config, computed_offsets)
+    record = {
+        "source": source,
+        "target": offset_target,
+        "default_offset": int(default_offset),
+        "offset_bounds": [int(offset_bounds[0]), int(offset_bounds[1])],
+        "offset_max_read_length_fraction": max_read_length_fraction,
+        "offset_calculation_method": args.get("offset_calculation_method"),
+        "applied_by_read_length": _offsets_used_by_read_length(read_df),
+    }
+    if computed_offsets:
+        record["computed_offsets"] = {
+            str(k): int(v) for k, v in sorted(computed_offsets.items())
+        }
+    if "global_offset" in args:
+        record["global_offset"] = int(args["global_offset"])
+    if "offset_read_length" in args:
+        record["offset_read_length_file"] = args["offset_read_length"]
+    if "offset_read_specific" in args:
+        record["offset_read_specific_file"] = args["offset_read_specific"]
+    if offset_frame_adjustments:
+        record["frame_adjustments"] = offset_frame_adjustments
+    return record
+
+
 def _metagene_window_count(metagene_profile_dict: dict, target: str) -> int:
     return int(
         sum(
@@ -492,6 +573,17 @@ def annotation_mode(
         results_dict["computed_offset_target"] = offset_target
     if offset_frame_adjustments:
         results_dict["offset_frame_adjustments"] = offset_frame_adjustments
+
+    results_dict["offsets"] = _offset_audit_record(
+        read_df,
+        config,
+        computed_offsets,
+        offset_frame_adjustments,
+        offset_bounds,
+        max_read_length_fraction,
+        offset_target,
+        default_offset,
+    )
 
     #######################################################################
     # ALIGNMENT STATS  (from read_df columns computed during BAM parsing)
