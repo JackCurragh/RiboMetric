@@ -291,7 +291,6 @@ def main(args: argparse.Namespace) -> int:
     if args.command == "view":
         from .tui import run_tui
         import json
-        from pathlib import Path
 
         # Validate file exists and is JSON
         file_path = Path(args.json_file)

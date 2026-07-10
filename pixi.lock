@@ -1161,8 +1161,8 @@ packages:
   requires_python: '>=3.7'
 - pypi: ./
   name: ribometric
-  version: 1.3.0
-  sha256: d9e700673bb0113c9226cbd35c8a23122b2e5d737856e9bfb1d844b4e2aefd28
+  version: 1.4.2
+  sha256: 51bcfecc7b0cccca93d0003b24b839d51a9db39096932500883d875fa6926044
   requires_dist:
   - biopython>=1.81
   - gffpandas>=1.2.0

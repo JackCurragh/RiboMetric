@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.2] — 2026-07-10
+
+### Fixed
+
+- **`--output-offsets` CLI crash** — removed a function-local `Path` import that
+  shadowed the module-level import and caused `UnboundLocalError` on normal
+  `RiboMetric run --output-offsets ...` executions.
+
 ## [1.4.1] — 2026-07-07
 
 ### Added
