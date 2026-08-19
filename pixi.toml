@@ -3,7 +3,7 @@ authors = ["Jack Tierney <jackcurragh@gmail.com>"]
 channels = ["conda-forge"]
 name = "RiboMetric"
 platforms = ["osx-arm64"]
-version = "1.2.0"
+version = "1.4.3"
 
 [tasks]
 ribometric = "RiboMetric"

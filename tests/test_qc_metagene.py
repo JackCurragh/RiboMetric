@@ -4,6 +4,7 @@ from RiboMetric.qc import (
     _frame_calibrated_offsets,
     _metagene_profile_stats,
     _metagene_report_reads,
+    _offset_audit_record,
 )
 
 
@@ -55,6 +56,46 @@ def test_metagene_profile_stats_records_filter_and_window_support():
         "start_window_reads": 5,
         "stop_window_reads": 1,
     }
+
+
+def test_offset_audit_uses_final_mapping_and_retains_raw_offset():
+    # Simulates the pre-calibration dataframe still carrying the raw estimate.
+    reads = pd.DataFrame({"read_length": [28] * 60, "offset": [14] * 60})
+    config = {"argument": {"offset_calculation_method": "ribowaltz"}}
+
+    audit = _offset_audit_record(
+        reads,
+        config,
+        {28: 15},
+        {"28": {"old_offset": 14, "new_offset": 15}},
+        (8, 20),
+        2 / 3,
+        "a_site",
+        15,
+        raw_offsets={28: 14},
+    )
+
+    assert audit["raw_offsets"] == {"28": 14}
+    assert audit["final_offsets"] == {"28": 15}
+    assert audit["computed_offsets"] == {"28": 15}
+    assert audit["applied_by_read_length"]["28"]["offsets"] == [15]
+
+
+def test_external_offsets_are_explicitly_marked_final():
+    reads = pd.DataFrame({"read_length": [28], "offset": [14]})
+    audit = _offset_audit_record(
+        reads,
+        {"argument": {"offset_read_length": "offsets.tsv"}},
+        {},
+        {},
+        (8, 20),
+        2 / 3,
+        "a_site",
+        15,
+    )
+
+    assert audit["offsets_are_final"] is True
+    assert audit["offset_calibration"] == "not_applied_external_offsets_treated_as_final"
 
 
 def test_frame_calibrated_offsets_nudges_confident_nonzero_frame():

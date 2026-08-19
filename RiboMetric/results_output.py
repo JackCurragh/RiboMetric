@@ -618,6 +618,8 @@ def generate_offsets_tsv(
     offsets = results_dict.get("offsets", {})
     applied = offsets.get("applied_by_read_length", {}) or {}
     computed = offsets.get("computed_offsets", {}) or {}
+    final = offsets.get("final_offsets", computed) or {}
+    raw = offsets.get("raw_offsets", {}) or {}
     frame_adjustments = offsets.get("frame_adjustments", {}) or {}
     columns = [
         "sample",
@@ -628,6 +630,8 @@ def generate_offsets_tsv(
         "n_reads",
         "n_unique_offsets",
         "applied_offsets",
+        "raw_offset",
+        "final_offset",
         "min_offset",
         "max_offset",
         "computed_offset",
@@ -658,7 +662,9 @@ def generate_offsets_tsv(
                 "applied_offsets": "|".join(str(v) for v in offset_values),
                 "min_offset": record.get("min_offset"),
                 "max_offset": record.get("max_offset"),
-                "computed_offset": computed.get(str(read_length)),
+                "raw_offset": raw.get(str(read_length)),
+                "final_offset": final.get(str(read_length)),
+                "computed_offset": final.get(str(read_length), computed.get(str(read_length))),
                 "global_offset": offsets.get("global_offset"),
                 "frame_adjusted": bool(adjustment),
                 "old_offset": adjustment.get("old_offset"),

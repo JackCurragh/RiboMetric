@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.3] — 2026-08-19
+
+### Fixed
+
+- **Canonical final offsets** — frame-calibrated per-read-length offsets are now
+  consistently used by annotation-dependent metrics and downstream profiles,
+  and are reported in JSON and TSV audit outputs.
+- **Offset provenance** — JSON now distinguishes raw estimates from final
+  offsets; applied offsets no longer come from a stale pre-calibration dataframe.
+- **External offset semantics** — externally supplied offsets are explicitly
+  marked as final offsets because internal frame calibration is bypassed.
+
 ## [1.4.2] — 2026-07-10
 
 ### Fixed

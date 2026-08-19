@@ -564,6 +564,8 @@ class TestGenerateOffsetsTsv:
                 "target": "a_site",
                 "offset_calculation_method": "ribowaltz",
                 "computed_offsets": {"28": 15},
+                "raw_offsets": {"28": 14},
+                "final_offsets": {"28": 15},
                 "applied_by_read_length": {
                     "28": {
                         "n_reads": 100,
@@ -591,5 +593,7 @@ class TestGenerateOffsetsTsv:
         assert row["offset_source"] == "computed_per_read_length"
         assert row["read_length"] == 28
         assert str(row["applied_offsets"]) == "15"
+        assert row["raw_offset"] == 14
+        assert row["final_offset"] == 15
         assert row["computed_offset"] == 15
         assert row["frame_adjusted"]

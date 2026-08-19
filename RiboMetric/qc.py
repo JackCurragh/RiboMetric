@@ -242,8 +242,16 @@ def _offset_source(config: dict, computed_offsets: Dict[int, int]) -> str:
     return "default_global"
 
 
-def _offsets_used_by_read_length(read_df: pd.DataFrame) -> Dict[str, dict]:
-    """Summarise the actual offsets applied without bloating JSON for read-specific offsets."""
+def _offsets_used_by_read_length(
+    read_df: pd.DataFrame,
+    final_offsets: Optional[Dict[int, int]] = None,
+) -> Dict[str, dict]:
+    """Summarise final offsets, using the explicit mapping when available.
+
+    The dataframe can retain offsets from an earlier annotation pass.  For
+    calculated per-read-length offsets, the explicit final mapping is therefore
+    authoritative and only read counts are obtained from the dataframe.
+    """
     if read_df.empty or "read_length" not in read_df.columns or "offset" not in read_df.columns:
         return {}
 
@@ -258,7 +266,10 @@ def _offsets_used_by_read_length(read_df: pd.DataFrame) -> Dict[str, dict]:
         return {}
 
     for read_length, group in offset_df.groupby("read_length", observed=True):
-        offsets = sorted({int(v) for v in group["offset"].astype(int).tolist()})
+        if final_offsets is not None and int(read_length) in final_offsets:
+            offsets = [int(final_offsets[int(read_length)])]
+        else:
+            offsets = sorted({int(v) for v in group["offset"].astype(int).tolist()})
         key = str(int(read_length))
         record = {
             "n_reads": int(len(group)),
@@ -282,10 +293,15 @@ def _offset_audit_record(
     max_read_length_fraction: Optional[float],
     offset_target: str,
     default_offset: int,
+    raw_offsets: Optional[Dict[int, int]] = None,
 ) -> dict:
     """Record enough offset provenance to reproduce and audit frame-sensitive calls."""
     args = config.get("argument", {})
     source = _offset_source(config, computed_offsets)
+    final_offsets = {int(k): int(v) for k, v in computed_offsets.items()}
+    is_external = any(
+        key in args for key in ("offset_read_length", "offset_read_specific", "global_offset")
+    )
     record = {
         "source": source,
         "target": offset_target,
@@ -293,11 +309,30 @@ def _offset_audit_record(
         "offset_bounds": [int(offset_bounds[0]), int(offset_bounds[1])],
         "offset_max_read_length_fraction": max_read_length_fraction,
         "offset_calculation_method": args.get("offset_calculation_method"),
-        "applied_by_read_length": _offsets_used_by_read_length(read_df),
+        "applied_by_read_length": _offsets_used_by_read_length(
+            read_df, final_offsets if final_offsets else None
+        ),
+        "offsets_are_final": True,
+        "offset_calibration": (
+            "not_applied_external_offsets_treated_as_final"
+            if is_external and not offset_frame_adjustments
+            else "frame_calibrated"
+            if raw_offsets is not None
+            else "not_applicable"
+        ),
     }
-    if computed_offsets:
+    if final_offsets:
+        # Keep computed_offsets as the final mapping for compatibility; expose
+        # an explicit final_offsets name for machine-readable consumers.
         record["computed_offsets"] = {
-            str(k): int(v) for k, v in sorted(computed_offsets.items())
+            str(k): v for k, v in sorted(final_offsets.items())
+        }
+        record["final_offsets"] = {
+            str(k): v for k, v in sorted(final_offsets.items())
+        }
+    if raw_offsets:
+        record["raw_offsets"] = {
+            str(k): int(v) for k, v in sorted(raw_offsets.items())
         }
     if "global_offset" in args:
         record["global_offset"] = int(args["global_offset"])
@@ -476,6 +511,7 @@ def annotation_mode(
                                      )
 
     computed_offsets = {}
+    raw_computed_offsets: Dict[int, int] = {}
     offset_frame_adjustments: Dict[str, dict] = {}
     if len(annotation_df) > 0:
         annotation = True
@@ -512,7 +548,8 @@ def annotation_mode(
                 unique_only=unique_only,
                 offset_target=offset_target,
             )
-            computed_offsets = offsets
+            raw_computed_offsets = {int(k): int(v) for k, v in offsets.items()}
+            computed_offsets = raw_computed_offsets.copy()
             annotated_read_df = a_site_calculation_variable_offset(
                 annotated_read_df,
                 offsets,
@@ -583,6 +620,7 @@ def annotation_mode(
         max_read_length_fraction,
         offset_target,
         default_offset,
+        raw_offsets=raw_computed_offsets or None,
     )
 
     #######################################################################
