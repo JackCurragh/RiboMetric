@@ -644,8 +644,22 @@ def annotation_mode(
         results_dict["metrics"]["terminal_bias_kl_3prime"] = _lbd3
         results_dict["metrics"]["terminal_bias_kl_5prime_score"] = _lbd5
         results_dict["metrics"]["terminal_bias_kl_3prime_score"] = _lbd3
-        results_dict["metrics"]["terminal_bias_kl_5prime_raw"] = _lbd5_raw
-        results_dict["metrics"]["terminal_bias_kl_3prime_raw"] = _lbd3_raw
+        # Infinite raw KL means positive observed mass has zero background support.
+        # Use explicit status plus JSON null, never a non-standard Infinity token.
+        results_dict["metrics"]["terminal_bias_kl_5prime_raw"] = (
+            None if np.isinf(_lbd5_raw) else _lbd5_raw
+        )
+        results_dict["metrics"]["terminal_bias_kl_5prime_raw_status"] = (
+            "zero_background_support" if np.isinf(_lbd5_raw) else "finite"
+        )
+        # Infinite raw KL means positive observed mass has zero background support.
+        # Use explicit status plus JSON null, never a non-standard Infinity token.
+        results_dict["metrics"]["terminal_bias_kl_3prime_raw"] = (
+            None if np.isinf(_lbd3_raw) else _lbd3_raw
+        )
+        results_dict["metrics"]["terminal_bias_kl_3prime_raw_status"] = (
+            "zero_background_support" if np.isinf(_lbd3_raw) else "finite"
+        )
         results_dict["metrics"]["terminal_bias_maxabs_5prime"] = _lbm5
         results_dict["metrics"]["terminal_bias_maxabs_3prime"] = _lbm3
         if config["plots"][

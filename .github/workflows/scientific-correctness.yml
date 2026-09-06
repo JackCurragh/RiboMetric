@@ -1,0 +1,19 @@
+name: Focused correctness regressions
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install "numpy>=1.24,<3" "pandas>=1.5,<3" "scipy>=1.10,<2" "pytest>=8,<9"
+      - run: python -m pytest -q tests/test_terminal_kl_support.py tests/test_terminal_kl_serialization.py
+        env:
+          MPLBACKEND: Agg

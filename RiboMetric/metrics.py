@@ -178,47 +178,34 @@ def terminal_nucleotide_bias_KL_divergence(
         expected_freq: Dict[str, float] | Dict[str, Dict[str, float]],
         prime: str = "five_prime",
         ) -> float:
+    """Raw Kullback-Leibler divergence in bits for terminal dinucleotides.
+
+    A positive observed mass with zero background mass has infinite raw KL
+    divergence. This function does not silently smooth or drop that term. The
+    existing goodness transform maps infinity to zero. Report serialization
+    must retain a zero-background status rather than emit non-standard JSON
+    Infinity (see qc.py). Zero observed mass contributes zero, including 0/0.
+    Missing background keys remain an input error, as in the previous API.
     """
-    Calculate the ligation bias metric from the output of
-    the terminal_nucleotide_bias_distribution module.
-
-    This metric is the K-L divergence of the ligation bias distribution
-    of the observed frequencies from the expected frequencies. The
-    expected frequencies are calculated from the nucleotide composition
-    of the genome.
-
-    Inputs:
-        observed_freq: Dictionary containing the output of the
-                terminal_nucleotide_bias_distribution module
-        expected_freq: Dictionary containing the expected frequencies
-        prime: The prime end to consider
-
-    Outputs:
-        kl_divergence: Raw Kullback-Leibler divergence in bits.
-    """
-    # Needs possible rewrite using normalised ligation bias.
-    # Current iteration only accounts for five_prime
-    # division by 0 if background is non-existent, Only patterns that occur
-    # at least once are used (needs to be changed in ligation bias)
-    kl_divergence = 0.0
-
-    exp_map: Dict[str, float]
     ref = expected_freq.get(prime) if isinstance(expected_freq, dict) else None
-    if isinstance(ref, dict):
-        exp_map = ref
-    else:
-        exp_map = expected_freq  # type: ignore[assignment]
-
+    exp_map = ref if isinstance(ref, dict) else expected_freq
+    terms = []
+    unsupported_mass = False
     for dinucleotide, observed_prob in observed_freq[prime].items():
         expected_prob = exp_map[dinucleotide]
-        if observed_prob <= 0:
+        if (not math.isfinite(observed_prob) or not 0 <= observed_prob <= 1
+                or not math.isfinite(expected_prob) or not 0 <= expected_prob <= 1):
+            raise ValueError("Terminal dinucleotide probabilities must be finite and in [0, 1]")
+        if observed_prob == 0:
             continue
-        if expected_prob <= 0:
+        if expected_prob == 0:
+            unsupported_mass = True
             continue
-        kl_divergence += observed_prob * math.log2(
-                                            observed_prob / expected_prob
-                                            )
-    return max(0.0, kl_divergence)
+        # Difference of logs avoids overflow in observed_prob / expected_prob.
+        terms.append(observed_prob * (math.log2(observed_prob) - math.log2(expected_prob)))
+    if unsupported_mass:
+        return math.inf
+    return max(0.0, math.fsum(terms))
 
 
 def terminal_nucleotide_bias_KL_metric(
