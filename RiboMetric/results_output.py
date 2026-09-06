@@ -169,55 +169,50 @@ def generate_summary_tsv(
     name: str = "RiboMetric_summary.tsv",
     output_directory: str = "",
 ) -> None:
+    """Append metrics by saved column name, never by current dictionary order.
+
+    Null metrics retain their column. Missing existing metrics are written as
+    blank; new columns require a new file or the comparison-CSV writer instead
+    of silently changing the schema of an existing TSV. This is a sequential
+    writer, not a concurrent multi-process append API.
     """
-    Generate a single-line TSV summary perfect for pipeline integration.
-    Can be concatenated across samples for easy comparison.
-
-    Input:
-        results_dict: Dictionary containing the results of the qc analysis
-        config: Dictionary containing the configuration information
-        sample_name: Name of the sample
-        name: Name of the output file
-        output_directory: Directory to write the output file to
-
-    Output:
-        Writes a TSV file with one row per sample
-    """
-    if output_directory == "":
-        output = name
-    else:
-        if output_directory.endswith("/") and output_directory != "":
-            output_directory = output_directory[:-1]
-        output = output_directory + "/" + name
-
-    # Extract key global metrics
-    metrics = results_dict.get("metrics", {})
-
+    output = Path(output_directory) / name if output_directory else Path(name)
     summary_row = {
         "sample": sample_name,
         "timestamp": datetime.now().isoformat(),
         "mode": results_dict.get("mode", "unknown"),
         "total_reads": sum(results_dict.get("read_length_distribution", {}).values()),
     }
-
-    # Add global metrics (skip per-read-length metrics)
-    for metric_name, metric_value in metrics.items():
+    for metric_name, metric_value in results_dict.get("metrics", {}).items():
+        if metric_name in summary_row:
+            raise ValueError(f"Metric collides with summary metadata: {metric_name}")
         if isinstance(metric_value, dict):
-            # Only add the global value
             if "global" in metric_value:
                 summary_row[metric_name] = metric_value["global"]
-        elif isinstance(metric_value, (int, float)):
+        elif isinstance(metric_value, (int, float)) or metric_value is None:
             summary_row[metric_name] = metric_value
 
-    # Write with headers
-    file_exists = Path(output).exists()
-
-    with open(output, "a" if file_exists else "w", newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=summary_row.keys(), delimiter='\t')
+    file_exists = output.exists() and output.stat().st_size > 0
+    if file_exists:
+        with output.open(newline="") as f:
+            header = next(csv.reader(f, delimiter="\t"), [])
+        if (not header or len(header) != len(set(header))
+                or not {"sample", "timestamp", "mode", "total_reads"}.issubset(header)):
+            raise ValueError("Existing summary TSV has an invalid header")
+        extra = set(summary_row) - set(header)
+        if extra:
+            raise ValueError(
+                "Cannot append new metrics to existing summary TSV: "
+                + ", ".join(sorted(extra)) + ". Use a new file or comparison CSV."
+            )
+    else:
+        header = list(summary_row)
+    # Header validation happens before the file is opened for writing.
+    with output.open("a" if file_exists else "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=header, delimiter="\t")
         if not file_exists:
             writer.writeheader()
         writer.writerow(summary_row)
-
     print(f"Summary line written to {output}")
 
 
@@ -312,93 +307,133 @@ def evaluate_qc_status(
     sample_name: str,
     thresholds: Optional[Dict] = None,
 ) -> dict:
+    """Evaluate every explicitly requested check; unavailable is not PASS.
+
+    ``thresholds=None`` retains the unified scoring resolver. An explicit
+    threshold mapping is a required-check contract: missing/nonnumeric metrics
+    fail the gate and invalid or empty policies raise ValueError. This failure
+    indicates incomplete evidence, not necessarily a poor biological sample.
+    Raw KL nulls with the documented zero-background status represent positive
+    infinity; they fail a finite lower-is-better threshold without putting an
+    Infinity token into the JSON report.
     """
-    Score a results dict against pass/warn thresholds.
+    import math
+    from numbers import Real
 
-    Pure function: performs no I/O. Used by both ``generate_qc_status`` (which
-    writes the result to disk during a run) and the ``evaluate`` subcommand.
-
-    Input:
-        results_dict: Dictionary containing the qc results (expects a "metrics" key)
-        sample_name: Name of the sample
-        thresholds: Optional dict of {metric: {"pass": x, "warn": y}}; falls back
-            to DEFAULT_QC_THRESHOLDS when None
-
-    Output:
-        Dictionary with overall_status, per-check detail, summary counts and a
-        recommendation.
-    """
-    # Default path: use the single scoring resolver (scoring.py) so the gate
-    # agrees with the report cards/badges and respects per-metric gate
-    # membership. An explicit thresholds dict (e.g. an external --expected YAML
-    # for the `evaluate` subcommand) keeps the legacy raw-value comparison.
     if thresholds is None:
         return _evaluate_qc_status_scored(results_dict, sample_name)
+    if not isinstance(thresholds, dict) or not thresholds:
+        raise ValueError("Explicit QC thresholds must be a non-empty mapping")
+    if not isinstance(results_dict, dict) or not isinstance(results_dict.get("metrics"), dict):
+        raise ValueError("QC results must contain a metrics mapping")
 
-    metrics = results_dict.get("metrics", {})
-    qc_checks = []
-    overall_status = "PASS"
+    # Validate the complete policy before evaluating any values. A misspelled
+    # direction or reversed thresholds must not silently weaken the gate.
+    policy = []
+    for name, spec in thresholds.items():
+        if not isinstance(name, str) or not name or not isinstance(spec, dict):
+            raise ValueError("Each QC threshold needs a metric name and mapping")
+        if set(spec) - {"pass", "warn", "direction"}:
+            raise ValueError(f"Unknown threshold option for {name}")
+        if "direction" in spec and spec["direction"] not in ("lower", "higher"):
+            raise ValueError(f"Invalid threshold direction for {name}")
+        values = []
+        for key in ("pass", "warn"):
+            value = spec.get(key)
+            if isinstance(value, bool) or not isinstance(value, Real):
+                raise ValueError(f"Threshold {name}.{key} must be a finite number")
+            try:
+                numeric = float(value)
+            except (ValueError, OverflowError) as exc:
+                raise ValueError(f"Invalid threshold {name}.{key}") from exc
+            if not math.isfinite(numeric):
+                raise ValueError(f"Threshold {name}.{key} must be finite")
+            values.append(numeric)
+        passed, warned = values
+        direction = _metric_direction(name, spec)
+        if (direction == "lower" and passed > warned) or (direction == "higher" and passed < warned):
+            raise ValueError(f"Inconsistent pass/warn ordering for {name}")
+        policy.append((name, direction, passed, warned))
 
-    for metric_name, threshold_dict in thresholds.items():
-        if metric_name not in metrics:
-            continue
-
-        metric_value = metrics[metric_name]
-
-        # Handle global metrics
-        if isinstance(metric_value, dict) and "global" in metric_value:
-            value = metric_value["global"]
-        elif isinstance(metric_value, (int, float)):
-            value = metric_value
-        else:
-            continue
-
-        # Determine status, respecting metric directionality. For lower-is-
-        # better metrics (e.g. duplicate_rate) a value at or below "pass" is a
-        # PASS; treating these as higher-is-better would let a bad sample pass.
-        direction = _metric_direction(metric_name, threshold_dict)
-        if direction == "lower":
-            if value <= threshold_dict["pass"]:
-                status = "PASS"
-            elif value <= threshold_dict["warn"]:
-                status = "WARNING"
-                if overall_status == "PASS":
-                    overall_status = "WARNING"
+    metrics = results_dict["metrics"]
+    checks = []
+    infinite_kl_keys = {"terminal_bias_kl_5prime_raw", "terminal_bias_kl_3prime_raw"}
+    for name, direction, passed, warned in policy:
+        reason = None
+        raw_status = None
+        value = None
+        raw_value = metrics.get(name)
+        if name not in metrics:
+            reason = "missing_metric"
+        elif isinstance(raw_value, dict):
+            if "global" not in raw_value:
+                reason = "missing_global_value"
             else:
-                status = "FAIL"
-                overall_status = "FAIL"
-        else:
-            if value >= threshold_dict["pass"]:
-                status = "PASS"
-            elif value >= threshold_dict["warn"]:
-                status = "WARNING"
-                if overall_status == "PASS":
-                    overall_status = "WARNING"
-            else:
-                status = "FAIL"
-                overall_status = "FAIL"
+                raw_value = raw_value["global"]
 
-        qc_checks.append({
-            "metric": metric_name,
-            "value": value,
+        if reason is None:
+            if (name in infinite_kl_keys and raw_value is None
+                    and metrics.get(name + "_status") == "zero_background_support"):
+                value = math.inf
+                raw_status = "zero_background_support"
+            elif raw_value is None:
+                reason = "unavailable_metric"
+            elif isinstance(raw_value, bool) or not isinstance(raw_value, Real):
+                reason = "nonnumeric_metric"
+            else:
+                try:
+                    value = float(raw_value)
+                except (ValueError, OverflowError):
+                    reason = "nonfinite_metric"
+                if reason is None and not math.isfinite(value):
+                    reason = "nonfinite_metric"
+
+        if reason is not None:
+            status = "FAIL"
+            report_value = None
+        else:
+            pass_ok = value <= passed if direction == "lower" else value >= passed
+            warn_ok = value <= warned if direction == "lower" else value >= warned
+            status = "PASS" if pass_ok else "WARNING" if warn_ok else "FAIL"
+            report_value = None if raw_status else value
+        check = {
+            "metric": name,
+            "value": report_value,
             "status": status,
             "direction": direction,
-            "threshold_pass": threshold_dict["pass"],
-            "threshold_warn": threshold_dict["warn"],
-        })
+            "threshold_pass": passed,
+            "threshold_warn": warned,
+        }
+        if reason is not None:
+            check["reason"] = reason
+        if raw_status is not None:
+            check["value_status"] = raw_status
+        checks.append(check)
 
+    overall = "FAIL" if any(c["status"] == "FAIL" for c in checks) else (
+        "WARNING" if any(c["status"] == "WARNING" for c in checks) else "PASS"
+    )
+    unavailable = [c["metric"] for c in checks if "reason" in c]
+    recommendation = _get_recommendation(overall, checks)
+    if unavailable:
+        recommendation = (
+            "Required QC evidence is missing or invalid for: " + ", ".join(unavailable)
+            + ". The sample has not passed the requested QC policy. "
+            "Check metric names and regenerate the required measurements before proceeding."
+        )
     return {
         "sample": sample_name,
         "timestamp": datetime.now().isoformat(),
-        "overall_status": overall_status,
-        "checks": qc_checks,
+        "overall_status": overall,
+        "checks": checks,
         "summary": {
-            "total_checks": len(qc_checks),
-            "passed": sum(1 for c in qc_checks if c["status"] == "PASS"),
-            "warnings": sum(1 for c in qc_checks if c["status"] == "WARNING"),
-            "failed": sum(1 for c in qc_checks if c["status"] == "FAIL"),
+            "total_checks": len(checks),
+            "passed": sum(c["status"] == "PASS" for c in checks),
+            "warnings": sum(c["status"] == "WARNING" for c in checks),
+            "failed": sum(c["status"] == "FAIL" for c in checks),
+            "unavailable": len(unavailable),
         },
-        "recommendation": _get_recommendation(overall_status, qc_checks),
+        "recommendation": recommendation,
     }
 
 
