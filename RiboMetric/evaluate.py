@@ -86,43 +86,40 @@ def _load_thresholds(path: Path) -> Dict[str, Dict[str, float]]:
 
 
 def evaluate(args: Namespace) -> int:
-    """Entry point for ``RiboMetric evaluate``. Returns a gating exit code."""
+    """Entry point for ``RiboMetric evaluate``; never pass an unevaluated policy."""
     results_path = Path(args.input)
-    if not results_path.exists():
-        print(f"Error: results file not found: {results_path}")
+    try:
+        if getattr(args, "expected", None):
+            thresholds = _load_thresholds(Path(args.expected))
+        else:
+            print("No --expected thresholds provided; using built-in defaults.")
+            thresholds = DEFAULT_QC_THRESHOLDS
+        results = _load_results(results_path)
+        sample_name = getattr(args, "name", None) or results_path.stem
+        status = evaluate_qc_status(results, sample_name, thresholds)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, yaml.YAMLError) as exc:
+        print(f"Error: QC evaluation could not be completed: {exc}")
         return EXIT_FAIL
 
-    if getattr(args, "expected", None):
-        thresholds = _load_thresholds(Path(args.expected))
-    else:
-        print("No --expected thresholds provided; using built-in defaults.")
-        thresholds = DEFAULT_QC_THRESHOLDS
-
-    results = _load_results(results_path)
-    sample_name = getattr(args, "name", None) or results_path.stem
-
-    status = evaluate_qc_status(results, sample_name, thresholds)
-
-    # Human-readable report
     print(f"\nQC evaluation for '{sample_name}': {status['overall_status']}")
     for check in status["checks"]:
         cmp = "<=" if check.get("direction") == "lower" else ">="
+        value = check["value"]
+        shown = f"{value:.4g}" if value is not None else "unavailable"
+        if check.get("value_status") == "zero_background_support":
+            shown = "+infinity (zero background support)"
+        reason = f"; {check['reason']}" if check.get("reason") else ""
         print(
-            f"  [{check['status']:<7}] {check['metric']} = "
-            f"{check['value']:.4g} "
-            f"(pass{cmp}{check['threshold_pass']}, warn{cmp}{check['threshold_warn']})"
+            f"  [{check['status']:<7}] {check['metric']} = {shown} "
+            f"(pass{cmp}{check['threshold_pass']}, warn{cmp}{check['threshold_warn']}){reason}"
         )
-    if not status["checks"]:
-        print("  (no thresholded metrics were found in the results file)")
     print(f"\n{status['recommendation']}")
-
     if getattr(args, "output", None):
-        with open(args.output, "w") as f:
-            json.dump(status, f, indent=2)
+        try:
+            with open(args.output, "w") as f:
+                json.dump(status, f, indent=2, allow_nan=False)
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"Error: QC status could not be written: {exc}")
+            return EXIT_FAIL
         print(f"\nEvaluation written to {args.output}")
-
-    return {
-        "PASS": EXIT_PASS,
-        "WARNING": EXIT_WARNING,
-        "FAIL": EXIT_FAIL,
-    }[status["overall_status"]]
+    return {"PASS": EXIT_PASS, "WARNING": EXIT_WARNING, "FAIL": EXIT_FAIL}[status["overall_status"]]
