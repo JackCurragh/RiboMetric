@@ -332,6 +332,17 @@ def main(args: argparse.Namespace) -> int:
     config = open_config(args)
     export = config["argument"].copy()
 
+    # Every output path is built from this directory, but nothing wrote to it
+    # until the very end of the run, so a missing directory surfaced as a
+    # FileNotFoundError after the whole analysis had already been computed.
+    # Create it up front instead.
+    output_directory = config["argument"].get("output") or ""
+    if output_directory:
+        try:
+            Path(output_directory).mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise SystemExit(f"Cannot use output directory '{output_directory}': {exc}")
+
     # Handle inputs and run modes appropriately
     if args.command == "prepare":
         print_table_prepare(args, config, console, "Prepare Mode")

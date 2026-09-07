@@ -465,10 +465,24 @@ def plot_terminal_nucleotide_bias_distribution(
 
         fig.add_hline(y=0)
 
-        fig.update_xaxes(title_text="Read Start", row=1, col=count, title_font=dict(size=18))
+        fig.update_xaxes(
+            title_text=(
+                "Terminal dinucleotide (read 5' end)"
+                if current_target == "five_prime"
+                else "Terminal dinucleotide (read 3' end)"
+            ),
+            row=1,
+            col=count,
+            title_font=dict(size=18),
+        )
+    background_corrected = config["plots"]["terminal_nucleotide_bias_distribution"][
+        "background_freq"
+    ]
     fig.update_layout(
         title="Ligation Bias Distribution",
-        yaxis_title="Proportion",
+        yaxis_title=(
+            "Observed - expected proportion" if background_corrected else "Observed proportion"
+        ),
         font=dict(
             family=config["plots"]["font_family"],
             size=18,
@@ -793,45 +807,40 @@ def plot_mRNA_read_breakdown(
         plot_mRNA_distribution_dict: Dictionary containing the plot name,
         description and plotly figure for html and pdf export
     """
+    # Drop the "global" aggregate: it is the sum over every read length, so
+    # plotting it alongside them puts a category label on a numeric axis and
+    # makes the aggregate the tallest point on the chart, while also doubling
+    # the normalisation denominator.
+    read_length_keys = [rl for rl in mRNA_distribution_dict if str(rl) != "global"]
+    # Keys come back as strings after a JSON round-trip; plot them as numbers
+    # so the x-axis stays continuous.
+    read_lengths = [int(rl) for rl in read_length_keys]
     plot_data: Dict[str, List[float]] = {}
-    for read_length_dict in mRNA_distribution_dict.values():
-        for category, count in read_length_dict.items():
+    for read_length in read_length_keys:
+        for category, count in mRNA_distribution_dict[read_length].items():
             plot_data.setdefault(category, []).append(float(count))
     if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]:
         sum_data = {k: sum(v) for k, v in plot_data.items()}
-        plot_data = {k: [x / sum(sum_data.values()) for x in v] for k, v in plot_data.items()}
+        total = sum(sum_data.values())
+        if total > 0:
+            plot_data = {k: [x / total for x in v] for k, v in plot_data.items()}
 
+    absolute = config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
     fig = go.Figure()
     for k, v in plot_data.items():
         fig.add_trace(
             go.Scatter(
                 name=k,
-                x=list(mRNA_distribution_dict.keys()),
+                x=read_lengths,
                 y=v,
-                hovertemplate=(
-                    "Proportion: %{y:.2%}"
-                    if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
-                    else "Count: %{x}"
-                ),
+                hovertemplate="Read length %{x}<br>"
+                + ("Count: %{y}" if absolute else "Proportion: %{y:.2%}")
+                + "<extra></extra>",
             )
         )
 
     fig.update_layout(
-        title="Nucleotide Distribution",
-        xaxis_title="Position (nucleotides)",
-        yaxis_title=(
-            "Proportion"
-            if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
-            else "Counts"
-        ),
-        font=dict(
-            family=config["plots"]["font_family"],
-            size=18,
-            color=config["plots"]["base_color"],
-        ),
-    )
-    fig.update_layout(
-        title="Nucleotide Distribution",
+        title="mRNA Reads Breakdown over Read Length",
         xaxis_title="Read length",
         yaxis_title=(
             "Proportion"
@@ -915,9 +924,13 @@ def plot_metagene_profile(
         cols=columns,
         shared_yaxes=config["plots"]["metagene_profile"]["shared_yaxis"],
         subplot_titles=(
-            ["Distance from 5'", "Distance from 3'"]
+            ["Distance from start codon", "Distance from stop codon"]
             if len(target_loop) > 1
-            else ["Distance from 5'"] if target_loop == ["start"] else ["Distance from 3'"]
+            else (
+                ["Distance from start codon"]
+                if target_loop == ["start"]
+                else ["Distance from stop codon"]
+            )
         ),
     )
     for current_target in target_loop:
@@ -939,7 +952,11 @@ def plot_metagene_profile(
             go.Bar(
                 x=sorted_positions,
                 y=[metagene_dict[position] for position in sorted_positions],
-                name="Distance from 5'" if current_target == "start" else "Distance from 3'",
+                name=(
+                    "Distance from start codon"
+                    if current_target == "start"
+                    else "Distance from stop codon"
+                ),
                 marker=dict(color=color),
             ),
             row=1,
@@ -1027,9 +1044,13 @@ def plot_metagene_heatmap(
         cols=columns,
         shared_yaxes=True,
         subplot_titles=(
-            ["Distance from 5'", "Distance from 3'"]
+            ["Distance from start codon", "Distance from stop codon"]
             if len(target_loop) > 1
-            else ["Distance from 5'"] if target_loop == ["start"] else ["Distance from 3'"]
+            else (
+                ["Distance from start codon"]
+                if target_loop == ["start"]
+                else ["Distance from stop codon"]
+            )
         ),
     )
 

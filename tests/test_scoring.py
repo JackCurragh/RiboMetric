@@ -5,6 +5,8 @@ These pin the anchor maths from docs/METRICS_DESIGN.md so the spec and the
 implementation cannot silently drift apart.
 """
 
+import math
+
 import pandas as pd
 import pytest
 
@@ -242,3 +244,118 @@ def test_cds_enrichment_no_annotation_returns_none():
 
 def test_cds_enrichment_empty_df_returns_none():
     assert cds_enrichment_ratio(pd.DataFrame()) is None
+
+
+# --- direction invariants ---------------------------------------------------
+# Regression cover for the v1.4.3 scoring defects found in the 2026-09-07 audit.
+
+
+def _score_for(key, raw, config=None):
+    records = build_scored_metrics({"metrics": {key: raw}}, config)
+    assert len(records) == 1, f"{key} is not in the scoring spec"
+    return records[0]
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "terminal_bias_maxabs_5prime",
+        "terminal_bias_maxabs_3prime",
+    ],
+)
+def test_terminal_bias_maxabs_is_not_inverted(key):
+    """metrics.terminal_nucleotide_bias_max_absolute_metric returns
+    ``1 - max|observed - expected|``, i.e. it is already higher-is-better.
+
+    Scoring it with ``one_minus_rate`` inverted it: a perfectly unbiased
+    library scored 0.00 FAIL and a severely biased one scored 0.80 PASS.
+    """
+    clean = _score_for(key, 1.0)  # zero deviation
+    biased = _score_for(key, 0.20)  # 0.80 deviation
+    assert clean["score"] > biased["score"]
+    assert clean["score"] == pytest.approx(1.0)
+    assert clean["status"] == "PASS"
+    assert biased["status"] == "FAIL"
+
+
+DIRECTION_CASES = [
+    ("periodicity_dominance", 0.90, 0.34),
+    ("periodicity_information", 0.90, 0.00),
+    ("cds_enrichment_ratio", 4.0, 1.0),
+    ("recommended_read_proportion", 0.90, 0.05),
+    ("uniformity_entropy", 0.95, 0.10),
+    ("marginal_position_discovery_rate", 0.02, 0.98),
+    ("duplicate_rate", 0.02, 0.95),
+    ("rpf_multimapper_rate", 0.02, 0.95),
+    ("multimapper_rate", 0.02, 0.95),
+    ("alignment_multimapper_rate", 0.02, 0.95),
+    ("unique_rpf_rate", 0.98, 0.05),
+    ("soft_clip_rate_5prime", 0.01, 0.90),
+    ("terminal_bias_kl_5prime_raw", 0.02, 1.9),
+    ("terminal_bias_kl_3prime_raw", 0.02, 1.9),
+    ("terminal_bias_maxabs_5prime", 0.99, 0.10),
+    ("terminal_bias_maxabs_3prime", 0.99, 0.10),
+]
+
+
+@pytest.mark.parametrize("key,raw_good,raw_bad", DIRECTION_CASES)
+def test_every_scored_metric_is_higher_is_better(key, raw_good, raw_bad):
+    """The single invariant the whole report rests on: for every scored
+    metric, the better library must score higher. This is the check that was
+    missing when the maxabs metrics shipped inverted."""
+    good = _score_for(key, raw_good)
+    bad = _score_for(key, raw_bad)
+    assert 0.0 <= good["score"] <= 1.0
+    assert 0.0 <= bad["score"] <= 1.0
+    assert good["score"] > bad["score"], (
+        f"{key}: raw={raw_good} scored {good['score']:.3f} but raw={raw_bad} "
+        f"scored {bad['score']:.3f} -- direction is inverted"
+    )
+
+
+def test_every_default_scoring_entry_is_covered_by_the_direction_test():
+    """A new scored metric must be added to the direction test above."""
+    covered = {case[0] for case in DIRECTION_CASES}
+    assert set(DEFAULT_SCORING) == covered
+
+
+def test_periodicity_information_thresholds_are_anchored_to_dominance():
+    """Entropy reduction is far more compressive than the dominant-frame
+    fraction. The v1.4.0 thresholds (0.60/0.30) demanded dominance ~0.90 to
+    pass, silently making this the strictest Tier 1 gate."""
+
+    def information(dominance):
+        p = [dominance, (1 - dominance) / 2, (1 - dominance) / 2]
+        entropy = -sum(x * math.log2(x) for x in p if x > 0)
+        return (math.log2(3) - entropy) / math.log2(3)
+
+    spec = DEFAULT_SCORING["periodicity_information"]["status"]
+    dom = DEFAULT_SCORING["periodicity_dominance"]["status"]
+
+    # A library sitting exactly on the dominance PASS/WARN boundaries must not
+    # be failed harder by the information cross-check.
+    assert information(dom["pass"]) >= spec["pass"] - 1e-6
+    assert information(dom["warn"]) >= spec["warn"] - 1e-6
+
+
+def test_config_scoring_overrides_reach_the_qc_gate():
+    """The gate and the HTML report must resolve the same status from the same
+    results and the same config. generate_qc_status previously dropped config,
+    so a user override moved the report but not the verdict."""
+    from RiboMetric.results_output import evaluate_qc_status
+
+    results = {"metrics": {"periodicity_dominance": {"global": 0.55}}}
+    config = {
+        "scoring": {
+            "periodicity_dominance": {
+                "method": "identity",
+                "status": {"pass": 0.50, "warn": 0.40},
+                "gate": True,
+                "tier": 1,
+            }
+        }
+    }
+    assert evaluate_qc_status(results, "s")["overall_status"] == "WARNING"
+    assert evaluate_qc_status(results, "s", None, config)["overall_status"] == "PASS"
+    resolver = _score_for("periodicity_dominance", 0.55, config)
+    assert resolver["status"] == "PASS"

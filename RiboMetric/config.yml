@@ -16,6 +16,10 @@ argument:
   json: True                  # Output results as JSON
   csv: False                  # Output metrics as CSV
   offsets_tsv: True           # Output applied offsets as TSV
+  # The machine-readable PASS/WARNING/FAIL verdict. On by default: it is the
+  # output a pipeline actually gates on, and it is far cheaper to produce than
+  # the HTML report that was already on by default.
+  qc_status: True             # Output QC verdict as JSON
   offset_calculation_method: "ribowaltz"
   offset_target: "a_site"     # Site represented by calculated offsets: "a_site" or "p_site"
   offset_min: 8               # Minimum plausible final offset from the read 5' end
@@ -78,6 +82,11 @@ qc:
     # periodicity_top_n: 5        # Keep top-N read lengths by mass (commented = disabled)
     # periodicity_mass_threshold: 0.8  # Keep minimal set of lengths covering this fraction of reads (disabled by default)
     # psite_min_prominence: 1.5   # Minimum peak/median ratio to accept a P-site offset (fallback to consensus otherwise)
+    # Minimum frame-assigned reads before a per-read-length dominant-frame
+    # fraction is reported at all. Below this the estimate is noise (a read
+    # length backed by one read otherwise reports periodicity 1.000). Global
+    # periodicity always uses every read regardless of this setting.
+    dominance_min_reads: 100
     offset_frame_correction_min_reads: 50      # Min unique CDS reads to nudge a non-zero dominant frame back to frame 0
     offset_frame_correction_min_fraction: 0.6  # Dominant-frame fraction required before nudging an offset by +/-1 nt
   cds_coverage:
@@ -268,9 +277,12 @@ scoring:
     status: {pass: 0.70, warn: 0.50}
     gate: true
     tier: 1
+  # Anchored to periodicity_dominance 0.70/0.50, not to the raw 0-1 scale:
+  # entropy reduction is 0.255 at dominance 0.70 and 0.054 at 0.50. See the
+  # note in scoring.py DEFAULT_SCORING for why 0.60/0.30 was wrong.
   periodicity_information:
     method: identity
-    status: {pass: 0.60, warn: 0.30}
+    status: {pass: 0.25, warn: 0.05}
     gate: true
     tier: 1
   cds_enrichment_ratio:
@@ -338,13 +350,16 @@ scoring:
     status: {pass: 0.70, warn: 0.40}
     gate: false
     tier: 3
+  # maxabs raw value is 1 - max|observed - expected| (already higher-is-better),
+  # so it is scored with identity, not one_minus_rate. See scoring.py and
+  # docs/METRIC_NAMING.md section 3.1 for the planned rename.
   terminal_bias_maxabs_5prime:
-    method: one_minus_rate
+    method: identity
     status: {pass: 0.70, warn: 0.40}
     gate: false
     tier: 3
   terminal_bias_maxabs_3prime:
-    method: one_minus_rate
+    method: identity
     status: {pass: 0.70, warn: 0.40}
     gate: false
     tier: 3

@@ -137,14 +137,22 @@ def _metric_key(metric: Dict[str, Any]) -> str:
 def _metric_label(metric_key: str) -> str:
     labels = {
         "periodicity_dominance": "Periodicity",
+        "periodicity_information": "Periodicity information",
         "prop_reads_CDS": "CDS enrichment",
+        "cds_enrichment_ratio": "CDS enrichment",
         "recommended_read_proportion": "Recommended reads",
+        "uniformity_entropy": "Coverage uniformity",
+        "marginal_position_discovery_rate": "Library saturation",
         "duplicate_rate": "Duplicate rate",
         "multimapper_rate": "Multimapper rate",
         "rpf_multimapper_rate": "RPF multimapper rate",
         "unique_rpf_rate": "Unique RPF rate",
         "alignment_multimapper_rate": "Alignment multimapper rate",
         "soft_clip_rate_5prime": "5' soft clips",
+        "terminal_bias_kl_5prime_raw": "5' terminal bias (KL)",
+        "terminal_bias_kl_3prime_raw": "3' terminal bias (KL)",
+        "terminal_bias_maxabs_5prime": "5' terminal agreement (max deviation)",
+        "terminal_bias_maxabs_3prime": "3' terminal agreement (max deviation)",
     }
     return labels.get(metric_key, metric_key.replace("_", " ").capitalize())
 
@@ -328,7 +336,9 @@ def build_report_context(summary: Dict[str, Any]) -> Dict[str, Any]:
     if periodicity and periodicity.get("raw") is not None:
         details.append(f"periodicity {periodicity['raw_label']}")
     if cds and cds.get("raw") is not None:
-        details.append(f"CDS enrichment E={cds['raw_label']}")
+        # raw_label already renders as "E = 1.35" for cds_enrichment_ratio, so
+        # do not prefix another "E=".
+        details.append(f"CDS enrichment {cds['raw_label']}")
     if recommended and recommended.get("raw") is not None:
         details.append(f"recommended-read proportion {recommended['raw_label']}")
     if details:
