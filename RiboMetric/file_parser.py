@@ -85,7 +85,6 @@ def validate_annotation_coordinates(df: pd.DataFrame, annotation_path: str = "")
         return
 
     n = len(df)
-    cds_start = df["cds_start"].to_numpy()
     cds_end = df["cds_end"].to_numpy()
     tx_len = df["transcript_length"].to_numpy()
 

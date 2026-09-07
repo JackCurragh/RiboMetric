@@ -87,7 +87,7 @@ _FULL_HASH_LIMIT_BYTES = 50 * 1024 * 1024
 
 def _config_path_used(args: argparse.Namespace) -> str:
     if os.path.exists(args.config):
-        return args.config
+        return str(args.config)
     return str(Path(__file__).with_name("config.yml"))
 
 
