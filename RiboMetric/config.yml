@@ -191,88 +191,77 @@ periodicity:
   use_psite_aligned: true  # When available, use P-site aligned metagene for autocorr/Fourier
 
 # Commented out metrics here will not appear in the summary scores plot
-max_mins: # max mins from simulations for each metric github.com/JackCurragh/MetricAnalysis
-  # periodicity_autocorrelation: [0, 4.552344]
-  periodicity_fourier: [0, 1]
-  # periodicity_information: [0, 0.913217]
-  # periodicity_information_weighted: [0, 0.913217]
-  # periodicity_trips-viz: [0, 1]
+# Display ranges for the MaxMinScore column of the --csv output only. This is
+# a legacy normalisation and is NOT the scoring path: anchored 0-1 scores come
+# from the `scoring:` block below. Keys are canonical metric names
+# (docs/METRIC_NAMING.md); a metric with no entry is emitted with an empty
+# MaxMinScore rather than being silently rescaled.
+max_mins:
   periodicity_dominance: [0, 1]
-  # uniformity_autocorrelation: [0, 1]
+  periodicity_information: [0, 1]
+  periodicity_information_weighted_score: [0, 1]
+  periodicity_fourier: [0, 1]
+  periodicity_trips-viz: [0, 1]
   uniformity_entropy: [0, 1]
-  # uniformity_theil_index: [0, 45]
-  # uniformity_gini_index: [0, 1]
+  uniformity_theil_index: [0, 1]
+  uniformity_gini_index: [0, 1]
+  cds_enrichment_ratio: [0, 10]
+  cds_coverage: [0, 1]
+  cds_coverage_1read_1000tx: [0, 1]
+  cds_coverage_100read_100tx: [0, 1]
+  cds_coverage_inframe_1read_1000tx: [0, 1]
+  cds_coverage_inframe_100read_100tx: [0, 1]
   prop_reads_CDS: [0, 1]
   prop_reads_leader: [0, 1]
   prop_reads_trailer: [0, 1]
-  # Legacy bias metric names (kept for compatibility)
-  terminal_nucleotide_bias_distribution_5_prime: [0, 1]
-  terminal_nucleotide_bias_distribution_3_prime: [0, 1]
-  # Consolidated bias metric names
-  terminal_bias_kl_5prime: [0, 1]
-  terminal_bias_kl_3prime: [0, 1]
-  terminal_bias_kl_5prime_score: [0, 1]
-  terminal_bias_kl_3prime_score: [0, 1]
-  # Raw KL divergence keys are intentionally not normalized here.
-  # terminal_bias_kl_5prime_raw: [0, 1]
-  # terminal_bias_kl_3prime_raw: [0, 1]
-  # Optional: max-abs bias consolidated names
-  terminal_bias_maxabs_5prime: [0, 1]
-  terminal_bias_maxabs_3prime: [0, 1]
-  # Consolidated CDS coverage key
-  cds_coverage: [0, 1]
-  CDS_coverage: [0, 1]
-  CDS_coverage_metric: [0, 1]
-  cds_coverage_not_inframe_1read_1000tx: [0, 1]
-  CDS_coverage_metric_not_inframe_1read_1000tx: [0, 1]
-  cds_coverage_not_inframe_100read_100tx: [0, 1]
-  CDS_coverage_metric_not_inframe_100read_100tx: [0, 1]
-  cds_coverage_inframe_1read_1000tx: [0, 1]
-  CDS_coverage_metric_inframe_1read_1000tx: [0, 1]
-  cds_coverage_inframe_100read_100tx: [0, 1]
-  CDS_coverage_metric_inframe_100read_100tx: [0, 1]
-  # terminal_nucleotide_bias_max_absolute_metric_5_prime: [0, 1]
-  # terminal_nucleotide_bias_max_absolute_metric_3_prime: [0, 1]
-  read_length_distribution_IQR: [0, 1]
-  read_length_distribution_coefficient_of_variation: [0, 1]
-  read_length_distribution_maxprop: [0, 1]
-  read_length_distribution_bimodality: [0, 1]
-  read_length_distribution_normality: [0, 1]
-  terminal_nucleotide_bias_max_absolute_5_prime: [0, 1]
-  terminal_nucleotide_bias_max_absolute_3_prime: [0, 1]
-  periodicity_information: [0, 1]
-  periodicity_information_weighted_score: [0, 1]
-  periodicity_trips-viz: [0, 1]
-  uniformity_theil_index: [0, 1]
-  uniformity_gini_index: [0, 1]
-  disome_proportion: [0, 1]
   recommended_read_proportion: [0, 1]
+  # Read-length shape. Reported in their natural direction, so a high value
+  # here is a wide/variable distribution, not a good one.
+  read_length_iqr_fraction: [0, 1]
+  read_length_cv: [0, 1]
+  read_length_bimodality_coefficient: [0, 1]
+  read_length_normality_pvalue: [0, 1]
+  read_length_max_proportion: [0, 1]
+  # Mapping hygiene. Rates: higher is worse.
   duplicate_rate: [0, 1]
-  multimapper_rate: [0, 1]
   rpf_multimapper_rate: [0, 1]
-  unique_rpf_rate: [0, 1]
   alignment_multimapper_rate: [0, 1]
   soft_clip_rate_5prime: [0, 1]
+  marginal_position_discovery_rate: [0, 1]
+  # Terminal bias. Higher is more bias; KL is in bits.
+  terminal_bias_kl_5prime: [0, 2]
+  terminal_bias_kl_3prime: [0, 2]
+  terminal_bias_max_deviation_5prime: [0, 1]
+  terminal_bias_max_deviation_3prime: [0, 1]
+  # Footprint heterogeneity. Higher is worse.
+  floss_median: [0, 1]
+  floss_aberrant_transcript_fraction: [0, 1]
+  disome_proportion: [0, 1]
   stop_codon_readthrough_ratio: [0, 5]
   start_codon_enrichment_ratio: [0, 20]
-  # rust_mean_kl_divergence: [0, 1]
 
-# Unified scoring (see docs/METRICS_DESIGN.md). Single source of truth for how
-# raw metrics become anchored 0-1, higher-is-better scores and PASS/WARNING/
-# FAIL statuses. Used by the summary cards, the per-metric badges, and the QC
-# gate. Code defaults live in scoring.py (DEFAULT_SCORING); entries here are
-# merged over those defaults per metric, so you can override status thresholds
-# or gate membership without code changes.
+# Unified scoring (see docs/METRICS_DESIGN.md and docs/METRIC_NAMING.md).
+# Single source of truth for how raw metrics become anchored 0-1,
+# higher-is-better scores and PASS/WARNING/FAIL statuses. Used by the summary
+# cards, the per-metric badges, and the QC gate.
+#
+# Keyed by SCORE name. Each entry names the raw `metric` it derives from. A
+# metric key names the measured quantity in its natural direction; a score key
+# names the good property and is always higher-is-better. `method` is the only
+# place a direction flip lives.
+#
+# Code defaults live in scoring.py (DEFAULT_SCORING); entries here are merged
+# over those defaults per score, so you can override status thresholds or gate
+# membership without code changes.
 #   method   : identity | one_minus_rate | frame_dominance_rescaled |
 #              inverse_linear | enrichment_ratio
 #   status   : score thresholds {pass, warn}
 #   gate     : true => counts toward the overall QC verdict (Tier-1 only)
 #   tier     : 1 identity | 2 usability | 3 technical caveat
-# Phase 1A/1B metrics only; CDS enrichment (1C) and terminal-bias (1D) are
-# added here when those phases land.
 scoring:
   # Tier 1 - is this Ribo-seq-like? (gated)
-  periodicity_dominance:
+  periodicity_dominance_score:
+    metric: periodicity_dominance
     method: identity
     status: {pass: 0.70, warn: 0.50}
     gate: true
@@ -280,86 +269,91 @@ scoring:
   # Anchored to periodicity_dominance 0.70/0.50, not to the raw 0-1 scale:
   # entropy reduction is 0.255 at dominance 0.70 and 0.054 at 0.50. See the
   # note in scoring.py DEFAULT_SCORING for why 0.60/0.30 was wrong.
-  periodicity_information:
+  periodicity_information_score:
+    metric: periodicity_information
     method: identity
     status: {pass: 0.25, warn: 0.05}
     gate: true
     tier: 1
-  cds_enrichment_ratio:
+  cds_enrichment_score:
+    metric: cds_enrichment_ratio
     method: enrichment_ratio
     status: {pass: 0.60, warn: 0.30}
     gate: true
     tier: 1
   # Tier 2 - usable for my analysis? (not gated)
-  recommended_read_proportion:
+  usable_read_fraction_score:
+    metric: recommended_read_proportion
     method: identity
     status: {pass: 0.60, warn: 0.30}
     gate: false
     tier: 2
-  uniformity_entropy:
+  coverage_uniformity_score:
+    metric: uniformity_entropy
     method: identity
     status: {pass: 0.60, warn: 0.30}
     gate: false
     tier: 2
-  marginal_position_discovery_rate:
+  library_saturation_score:
+    metric: marginal_position_discovery_rate
     method: one_minus_rate
     status: {pass: 0.60, warn: 0.30}
     gate: false
     tier: 2
   # Tier 3 - technical caveats (not gated)
-  duplicate_rate:
+  fragment_uniqueness_score:
+    metric: duplicate_rate
     method: one_minus_rate
     status: {pass: 0.60, warn: 0.30}
     gate: false
     tier: 3
-  rpf_multimapper_rate:
+  rpf_unique_mapping_score:
+    metric: rpf_multimapper_rate
     method: one_minus_rate
     status: {pass: 0.60, warn: 0.30}
     gate: false
     tier: 3
-  multimapper_rate:
+  alignment_unique_mapping_score:
+    metric: alignment_multimapper_rate
     method: one_minus_rate
     status: {pass: 0.60, warn: 0.30}
     gate: false
     tier: 3
-  alignment_multimapper_rate:
+  terminal_integrity_5prime_score:
+    metric: soft_clip_rate_5prime
     method: one_minus_rate
     status: {pass: 0.60, warn: 0.30}
     gate: false
     tier: 3
-  unique_rpf_rate:
-    method: identity
-    status: {pass: 0.60, warn: 0.30}
-    gate: false
-    tier: 3
-  soft_clip_rate_5prime:
+  footprint_homogeneity_score:
+    metric: floss_aberrant_transcript_fraction
     method: one_minus_rate
     status: {pass: 0.60, warn: 0.30}
     gate: false
     tier: 3
-  # Terminal bias (S4): scored via raw KL bits; 1/(1+KL) _score variants retired
-  terminal_bias_kl_5prime_raw:
+  terminal_evenness_kl_5prime_score:
+    metric: terminal_bias_kl_5prime
     method: inverse_linear
     params: {max_value: 2.0}
     status: {pass: 0.70, warn: 0.40}
     gate: false
     tier: 3
-  terminal_bias_kl_3prime_raw:
+  terminal_evenness_kl_3prime_score:
+    metric: terminal_bias_kl_3prime
     method: inverse_linear
     params: {max_value: 2.0}
     status: {pass: 0.70, warn: 0.40}
     gate: false
     tier: 3
-  # maxabs raw value is 1 - max|observed - expected| (already higher-is-better),
-  # so it is scored with identity, not one_minus_rate. See scoring.py and
-  # docs/METRIC_NAMING.md section 3.1 for the planned rename.
-  terminal_bias_maxabs_5prime:
-    method: identity
+  terminal_evenness_maxdev_5prime_score:
+    metric: terminal_bias_max_deviation_5prime
+    method: one_minus_rate
     status: {pass: 0.70, warn: 0.40}
     gate: false
     tier: 3
-  terminal_bias_maxabs_3prime:
-    method: identity
+  terminal_evenness_maxdev_3prime_score:
+    metric: terminal_bias_max_deviation_3prime
+    method: one_minus_rate
     status: {pass: 0.70, warn: 0.40}
     gate: false
     tier: 3

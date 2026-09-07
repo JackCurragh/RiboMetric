@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Tuple
 from jinja2 import Environment, FileSystemLoader
 
 from .modules import convert_html_to_pdf
+from .registry import METRIC_REGISTRY
 
 LOWER_IS_BETTER = {
     "duplicate_rate",
@@ -70,33 +71,20 @@ METRIC_GROUPS = {
 }
 
 CARD_METRICS = (
-    "periodicity_dominance",
-    "prop_reads_CDS",
-    "recommended_read_proportion",
-    "duplicate_rate",
-    "multimapper_rate",
+    "periodicity_dominance_score",
+    "cds_enrichment_score",
+    "usable_read_fraction_score",
+    "fragment_uniqueness_score",
+    "rpf_unique_mapping_score",
 )
 
 
 METRIC_DESCRIPTIONS = {
     "duplicate_rate": "Estimated fraction of weighted reads explained by duplicate collapsed sequences.",
-    "multimapper_rate": "Backwards-compatible weighted RPF-level fraction with evidence of multiple genomic loci.",
     "rpf_multimapper_rate": "Weighted fraction of ribosome protected fragments with evidence of multiple genomic loci.",
-    "unique_rpf_rate": "Weighted fraction of ribosome protected fragments considered uniquely mapped.",
     "alignment_multimapper_rate": "Fraction of reported alignment rows whose fragment has evidence of another genomic alignment.",
     "soft_clip_rate_5prime": "Fraction of weighted reads with 5 prime soft clipping, often indicating trimming or adapter issues.",
-    "read_length_distribution_IQR_metric": "Scores how tightly footprint lengths concentrate around the central distribution.",
-    "read_length_distribution_coefficient_of_variation_metric": "Scores footprint length consistency using the coefficient of variation.",
-    "read_length_distribution_maxprop_metric": "Fraction of reads in the most abundant footprint length.",
-    "read_length_distribution_bimodality_metric": "Scores whether the footprint length distribution is dominated by one mode rather than multiple modes.",
-    "read_length_distribution_normality_metric": "Scores departure from a normal length distribution, as sharp RPF peaks are expected.",
     "disome_proportion": "Fraction of reads in the configured di-ribosome footprint length window.",
-    "terminal_nucleotide_bias_distribution_5_prime_metric": "Scores nucleotide balance at the 5 prime end of reads.",
-    "terminal_nucleotide_bias_distribution_3_prime_metric": "Scores nucleotide balance at the 3 prime end of reads.",
-    "terminal_bias_kl_5prime": "KL-divergence based score for 5 prime terminal nucleotide bias.",
-    "terminal_bias_kl_3prime": "KL-divergence based score for 3 prime terminal nucleotide bias.",
-    "terminal_bias_maxabs_5prime": "Largest absolute 5 prime terminal nucleotide deviation from expectation.",
-    "terminal_bias_maxabs_3prime": "Largest absolute 3 prime terminal nucleotide deviation from expectation.",
     "periodicity_dominance": "Fraction of coding reads in the dominant reading frame after offset assignment.",
     "periodicity_autocorrelation": "Triplet-periodicity score from autocorrelation of frame-specific signal.",
     "periodicity_fourier": "Triplet-periodicity score from Fourier power at the codon frequency.",
@@ -107,7 +95,6 @@ METRIC_DESCRIPTIONS = {
     "uniformity_autocorrelation": "Autocorrelation-based score for smoothness of coding-region coverage.",
     "uniformity_theil_index": "Inequality-based score for coding-region coverage uniformity.",
     "uniformity_gini_index": "Gini-based score for coding-region coverage uniformity.",
-    "CDS_coverage_metric": "Score summarising how much annotated CDS sequence is covered by reads.",
     "cds_coverage": "Observed proportion of annotated CDS positions covered by reads.",
     "prop_reads_CDS": "Fraction of annotated reads assigned to CDS regions.",
     "prop_reads_leader": "Fraction of annotated reads assigned to leader or 5 prime UTR regions.",
@@ -136,28 +123,34 @@ def _metric_key(metric: Dict[str, Any]) -> str:
 
 def _metric_label(metric_key: str) -> str:
     labels = {
-        "periodicity_dominance": "Periodicity",
-        "periodicity_information": "Periodicity information",
-        "prop_reads_CDS": "CDS enrichment",
-        "cds_enrichment_ratio": "CDS enrichment",
-        "recommended_read_proportion": "Recommended reads",
-        "uniformity_entropy": "Coverage uniformity",
-        "marginal_position_discovery_rate": "Library saturation",
-        "duplicate_rate": "Duplicate rate",
-        "multimapper_rate": "Multimapper rate",
-        "rpf_multimapper_rate": "RPF multimapper rate",
-        "unique_rpf_rate": "Unique RPF rate",
-        "alignment_multimapper_rate": "Alignment multimapper rate",
-        "soft_clip_rate_5prime": "5' soft clips",
-        "terminal_bias_kl_5prime_raw": "5' terminal bias (KL)",
-        "terminal_bias_kl_3prime_raw": "3' terminal bias (KL)",
-        "terminal_bias_maxabs_5prime": "5' terminal agreement (max deviation)",
-        "terminal_bias_maxabs_3prime": "3' terminal agreement (max deviation)",
+        # Score keys (higher is better, named for the good property).
+        "periodicity_dominance_score": "Periodicity",
+        "periodicity_information_score": "Periodicity information",
+        "cds_enrichment_score": "CDS enrichment",
+        "usable_read_fraction_score": "Usable read fraction",
+        "coverage_uniformity_score": "Coverage uniformity",
+        "library_saturation_score": "Library saturation",
+        "fragment_uniqueness_score": "Fragment uniqueness",
+        "rpf_unique_mapping_score": "RPF unique mapping",
+        "alignment_unique_mapping_score": "Alignment unique mapping",
+        "terminal_integrity_5prime_score": "5' end integrity",
+        "footprint_homogeneity_score": "Footprint homogeneity",
+        "terminal_evenness_kl_5prime_score": "5' terminal evenness (KL)",
+        "terminal_evenness_kl_3prime_score": "3' terminal evenness (KL)",
+        "terminal_evenness_maxdev_5prime_score": "5' terminal evenness (max deviation)",
+        "terminal_evenness_maxdev_3prime_score": "3' terminal evenness (max deviation)",
     }
-    return labels.get(metric_key, metric_key.replace("_", " ").capitalize())
+    if metric_key in labels:
+        return labels[metric_key]
+    return metric_key.replace("_", " ").capitalize()
 
 
 def _metric_description(metric_key: str) -> str:
+    # The registry is authoritative: it is where a metric's units and direction
+    # are declared, so its summary cannot drift from what the number means.
+    spec = METRIC_REGISTRY.get(metric_key)
+    if spec is not None:
+        return spec.summary
     if metric_key in METRIC_DESCRIPTIONS:
         return METRIC_DESCRIPTIONS[metric_key]
     for suffix in (
@@ -184,7 +177,9 @@ def _format_score(score: Any) -> str:
     return f"{score:.3g}"
 
 
-_RAW_BITS_KEYS = {"terminal_bias_kl_5prime_raw", "terminal_bias_kl_3prime_raw"}
+# Keyed by the raw METRIC name (records carry both the score key and the metric
+# it came from), so the units shown beside a score follow the quantity.
+_RAW_BITS_KEYS = {"terminal_bias_kl_5prime", "terminal_bias_kl_3prime"}
 _RAW_RATIO_KEYS = {
     "cds_enrichment_ratio",
     "start_codon_enrichment_ratio",
@@ -208,6 +203,12 @@ def _format_raw(key: str, raw: Any) -> str:
 
 
 def _metric_status(metric_key: str, score: Any) -> str:
+    """Fallback status for payloads that carry no resolver status.
+
+    Only reachable for pre-2.0 payloads, which keyed rows by raw metric name
+    and so needed the LOWER_IS_BETTER special case. Score keys are uniformly
+    higher-is-better and never take that branch.
+    """
     if not isinstance(score, (float, int)):
         return "info"
     if metric_key in LOWER_IS_BETTER:
@@ -250,6 +251,9 @@ def build_report_context(summary: Dict[str, Any]) -> Dict[str, Any]:
     rows = []
     for metric in summary.get("metrics", []):
         key = _metric_key(metric)
+        # Records carry both the score key and the raw metric they came from.
+        # Units and descriptions follow the metric; labels follow the score.
+        metric_key = str(metric.get("metric") or key)
         score = metric.get("score")
         raw = metric.get("raw")
         resolver_status = metric.get("status")
@@ -260,17 +264,18 @@ def build_report_context(summary: Dict[str, Any]) -> Dict[str, Any]:
         rows.append(
             {
                 "key": key,
+                "metric": metric_key,
                 "label": _metric_label(key),
                 "score": score,
                 "score_label": _format_score(score),
                 "raw": raw,
-                "raw_label": _format_raw(key, raw),
+                "raw_label": _format_raw(metric_key, raw),
                 "status": status,
                 "gate": bool(metric.get("gate", False)),
                 "tier": int(metric["tier"]) if metric.get("tier") is not None else None,
                 "direction": "Higher is better",
-                "description": metric.get("decision") or _metric_description(key),
-                "group": _group_for_metric(key),
+                "description": metric.get("decision") or _metric_description(metric_key),
+                "group": _group_for_metric(metric_key),
             }
         )
 
@@ -321,9 +326,9 @@ def build_report_context(summary: Dict[str, Any]) -> Dict[str, Any]:
         overall_status = max(verdict_rows, key=lambda row: status_rank[row["status"]])["status"]
 
     # Three-way framing per METRICS_DESIGN.md §4
-    periodicity = metric_map.get("periodicity_dominance")
-    cds = metric_map.get("cds_enrichment_ratio") or metric_map.get("prop_reads_CDS")
-    recommended = metric_map.get("recommended_read_proportion")
+    periodicity = metric_map.get("periodicity_dominance_score")
+    cds = metric_map.get("cds_enrichment_score")
+    recommended = metric_map.get("usable_read_fraction_score")
     if overall_status == "pass":
         interpretation = "Passed Ribo-seq identity checks."
     elif overall_status == "warn":

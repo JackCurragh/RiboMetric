@@ -8,6 +8,8 @@ import sys
 from argparse import Namespace
 from io import StringIO
 
+import pytest
+
 from RiboMetric.RiboMetric import main
 
 
@@ -75,9 +77,20 @@ def test_main_run():
     assert metrics["prop_reads_CDS"]["global"] == 1.0
     assert metrics["prop_reads_leader"]["global"] == 0.0
     assert metrics["prop_reads_trailer"]["global"] == 0.0
-    assert "terminal_bias_kl_5prime_score" in metrics
-    assert "terminal_bias_kl_5prime_raw" in metrics
-    assert metrics["terminal_bias_kl_5prime"] == metrics["terminal_bias_kl_5prime_score"]
+    # One key per quantity: KL is reported in bits, higher = more bias. The
+    # 1/(1+KL) and *_raw spellings are gone from metrics and are reproduced in
+    # metrics_legacy for one cycle. See docs/METRIC_NAMING.md.
+    assert "terminal_bias_kl_5prime" in metrics
+    assert "terminal_bias_kl_5prime_score" not in metrics
+    assert "terminal_bias_kl_5prime_raw" not in metrics
+
+    legacy = json.load(open(f"{file_path}/test_RiboMetric.json"))["results"]["metrics_legacy"]
+    assert legacy["terminal_bias_kl_5prime_raw"] == pytest.approx(
+        metrics["terminal_bias_kl_5prime"]
+    )
+    assert legacy["terminal_bias_kl_5prime_score"] == pytest.approx(
+        1 / (1 + metrics["terminal_bias_kl_5prime"])
+    )
 
     provenance = results["provenance"]
     assert "effective_config_sha256" in provenance

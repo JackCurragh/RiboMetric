@@ -9,6 +9,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### BREAKING — metric naming and direction (targets 2.0.0)
+
+`results["metrics"]` is now raw measurements only, in natural units and natural
+direction, and scores live in their own `results["scores"]` namespace. See
+[docs/METRIC_NAMING.md](docs/METRIC_NAMING.md). **54 metric keys become 39**,
+plus 15 scores. Pre-2.0 spellings are reproduced under
+`results["metrics_legacy"]` for one minor cycle and removed at v2.1.
+
+The rule: a metric key names the quantity that was measured and its number goes
+up as the library gets worse if that is the quantity's nature; a score key names
+the good property, lies in [0, 1] and is always higher-is-better; the direction
+flip lives only in the `method` field of the scoring spec.
+
+**Eight metrics changed value, not just name.** Their metric functions had a
+goodness transform baked in under a badness-shaped name — which is what made the
+`terminal_bias_maxabs` inversion likely in the first place:
+
+| pre-2.0 key | held | canonical key | now holds |
+|---|---|---|---|
+| `terminal_bias_maxabs_5prime` / `_3prime` | `1 − max deviation` | `terminal_bias_max_deviation_5prime` / `_3prime` | the deviation |
+| `terminal_bias_kl_5prime` / `_score` / `_raw` | `1/(1+KL)`, `1/(1+KL)`, KL | `terminal_bias_kl_5prime` | KL in bits |
+| `read_length_distribution_IQR_metric` | `1 − IQR/range` | `read_length_iqr_fraction` | `IQR/(P90−P10)` |
+| `read_length_distribution_coefficient_of_variation_metric` | `1/(1+CV)` | `read_length_cv` | CV |
+| `read_length_distribution_bimodality_metric` | `1/(1+BC)` | `read_length_bimodality_coefficient` | BC |
+| `read_length_distribution_normality_metric` | `1 − p` | `read_length_normality_pvalue` | p |
+
+Any cohort table, `--expected` policy or ingestion pipeline carrying those keys
+must be regenerated, not just renamed. The keys were changed rather than reused
+precisely so a stale consumer fails loudly instead of silently reading a flipped
+number.
+
+**Score keys** name the good property: `duplicate_rate` →
+`fragment_uniqueness_score`, `marginal_position_discovery_rate` →
+`library_saturation_score`, `rpf_multimapper_rate` → `rpf_unique_mapping_score`,
+`soft_clip_rate_5prime` → `terminal_integrity_5prime_score`,
+`floss_aberrant_transcript_fraction` → `footprint_homogeneity_score`, and so on.
+Scored records and QC checks carry both the score key and the `source_metric`.
+
+**Twenty alias keys removed**: the three spellings of the terminal-bias KL
+score, the two of max-deviation, `multimapper_rate` (duplicated
+`rpf_multimapper_rate`), `unique_rpf_rate` (its complement), and the ten
+`CDS_coverage_metric*` / `cds_coverage*` keys that carried five numbers, now
+`cds_coverage[_inframe]_<minreads>read_<ntx>tx`.
+
+**The whole read-length family is now a diagnostic** rather than carrying
+unanchored `1/(1+x)` scores, per `METRICS_DESIGN.md` §Phase 1E.
+
+### Added
+
+- **`RiboMetric/registry.py`** — the machine-readable naming contract: unit,
+  direction and score key for every emitted metric, plus the legacy alias table
+  and the transform that reproduces each pre-2.0 value.
+- **`tests/test_registry.py`** — enforces the contract. Every lower-is-better
+  metric must be scored through a flipping `method`; no context-dependent metric
+  may carry a pass/fail badge; no key may be both a metric and a score; every
+  rate must be lower-is-better. These are the assertions whose absence let the
+  inverted score ship for four releases.
+- **`scripts/generate_metrics_doc.py`** — `docs/METRICS.md` is now generated
+  from the registry and the scoring spec, and a test runs it with `--check`. The
+  hand-written version documented four metric names that were never emitted and
+  omitted 32 that were.
+- **`results["scores"]`** — every score with its source metric, raw value,
+  status, gate membership and tier.
+- **`results["metrics_legacy"]`** — the compatibility shim described above.
+
 ### Fixed
 
 - **Terminal-bias max-deviation scores were inverted** —

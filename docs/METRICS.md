@@ -1,108 +1,144 @@
-# RiboMetric Metrics Guide
+# RiboMetric Metrics
 
-RiboMetric provides two categories of metrics: **default** (standard Ribo-Seq QC) and **optional** (theoretical/experimental approaches).
+<!-- GENERATED FILE - do not edit by hand.
+     Regenerate with: python scripts/generate_metrics_doc.py -->
 
-The HTML report organises scored metrics into three report tiers — Tier 1 (Ribo-seq identity, gated), Tier 2 (usability), Tier 3 (technical caveats) — plus a Diagnostics section for context-dependent values that are shown as raw measurements without pass/fail scoring.
+Two kinds of key appear in RiboMetric output, and they follow different rules (see [METRIC_NAMING.md](METRIC_NAMING.md)):
 
-## Default Metrics
+* **Metrics** (`results["metrics"]`) name the quantity that was measured, in its natural units and its natural direction. A rate goes up as the library gets worse.
+* **Scores** (in the report, the QC status file and the summary plot) name the good property, always lie in [0, 1], and are always higher-is-better.
 
-These metrics are calculated by default and represent the standard quality checks expected for Ribo-Seq data:
+## Scored metrics
 
-### Read Length Distribution
-- `read_length_distribution_IQR_metric` - Interquartile range normalized metric
-- `read_length_distribution_coefficient_of_variation_metric` - CV of read length distribution
-- `read_length_distribution_maxprop_metric` - Proportion of reads at most frequent length
+Every score below is higher-is-better. The direction flip, where one is needed, lives in the `method` column and nowhere else.
 
-### Terminal Nucleotide Bias
-- `terminal_bias_kl_5prime_score` - Normalized 5' terminal nucleotide bias score derived from KL divergence; 1 means observed matches expected
-- `terminal_bias_kl_3prime_score` - Normalized 3' terminal nucleotide bias score derived from KL divergence; 1 means observed matches expected
-- `terminal_bias_kl_5prime_raw` - Raw 5' terminal Kullback-Leibler divergence in bits
-- `terminal_bias_kl_3prime_raw` - Raw 3' terminal Kullback-Leibler divergence in bits
-- `terminal_nucleotide_bias_max_absolute_5prime` - Maximum deviation from expected for 5' end
-- `terminal_nucleotide_bias_max_absolute_3prime` - Maximum deviation from expected for 3' end
+### Tier 1 — is this Ribo-seq?
 
-### 3-nt Periodicity
-- **`periodicity_dominance`** - Proportion of reads in the dominant reading frame; the global value uses one shared dominant frame across all read lengths (recommended)
-- `periodicity_information` - Shannon information content-based periodicity score
+Gated. A failure here means frame-dependent analysis should not proceed.
 
-### Metagene Uniformity
-- **`uniformity_entropy`** - Entropy-based uniformity across the codon-binned start-codon metagene window, not whole-CDS coverage uniformity (recommended)
+| Score | From metric | Unit | Metric direction | Method | Pass / warn |
+|---|---|---|---|---|---|
+| `periodicity_dominance_score` | `periodicity_dominance` | fraction | higher is better | `identity` | 0.70 / 0.50 |
+| `cds_enrichment_score` | `cds_enrichment_ratio` | ratio | higher is better | `enrichment_ratio` | 0.60 / 0.30 |
+| `periodicity_information_score` | `periodicity_information` | fraction | higher is better | `identity` | 0.25 / 0.05 |
 
-### CDS Enrichment
-- `cds_enrichment_ratio` - Ratio of observed CDS-body read fraction to the length-weighted expected fraction (E = observed / expected). E > 1 means reads are enriched in CDS relative to random sampling across transcript lengths. Used as a Tier 1 gate metric in place of the raw `prop_reads_CDS` proportion, which is confounded by transcript-length distribution.
+- **`periodicity_dominance_score`** — Fraction of coding A-sites in the dominant reading frame. Low score: weak triplet structure; P-site assignment and ORF calling unreliable.
+- **`cds_enrichment_score`** — Observed CDS-body read fraction over the length-weighted expected fraction (E). Low score: reads not enriched over coding sequence; library may reflect degradation, RNA contamination, or poor nuclease protection.
+- **`periodicity_information_score`** — Entropy reduction of the frame distribution against a uniform three-frame null. Cross-check on frame dominance; large disagreement signals frame mixing or unstable offsets.
 
-### Coverage & Regional Distribution
-- `CDS_coverage` - Proportion of CDS covered by reads
-- `region_ratios` - Ratios between different mRNA regions (CDS:5'UTR, CDS:3'UTR, etc.)
-- `region_proportions` - Proportion of reads in each region
+### Tier 2 — is it usable for my analysis?
 
-### Alignment Quality
-- `duplicate_rate` - Fraction of reads that are PCR/library duplicates (from collapsed count column)
-- `multimapper_rate` - Backwards-compatible alias for `rpf_multimapper_rate`
-- `rpf_multimapper_rate` - Fraction of weighted ribosome protected fragments reported at more than one alignment location; uses `NH:i:N` when present, then XA, and falls back to STAR-style `MAPQ < 255`. On a **transcriptome** BAM this counts alignment/transcript multiplicity (a read mapping to multiple isoforms of one gene), not distinct genomic loci — interpret accordingly.
-- `unique_rpf_rate` - Fraction of weighted ribosome protected fragments that are uniquely mapped
-- `alignment_multimapper_rate` - Fraction of reported alignment rows whose read/fragment has evidence of another reported alignment (same caveat: transcript multiplicity on a transcriptome BAM)
-- `soft_clip_rate_5prime` - Fraction of reads with 5′ soft-clipping (adapter/trimming artefact indicator)
+Not gated. These describe whether enough usable signal survives filtering.
 
-### Di-some Detection
-- `read_length_distribution_bimodality_metric` - Bimodality coefficient of the read length distribution
-- `disome_proportion` - Fraction of reads with length 50–70 nt (di-some / collision footprint window)
+| Score | From metric | Unit | Metric direction | Method | Pass / warn |
+|---|---|---|---|---|---|
+| `usable_read_fraction_score` | `recommended_read_proportion` | fraction | higher is better | `identity` | 0.60 / 0.30 |
+| `coverage_uniformity_score` | `uniformity_entropy` | fraction | higher is better | `identity` | 0.60 / 0.30 |
+| `library_saturation_score` | `marginal_position_discovery_rate` | rate | lower is better | `one_minus_rate` | 0.60 / 0.30 |
 
-### Codon-level Translation Metrics
-- `stop_codon_readthrough_ratio` - Reads downstream of stop codon (positions +1…+30) relative to upstream (-30…-1); elevated values indicate readthrough or frameshifting
-- `start_codon_enrichment_ratio` - Reads near start codon (-5…+20) relative to CDS body (positions +30…+50); very high values suggest harringtonine/LTM treatment or initiation stalling
+- **`usable_read_fraction_score`** — Fraction of the library carried by read lengths recommended for frame-sensitive work. Low score: little of the library survives recommended-read filtering for frame-sensitive work.
+- **`coverage_uniformity_score`** — Normalised entropy of the codon-binned start-codon metagene. Low score: coverage dominated by a few hotspots; broad quantification may be unreliable.
+- **`library_saturation_score`** — Fraction of reads at the margin of sequencing depth landing on a position not already seen; high means under-sequenced. Low score: library under-sequenced; more reads would discover substantially more positions.
 
-## Optional Metrics
+### Tier 3 — technical caveats
 
-These metrics are **only calculated when explicitly enabled** using `--enable-optional-metrics` or `--enable-metric <name>`. They represent alternative or more theoretical approaches:
+Not gated. These colour interpretation but do not fail a sample.
 
-### Alternative Periodicity Metrics
-- `periodicity_autocorrelation` - Autocorrelation-based periodicity detection
-- `periodicity_fourier` - Fourier transform power at 3-nt frequency
-- `periodicity_trips_viz` - Trips-Viz algorithm score
+| Score | From metric | Unit | Metric direction | Method | Pass / warn |
+|---|---|---|---|---|---|
+| `fragment_uniqueness_score` | `duplicate_rate` | rate | lower is better | `one_minus_rate` | 0.60 / 0.30 |
+| `rpf_unique_mapping_score` | `rpf_multimapper_rate` | rate | lower is better | `one_minus_rate` | 0.60 / 0.30 |
+| `alignment_unique_mapping_score` | `alignment_multimapper_rate` | rate | lower is better | `one_minus_rate` | 0.60 / 0.30 |
+| `terminal_integrity_5prime_score` | `soft_clip_rate_5prime` | rate | lower is better | `one_minus_rate` | 0.60 / 0.30 |
+| `footprint_homogeneity_score` | `floss_aberrant_transcript_fraction` | fraction | lower is better | `one_minus_rate` | 0.60 / 0.30 |
+| `terminal_evenness_kl_5prime_score` | `terminal_bias_kl_5prime` | bits | lower is better | `inverse_linear` | 0.70 / 0.40 |
+| `terminal_evenness_kl_3prime_score` | `terminal_bias_kl_3prime` | bits | lower is better | `inverse_linear` | 0.70 / 0.40 |
+| `terminal_evenness_maxdev_5prime_score` | `terminal_bias_max_deviation_5prime` | fraction | lower is better | `one_minus_rate` | 0.70 / 0.40 |
+| `terminal_evenness_maxdev_3prime_score` | `terminal_bias_max_deviation_3prime` | fraction | lower is better | `one_minus_rate` | 0.70 / 0.40 |
 
-### Alternative Uniformity Metrics
-- `uniformity_autocorrelation` - Autocorrelation-based uniformity
-- `uniformity_theil_index` - Theil index across metagene profile
-- `uniformity_gini_index` - Gini coefficient across metagene profile
+- **`fragment_uniqueness_score`** — Fraction of reads that are collapsed duplicates. Low score: usable molecule diversity much lower than read depth suggests (protocol-dependent).
+- **`rpf_unique_mapping_score`** — Fraction of weighted fragments reported at more than one alignment location. Low score: reduced confidence in locus/transcript-level quantification.
+- **`alignment_unique_mapping_score`** — Fraction of alignment rows whose fragment has evidence of another reported alignment. Low score: many alignment rows have evidence of another reported alignment.
+- **`terminal_integrity_5prime_score`** — Fraction of reads with 5' soft-clipping. Low score: 5' read ends frequently clipped; offset and terminal-bias interpretation may be unreliable.
+- **`footprint_homogeneity_score`** — Fraction of transcripts whose footprint-length profile departs from the library aggregate beyond the FLOSS cutoff. Low score: many transcripts have footprint-length profiles unlike the library aggregate; heterogeneous or contaminated library.
+- **`terminal_evenness_kl_5prime_score`** — Kullback-Leibler divergence of observed 5' terminal dinucleotide frequencies from the background. Low score: 5' terminal sequence bias may distort count quantification; consider correction.
+- **`terminal_evenness_kl_3prime_score`** — Kullback-Leibler divergence of observed 3' terminal dinucleotide frequencies from the background. Low score: 3' terminal sequence bias may distort count quantification; consider correction.
+- **`terminal_evenness_maxdev_5prime_score`** — Largest absolute deviation of a 5' terminal dinucleotide frequency from its background frequency. Low score: at least one 5' terminal dinucleotide is strongly over- or under-represented.
+- **`terminal_evenness_maxdev_3prime_score`** — Largest absolute deviation of a 3' terminal dinucleotide frequency from its background frequency. Low score: at least one 3' terminal dinucleotide is strongly over- or under-represented.
 
-### Additional Read Length Metrics
-- `read_length_distribution_normality` - Normality test p-value
+## Diagnostics
 
-### RUST Metric (requires `--fasta`)
-- `rust_mean_kl_divergence` - Mean KL divergence across the 60-codon RUST metagene window; measures the extent of codon-specific A-site accumulation (O'Connor et al., Nat Commun 2016)
+Reported as raw measurements with no pass/fail badge. Either their good direction depends on the protocol, or they describe shape rather than quality.
 
-## Usage Examples
+| Metric | Unit | Direction | Summary |
+|---|---|---|---|
+| `cds_coverage` | fraction | higher is better | Proportion of CDS positions covered, using the configured in-frame and minimum-read settings. |
+| `cds_coverage_100read_100tx` | fraction | higher is better | CDS coverage, any frame, >=100 reads, 100 transcripts. |
+| `cds_coverage_1read_1000tx` | fraction | higher is better | CDS coverage, any frame, >=1 read, 1000 transcripts. |
+| `cds_coverage_inframe_100read_100tx` | fraction | higher is better | In-frame CDS coverage, >=100 reads, 100 transcripts. |
+| `cds_coverage_inframe_1read_1000tx` | fraction | higher is better | In-frame CDS coverage, >=1 read, 1000 transcripts. |
+| `cga_dwell` | ratio | context-dependent | Relative A-site dwell signal on the CGA codon. |
+| `codon_dwell_cv` | index | context-dependent | Coefficient of variation of A-site codon dwell-times. |
+| `codon_dwell_p90_p10` | ratio | context-dependent | Ratio of the 90th to 10th percentile codon dwell-time. |
+| `complexity_distinct_positions` | count | context-dependent | Distinct A-site positions observed at full depth. |
+| `disome_proportion` | fraction | context-dependent | Fraction of reads in the di-some read-length window; expected in a di-some experiment, contamination in a monosome one. |
+| `five_prime_ramp_ratio` | ratio | context-dependent | A-site density in the 5' portion of the CDS over the body. |
+| `floss_median` | index | lower is better | Median per-transcript FLOSS score. |
+| `n_recommended_read_lengths` | count | context-dependent | Number of read lengths recommended for frame-sensitive work. |
+| `periodicity_autocorrelation` | index | higher is better | Optional: triplet periodicity from signal autocorrelation. |
+| `periodicity_fourier` | index | higher is better | Optional: Fourier power at the codon frequency. |
+| `periodicity_information_weighted_score` | fraction | higher is better | Read-depth weighted periodicity information content. |
+| `periodicity_trips-viz` | index | higher is better | Optional: Trips-Viz style triplet periodicity score. |
+| `proline_dwell` | ratio | context-dependent | Relative A-site dwell signal on proline codons. |
+| `prop_reads_CDS` | fraction | context-dependent | Proportion of A-sites falling in the CDS body. |
+| `prop_reads_leader` | fraction | context-dependent | Proportion of A-sites falling in the 5' leader. |
+| `prop_reads_trailer` | fraction | context-dependent | Proportion of A-sites falling in the 3' trailer. |
+| `ratio_cds:leader` | ratio | higher is better | CDS reads relative to 5' leader reads. |
+| `ratio_cds:trailer` | ratio | higher is better | CDS reads relative to 3' trailer reads. |
+| `ratio_leader:trailer` | ratio | context-dependent | 5' leader reads relative to 3' trailer reads. |
+| `read_length_bimodality_coefficient` | index | lower is better | Sarle's bimodality coefficient of the read length distribution. |
+| `read_length_cv` | index | lower is better | Coefficient of variation of the read length distribution. |
+| `read_length_iqr_fraction` | fraction | lower is better | Interquartile range of the read length distribution as a fraction of its 10th-90th percentile range. |
+| `read_length_max_proportion` | fraction | context-dependent | Proportion of reads at the most frequent read length. |
+| `read_length_normality_pvalue` | pvalue | context-dependent | Normaltest p-value for the read length distribution; a footprint distribution is not expected to be normal. |
+| `rust_mean_kl_divergence` | bits | context-dependent | Mean RUST codon-metagene KL divergence. |
+| `start_codon_enrichment_ratio` | ratio | context-dependent | Reads near the start codon relative to the CDS body; very high values indicate initiation-stalling treatments. |
+| `stop_codon_readthrough_ratio` | ratio | lower is better | Reads downstream of the stop codon relative to upstream. |
+| `three_prime_drop_ratio` | ratio | context-dependent | A-site density in the 3' portion of the CDS over the body. |
+| `uniformity_autocorrelation` | index | higher is better | Optional: autocorrelation-based coverage smoothness. |
+| `uniformity_gini_index` | index | lower is better | Optional: Gini coefficient of coding-region coverage. |
+| `uniformity_theil_index` | index | lower is better | Optional: Theil inequality index of coding-region coverage. |
 
-### Default behavior (standard metrics only):
-```bash
-RiboMetric run -b sample.bam -a annotation.tsv
-```
+## Renamed and removed keys
 
-### Enable all optional metrics:
-```bash
-RiboMetric run -b sample.bam -a annotation.tsv --enable-optional-metrics
-```
+Pre-2.0 spellings are reproduced under `results["metrics_legacy"]` for one minor cycle and removed at v2.1. Where the transform is not `identity`, the old key held a *different number*: it had a goodness transform baked in.
 
-### Enable specific optional metrics:
-```bash
-RiboMetric run -b sample.bam -a annotation.tsv \
-  --enable-metric periodicity_fourier \
-  --enable-metric uniformity_gini_index
-```
+| Pre-2.0 key | Canonical key | Relationship |
+|---|---|---|
+| `CDS_coverage_metric` | `cds_coverage` | same value |
+| `CDS_coverage_metric_inframe_100read_100tx` | `cds_coverage_inframe_100read_100tx` | same value |
+| `CDS_coverage_metric_inframe_1read_1000tx` | `cds_coverage_inframe_1read_1000tx` | same value |
+| `CDS_coverage_metric_not_inframe_100read_100tx` | `cds_coverage_100read_100tx` | same value |
+| `CDS_coverage_metric_not_inframe_1read_1000tx` | `cds_coverage_1read_1000tx` | same value |
+| `cds_coverage_not_inframe_100read_100tx` | `cds_coverage_100read_100tx` | same value |
+| `cds_coverage_not_inframe_1read_1000tx` | `cds_coverage_1read_1000tx` | same value |
+| `multimapper_rate` | `rpf_multimapper_rate` | same value |
+| `read_length_distribution_IQR_metric` | `read_length_iqr_fraction` | old = 1 − new |
+| `read_length_distribution_bimodality_metric` | `read_length_bimodality_coefficient` | old = 1 / (1 + new) |
+| `read_length_distribution_coefficient_of_variation_metric` | `read_length_cv` | old = 1 / (1 + new) |
+| `read_length_distribution_maxprop_metric` | `read_length_max_proportion` | same value |
+| `read_length_distribution_normality_metric` | `read_length_normality_pvalue` | old = 1 − new |
+| `terminal_bias_kl_3prime` | `terminal_bias_kl_3prime` | old = 1 / (1 + new) |
+| `terminal_bias_kl_3prime_raw` | `terminal_bias_kl_3prime` | same value |
+| `terminal_bias_kl_3prime_score` | `terminal_bias_kl_3prime` | old = 1 / (1 + new) |
+| `terminal_bias_kl_5prime` | `terminal_bias_kl_5prime` | old = 1 / (1 + new) |
+| `terminal_bias_kl_5prime_raw` | `terminal_bias_kl_5prime` | same value |
+| `terminal_bias_kl_5prime_score` | `terminal_bias_kl_5prime` | old = 1 / (1 + new) |
+| `terminal_bias_maxabs_3prime` | `terminal_bias_max_deviation_3prime` | old = 1 − new |
+| `terminal_bias_maxabs_5prime` | `terminal_bias_max_deviation_5prime` | old = 1 − new |
+| `terminal_nucleotide_bias_distribution_3_prime_metric` | `terminal_bias_kl_3prime` | old = 1 / (1 + new) |
+| `terminal_nucleotide_bias_distribution_5_prime_metric` | `terminal_bias_kl_5prime` | old = 1 / (1 + new) |
+| `terminal_nucleotide_bias_max_absolute_metric_3_prime_metric` | `terminal_bias_max_deviation_3prime` | old = 1 − new |
+| `terminal_nucleotide_bias_max_absolute_metric_5_prime_metric` | `terminal_bias_max_deviation_5prime` | old = 1 − new |
+| `unique_rpf_rate` | `rpf_multimapper_rate` | old = 1 − new |
 
-## Recommendations
-
-For standard Ribo-Seq QC, the **default metrics** provide comprehensive coverage:
-- **Periodicity**: Use `periodicity_dominance` (simple, interpretable)
-- **Uniformity**: Use `uniformity_entropy` for local metagene-window uniformity; use `CDS_coverage` for whole-CDS coverage
-
-The optional metrics are useful for:
-- Method comparison studies
-- Developing new quality standards
-- Research on Ribo-Seq quality assessment
-- Exploring alternative analytical approaches
-
-## Philosophy
-
-RiboMetric scores each metric on a 0–1 scale anchored to interpretable reference points (0 = random-chance baseline, 1 = ideal). Scores drive pass/warn/fail labels in the HTML report and QC gate, but the raw value is always shown alongside — the score is a convenience, not a substitute for reading the number. Thresholds are provisional and will be recalibrated against a reference corpus in a future release; the `scoring:` block in `config.yml` exposes every threshold for local adjustment.

@@ -14,15 +14,14 @@ from RiboMetric.metrics import (
     proportion_of_reads_in_region,
     read_frame_information_content,
     read_frame_information_weighted_score,
-    read_length_distribution_bimodality,
-    read_length_distribution_coefficient_of_variation_metric,
-    read_length_distribution_IQR_normalised_metric,
-    read_length_distribution_max_prop_metric,
-    read_length_distribution_normality_metric,
+    read_length_bimodality_coefficient,
+    read_length_cv,
+    read_length_iqr_fraction,
+    read_length_max_proportion,
+    read_length_normality_pvalue,
     region_region_ratio_metric,
     terminal_nucleotide_bias_KL_divergence,
-    terminal_nucleotide_bias_KL_metric,
-    terminal_nucleotide_bias_max_absolute_metric,
+    terminal_nucleotide_bias_max_deviation,
     uniformity_entropy,
     uniformity_gini_index,
     uniformity_theil_index,
@@ -32,30 +31,27 @@ from RiboMetric.metrics import (
 class TestReadLengthMetrics:
     """Tests for read length distribution metrics"""
 
-    def test_iqr_metric(self, sample_read_length_dict):
-        """Test IQR normalized metric"""
-        metric = read_length_distribution_IQR_normalised_metric(sample_read_length_dict)
+    def test_iqr_fraction(self, sample_read_length_dict):
+        """IQR as a fraction of the P10-P90 range; lower is tighter."""
+        metric = read_length_iqr_fraction(sample_read_length_dict)
         assert 0 <= metric <= 1
         assert isinstance(metric, (int, float))
 
-    def test_iqr_metric_single_length(self):
-        """Test IQR metric with single read length"""
+    def test_iqr_fraction_single_length(self):
+        """A single read length is perfect concentration: spread 0."""
         single_length = {28: 1000}
-        metric = read_length_distribution_IQR_normalised_metric(single_length)
-        # Should handle edge case gracefully
-        assert isinstance(metric, (int, float))
+        metric = read_length_iqr_fraction(single_length)
+        assert metric == 0.0
 
     def test_coefficient_of_variation(self, sample_read_length_dict):
-        """Test coefficient of variation metric"""
-        metric = read_length_distribution_coefficient_of_variation_metric(sample_read_length_dict)
-        assert 0 < metric <= 1
+        """CV itself, not 1/(1 + CV); lower is tighter."""
+        metric = read_length_cv(sample_read_length_dict)
+        assert metric >= 0
         assert isinstance(metric, float)
 
     def test_max_prop_metric(self, sample_read_length_dict):
         """Test maximum proportion metric"""
-        metric = read_length_distribution_max_prop_metric(
-            sample_read_length_dict, num_top_readlens=1
-        )
+        metric = read_length_max_proportion(sample_read_length_dict, num_top_readlens=1)
         assert 0 < metric <= 1
         # Should be the proportion of the most frequent read length
         max_count = max(sample_read_length_dict.values())
@@ -65,25 +61,21 @@ class TestReadLengthMetrics:
 
     def test_max_prop_metric_top3(self, sample_read_length_dict):
         """Test maximum proportion metric with top 3 read lengths"""
-        metric = read_length_distribution_max_prop_metric(
-            sample_read_length_dict, num_top_readlens=3
-        )
+        metric = read_length_max_proportion(sample_read_length_dict, num_top_readlens=3)
         assert 0 < metric <= 1
         # Should be higher than single length
-        metric_single = read_length_distribution_max_prop_metric(
-            sample_read_length_dict, num_top_readlens=1
-        )
+        metric_single = read_length_max_proportion(sample_read_length_dict, num_top_readlens=1)
         assert metric >= metric_single
 
     def test_bimodality(self, sample_read_length_dict):
-        """Test bimodality coefficient"""
-        metric = read_length_distribution_bimodality(sample_read_length_dict)
+        """Sarle's coefficient itself, not 1/(1 + BC); lower is unimodal."""
+        metric = read_length_bimodality_coefficient(sample_read_length_dict)
         assert isinstance(metric, float)
-        assert 0 < metric <= 1
+        assert metric >= 0
 
-    def test_normality_metric(self, sample_read_length_dict):
-        """Test normality metric (p-value from normality test)"""
-        metric = read_length_distribution_normality_metric(sample_read_length_dict)
+    def test_normality_pvalue(self, sample_read_length_dict):
+        """The p-value itself, not 1 - p."""
+        metric = read_length_normality_pvalue(sample_read_length_dict)
         assert 0 <= metric <= 1
         assert isinstance(metric, float)
 
@@ -242,20 +234,16 @@ class TestTerminalNucleotideBias:
             "three_prime": sample_sequence_background["3_prime_bg"].copy(),
         }
 
-        metric_5 = terminal_nucleotide_bias_KL_metric(
+        kl_5 = terminal_nucleotide_bias_KL_divergence(
             observed, sample_sequence_background["5_prime_bg"], "five_prime"
         )
-        metric_3 = terminal_nucleotide_bias_KL_metric(
+        kl_3 = terminal_nucleotide_bias_KL_divergence(
             observed, sample_sequence_background["3_prime_bg"], "three_prime"
         )
-        raw_5 = terminal_nucleotide_bias_KL_divergence(
-            observed, sample_sequence_background["5_prime_bg"], "five_prime"
-        )
 
-        # No divergence from expected
-        assert metric_5 == pytest.approx(1.0)
-        assert metric_3 == pytest.approx(1.0)
-        assert raw_5 == pytest.approx(0.0)
+        # No divergence from expected: zero bits of bias.
+        assert kl_5 == pytest.approx(0.0)
+        assert kl_3 == pytest.approx(0.0)
 
     def test_kl_divergence_with_bias(self, sample_sequence_background):
         """Test KL divergence with bias"""
@@ -272,16 +260,12 @@ class TestTerminalNucleotideBias:
             if nt != "AA":
                 observed["five_prime"][nt] = remaining
 
-        metric = terminal_nucleotide_bias_KL_metric(
-            observed, sample_sequence_background["5_prime_bg"], "five_prime"
-        )
         raw = terminal_nucleotide_bias_KL_divergence(
             observed, sample_sequence_background["5_prime_bg"], "five_prime"
         )
 
-        # Should have significant divergence
-        assert metric < 0.9
-        assert raw > 0
+        # Should have significant divergence, in bits.
+        assert raw > 0.1
 
     def test_max_absolute_metric(self, sample_sequence_background):
         """Test maximum absolute deviation metric"""
@@ -296,14 +280,13 @@ class TestTerminalNucleotideBias:
             if nt != "AA":
                 observed["five_prime"][nt] = remaining
 
-        metric = terminal_nucleotide_bias_max_absolute_metric(
+        metric = terminal_nucleotide_bias_max_deviation(
             observed, sample_sequence_background["5_prime_bg"], "five_prime"
         )
 
-        # Max deviation should be approximately 0.5 - 1/16
+        # The deviation itself now, not 1 - deviation.
         expected_max = abs(0.5 - 1.0 / 16)
-        expected_score = 1 - expected_max
-        assert abs(metric - expected_score) < 0.01
+        assert abs(metric - expected_max) < 0.01
 
 
 class TestRegionalMetrics:

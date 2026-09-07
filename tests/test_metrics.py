@@ -4,15 +4,11 @@ import pytest
 from RiboMetric.metrics import (
     information_metric_cutoff,
     read_frame_information_weighted_score,
+    read_length_iqr_fraction,
+    terminal_nucleotide_bias_KL_divergence,
 )
 from RiboMetric.metrics import (
     read_frame_information_content as rfd_metric,
-)
-from RiboMetric.metrics import (
-    read_length_distribution_IQR_normalised_metric as rld_metric,
-)
-from RiboMetric.metrics import (
-    terminal_nucleotide_bias_KL_metric as lbd_metric,
 )
 from RiboMetric.modules import (
     read_length_distribution,
@@ -27,11 +23,12 @@ def test_read_length_distribution_metric():
     read_df_pre = pd.read_csv("tests/test_data/test.csv")
     read_df = read_df_pre.loc[read_df_pre.index.repeat(read_df_pre["count"])].reset_index(drop=True)
     read_length_dict = read_length_distribution(read_df)
-    read_length_metric = rld_metric(read_length_dict)
-    assert round(read_length_metric, 3) == 0.333
+    # Reported as the spread itself now (lower is better), not 1 - spread.
+    read_length_metric = read_length_iqr_fraction(read_length_dict)
+    assert round(read_length_metric, 3) == 0.667
 
 
-def test_terminal_nucleotide_bias_KL_metric():
+def test_terminal_nucleotide_bias_KL_divergence():
     """
     Test the ligation bias distribution metric
     """
@@ -62,11 +59,14 @@ def test_terminal_nucleotide_bias_KL_metric():
             }
         }
     }
-    terminal_nucleotide_bias_metric = lbd_metric(
+    # Reported in bits now (higher = more bias). The old 1/(1 + KL) goodness
+    # value of 0.4581 corresponds to KL = 1.1829 bits.
+    terminal_nucleotide_bias_metric = terminal_nucleotide_bias_KL_divergence(
         terminal_nucleotide_bias_dict, sequence_background[2]["5_prime_bg"]
     )
 
-    assert terminal_nucleotide_bias_metric == pytest.approx(0.4581, rel=1e-3)
+    assert terminal_nucleotide_bias_metric == pytest.approx(1.1829, rel=1e-3)
+    assert 1 / (1 + terminal_nucleotide_bias_metric) == pytest.approx(0.4581, rel=1e-3)
 
 
 def test_read_frame_distribution_metric():

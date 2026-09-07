@@ -328,7 +328,11 @@ def _evaluate_qc_status_scored(
 
     qc_checks = [
         {
+            # "metric" names the score being evaluated (higher is better);
+            # "source_metric" and "value" name the raw quantity it came from,
+            # in its natural units and direction. See docs/METRIC_NAMING.md.
             "metric": m["key"],
+            "source_metric": m["metric"],
             "value": m["raw"],
             "score": m["score"],
             "status": m["status"],
