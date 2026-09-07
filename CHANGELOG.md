@@ -9,6 +9,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **QC gating could pass with no evidence** — in the explicit-thresholds path
+  (`RiboMetric evaluate --expected`), a metric that was absent from the results
+  or non-numeric was silently skipped. A policy naming only metrics the run
+  never produced returned `PASS` with zero checks performed and exit code 0, so
+  a single typo in a thresholds YAML green-lit everything. This is reachable
+  from an ordinary cohort: `qc.py` only populates the terminal nucleotide bias
+  metrics when a sequence background is available, so a run without `--fasta`
+  omits twelve metric keys.
+- **Summary TSV could label values with the wrong metric** — `generate_summary_tsv`
+  appended using the current row's key order without reading the existing
+  header, so a sample whose metric set differed from the first sample's had its
+  values written under the previous sample's column names.
+- **Type and lint errors that shipped in v1.4.3** — an under-annotated record
+  dict in `qc.py`, an `Any` return from `_config_path_used`, and an unused
+  `cds_start` read in `file_parser.py`. These reached PyPI because `ci.yml`
+  watches `main`/`dev` while releases were cut from `release/v1.3.0`, and
+  `release.yml` publishes on tag push with no test dependency.
+
+### Changed
+
+- **An explicit threshold policy is now a required-check contract.** Every
+  metric it names must be present and finite; otherwise the check fails with a
+  diagnostic `reason`. Empty and malformed policies are rejected outright, and
+  the `evaluate` command handler reports those as errors rather than as a
+  verdict on the sample. A `FAIL` caused by an absent metric means incomplete QC
+  evidence, not a poor biological sample. Callers that relied on missing metrics
+  being skipped must trim their policy to the metrics the run actually produces.
+- **QC status checks carry a `reason` field**, `None` when the metric was
+  evaluated normally.
+- **Appending a new metric column to an existing summary TSV now raises**
+  instead of writing a row inconsistent with the header. Use a fresh file, or
+  the comparison CSV writer, to widen the schema. Concurrent multi-process
+  appending remains unsupported.
+
+### Notes
+
+- `main` now contains the v1.4.1-v1.4.3 releases, which had been cut from
+  `release/v1.3.0` and never merged back. `dev` is the integration branch.
+
 ## [1.4.3] — 2026-08-19
 
 ### Fixed
