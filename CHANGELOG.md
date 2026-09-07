@@ -84,6 +84,60 @@ behaviour; it changes what can silently go wrong when releasing it.
 - **`make release` (a bare `twine upload`) is removed** -- it was a second
   publish path that ran no checks. Pushing the tag is the only one.
 
+### Documentation
+
+- **The Read the Docs build was broken.** `.readthedocs.yaml` used
+  `python.version`, a key removed from config v2 years ago, and had no `build:`
+  block — which is required, so the build failed before Sphinx ran. It now
+  pins `ubuntu-24.04` and Python 3.12.
+- **`docs/contributing.rst` and `docs/history.rst` included files that do not
+  exist** (`CONTRIBUTING.rst`, `HISTORY.rst`), and both are in the toctree.
+  `CONTRIBUTING.rst` is now written; `docs/history.rst` points at
+  `CHANGELOG.md`, which is where the history actually lives.
+- **The metrics documentation was unreachable.** `METRICS.md`,
+  `METRICS_DESIGN.md` and `REPORTING_GUIDE.md` were not in any toctree, and
+  `source_suffix` was `.rst` only, so Sphinx could not have rendered them
+  regardless. Added myst-parser and put them in the toctree, along with
+  `results`, `functions` and the new `RELEASE.md`. Internal working notes
+  (`AUDIT_NOTES.md`, `SCORING_PHASE1_TASKS.md`, `TESTING.md`,
+  `V1.2_REPORT_AND_PREPRINT_PLAN.md`) are explicitly excluded rather than
+  published.
+- **The API reference never built on Read the Docs.** `modules` is produced by
+  `sphinx-apidoc`, which `make docs` ran locally but RTD did not, so the
+  toctree entry dangled on the published site. `docs/conf.py` now generates it
+  from a `builder-inited` hook, so local and RTD builds take the same path.
+- **`make docs` could not run**, because it delegated to `docs/Makefile`, which
+  calls a bare `python` — the same "command not found" failure the top-level
+  `$(PYTHON)` convention exists to prevent. It now invokes Sphinx directly.
+  Added `make docs-strict` for a warnings-fatal build.
+- Sphinx warnings went from 43 to 25 (`language`, `html_static_path`, short
+  title underlines, a dead cross-reference, unknown `tsv`/`csv` lexers, and
+  every "not included in any toctree"). All 25 that remain are inside autodoc'd
+  docstrings that write `Inputs:` with an unindented body; napoleon custom
+  sections absorb the correctly-indented ones, and the rest need the docstrings
+  themselves changed. `fail_on_warning` stays off until then, with a note
+  saying so.
+- **`docs/RELEASE.md`** is new: the release runbook, the container-tag
+  ownership split, and the traps that have actually cost this project releases
+  (wheel-filename normalisation, 403-vs-400 diagnosis, the reusable-workflow
+  permission startup failure, why there is no TestPyPI rehearsal).
+
+### Packaging
+
+- **The sdist shrank from 33 MB to 184 KB.** `MANIFEST.in` had
+  `recursive-include tests *`, which shipped 47 MB of BAM/BAI fixtures for a
+  package whose own code is 0.4 MB. Worse, it also swept in whatever test
+  *outputs* were in the working tree — `tests/test_data/test_RiboMetric.html`
+  is gitignored and was being published anyway — so the sdist varied depending
+  on whether the suite had been run before building. Nothing consumed the
+  shipped tests: the conda recipe checks imports and `--help` only, and CI runs
+  the suite from a git checkout. Verified by installing the sdist into a clean
+  environment: both entry points, `config.yml` and the report templates are all
+  present.
+- Test-run outputs written into `tests/test_data/` are now gitignored by name.
+  They are ignored individually rather than by extension because that directory
+  also holds tracked `.tsv`/`.json`/`.csv` *inputs*.
+
 ### Notes
 
 - `main` now contains the v1.4.1-v1.4.3 releases, which had been cut from

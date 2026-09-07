@@ -1,15 +1,29 @@
 include AUTHORS.rst
+include CHANGELOG.md
+include CITATION.cff
 include CONTRIBUTING.rst
-include HISTORY.rst
 include LICENSE
 include README.rst
 include RiboMetric/config.yml
 
-
-recursive-include tests *
 recursive-include RiboMetric *
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
-recursive-exclude sample_data *
 
-recursive-include docs *.rst conf.py Makefile make.bat *.jpg *.png *.gif
+# The test suite is deliberately NOT shipped in the sdist.
+#
+# `recursive-include tests *` put 47 MB of BAM/BAI fixtures into a 33 MB
+# sdist, for a package whose own code is 0.4 MB -- and, worse, swept in
+# whatever test *outputs* happened to be in the working tree, so the sdist
+# varied depending on whether the suite had been run before building.
+# tests/test_data/test_RiboMetric.html is gitignored and was shipping anyway.
+#
+# Nothing consumed them: the conda recipe tests imports and `--help` only, and
+# CI runs the suite from a git checkout. Anyone wanting to run the tests wants
+# the repository, not the sdist.
+prune tests
+prune sample_data
+prune example-reports
+prune conda-ribometric
+
+recursive-include docs *.rst *.md conf.py Makefile make.bat *.jpg *.png *.gif

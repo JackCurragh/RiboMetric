@@ -1,19 +1,33 @@
 # Read the Docs configuration file
 # See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
 
-# Required
 version: 2
 
-# Build documentation in the docs/ directory with Sphinx
+# `build:` is required on config v2. Without it the build fails before Sphinx
+# runs. The old `python.version` key this file used was removed from the schema
+# some years ago -- the interpreter is selected here, under build.tools.
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.12"
+
 sphinx:
   configuration: docs/conf.py
+  # Not yet warning-fatal. Every remaining warning (25 at the time of writing)
+  # comes from an autodoc'd docstring, not from the docs sources or this
+  # config: the codebase documents parameters as an "Inputs:" block whose body
+  # is at the *same* indent as the label, which docutils reads as a block
+  # quote. napoleon's custom sections (docs/conf.py) fixed the ones that were
+  # indented correctly; the rest need the docstrings themselves re-indented,
+  # which is a code change rather than a docs one. Flip this to true once that
+  # is done -- a docs build that tolerates warnings rots the same way a
+  # commented-out lint gate does.
+  fail_on_warning: false
 
-# Optionally build your docs in additional formats such as PDF
 formats:
   - pdf
 
 python:
-  version: '3.12'
   install:
     - method: pip
       path: .
