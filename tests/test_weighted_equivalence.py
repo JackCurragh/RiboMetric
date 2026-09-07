@@ -30,7 +30,11 @@ def expand(df: pd.DataFrame) -> pd.DataFrame:
 def test_read_frame_distribution_weighted_equivalence(sample_read_df, sample_annotation_df):
     # Ensure weighted path truly uses weights, and expanded path has no weights
     wdf = sample_read_df.copy()
-    edf = expand(sample_read_df).drop(columns=["count"]) if "count" in expand(sample_read_df).columns else expand(sample_read_df)
+    edf = (
+        expand(sample_read_df).drop(columns=["count"])
+        if "count" in expand(sample_read_df).columns
+        else expand(sample_read_df)
+    )
     w = a_site_calculation(wdf)
     e = a_site_calculation(edf)
 
@@ -41,7 +45,11 @@ def test_read_frame_distribution_weighted_equivalence(sample_read_df, sample_ann
 
 def test_mrna_distribution_weighted_equivalence(sample_read_df, sample_annotation_df):
     wdf = sample_read_df.copy()
-    edf = expand(sample_read_df).drop(columns=["count"]) if "count" in expand(sample_read_df).columns else expand(sample_read_df)
+    edf = (
+        expand(sample_read_df).drop(columns=["count"])
+        if "count" in expand(sample_read_df).columns
+        else expand(sample_read_df)
+    )
     w = a_site_calculation(wdf)
     w = annotate_reads(w, sample_annotation_df)
     w = assign_mRNA_category(w)
@@ -57,7 +65,11 @@ def test_mrna_distribution_weighted_equivalence(sample_read_df, sample_annotatio
 
 def test_metagene_profile_weighted_equivalence(sample_read_df, sample_annotation_df):
     wdf = sample_read_df.copy()
-    edf = expand(sample_read_df).drop(columns=["count"]) if "count" in expand(sample_read_df).columns else expand(sample_read_df)
+    edf = (
+        expand(sample_read_df).drop(columns=["count"])
+        if "count" in expand(sample_read_df).columns
+        else expand(sample_read_df)
+    )
     w = a_site_calculation(wdf)
     w = annotate_reads(w, sample_annotation_df)
 

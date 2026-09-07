@@ -31,12 +31,14 @@ def _prepare_report_figure(fig: go.Figure) -> go.Figure:
 
 def plotly_to_html(fig: go.Figure) -> str:
     """Return a report plot fragment without embedding Plotly.js repeatedly."""
-    return str(pio.to_html(
-        _prepare_report_figure(fig),
-        full_html=False,
-        include_plotlyjs=False,
-        config={"responsive": True},
-    ))
+    return str(
+        pio.to_html(
+            _prepare_report_figure(fig),
+            full_html=False,
+            include_plotlyjs=False,
+            config={"responsive": True},
+        )
+    )
 
 
 def generate_plots(results_dict: dict, config: dict) -> list:
@@ -53,11 +55,7 @@ def generate_plots(results_dict: dict, config: dict) -> list:
     """
     print("Generating plots")
     plots_list = [plot_metrics_summary(results_dict, config)]
-    plots_list.append(
-            plot_read_frame_distribution(
-                results_dict["read_frame_distribution"], config
-            )
-    )
+    plots_list.append(plot_read_frame_distribution(results_dict["read_frame_distribution"], config))
     if results_dict["mode"] == "annotation":
         plots_list.extend(
             [
@@ -79,49 +77,36 @@ def generate_plots(results_dict: dict, config: dict) -> list:
                     results_dict["mRNA_distribution"],
                     config,
                 ),
-                plot_read_frame_triangle(
-                    results_dict["reading_frame_triangle"],
-                    config
-                ),
+                plot_read_frame_triangle(results_dict["reading_frame_triangle"], config),
             ]
         )
     if "nucleotide_composition" in results_dict:
-        plots_list.extend([
+        plots_list.extend(
+            [
                 plot_terminal_nucleotide_bias_distribution(
                     results_dict["terminal_nucleotide_bias_distribution"], config
                 ),
-                plot_nucleotide_composition(
-                    results_dict["nucleotide_composition"], config
-                ),
-        ])
-    plots_list.extend([
-            plot_read_length_distribution(
-                results_dict["read_length_distribution"], config
-            ),
-            ])
+                plot_nucleotide_composition(results_dict["nucleotide_composition"], config),
+            ]
+        )
+    plots_list.extend(
+        [
+            plot_read_length_distribution(results_dict["read_length_distribution"], config),
+        ]
+    )
 
     if results_dict.get("recommended_read_lengths"):
         plots_list.append(
-            plot_recommended_read_lengths(
-                results_dict["recommended_read_lengths"], config
-            )
+            plot_recommended_read_lengths(results_dict["recommended_read_lengths"], config)
         )
     if results_dict.get("gene_body_coverage", {}).get("profile"):
-        plots_list.append(
-            plot_gene_body_coverage(results_dict["gene_body_coverage"], config)
-        )
+        plots_list.append(plot_gene_body_coverage(results_dict["gene_body_coverage"], config))
     if results_dict.get("library_complexity", {}).get("fractions"):
-        plots_list.append(
-            plot_library_complexity(results_dict["library_complexity"], config)
-        )
+        plots_list.append(plot_library_complexity(results_dict["library_complexity"], config))
     if results_dict.get("codon_dwell_times", {}).get("dwell_times"):
-        plots_list.append(
-            plot_codon_dwell_times(results_dict["codon_dwell_times"], config)
-        )
+        plots_list.append(plot_codon_dwell_times(results_dict["codon_dwell_times"], config))
     if results_dict.get("floss", {}).get("floss_scores"):
-        plots_list.append(
-            plot_floss_heterogeneity(results_dict["floss"], config)
-        )
+        plots_list.append(plot_floss_heterogeneity(results_dict["floss"], config))
 
     return plots_list
 
@@ -133,16 +118,15 @@ def plot_codon_dwell_times(dwell: dict, config: dict) -> dict:
     codons = [c for c, _ in items]
     values = [v for _, v in items]
     pro = {"CCT", "CCC", "CCA", "CCG"}
-    colors = [
-        "#c93434" if c == "CGA" else "#f0a81f" if c in pro else "#2e85db"
-        for c in codons
-    ]
+    colors = ["#c93434" if c == "CGA" else "#f0a81f" if c in pro else "#2e85db" for c in codons]
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
-            x=codons, y=values, marker_color=colors, name="",
-            hovertemplate="<b>Codon</b>: %{x}"
-                          "<br><b>Dwell-time</b>: %{y:.2f}<extra></extra>",
+            x=codons,
+            y=values,
+            marker_color=colors,
+            name="",
+            hovertemplate="<b>Codon</b>: %{x}" "<br><b>Dwell-time</b>: %{y:.2f}<extra></extra>",
         )
     )
     fig.add_hline(y=1.0, line_dash="dash", line_color=config["plots"]["base_color"])
@@ -165,8 +149,7 @@ def plot_codon_dwell_times(dwell: dict, config: dict) -> dict:
         ),
         "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(
-            fig, config["plots"]["image_size"][0],
-            config["plots"]["image_size"][1]
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
         ),
     }
 
@@ -177,9 +160,10 @@ def plot_floss_heterogeneity(floss: dict, config: dict) -> dict:
     fig = go.Figure()
     fig.add_trace(
         go.Histogram(
-            x=scores, nbinsx=30, name="",
-            hovertemplate="<b>FLOSS</b>: %{x:.2f}"
-                          "<br><b>Transcripts</b>: %{y}<extra></extra>",
+            x=scores,
+            nbinsx=30,
+            name="",
+            hovertemplate="<b>FLOSS</b>: %{x:.2f}" "<br><b>Transcripts</b>: %{y}<extra></extra>",
         )
     )
     fig.update_layout(
@@ -206,8 +190,7 @@ def plot_floss_heterogeneity(floss: dict, config: dict) -> dict:
         ),
         "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(
-            fig, config["plots"]["image_size"][0],
-            config["plots"]["image_size"][1]
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
         ),
     }
 
@@ -217,13 +200,9 @@ def plot_recommended_read_lengths(recommended: dict, config: dict) -> dict:
     by_rl = recommended.get("by_read_length", {})
     read_lengths = sorted(by_rl.keys())
     periodicity = [by_rl[rl]["periodicity"] for rl in read_lengths]
-    colors = [
-        "#2e85db" if by_rl[rl]["recommended"] else "#c9c9c9"
-        for rl in read_lengths
-    ]
+    colors = ["#2e85db" if by_rl[rl]["recommended"] else "#c9c9c9" for rl in read_lengths]
     customdata = [
-        [by_rl[rl].get("read_proportion", 0), by_rl[rl].get("offset", "n/a")]
-        for rl in read_lengths
+        [by_rl[rl].get("read_proportion", 0), by_rl[rl].get("offset", "n/a")] for rl in read_lengths
     ]
     fig = go.Figure()
     fig.add_trace(
@@ -273,8 +252,7 @@ def plot_recommended_read_lengths(recommended: dict, config: dict) -> dict:
         ),
         "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(
-            fig, config["plots"]["image_size"][0],
-            config["plots"]["image_size"][1]
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
         ),
     }
 
@@ -286,9 +264,12 @@ def plot_gene_body_coverage(gene_body: dict, config: dict) -> dict:
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
-            x=x, y=profile, mode="lines", name="",
+            x=x,
+            y=profile,
+            mode="lines",
+            name="",
             hovertemplate="<b>CDS position</b>: %{x:.0f}%"
-                          "<br><b>Relative density</b>: %{y:.2f}<extra></extra>",
+            "<br><b>Relative density</b>: %{y:.2f}<extra></extra>",
         )
     )
     fig.add_hline(y=1.0, line_dash="dash", line_color=config["plots"]["base_color"])
@@ -311,8 +292,7 @@ def plot_gene_body_coverage(gene_body: dict, config: dict) -> dict:
         ),
         "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(
-            fig, config["plots"]["image_size"][0],
-            config["plots"]["image_size"][1]
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
         ),
     }
 
@@ -324,9 +304,12 @@ def plot_library_complexity(complexity: dict, config: dict) -> dict:
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
-            x=fractions, y=distinct, mode="lines+markers", name="",
+            x=fractions,
+            y=distinct,
+            mode="lines+markers",
+            name="",
             hovertemplate="<b>Fraction of reads</b>: %{x:.0%}"
-                          "<br><b>Distinct positions</b>: %{y}<extra></extra>",
+            "<br><b>Distinct positions</b>: %{y}<extra></extra>",
         )
     )
     fig.update_layout(
@@ -348,8 +331,7 @@ def plot_library_complexity(complexity: dict, config: dict) -> dict:
         ),
         "fig_html": plotly_to_html(fig),
         "fig_image": plotly_to_image(
-            fig, config["plots"]["image_size"][0],
-            config["plots"]["image_size"][1]
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
         ),
     }
 
@@ -376,14 +358,16 @@ def plotly_to_image(fig: go.Figure, width: int, height: int) -> str:
     except Exception as e:
         # Avoid noisy tracebacks when Chrome/Kaleido is missing; warn once.
         if not _IMG_WARNED:
-            print("Note: static image export unavailable (", str(e).split("\n")[0], ") — continuing without images.")
+            print(
+                "Note: static image export unavailable (",
+                str(e).split("\n")[0],
+                ") — continuing without images.",
+            )
             _IMG_WARNED = True
         return _TRANSPARENT_PNG_1x1
 
 
-def plot_read_length_distribution(
-    read_length_dict: dict, config: dict
-) -> dict:
+def plot_read_length_distribution(read_length_dict: dict, config: dict) -> dict:
     """
     Generate a plot of the read length distribution for the full dataset
 
@@ -419,9 +403,9 @@ def plot_read_length_distribution(
         "name": "Read Length Distribution",
         "description": "Distribution of read lengths for the full dataset",
         "fig_html": plotly_to_html(fig),
-        "fig_image": plotly_to_image(fig,
-                                     config["plots"]["image_size"][0],
-                                     config["plots"]["image_size"][1]),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
+        ),
     }
     return plot_read_length_dict
 
@@ -453,18 +437,20 @@ def plot_terminal_nucleotide_bias_distribution(
         rows=1,
         cols=int(columns),
         shared_yaxes=True,
-        subplot_titles=["5' Ligation Bias", "3' Ligation Bias"]
-        if len(target_loop) > 1
-        else ["5' Ligation Bias"]
-        if target_loop == ["five_prime"]
-        else ["3' Ligation Bias"],
+        subplot_titles=(
+            ["5' Ligation Bias", "3' Ligation Bias"]
+            if len(target_loop) > 1
+            else ["5' Ligation Bias"] if target_loop == ["five_prime"] else ["3' Ligation Bias"]
+        ),
     )
     count = 0
     for current_target in target_loop:
         count += 1
         # Set colors according to the value
-        color = ["#636efa" if value > 0 else "#da5325"
-                 for value in terminal_nucleotide_bias_dict[current_target].values()]
+        color = [
+            "#636efa" if value > 0 else "#da5325"
+            for value in terminal_nucleotide_bias_dict[current_target].values()
+        ]
         fig.add_trace(
             go.Bar(
                 x=list(terminal_nucleotide_bias_dict[current_target].keys()),
@@ -479,12 +465,7 @@ def plot_terminal_nucleotide_bias_distribution(
 
         fig.add_hline(y=0)
 
-        fig.update_xaxes(
-            title_text="Read Start",
-            row=1,
-            col=count,
-            title_font=dict(size=18)
-        )
+        fig.update_xaxes(title_text="Read Start", row=1, col=count, title_font=dict(size=18))
     fig.update_layout(
         title="Ligation Bias Distribution",
         yaxis_title="Proportion",
@@ -519,16 +500,14 @@ def plot_terminal_nucleotide_bias_distribution(
         "name": "Ligation Bias Distribution",
         "description": "Distribution of end bases for the full dataset",
         "fig_html": plotly_to_html(fig),
-        "fig_image": plotly_to_image(fig,
-                                     config["plots"]["image_size"][0],
-                                     config["plots"]["image_size"][1]),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
+        ),
     }
     return plot_terminal_nucleotide_bias_dict
 
 
-def plot_nucleotide_composition(
-    nucleotide_composition_dict: dict, config: dict
-) -> dict:
+def plot_nucleotide_composition(nucleotide_composition_dict: dict, config: dict) -> dict:
     """
     Generate a plot of the nucleotide composition for the full dataset
 
@@ -544,11 +523,7 @@ def plot_nucleotide_composition(
     colors = config["plots"]["nucleotide_colors"]
     fig = go.Figure()
     for nucleotide, distribution in nucleotide_composition_dict.items():
-        fig.add_trace(
-            go.Scatter(
-                y=distribution, name=nucleotide, line_color=colors[nucleotide]
-            )
-        )
+        fig.add_trace(go.Scatter(y=distribution, name=nucleotide, line_color=colors[nucleotide]))
     fig.update_layout(
         title="Nucleotide Composition",
         xaxis_title="Position (nucleotides)",
@@ -564,16 +539,14 @@ def plot_nucleotide_composition(
         "name": "Nucleotide Composition",
         "description": "Nucleotide composition of the reads",
         "fig_html": plotly_to_html(fig),
-        "fig_image": plotly_to_image(fig,
-                                     config["plots"]["image_size"][0],
-                                     config["plots"]["image_size"][1]),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
+        ),
     }
     return plot_nucleotide_composition_dict
 
 
-def plot_nucleotide_distribution(
-    nucleotide_composition_dict: dict, config: dict
-) -> dict:
+def plot_nucleotide_distribution(nucleotide_composition_dict: dict, config: dict) -> dict:
     plot_data = []
     nt_start, nt_count = (
         config["plots"]["nucleotide_proportion"]["nucleotide_start"],
@@ -584,15 +557,15 @@ def plot_nucleotide_distribution(
             go.Bar(
                 name=nt,
                 x=[*range(nt_start + 1, nt_start + nt_count + 1)],
-                y=nucleotide_composition_dict[nt][
-                    nt_start: nt_start + nt_count
-                ],
+                y=nucleotide_composition_dict[nt][nt_start : nt_start + nt_count],
                 marker=dict(color=config["plots"]["nucleotide_colors"][nt]),
                 # Set the text in the hovertemplate to proportion or count
                 # depending on config
-                hovertemplate="Proportion: %{y:.2%}"
-                if not config["plots"]["mRNA_distribution"]["absolute_counts"]
-                else "Count: %{x}",
+                hovertemplate=(
+                    "Proportion: %{y:.2%}"
+                    if not config["plots"]["mRNA_distribution"]["absolute_counts"]
+                    else "Count: %{x}"
+                ),
             )
         )
     fig = go.Figure(plot_data)
@@ -613,9 +586,9 @@ def plot_nucleotide_distribution(
         "description": "Nucleotide distribution across specified reads \
 (default: first 15 read)",
         "fig_html": plotly_to_html(fig),
-        "fig_image": plotly_to_image(fig,
-                                     config["plots"]["image_size"][0],
-                                     config["plots"]["image_size"][1]),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
+        ),
     }
     return plot_nucleotide_distribution_dict
 
@@ -646,9 +619,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
 
     # Calculate font size based on number of data points
     num_data_points = len(culled_read_frame_dict)
-    font_size = max_font_size - (max_font_size - min_font_size) * (
-        num_data_points / 50
-    )
+    font_size = max_font_size - (max_font_size - min_font_size) * (num_data_points / 50)
     # Generate plot
     plot_data = []
     for i in range(0, 3):
@@ -682,10 +653,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
         if config["plots"]["read_frame_distribution"]["show_scores"] == "all":
             for idx in enumerate(culled_read_frame_dict):
                 if idx[1] != "global":
-                    y_buffer = (
-                        max(fig.data[0].y + fig.data[1].y + fig.data[2].y)
-                        * 0.05
-                    )
+                    y_buffer = max(fig.data[0].y + fig.data[1].y + fig.data[2].y) * 0.05
 
                     ymax = max(
                         fig.data[0].y[idx[0]],
@@ -694,9 +662,7 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
                     )
 
                     if (
-                        fig.data[0].y[idx[0]]
-                        + fig.data[1].y[idx[0]]
-                        + fig.data[2].y[idx[0]]
+                        fig.data[0].y[idx[0]] + fig.data[1].y[idx[0]] + fig.data[2].y[idx[0]]
                         > y_buffer
                     ):
                         fig.add_annotation(
@@ -725,30 +691,24 @@ def plot_read_frame_distribution(read_frame_dict: dict, config: dict) -> dict:
     y_buffer = (max(all_y) * 0.05) if all_y else 0
     lower_limit = upper_limit = None
     for idx in enumerate(culled_read_frame_dict):
-        count_sum = (
-            fig.data[0].y[idx[0]]
-            + fig.data[1].y[idx[0]]
-            + fig.data[2].y[idx[0]])
+        count_sum = fig.data[0].y[idx[0]] + fig.data[1].y[idx[0]] + fig.data[2].y[idx[0]]
         if count_sum > y_buffer:
-            lower_limit = (idx[1])
+            lower_limit = idx[1]
             break
     for idx in list(enumerate((culled_read_frame_dict)))[::-1]:
-        count_sum = (
-            fig.data[0].y[idx[0]]
-            + fig.data[1].y[idx[0]]
-            + fig.data[2].y[idx[0]])
+        count_sum = fig.data[0].y[idx[0]] + fig.data[1].y[idx[0]] + fig.data[2].y[idx[0]]
         if count_sum > y_buffer:
-            upper_limit = (idx[1])
+            upper_limit = idx[1]
             break
     if lower_limit is not None and upper_limit is not None:
-        fig.update_xaxes(range=[lower_limit-0.5, upper_limit+0.5])
+        fig.update_xaxes(range=[lower_limit - 0.5, upper_limit + 0.5])
     plot_read_frame_dict = {
         "name": "Read Frame Distribution",
         "description": "Frame distribution per read length",
         "fig_html": plotly_to_html(fig),
-        "fig_image": plotly_to_image(fig,
-                                     config["plots"]["image_size"][0],
-                                     config["plots"]["image_size"][1]),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
+        ),
     }
     return plot_read_frame_dict
 
@@ -779,12 +739,11 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
                     x=[value],
                     y=[""],
                     width=[0.3],
-                    hovertemplate="Proportion: %{x:.2%}"
-                    if not config[
-                        "plots"][
-                        "mRNA_distribution"][
-                        "absolute_counts"]
-                    else "Count: %{x}",
+                    hovertemplate=(
+                        "Proportion: %{x:.2%}"
+                        if not config["plots"]["mRNA_distribution"]["absolute_counts"]
+                        else "Count: %{x}"
+                    ),
                     orientation="h",
                 )
             )
@@ -793,9 +752,11 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
     fig.update_layout(
         barmode="stack",
         title="mRNA Reads Breakdown",
-        xaxis_title="Proportion"
-        if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
-        else "Counts",
+        xaxis_title=(
+            "Proportion"
+            if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
+            else "Counts"
+        ),
         yaxis_title="",
         font=dict(
             family=config["plots"]["font_family"],
@@ -810,13 +771,11 @@ def plot_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
         "description": "Shows the proportion of the different transcript \
 regions represented in the reads",
         "fig_html": plotly_to_html(fig),
-        "fig_image": plotly_to_image(fig,
-                                     config["plots"]["image_size"][0],
-                                     config["plots"]["image_size"][1]),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
+        ),
     }
     return plot_mRNA_distribution_dict
-
-
 
 
 def plot_mRNA_read_breakdown(
@@ -840,10 +799,7 @@ def plot_mRNA_read_breakdown(
             plot_data.setdefault(category, []).append(float(count))
     if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]:
         sum_data = {k: sum(v) for k, v in plot_data.items()}
-        plot_data = {
-            k: [x / sum(sum_data.values()) for x in v]
-            for k, v in plot_data.items()
-        }
+        plot_data = {k: [x / sum(sum_data.values()) for x in v] for k, v in plot_data.items()}
 
     fig = go.Figure()
     for k, v in plot_data.items():
@@ -852,20 +808,22 @@ def plot_mRNA_read_breakdown(
                 name=k,
                 x=list(mRNA_distribution_dict.keys()),
                 y=v,
-                hovertemplate="Proportion: %{y:.2%}"
-                if not config["plots"]["mRNA_read_breakdown"][
-                    "absolute_counts"
-                ]
-                else "Count: %{x}",
+                hovertemplate=(
+                    "Proportion: %{y:.2%}"
+                    if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
+                    else "Count: %{x}"
+                ),
             )
         )
 
     fig.update_layout(
         title="Nucleotide Distribution",
         xaxis_title="Position (nucleotides)",
-        yaxis_title="Proportion"
-        if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
-        else "Counts",
+        yaxis_title=(
+            "Proportion"
+            if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
+            else "Counts"
+        ),
         font=dict(
             family=config["plots"]["font_family"],
             size=18,
@@ -875,9 +833,11 @@ def plot_mRNA_read_breakdown(
     fig.update_layout(
         title="Nucleotide Distribution",
         xaxis_title="Read length",
-        yaxis_title="Proportion"
-        if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
-        else "Counts",
+        yaxis_title=(
+            "Proportion"
+            if not config["plots"]["mRNA_read_breakdown"]["absolute_counts"]
+            else "Counts"
+        ),
         font=dict(
             family=config["plots"]["font_family"],
             size=18,
@@ -890,9 +850,9 @@ def plot_mRNA_read_breakdown(
         "description": "Shows the proportion of the different transcript \
 regions represented in the reads over the different read lengths.",
         "fig_html": plotly_to_html(fig),
-        "fig_image": plotly_to_image(fig,
-                                     config["plots"]["image_size"][0],
-                                     config["plots"]["image_size"][1]),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
+        ),
     }
     return plot_mRNA_read_breakdown_dict
 
@@ -954,11 +914,11 @@ def plot_metagene_profile(
         rows=1,
         cols=columns,
         shared_yaxes=config["plots"]["metagene_profile"]["shared_yaxis"],
-        subplot_titles=["Distance from 5'", "Distance from 3'"]
-        if len(target_loop) > 1
-        else ["Distance from 5'"]
-        if target_loop == ["start"]
-        else ["Distance from 3'"],
+        subplot_titles=(
+            ["Distance from 5'", "Distance from 3'"]
+            if len(target_loop) > 1
+            else ["Distance from 5'"] if target_loop == ["start"] else ["Distance from 3'"]
+        ),
     )
     for current_target in target_loop:
         count += 1
@@ -967,10 +927,7 @@ def plot_metagene_profile(
             for inner_key, inner_value in inner_dict.items():
                 position = int(inner_key)
                 count_value = inner_value if inner_value is not None else 0
-                if (
-                    position in metagene_dict
-                    and metagene_dict[position] is not None
-                ):
+                if position in metagene_dict and metagene_dict[position] is not None:
                     metagene_dict[position] += count_value
                 else:
                     metagene_dict[position] = count_value
@@ -982,9 +939,7 @@ def plot_metagene_profile(
             go.Bar(
                 x=sorted_positions,
                 y=[metagene_dict[position] for position in sorted_positions],
-                name="Distance from 5'"
-                if current_target == "start"
-                else "Distance from 3'",
+                name="Distance from 5'" if current_target == "start" else "Distance from 3'",
                 marker=dict(color=color),
             ),
             row=1,
@@ -995,7 +950,7 @@ def plot_metagene_profile(
             row=1,
             col=count,
             title_font=dict(size=18),
-            range=config["plots"]["metagene_profile"]["distance_range"]
+            range=config["plots"]["metagene_profile"]["distance_range"],
         )
 
     fig.update_layout(
@@ -1023,9 +978,7 @@ def plot_metagene_profile(
             xaxis=dict(domain=[0, 1], zeroline=False),
         )
 
-    fig.update_xaxes(
-        range=config["plots"]["metagene_profile"]["distance_range"]
-    )
+    fig.update_xaxes(range=config["plots"]["metagene_profile"]["distance_range"])
     plot_metagene_profile_dict = {
         "name": "Metagene Profile",
         "description": _metagene_description(
@@ -1034,9 +987,9 @@ def plot_metagene_profile(
             stats,
         ),
         "fig_html": plotly_to_html(fig),
-        "fig_image": plotly_to_image(fig,
-                                     config["plots"]["image_size"][0],
-                                     config["plots"]["image_size"][1]),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
+        ),
     }
     return plot_metagene_profile_dict
 
@@ -1073,11 +1026,11 @@ def plot_metagene_heatmap(
         rows=1,
         cols=columns,
         shared_yaxes=True,
-        subplot_titles=["Distance from 5'", "Distance from 3'"]
-        if len(target_loop) > 1
-        else ["Distance from 5'"]
-        if target_loop == ["start"]
-        else ["Distance from 3'"],
+        subplot_titles=(
+            ["Distance from 5'", "Distance from 3'"]
+            if len(target_loop) > 1
+            else ["Distance from 5'"] if target_loop == ["start"] else ["Distance from 3'"]
+        ),
     )
 
     for current_target in target_loop:
@@ -1085,9 +1038,7 @@ def plot_metagene_heatmap(
         x_data: List[int] = []
         y_data: List[int] = []
         z_data: List[int] = []
-        for read_length, position_counts in metagene_profile_dict[
-                                                current_target
-                                                ].items():
+        for read_length, position_counts in metagene_profile_dict[current_target].items():
             for position, counts in position_counts.items():
                 x_data.append(int(position))
                 y_data.append(int(read_length))
@@ -1148,15 +1099,15 @@ def plot_metagene_heatmap(
             stats,
         ),
         "fig_html": plotly_to_html(fig),
-        "fig_image": plotly_to_image(fig,
-                                     config["plots"]["image_size"][0],
-                                     config["plots"]["image_size"][1]),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
+        ),
     }
     return plot_metagene_heatmap
 
 
 def plot_metrics_summary(results_dict: dict, config: dict) -> dict:
-    '''
+    """
     Generate the metrics summary payload used by the HTML/PDF report.
 
     Accepts either the full results_dict (preferred) or a plain metrics dict
@@ -1167,7 +1118,7 @@ def plot_metrics_summary(results_dict: dict, config: dict) -> dict:
         metrics — scored records (key, score, raw, status, gate, tier, decision)
         context — context-strip data for the report header
         diagnostics — non-scored raw values shown as plain labels
-    '''
+    """
     # Accept either full results_dict or bare metrics dict (legacy callers).
     if "metrics" in results_dict:
         metrics_dict = results_dict["metrics"]
@@ -1184,16 +1135,19 @@ def plot_metrics_summary(results_dict: dict, config: dict) -> dict:
 
     # Only metrics that produced a score are plottable on the 0-1 bar chart.
     plottable = [m for m in scored if m["score"] is not None]
-    df = pd.DataFrame(
-        [{"Metric": m["key"], "Score": round(m["score"], 3)} for m in plottable]
-    )
+    df = pd.DataFrame([{"Metric": m["key"], "Score": round(m["score"], 3)} for m in plottable])
 
     width = 750
     height = 320
-    fig = px.bar(df, x='Metric', y='Score', title="Summary Scores",
-                 labels={'Score': 'Score'},
-                 hover_data={'Metric': True, 'Score': ':.3f'},
-                 height=400)
+    fig = px.bar(
+        df,
+        x="Metric",
+        y="Score",
+        title="Summary Scores",
+        labels={"Score": "Score"},
+        hover_data={"Metric": True, "Score": ":.3f"},
+        height=400,
+    )
     fig.update_yaxes(range=[0, 1])
     fig.update_layout(showlegend=False)
     fig_html = plotly_to_html(fig)
@@ -1202,9 +1156,7 @@ def plot_metrics_summary(results_dict: dict, config: dict) -> dict:
     # --- Context strip ---------------------------------------------------
     rl_dist = results_dict.get("read_length_distribution", {})
     total_reads = int(sum(rl_dist.values())) if rl_dist else None
-    dominant_rl = (
-        max(rl_dist, key=rl_dist.__getitem__) if rl_dist else None
-    )
+    dominant_rl = max(rl_dist, key=rl_dist.__getitem__) if rl_dist else None
     lib_type_data = results_dict.get("library_type")
     library_type_label = lib_type_data["label"] if isinstance(lib_type_data, dict) else None
     context = {
@@ -1212,8 +1164,7 @@ def plot_metrics_summary(results_dict: dict, config: dict) -> dict:
         "dominant_read_length": dominant_rl,
         "total_reads": total_reads,
         "annotation": (
-            config.get("argument", {}).get("annotation")
-            or config.get("argument", {}).get("gff")
+            config.get("argument", {}).get("annotation") or config.get("argument", {}).get("gff")
         ),
         "bam": config.get("argument", {}).get("bam"),
     }
@@ -1296,9 +1247,8 @@ def plot_metrics_summary(results_dict: dict, config: dict) -> dict:
     }
 
 
-def plot_read_frame_triangle(
-        read_frame_triangle_dict: dict, config: dict) -> dict:
-    '''
+def plot_read_frame_triangle(read_frame_triangle_dict: dict, config: dict) -> dict:
+    """
     Generate the triangle plot of the read frame distribution
 
     Inputs:
@@ -1306,16 +1256,10 @@ def plot_read_frame_triangle(
         distribution
         config: Dictionary containing the configuration information
 
-    '''
+    """
     data = [[k, v[0], v[1], v[2]] for k, v in read_frame_triangle_dict.items()]
-    df = pd.DataFrame(data, columns=['Transcript', 'F1', 'F2', 'F3'])
-    fig = px.scatter_ternary(
-        df,
-        a="F1",
-        b="F2",
-        c="F3",
-        hover_name="Transcript"
-        )
+    df = pd.DataFrame(data, columns=["Transcript", "F1", "F2", "F3"])
+    fig = px.scatter_ternary(df, a="F1", b="F2", c="F3", hover_name="Transcript")
 
     fig.update_layout(
         title="Read Frame Triangle",
@@ -1330,9 +1274,9 @@ def plot_read_frame_triangle(
         "description": "Triangle plot showing the distribution of read frames \
 for the full dataset",
         "fig_html": plotly_to_html(fig),
-        "fig_image": plotly_to_image(fig,
-                                     config["plots"]["image_size"][0],
-                                     config["plots"]["image_size"][1]),
+        "fig_image": plotly_to_image(
+            fig, config["plots"]["image_size"][0], config["plots"]["image_size"][1]
+        ),
     }
 
     return plot_read_frame_triangle_dict

@@ -65,8 +65,8 @@ def test_main_run():
     output = sys.stdout.getvalue()
 
     # Assert that the expected output was produced
-    assert 'Annotation parsed' in output
-    assert 'Running modules' in output
+    assert "Annotation parsed" in output
+    assert "Running modules" in output
 
     with open(f"{file_path}/test_RiboMetric.json") as result_file:
         results = json.load(result_file)["results"]
@@ -128,8 +128,8 @@ def test_main_run_readlength_offsets():
     output = sys.stdout.getvalue()
 
     # Assert that the expected output was produced
-    assert 'Applying specified read length specific offsets' in output
-    assert 'Running modules' in output
+    assert "Applying specified read length specific offsets" in output
+    assert "Running modules" in output
 
 
 def test_main_run_readspecific_offsets():
@@ -162,8 +162,8 @@ def test_main_run_readspecific_offsets():
     output = sys.stdout.getvalue()
 
     # Assert that the expected output was produced
-    assert 'Applying read specific offsets' in output
-    assert 'Running modules' in output
+    assert "Applying read specific offsets" in output
+    assert "Running modules" in output
 
 
 def test_main_run_global_offsets():
@@ -196,5 +196,5 @@ def test_main_run_global_offsets():
     output = sys.stdout.getvalue()
 
     # Assert that the expected output was produced
-    assert 'Applying global offset' in output
-    assert 'Running modules' in output
+    assert "Applying global offset" in output
+    assert "Running modules" in output

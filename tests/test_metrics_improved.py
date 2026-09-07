@@ -34,9 +34,7 @@ class TestReadLengthMetrics:
 
     def test_iqr_metric(self, sample_read_length_dict):
         """Test IQR normalized metric"""
-        metric = read_length_distribution_IQR_normalised_metric(
-            sample_read_length_dict
-        )
+        metric = read_length_distribution_IQR_normalised_metric(sample_read_length_dict)
         assert 0 <= metric <= 1
         assert isinstance(metric, (int, float))
 
@@ -49,9 +47,7 @@ class TestReadLengthMetrics:
 
     def test_coefficient_of_variation(self, sample_read_length_dict):
         """Test coefficient of variation metric"""
-        metric = read_length_distribution_coefficient_of_variation_metric(
-            sample_read_length_dict
-        )
+        metric = read_length_distribution_coefficient_of_variation_metric(sample_read_length_dict)
         assert 0 < metric <= 1
         assert isinstance(metric, float)
 
@@ -87,9 +83,7 @@ class TestReadLengthMetrics:
 
     def test_normality_metric(self, sample_read_length_dict):
         """Test normality metric (p-value from normality test)"""
-        metric = read_length_distribution_normality_metric(
-            sample_read_length_dict
-        )
+        metric = read_length_distribution_normality_metric(sample_read_length_dict)
         assert 0 <= metric <= 1
         assert isinstance(metric, float)
 
@@ -213,9 +207,7 @@ class TestUniformityMetrics:
         # Create peaked distribution
         peaked_profile = {"start": {}}
         for read_len in [28, 29, 30]:
-            peaked_profile["start"][read_len] = {
-                i: (1000 if i == 0 else 1) for i in range(90)
-            }
+            peaked_profile["start"][read_len] = {i: (1000 if i == 0 else 1) for i in range(90)}
 
         metric = uniformity_entropy(peaked_profile)
 
@@ -247,7 +239,7 @@ class TestTerminalNucleotideBias:
         """Test KL divergence with no bias (observed = expected)"""
         observed = {
             "five_prime": sample_sequence_background["5_prime_bg"].copy(),
-            "three_prime": sample_sequence_background["3_prime_bg"].copy()
+            "three_prime": sample_sequence_background["3_prime_bg"].copy(),
         }
 
         metric_5 = terminal_nucleotide_bias_KL_metric(
@@ -270,7 +262,7 @@ class TestTerminalNucleotideBias:
         # Create biased distribution
         observed = {
             "five_prime": sample_sequence_background["5_prime_bg"].copy(),
-            "three_prime": sample_sequence_background["3_prime_bg"].copy()
+            "three_prime": sample_sequence_background["3_prime_bg"].copy(),
         }
         # Heavily bias towards AA
         observed["five_prime"]["AA"] = 0.5
@@ -295,7 +287,7 @@ class TestTerminalNucleotideBias:
         """Test maximum absolute deviation metric"""
         observed = {
             "five_prime": sample_sequence_background["5_prime_bg"].copy(),
-            "three_prime": sample_sequence_background["3_prime_bg"].copy()
+            "three_prime": sample_sequence_background["3_prime_bg"].copy(),
         }
         # Bias one dinucleotide
         observed["five_prime"]["AA"] = 0.5
@@ -309,7 +301,7 @@ class TestTerminalNucleotideBias:
         )
 
         # Max deviation should be approximately 0.5 - 1/16
-        expected_max = abs(0.5 - 1.0/16)
+        expected_max = abs(0.5 - 1.0 / 16)
         expected_score = 1 - expected_max
         assert abs(metric - expected_score) < 0.01
 
@@ -319,13 +311,15 @@ class TestRegionalMetrics:
 
     def test_cds_coverage_counts_minimum_read_boundary(self):
         """A position with exactly minimum_reads should count as covered."""
-        cds_reads = pd.DataFrame({
-            "transcript_id": ["tx1", "tx1", "tx1"],
-            "a_site": [1, 2, 3],
-            "cds_start": [0, 0, 0],
-            "cds_end": [4, 4, 4],
-            "count": [1, 1, 1],
-        })
+        cds_reads = pd.DataFrame(
+            {
+                "transcript_id": ["tx1", "tx1", "tx1"],
+                "a_site": [1, 2, 3],
+                "cds_start": [0, 0, 0],
+                "cds_end": [4, 4, 4],
+                "count": [1, 1, 1],
+            }
+        )
 
         coverage = cds_coverage_metric(
             cds_reads,
@@ -337,13 +331,15 @@ class TestRegionalMetrics:
 
     def test_cds_coverage_uses_interior_cds_denominator(self):
         """CDS coverage uses the same strict CDS interior as CDS read filtering."""
-        cds_reads = pd.DataFrame({
-            "transcript_id": ["tx1", "tx1"],
-            "a_site": [3, 6],
-            "cds_start": [0, 0],
-            "cds_end": [9, 9],
-            "count": [1, 1],
-        })
+        cds_reads = pd.DataFrame(
+            {
+                "transcript_id": ["tx1", "tx1"],
+                "a_site": [3, 6],
+                "cds_start": [0, 0],
+                "cds_end": [9, 9],
+                "count": [1, 1],
+            }
+        )
 
         coverage = cds_coverage_metric(
             cds_reads,
@@ -355,12 +351,14 @@ class TestRegionalMetrics:
 
     def test_cds_coverage_defaults_missing_count_to_one(self):
         """Coverage accepts pre-weighting dataframes without an explicit count."""
-        cds_reads = pd.DataFrame({
-            "transcript_id": ["tx1", "tx1"],
-            "a_site": [1, 2],
-            "cds_start": [0, 0],
-            "cds_end": [3, 3],
-        })
+        cds_reads = pd.DataFrame(
+            {
+                "transcript_id": ["tx1", "tx1"],
+                "a_site": [1, 2],
+                "cds_start": [0, 0],
+                "cds_end": [3, 3],
+            }
+        )
 
         coverage = cds_coverage_metric(
             cds_reads,
@@ -372,13 +370,15 @@ class TestRegionalMetrics:
 
     def test_cds_coverage_accepts_categorical_count(self):
         """Coverage coerces categorical parser output before summing counts."""
-        cds_reads = pd.DataFrame({
-            "transcript_id": ["tx1", "tx1"],
-            "a_site": [1, 2],
-            "cds_start": [0, 0],
-            "cds_end": [3, 3],
-            "count": pd.Categorical(["1", "1"]),
-        })
+        cds_reads = pd.DataFrame(
+            {
+                "transcript_id": ["tx1", "tx1"],
+                "a_site": [1, 2],
+                "cds_start": [0, 0],
+                "cds_end": [3, 3],
+                "count": pd.Categorical(["1", "1"]),
+            }
+        )
 
         coverage = cds_coverage_metric(
             cds_reads,
@@ -390,13 +390,15 @@ class TestRegionalMetrics:
 
     def test_cds_coverage_top_transcripts_use_weighted_counts(self):
         """Transcript limiting ranks transcripts by read count, not row count."""
-        cds_reads = pd.DataFrame({
-            "transcript_id": ["low_rows", "low_rows", "high_weight"],
-            "a_site": [1, 2, 1],
-            "cds_start": [0, 0, 0],
-            "cds_end": [3, 3, 3],
-            "count": [1, 1, 100],
-        })
+        cds_reads = pd.DataFrame(
+            {
+                "transcript_id": ["low_rows", "low_rows", "high_weight"],
+                "a_site": [1, 2, 1],
+                "cds_start": [0, 0, 0],
+                "cds_end": [3, 3, 3],
+                "count": [1, 1, 100],
+            }
+        )
 
         coverage = cds_coverage_metric(
             cds_reads,
@@ -415,9 +417,7 @@ class TestRegionalMetrics:
             30: {"leader": 110, "CDS": 1100, "trailer": 55},
         }
 
-        ratio = region_region_ratio_metric(
-            mRNA_dist, region1="CDS", region2="leader"
-        )
+        ratio = region_region_ratio_metric(mRNA_dist, region1="CDS", region2="leader")
 
         # Should have global ratio
         assert "global" in ratio
@@ -430,9 +430,7 @@ class TestRegionalMetrics:
             28: {"leader": 0, "CDS": 1000, "trailer": 50},
         }
 
-        ratio = region_region_ratio_metric(
-            mRNA_dist, region1="CDS", region2="leader"
-        )
+        ratio = region_region_ratio_metric(mRNA_dist, region1="CDS", region2="leader")
 
         # Should handle zero gracefully
         assert ratio["global"] == 0 or ratio[28] == 0

@@ -42,9 +42,7 @@ class TestMetricSelection:
     def test_should_calculate_metric_optional_enabled(self, default_config):
         """Test when optional metrics are explicitly enabled"""
         config = default_config.copy()
-        config["enabled_metrics"] = (
-            config["metrics"]["default"] + config["metrics"]["optional"]
-        )
+        config["enabled_metrics"] = config["metrics"]["default"] + config["metrics"]["optional"]
 
         # All metrics should be calculable
         assert should_calculate_metric("periodicity_fourier", config) is True
@@ -54,9 +52,7 @@ class TestMetricSelection:
     def test_should_calculate_metric_specific_optional(self, default_config):
         """Test enabling specific optional metrics"""
         config = default_config.copy()
-        config["enabled_metrics"] = config["metrics"]["default"] + [
-            "periodicity_fourier"
-        ]
+        config["enabled_metrics"] = config["metrics"]["default"] + ["periodicity_fourier"]
 
         # Default + specific optional should be calculated
         assert should_calculate_metric("periodicity_dominance", config) is True
@@ -160,9 +156,11 @@ class TestArgParser:
         assert "periodicity_dominance" in enabled
         assert "uniformity_entropy" in enabled
         # Check for some optional metrics from config
-        assert "periodicity_autocorrelation" in enabled or \
-               "periodicity_fourier" in enabled or \
-               "uniformity_gini_index" in enabled
+        assert (
+            "periodicity_autocorrelation" in enabled
+            or "periodicity_fourier" in enabled
+            or "uniformity_gini_index" in enabled
+        )
 
     def test_enable_specific_metrics(self, config_path, test_data_dir):
         """Test --enable-metric flag for specific metrics"""
@@ -244,9 +242,7 @@ class TestMetricCalculationConditionals:
     def test_optional_metrics_calculated_when_enabled(self, default_config):
         """Test that optional metrics are calculated when explicitly enabled"""
         config = default_config.copy()
-        config["enabled_metrics"] = (
-            config["metrics"]["default"] + config["metrics"]["optional"]
-        )
+        config["enabled_metrics"] = config["metrics"]["default"] + config["metrics"]["optional"]
 
         # Verify all metrics would be calculated
         for metric in config["metrics"]["default"] + config["metrics"]["optional"]:

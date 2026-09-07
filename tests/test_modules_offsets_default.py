@@ -15,4 +15,3 @@ def test_asite_variable_offset_default_is_stable():
     out2 = a_site_calculation_variable_offset(df.copy(), None)
 
     assert out1["a_site"].tolist() == out2["a_site"].tolist() == [115, 215, 315]
-

@@ -24,6 +24,7 @@ import pandas as pd
 # Legacy Functions (Backwards Compatibility)
 # =============================================================================
 
+
 def generate_json(
     results_dict: dict,
     config: dict,
@@ -132,25 +133,25 @@ def generate_csv(
     for key, value in results_dict.get("metrics", {}).items():
         if isinstance(value, (float, int)):
             rng = _range_for(key)
-            max_min_score = (
-                normalise_score(value, rng[0], rng[1]) if rng else None
+            max_min_score = normalise_score(value, rng[0], rng[1]) if rng else None
+            metrics_dict.append(
+                {
+                    "Metric": key,
+                    "Score": value,
+                    "MaxMinScore": max_min_score,
+                }
             )
-            metrics_dict.append({
-                "Metric": key,
-                "Score": value,
-                "MaxMinScore": max_min_score,
-            })
         elif isinstance(value, dict):
             rng = _range_for(key)
             for k, v in value.items():
-                max_min_score = (
-                    normalise_score(v, rng[0], rng[1]) if rng else None
+                max_min_score = normalise_score(v, rng[0], rng[1]) if rng else None
+                metrics_dict.append(
+                    {
+                        "Metric": f"{key}_{k}",
+                        "Score": v,
+                        "MaxMinScore": max_min_score,
+                    }
                 )
-                metrics_dict.append({
-                    "Metric": f"{key}_{k}",
-                    "Score": v,
-                    "MaxMinScore": max_min_score,
-                })
 
     with open(output, "w") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=columns)
@@ -163,6 +164,7 @@ def generate_csv(
 # =============================================================================
 # Improved Functions (v1.0 - Pipeline Integration & Sample Review)
 # =============================================================================
+
 
 def generate_summary_tsv(
     results_dict: dict,
@@ -220,8 +222,8 @@ def generate_summary_tsv(
     file_exists = path.exists() and path.stat().st_size > 0
 
     if file_exists:
-        with open(output, newline='') as f:
-            header = next(csv.reader(f, delimiter='\t'), [])
+        with open(output, newline="") as f:
+            header = next(csv.reader(f, delimiter="\t"), [])
         if not header or any(not col for col in header):
             raise ValueError(
                 f"{output} has a missing or malformed header row; refusing to "
@@ -248,8 +250,8 @@ def generate_summary_tsv(
         fieldnames = list(summary_row)
         row = summary_row
 
-    with open(output, "a" if file_exists else "w", newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter='\t')
+    with open(output, "a" if file_exists else "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t")
         if not file_exists:
             writer.writeheader()
         writer.writerow(row)
@@ -270,22 +272,24 @@ DEFAULT_QC_THRESHOLDS: Dict[str, Dict[str, float]] = {
 # at or below the "pass" threshold. Everything else is treated as higher-is-
 # better. A thresholds YAML can override this per metric with
 # ``direction: lower`` / ``direction: higher``.
-LOWER_IS_BETTER_METRICS = frozenset({
-    "duplicate_rate",
-    "multimapper_rate",
-    "rpf_multimapper_rate",
-    "alignment_multimapper_rate",
-    "soft_clip_rate_5prime",
-    "disome_proportion",
-    "terminal_bias_kl_5prime_raw",
-    "terminal_bias_kl_3prime_raw",
-    "stop_codon_readthrough_ratio",
-    # High marginal discovery = library still un-saturated (under-sequenced).
-    "marginal_position_discovery_rate",
-    # High FLOSS heterogeneity = more transcripts with aberrant length profiles.
-    "floss_median",
-    "floss_aberrant_transcript_fraction",
-})
+LOWER_IS_BETTER_METRICS = frozenset(
+    {
+        "duplicate_rate",
+        "multimapper_rate",
+        "rpf_multimapper_rate",
+        "alignment_multimapper_rate",
+        "soft_clip_rate_5prime",
+        "disome_proportion",
+        "terminal_bias_kl_5prime_raw",
+        "terminal_bias_kl_3prime_raw",
+        "stop_codon_readthrough_ratio",
+        # High marginal discovery = library still un-saturated (under-sequenced).
+        "marginal_position_discovery_rate",
+        # High FLOSS heterogeneity = more transcripts with aberrant length profiles.
+        "floss_median",
+        "floss_aberrant_transcript_fraction",
+    }
+)
 
 
 def _metric_direction(metric_name: str, threshold_dict: Dict) -> str:
@@ -337,9 +341,7 @@ def _evaluate_qc_status_scored(results_dict: dict, sample_name: str) -> dict:
             "warnings": sum(1 for c in qc_checks if c["status"] == "WARNING"),
             "failed": sum(1 for c in qc_checks if c["status"] == "FAIL"),
         },
-        "recommendation": _get_recommendation(
-            overall_status, [c for c in gated_checks]
-        ),
+        "recommendation": _get_recommendation(overall_status, [c for c in gated_checks]),
     }
 
 
@@ -352,8 +354,7 @@ def _validate_explicit_thresholds(thresholds: Dict) -> None:
     """
     if not isinstance(thresholds, dict) or not thresholds:
         raise ValueError(
-            "Threshold policy is empty or not a mapping; expected "
-            "{metric: {pass: x, warn: y}}."
+            "Threshold policy is empty or not a mapping; expected " "{metric: {pass: x, warn: y}}."
         )
     for metric_name, spec in thresholds.items():
         if not isinstance(spec, dict):
@@ -363,13 +364,9 @@ def _validate_explicit_thresholds(thresholds: Dict) -> None:
             )
         for bound in ("pass", "warn"):
             if bound not in spec:
-                raise ValueError(
-                    f"Threshold policy for '{metric_name}' is missing '{bound}'."
-                )
+                raise ValueError(f"Threshold policy for '{metric_name}' is missing '{bound}'.")
             bound_value = spec[bound]
-            if isinstance(bound_value, bool) or not isinstance(
-                bound_value, (int, float)
-            ):
+            if isinstance(bound_value, bool) or not isinstance(bound_value, (int, float)):
                 raise ValueError(
                     f"Threshold '{bound}' for '{metric_name}' must be a number, "
                     f"got {bound_value!r}."
@@ -404,10 +401,7 @@ def _resolve_metric_value(
             "compare against the threshold"
         )
     if isinstance(metric_value, bool) or not isinstance(metric_value, (int, float)):
-        return None, (
-            f"value is not numeric ({type(metric_value).__name__}: "
-            f"{metric_value!r})"
-        )
+        return None, (f"value is not numeric ({type(metric_value).__name__}: " f"{metric_value!r})")
     if not math.isfinite(metric_value):
         return None, f"value is not finite ({metric_value!r})"
     return float(metric_value), None
@@ -449,10 +443,7 @@ def evaluate_qc_status(
 
     metrics = results_dict.get("metrics", {})
     if not isinstance(metrics, dict):
-        raise ValueError(
-            "Results 'metrics' must be a mapping, got "
-            f"{type(metrics).__name__}."
-        )
+        raise ValueError("Results 'metrics' must be a mapping, got " f"{type(metrics).__name__}.")
     qc_checks = []
     overall_status = "PASS"
 
@@ -466,26 +457,30 @@ def evaluate_qc_status(
         }
 
         if metric_name not in metrics:
-            qc_checks.append({
-                **base_check,
-                "value": None,
-                "status": "FAIL",
-                "reason": (
-                    "required metric not present in results; QC evidence is "
-                    "incomplete for this sample"
-                ),
-            })
+            qc_checks.append(
+                {
+                    **base_check,
+                    "value": None,
+                    "status": "FAIL",
+                    "reason": (
+                        "required metric not present in results; QC evidence is "
+                        "incomplete for this sample"
+                    ),
+                }
+            )
             overall_status = "FAIL"
             continue
 
         value, reason = _resolve_metric_value(metrics[metric_name])
         if reason is not None:
-            qc_checks.append({
-                **base_check,
-                "value": None,
-                "status": "FAIL",
-                "reason": f"required metric could not be evaluated: {reason}",
-            })
+            qc_checks.append(
+                {
+                    **base_check,
+                    "value": None,
+                    "status": "FAIL",
+                    "reason": f"required metric could not be evaluated: {reason}",
+                }
+            )
             overall_status = "FAIL"
             continue
 
@@ -513,12 +508,14 @@ def evaluate_qc_status(
                 status = "FAIL"
                 overall_status = "FAIL"
 
-        qc_checks.append({
-            **base_check,
-            "value": value,
-            "status": status,
-            "reason": None,
-        })
+        qc_checks.append(
+            {
+                **base_check,
+                "value": value,
+                "status": status,
+                "reason": None,
+            }
+        )
 
     return {
         "sample": sample_name,
@@ -709,22 +706,26 @@ def generate_metrics_table_csv(
         if isinstance(metric_value, dict):
             # Per-read-length or per-region metrics
             for key, value in metric_value.items():
-                rows.append({
-                    "sample": sample_name,
-                    "metric": metric_name,
-                    "read_length_or_region": str(key),
-                    "value": value,
-                    "description": desc
-                })
+                rows.append(
+                    {
+                        "sample": sample_name,
+                        "metric": metric_name,
+                        "read_length_or_region": str(key),
+                        "value": value,
+                        "description": desc,
+                    }
+                )
         elif isinstance(metric_value, (int, float)):
             # Global metrics
-            rows.append({
-                "sample": sample_name,
-                "metric": metric_name,
-                "read_length_or_region": "global",
-                "value": metric_value,
-                "description": desc
-            })
+            rows.append(
+                {
+                    "sample": sample_name,
+                    "metric": metric_name,
+                    "read_length_or_region": "global",
+                    "value": metric_value,
+                    "description": desc,
+                }
+            )
 
     # Write CSV
     df = pd.DataFrame(rows)
@@ -778,54 +779,56 @@ def generate_offsets_tsv(
     rows = []
 
     if applied:
-        for read_length, record in sorted(
-            applied.items(), key=lambda item: int(item[0])
-        ):
+        for read_length, record in sorted(applied.items(), key=lambda item: int(item[0])):
             adjustment = frame_adjustments.get(str(read_length), {})
             offset_values = record.get("offsets", [])
-            rows.append({
+            rows.append(
+                {
+                    "sample": sample_name,
+                    "offset_source": offsets.get("source"),
+                    "offset_target": offsets.get("target"),
+                    "offset_calculation_method": offsets.get("offset_calculation_method"),
+                    "read_length": read_length,
+                    "n_reads": record.get("n_reads"),
+                    "n_unique_offsets": record.get("n_unique_offsets"),
+                    "applied_offsets": "|".join(str(v) for v in offset_values),
+                    "min_offset": record.get("min_offset"),
+                    "max_offset": record.get("max_offset"),
+                    "raw_offset": raw.get(str(read_length)),
+                    "final_offset": final.get(str(read_length)),
+                    "computed_offset": final.get(str(read_length), computed.get(str(read_length))),
+                    "global_offset": offsets.get("global_offset"),
+                    "frame_adjusted": bool(adjustment),
+                    "old_offset": adjustment.get("old_offset"),
+                    "new_offset": adjustment.get("new_offset"),
+                    "dominant_frame": adjustment.get("dominant_frame"),
+                    "dominant_fraction": adjustment.get("dominant_fraction"),
+                    "frame_adjustment_reads": adjustment.get("reads"),
+                }
+            )
+    else:
+        rows.append(
+            {
                 "sample": sample_name,
                 "offset_source": offsets.get("source"),
                 "offset_target": offsets.get("target"),
                 "offset_calculation_method": offsets.get("offset_calculation_method"),
-                "read_length": read_length,
-                "n_reads": record.get("n_reads"),
-                "n_unique_offsets": record.get("n_unique_offsets"),
-                "applied_offsets": "|".join(str(v) for v in offset_values),
-                "min_offset": record.get("min_offset"),
-                "max_offset": record.get("max_offset"),
-                "raw_offset": raw.get(str(read_length)),
-                "final_offset": final.get(str(read_length)),
-                "computed_offset": final.get(str(read_length), computed.get(str(read_length))),
+                "read_length": "",
+                "n_reads": "",
+                "n_unique_offsets": "",
+                "applied_offsets": "",
+                "min_offset": "",
+                "max_offset": "",
+                "computed_offset": "",
                 "global_offset": offsets.get("global_offset"),
-                "frame_adjusted": bool(adjustment),
-                "old_offset": adjustment.get("old_offset"),
-                "new_offset": adjustment.get("new_offset"),
-                "dominant_frame": adjustment.get("dominant_frame"),
-                "dominant_fraction": adjustment.get("dominant_fraction"),
-                "frame_adjustment_reads": adjustment.get("reads"),
-            })
-    else:
-        rows.append({
-            "sample": sample_name,
-            "offset_source": offsets.get("source"),
-            "offset_target": offsets.get("target"),
-            "offset_calculation_method": offsets.get("offset_calculation_method"),
-            "read_length": "",
-            "n_reads": "",
-            "n_unique_offsets": "",
-            "applied_offsets": "",
-            "min_offset": "",
-            "max_offset": "",
-            "computed_offset": "",
-            "global_offset": offsets.get("global_offset"),
-            "frame_adjusted": False,
-            "old_offset": "",
-            "new_offset": "",
-            "dominant_frame": "",
-            "dominant_fraction": "",
-            "frame_adjustment_reads": "",
-        })
+                "frame_adjusted": False,
+                "old_offset": "",
+                "new_offset": "",
+                "dominant_frame": "",
+                "dominant_fraction": "",
+                "frame_adjustment_reads": "",
+            }
+        )
 
     with open(output, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=columns, delimiter="\t")
@@ -858,28 +861,26 @@ def generate_all_outputs(
     print("Generating improved output formats...")
 
     generate_summary_tsv(
-        results_dict, config, sample_name,
-        f"{sample_name}_summary.tsv", output_directory
+        results_dict, config, sample_name, f"{sample_name}_summary.tsv", output_directory
     )
 
     generate_metrics_table_csv(
-        results_dict, config, sample_name,
-        f"{sample_name}_metrics_table.csv", output_directory
+        results_dict, config, sample_name, f"{sample_name}_metrics_table.csv", output_directory
     )
 
     generate_qc_status(
-        results_dict, config, sample_name, thresholds,
-        f"{sample_name}_qc_status.json", output_directory
+        results_dict,
+        config,
+        sample_name,
+        thresholds,
+        f"{sample_name}_qc_status.json",
+        output_directory,
     )
 
     generate_comparison_ready_csv(
-        results_dict, config, sample_name,
-        f"{sample_name}_comparison.csv", output_directory
+        results_dict, config, sample_name, f"{sample_name}_comparison.csv", output_directory
     )
 
-    generate_offsets_tsv(
-        results_dict, sample_name,
-        f"{sample_name}_offsets.tsv", output_directory
-    )
+    generate_offsets_tsv(results_dict, sample_name, f"{sample_name}_offsets.tsv", output_directory)
 
     print("All improved outputs generated successfully!")

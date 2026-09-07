@@ -42,19 +42,14 @@ log = logging.getLogger(__name__)
 STOP_CODONS = {"TAA", "TAG", "TGA"}
 
 # All valid DNA codons (order preserved for reproducibility).
-ALL_CODONS: List[str] = [
-    f"{a}{b}{c}"
-    for a in "ACGT"
-    for b in "ACGT"
-    for c in "ACGT"
-]
+ALL_CODONS: List[str] = [f"{a}{b}{c}" for a in "ACGT" for b in "ACGT" for c in "ACGT"]
 SENSE_CODONS: List[str] = [c for c in ALL_CODONS if c not in STOP_CODONS]
 
-WINDOW_SIZE = 60       # window length in codons
-ASITE_IN_WINDOW = 40   # 0-based position of the A-site codon within the window
+WINDOW_SIZE = 60  # window length in codons
+ASITE_IN_WINDOW = 40  # 0-based position of the A-site codon within the window
 ELONGATION_5_NT = 120  # nt to skip at CDS 5' end  (40 codons)
-ELONGATION_3_NT = 60   # nt to skip at CDS 3' end  (20 codons)
-MIN_PROFILE_LEN = 50   # minimum elongation-region nt to include a transcript
+ELONGATION_3_NT = 60  # nt to skip at CDS 3' end  (20 codons)
+MIN_PROFILE_LEN = 50  # minimum elongation-region nt to include a transcript
 
 
 def _lookup_seq(
@@ -70,6 +65,7 @@ def _lookup_seq(
     3. Version-stripped match via base_index (``ENST00000233.10`` -> ``ENST00000233``)
        - needed when annotation and FASTA come from different releases.
     """
+
     def _seq(rec: Any) -> str:
         return str(rec.seq) if hasattr(rec, "seq") else str(rec)
 
@@ -156,9 +152,9 @@ def compute_rust_metrics(
     # ------------------------------------------------------------------ #
     # We need CDS-only reads with integer A-site positions.
     transcript_col = (
-        "reference_name" if "reference_name" in annotated_read_df.columns
-        else "transcript_id" if "transcript_id" in annotated_read_df.columns
-        else None
+        "reference_name"
+        if "reference_name" in annotated_read_df.columns
+        else "transcript_id" if "transcript_id" in annotated_read_df.columns else None
     )
     needed = {"a_site", "cds_start", "cds_end", "count"}
     missing = needed - set(annotated_read_df.columns)
@@ -170,8 +166,7 @@ def compute_rust_metrics(
 
     cds_df = annotated_read_df.dropna(subset=["a_site", "cds_start", "cds_end"])
     cds_df = cds_df[
-        (cds_df["a_site"] >= cds_df["cds_start"])
-        & (cds_df["a_site"] < cds_df["cds_end"])
+        (cds_df["a_site"] >= cds_df["cds_start"]) & (cds_df["a_site"] < cds_df["cds_end"])
     ].copy()
 
     if cds_df.empty:
@@ -184,16 +179,10 @@ def compute_rust_metrics(
     cds_df["count"] = cds_df["count"].astype(float)
 
     # Group: (transcript, a_site) -> total weighted count
-    density_series = (
-        cds_df.groupby([transcript_col, "a_site"], observed=True)["count"]
-        .sum()
-    )
+    density_series = cds_df.groupby([transcript_col, "a_site"], observed=True)["count"].sum()
 
     # Per-transcript CDS boundaries (first occurrence suffices; they are constant)
-    tx_info = (
-        cds_df.groupby(transcript_col, observed=True)[["cds_start", "cds_end"]]
-        .first()
-    )
+    tx_info = cds_df.groupby(transcript_col, observed=True)[["cds_start", "cds_end"]].first()
 
     # ------------------------------------------------------------------ #
     # 3.  Initialise enrichment accumulators                              #
@@ -240,7 +229,10 @@ def compute_rust_metrics(
         # Build density profile (indexed within elongation region)
         profile = np.zeros(elong_len, dtype=float)
         tx_key = transcript
-        if (tx_key, cds_start) in density_series.index or tx_key in density_series.index.get_level_values(0):
+        if (
+            tx_key,
+            cds_start,
+        ) in density_series.index or tx_key in density_series.index.get_level_values(0):
             try:
                 tx_density = density_series.loc[tx_key]
             except KeyError:
@@ -278,7 +270,7 @@ def compute_rust_metrics(
         # ---------------------------------------------------------------- #
         codon_start_in_cds = 0  # tracks where window begins in cds_seq
         for elong_pos in range(0, elong_len - 2, 3):
-            codon_window = cds_seq[codon_start_in_cds: codon_start_in_cds + window * 3]
+            codon_window = cds_seq[codon_start_in_cds : codon_start_in_cds + window * 3]
             if len(codon_window) < window * 3:
                 codon_start_in_cds += 3
                 continue
@@ -297,13 +289,13 @@ def compute_rust_metrics(
 
             # Update accumulators for every codon in the window
             for win_pos in range(window):
-                codon = codon_window[win_pos * 3: (win_pos + 1) * 3]
+                codon = codon_window[win_pos * 3 : (win_pos + 1) * 3]
                 codon_enrichment[codon][win_pos][0] += 1.0
                 if enriched:
                     codon_enrichment[codon][win_pos][1] += 1.0
 
             # Record expected density for the A-site codon
-            asite_codon = codon_window[asite_pos * 3: (asite_pos + 1) * 3]
+            asite_codon = codon_window[asite_pos * 3 : (asite_pos + 1) * 3]
             if asite_codon not in STOP_CODONS:
                 codon_expected[asite_codon].append(expected_codon_density)
 
@@ -331,8 +323,7 @@ def compute_rust_metrics(
     # ------------------------------------------------------------------ #
     # Expected distribution: per-codon mean expected_codon_density
     exp_values = [
-        float(np.mean(codon_expected[c])) if codon_expected[c] else 0.0
-        for c in SENSE_CODONS
+        float(np.mean(codon_expected[c])) if codon_expected[c] else 0.0 for c in SENSE_CODONS
     ]
     exp_sum = sum(exp_values)
     if exp_sum == 0:
@@ -355,11 +346,7 @@ def compute_rust_metrics(
         # Standard Kullback-Leibler divergence D(P||Q) = Σ p·log2(p/q).
         # The previous per-term abs() was not KL and could not be interpreted
         # as an information divergence.
-        kl = sum(
-            p * math.log2(p / q)
-            for p, q in zip(p_values, q_values)
-            if p > 0 and q > 0
-        )
+        kl = sum(p * math.log2(p / q) for p, q in zip(p_values, q_values) if p > 0 and q > 0)
         kl_divergence.append(kl)
 
     valid_kl = [v for v in kl_divergence if v is not None]
@@ -432,9 +419,9 @@ def compute_codon_dwell_times(
     }
 
     transcript_col = (
-        "reference_name" if "reference_name" in annotated_read_df.columns
-        else "transcript_id" if "transcript_id" in annotated_read_df.columns
-        else None
+        "reference_name"
+        if "reference_name" in annotated_read_df.columns
+        else "transcript_id" if "transcript_id" in annotated_read_df.columns else None
     )
     needed = {"a_site", "cds_start", "cds_end", "count"}
     if transcript_col is None or (needed - set(annotated_read_df.columns)):
@@ -445,14 +432,11 @@ def compute_codon_dwell_times(
     for fid, rec in fasta_dict.items():
         base_id = fid.split("|")[0].split(".")[0]
         if base_id not in base_fasta_index:
-            base_fasta_index[base_id] = (
-                str(rec.seq) if hasattr(rec, "seq") else str(rec)
-            )
+            base_fasta_index[base_id] = str(rec.seq) if hasattr(rec, "seq") else str(rec)
 
     cds_df = annotated_read_df.dropna(subset=["a_site", "cds_start", "cds_end"])
     cds_df = cds_df[
-        (cds_df["a_site"] >= cds_df["cds_start"])
-        & (cds_df["a_site"] < cds_df["cds_end"])
+        (cds_df["a_site"] >= cds_df["cds_start"]) & (cds_df["a_site"] < cds_df["cds_end"])
     ].copy()
     if cds_df.empty:
         return empty
@@ -460,13 +444,8 @@ def compute_codon_dwell_times(
     cds_df["cds_start"] = cds_df["cds_start"].astype(int)
     cds_df["count"] = cds_df["count"].astype(float)
 
-    density_series = (
-        cds_df.groupby([transcript_col, "a_site"], observed=True)["count"].sum()
-    )
-    tx_info = (
-        cds_df.groupby(transcript_col, observed=True)[["cds_start", "cds_end"]]
-        .first()
-    )
+    density_series = cds_df.groupby([transcript_col, "a_site"], observed=True)["count"].sum()
+    tx_info = cds_df.groupby(transcript_col, observed=True)[["cds_start", "cds_end"]].first()
 
     observed: Dict[str, float] = {c: 0.0 for c in ALL_CODONS}
     exposure: Dict[str, float] = {c: 0.0 for c in ALL_CODONS}
@@ -489,7 +468,7 @@ def compute_codon_dwell_times(
         for codon_start in range(0, len(cds_seq) - 2, 3):
             if not (elong_start <= codon_start < elong_end):
                 continue
-            codon = cds_seq[codon_start:codon_start + 3]
+            codon = cds_seq[codon_start : codon_start + 3]
             if codon in exposure and set(codon) <= set("ACGT"):
                 exposure[codon] += 1.0
 
@@ -503,7 +482,7 @@ def compute_codon_dwell_times(
             if rel < elong_start or rel >= elong_end:
                 continue
             codon_start = (rel // 3) * 3
-            codon = cds_seq[codon_start:codon_start + 3]
+            codon = cds_seq[codon_start : codon_start + 3]
             if len(codon) == 3 and set(codon) <= set("ACGT"):
                 observed[codon] += float(cnt)
         transcripts_used += 1

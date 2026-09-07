@@ -34,6 +34,7 @@ def _clip(x: float, lo: float = 0.0, hi: float = 1.0) -> float:
 # is missing/not applicable (so the metric is shown without a score).
 # --------------------------------------------------------------------------
 
+
 def _m_identity(raw: float) -> float:
     """Raw is already a 0-1, higher-is-better fraction."""
     return _clip(float(raw))
@@ -44,9 +45,7 @@ def _m_one_minus_rate(raw: float) -> float:
     return _clip(1.0 - float(raw))
 
 
-def _m_frame_dominance_rescaled(
-    raw: float, zero: float = 1.0 / 3.0, one: float = 1.0
-) -> float:
+def _m_frame_dominance_rescaled(raw: float, zero: float = 1.0 / 3.0, one: float = 1.0) -> float:
     """Rescale dominant-frame fraction against its random-frame floor.
 
     Dominance has a real lower bound at 1/3 (random); treating 0 as the floor
@@ -110,7 +109,7 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": True,
         "tier": 1,
         "decision": "Low score: weak triplet structure; P-site assignment and "
-                    "ORF calling unreliable.",
+        "ORF calling unreliable.",
     },
     "cds_enrichment_ratio": {
         "method": "enrichment_ratio",
@@ -118,8 +117,8 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": True,
         "tier": 1,
         "decision": "Low score: reads not enriched over coding sequence; library "
-                    "may reflect degradation, RNA contamination, or poor nuclease "
-                    "protection.",
+        "may reflect degradation, RNA contamination, or poor nuclease "
+        "protection.",
     },
     "periodicity_information": {
         "method": "identity",
@@ -127,7 +126,7 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": True,
         "tier": 1,
         "decision": "Cross-check on frame dominance; large disagreement signals "
-                    "frame mixing or unstable offsets.",
+        "frame mixing or unstable offsets.",
     },
     # ---- Tier 2: usable for my analysis? (not gated) -------------------
     "recommended_read_proportion": {
@@ -136,7 +135,7 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": False,
         "tier": 2,
         "decision": "Low score: little of the library survives recommended-read "
-                    "filtering for frame-sensitive work.",
+        "filtering for frame-sensitive work.",
     },
     "uniformity_entropy": {
         "method": "identity",
@@ -144,7 +143,7 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": False,
         "tier": 2,
         "decision": "Low score: coverage dominated by a few hotspots; broad "
-                    "quantification may be unreliable.",
+        "quantification may be unreliable.",
     },
     "marginal_position_discovery_rate": {
         "method": "one_minus_rate",
@@ -152,7 +151,7 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": False,
         "tier": 2,
         "decision": "Low score: library under-sequenced; more reads would "
-                    "discover substantially more positions.",
+        "discover substantially more positions.",
     },
     # ---- Tier 3: technical caveats (not gated) -------------------------
     "duplicate_rate": {
@@ -161,23 +160,21 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": False,
         "tier": 3,
         "decision": "Low score: usable molecule diversity much lower than read "
-                    "depth suggests (protocol-dependent).",
+        "depth suggests (protocol-dependent).",
     },
     "rpf_multimapper_rate": {
         "method": "one_minus_rate",
         "status": {"pass": 0.60, "warn": 0.30},
         "gate": False,
         "tier": 3,
-        "decision": "Low score: reduced confidence in locus/transcript-level "
-                    "quantification.",
+        "decision": "Low score: reduced confidence in locus/transcript-level " "quantification.",
     },
     "multimapper_rate": {
         "method": "one_minus_rate",
         "status": {"pass": 0.60, "warn": 0.30},
         "gate": False,
         "tier": 3,
-        "decision": "Low score: reduced confidence in locus/transcript-level "
-                    "quantification.",
+        "decision": "Low score: reduced confidence in locus/transcript-level " "quantification.",
     },
     "alignment_multimapper_rate": {
         "method": "one_minus_rate",
@@ -185,7 +182,7 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": False,
         "tier": 3,
         "decision": "Low score: many alignment rows have evidence of another "
-                    "reported alignment.",
+        "reported alignment.",
     },
     "unique_rpf_rate": {
         "method": "identity",
@@ -200,7 +197,7 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": False,
         "tier": 3,
         "decision": "Low score: 5' read ends frequently clipped; offset and "
-                    "terminal-bias interpretation may be unreliable.",
+        "terminal-bias interpretation may be unreliable.",
     },
     # Terminal bias (S4): raw KL bits via inverse_linear; 1/(1+KL) _score
     # variants are retired from the scored set and kept only as legacy keys.
@@ -211,7 +208,7 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": False,
         "tier": 3,
         "decision": "Low score: 5' terminal sequence bias may distort count "
-                    "quantification; consider correction.",
+        "quantification; consider correction.",
     },
     "terminal_bias_kl_3prime_raw": {
         "method": "inverse_linear",
@@ -220,7 +217,7 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": False,
         "tier": 3,
         "decision": "Low score: 3' terminal sequence bias may distort count "
-                    "quantification; consider correction.",
+        "quantification; consider correction.",
     },
     "terminal_bias_maxabs_5prime": {
         "method": "one_minus_rate",
@@ -228,7 +225,7 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": False,
         "tier": 3,
         "decision": "Low score: at least one 5' terminal dinucleotide is strongly "
-                    "over- or under-represented.",
+        "over- or under-represented.",
     },
     "terminal_bias_maxabs_3prime": {
         "method": "one_minus_rate",
@@ -236,7 +233,7 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "gate": False,
         "tier": 3,
         "decision": "Low score: at least one 3' terminal dinucleotide is strongly "
-                    "over- or under-represented.",
+        "over- or under-represented.",
     },
 }
 
@@ -268,7 +265,9 @@ def _extract_raw(metric_value: Any) -> Optional[float]:
     return None
 
 
-def score_value(method: str, raw: float, params: Optional[Dict[str, Any]] = None) -> Optional[float]:
+def score_value(
+    method: str, raw: float, params: Optional[Dict[str, Any]] = None
+) -> Optional[float]:
     """Apply a named score method to a raw value."""
     fn = SCORE_METHODS.get(method)
     if fn is None:
@@ -312,20 +311,19 @@ def build_scored_metrics(
         if key not in metrics:
             continue
         raw = _extract_raw(metrics[key])
-        score = (
-            score_value(mspec["method"], raw, mspec.get("params"))
-            if raw is not None else None
-        )
+        score = score_value(mspec["method"], raw, mspec.get("params")) if raw is not None else None
         status_thresholds = mspec.get("status", DEFAULT_STATUS)
-        records.append({
-            "key": key,
-            "raw": raw,
-            "score": score,
-            "status": resolve_status(score, status_thresholds),
-            "gate": bool(mspec.get("gate", False)),
-            "tier": mspec.get("tier"),
-            "decision": mspec.get("decision", ""),
-        })
+        records.append(
+            {
+                "key": key,
+                "raw": raw,
+                "score": score,
+                "status": resolve_status(score, status_thresholds),
+                "gate": bool(mspec.get("gate", False)),
+                "tier": mspec.get("tier"),
+                "decision": mspec.get("decision", ""),
+            }
+        )
     return records
 
 

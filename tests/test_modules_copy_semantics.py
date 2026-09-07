@@ -20,4 +20,3 @@ def test_normalise_ligation_bias_does_not_mutate_input():
     # Output differs where expected
     assert out["five_prime"]["AA"] == observed["five_prime"]["AA"] - 0.5
     assert out["three_prime"]["AC"] == observed["three_prime"]["AC"] - 0.5
-

@@ -1,6 +1,7 @@
 """
 This script contains processing steps used to parse bam files.
 """
+
 import io
 import itertools
 import os
@@ -41,11 +42,9 @@ def validate_bam(bam_file: str) -> None:
             raise Exception("Invalid bam file")
 
 
-def ox_parse_reads(bam_file: str,
-                   split_num: int,
-                   reference_df: pd.DataFrame,
-                   tempdir: str
-                   ) -> tuple:
+def ox_parse_reads(
+    bam_file: str, split_num: int, reference_df: pd.DataFrame, tempdir: str
+) -> tuple:
     """
     Splits a bam files using generated bed files, uses oxbow to process these
     batches of reads directly into a data frame and then processes the data
@@ -68,32 +67,41 @@ def ox_parse_reads(bam_file: str,
     except Exception:
         print_columns = 4
 
-    print("\n"*(split_num // print_columns),
-          "\033[25C"*(split_num % print_columns),
-          f"thread {formatted_num}: splitting.. | ",
-          "\033[1A"*(split_num // print_columns),
-          end="\r", flush=False, sep="")
+    print(
+        "\n" * (split_num // print_columns),
+        "\033[25C" * (split_num % print_columns),
+        f"thread {formatted_num}: splitting.. | ",
+        "\033[1A" * (split_num // print_columns),
+        end="\r",
+        flush=False,
+        sep="",
+    )
 
-    tmp_bam = split_bam(bam_file,
-                        split_num,
-                        reference_df,
-                        tempdir)
+    tmp_bam = split_bam(bam_file, split_num, reference_df, tempdir)
 
     validate_bam(tmp_bam)
 
-    print("\n"*(split_num // print_columns),
-          "\033[25C"*(split_num % print_columns),
-          f"thread {formatted_num}: parsing..   | ",
-          "\033[1A"*(split_num // print_columns),
-          end="\r", flush=False, sep="")
+    print(
+        "\n" * (split_num // print_columns),
+        "\033[25C" * (split_num % print_columns),
+        f"thread {formatted_num}: parsing..   | ",
+        "\033[1A" * (split_num // print_columns),
+        end="\r",
+        flush=False,
+        sep="",
+    )
 
     oxbow_df = read_oxbow_df(tmp_bam)
 
-    print("\n"*(split_num // print_columns),
-          "\033[25C"*(split_num % print_columns),
-          f"thread {formatted_num}: to pandas.. | ",
-          "\033[1A"*(split_num // print_columns),
-          end="\r", flush=False, sep="")
+    print(
+        "\n" * (split_num // print_columns),
+        "\033[25C" * (split_num % print_columns),
+        f"thread {formatted_num}: to pandas.. | ",
+        "\033[1A" * (split_num // print_columns),
+        end="\r",
+        flush=False,
+        sep="",
+    )
 
     return process_oxbow_batch(oxbow_df, split_num, formatted_num, print_columns)
 
@@ -162,9 +170,7 @@ def _recover_alignment_tags_from_pysam(oxbow_df: pd.DataFrame, bam_file: str) ->
     # oxbow's row order can diverge from ``fetch(until_eof=True)`` minus
     # secondaries. Verify per-read identity by qname before trusting the
     # positional join; bail out (leaving oxbow's values untouched) on any drift.
-    name_column = next(
-        (c for c in _READ_NAME_COLUMNS if c in oxbow_df.columns), None
-    )
+    name_column = next((c for c in _READ_NAME_COLUMNS if c in oxbow_df.columns), None)
     if name_column is not None:
         oxbow_names = oxbow_df[name_column].astype(str).to_numpy()
         if not np.array_equal(oxbow_names, np.asarray(recovered_qname, dtype=str)):
@@ -194,19 +200,22 @@ def read_pysam_df(bam_file: str) -> pd.DataFrame:
         for read in bam.fetch(until_eof=True):
             if read.is_secondary:
                 continue
-            records.append({
-                "qname": read.query_name,
-                "seq": read.query_sequence or "",
-                "cigar": read.cigarstring or "",
-                "rname": bam.get_reference_name(read.reference_id),
-                "pos": (
-                    float(read.reference_start + 1)
-                    if read.reference_start is not None else np.nan
-                ),
-                "mapq": read.mapping_quality,
-                "nh": read.get_tag("NH") if read.has_tag("NH") else np.nan,
-                "xa": read.get_tag("XA") if read.has_tag("XA") else np.nan,
-            })
+            records.append(
+                {
+                    "qname": read.query_name,
+                    "seq": read.query_sequence or "",
+                    "cigar": read.cigarstring or "",
+                    "rname": bam.get_reference_name(read.reference_id),
+                    "pos": (
+                        float(read.reference_start + 1)
+                        if read.reference_start is not None
+                        else np.nan
+                    ),
+                    "mapq": read.mapping_quality,
+                    "nh": read.get_tag("NH") if read.has_tag("NH") else np.nan,
+                    "xa": read.get_tag("XA") if read.has_tag("XA") else np.nan,
+                }
+            )
     return pd.DataFrame.from_records(
         records,
         columns=["qname", "seq", "cigar", "rname", "pos", "mapq", "nh", "xa"],
@@ -214,11 +223,11 @@ def read_pysam_df(bam_file: str) -> pd.DataFrame:
 
 
 def process_oxbow_batch(
-        oxbow_df: pd.DataFrame,
-        split_num: int = 0,
-        formatted_num: str = "01",
-        print_columns: int = 4,
-        ) -> tuple:
+    oxbow_df: pd.DataFrame,
+    split_num: int = 0,
+    formatted_num: str = "01",
+    print_columns: int = 4,
+) -> tuple:
     if oxbow_df.empty and not set(_REQUIRED_OXBOW_COLUMNS).issubset(oxbow_df.columns):
         oxbow_df = read_pysam_df(oxbow_df.attrs["bam_file"])
         if oxbow_df.empty:
@@ -226,11 +235,15 @@ def process_oxbow_batch(
 
     batch_df = process_reads(oxbow_df)
 
-    print("\n"*(split_num // print_columns),
-          "\033[25C"*(split_num % print_columns),
-          f"thread {formatted_num}: sequencing..| ",
-          "\033[1A"*(split_num // print_columns),
-          end="\r", flush=False, sep="")
+    print(
+        "\n" * (split_num // print_columns),
+        "\033[25C" * (split_num % print_columns),
+        f"thread {formatted_num}: sequencing..| ",
+        "\033[1A" * (split_num // print_columns),
+        end="\r",
+        flush=False,
+        sep="",
+    )
 
     sequence_data: Dict[int, list] = {1: [], 2: []}
     sequence_list = oxbow_df["seq"].tolist()
@@ -257,29 +270,35 @@ def process_oxbow_batch(
             count += 1
             if count % SEQUENCE_CHUNK_STRIDE != 0:
                 continue
-            section = sequence_list[i:i+size]
-            counts = count_list[i:i+size]
-            sequence_data[pattern_length].append(
-                process_sequences(section,
-                                  counts,
-                                  pattern_length))
+            section = sequence_list[i : i + size]
+            counts = count_list[i : i + size]
+            sequence_data[pattern_length].append(process_sequences(section, counts, pattern_length))
 
             progress += size
-            formatted_progress = (format_progress((progress/list_length)*1000)
-                                  if (progress/list_length)*1000 < 100
-                                  else format_progress(100))
+            formatted_progress = (
+                format_progress((progress / list_length) * 1000)
+                if (progress / list_length) * 1000 < 100
+                else format_progress(100)
+            )
             print(
-                "\n"*(split_num // print_columns),
-                "\033[25C"*(split_num % print_columns),
+                "\n" * (split_num // print_columns),
+                "\033[25C" * (split_num % print_columns),
                 f"thread {formatted_num}: {pattern_length}: {formatted_progress}  | ",
-                "\033[1A"*(split_num // print_columns),
-                end="\r", flush=False, sep="")
+                "\033[1A" * (split_num // print_columns),
+                end="\r",
+                flush=False,
+                sep="",
+            )
 
-    print("\n"*(split_num // print_columns),
-          "\033[25C"*(split_num % print_columns),
-          f"thread {formatted_num}: Parsed!     | ",
-          "\033[1A"*(split_num // print_columns),
-          end="\r", flush=False, sep="")
+    print(
+        "\n" * (split_num // print_columns),
+        "\033[25C" * (split_num % print_columns),
+        f"thread {formatted_num}: Parsed!     | ",
+        "\033[1A" * (split_num // print_columns),
+        end="\r",
+        flush=False,
+        sep="",
+    )
 
     return (batch_df, sequence_data)
 
@@ -355,7 +374,7 @@ def _parse_xa_value(value: Any) -> float:
     # Strip a leading SAM tag prefix if present (``XA:Z:`` / ``XA:i:``).
     for marker in ("XA:Z:", "XA:i:", "XA="):
         if text.startswith(marker):
-            text = text[len(marker):]
+            text = text[len(marker) :]
             break
     if text == "":
         return np.nan
@@ -378,21 +397,23 @@ def _extract_nh_column(oxbow_df: pd.DataFrame) -> pd.Series:
 
 
 def _empty_read_batch() -> pd.DataFrame:
-    return pd.DataFrame({
-        "read_name": pd.Series(dtype="category"),
-        "read_length": pd.Series(dtype="category"),
-        "reference_name": pd.Series(dtype="category"),
-        "reference_start": pd.Series(dtype="float"),
-        "soft_clip_5": pd.Series(dtype="uint8"),
-        "first_dinucleotide": pd.Series(dtype="category"),
-        "last_dinucleotide": pd.Series(dtype="category"),
-        "count": pd.Series(dtype="category"),
-        "mapq": pd.Series(dtype="uint8"),
-        "mapq_available": pd.Series(dtype="bool"),
-        "mapq_recovered_from_pysam": pd.Series(dtype="bool"),
-        "nh": pd.Series(dtype="float"),
-        "xa": pd.Series(dtype="float"),
-    })
+    return pd.DataFrame(
+        {
+            "read_name": pd.Series(dtype="category"),
+            "read_length": pd.Series(dtype="category"),
+            "reference_name": pd.Series(dtype="category"),
+            "reference_start": pd.Series(dtype="float"),
+            "soft_clip_5": pd.Series(dtype="uint8"),
+            "first_dinucleotide": pd.Series(dtype="category"),
+            "last_dinucleotide": pd.Series(dtype="category"),
+            "count": pd.Series(dtype="category"),
+            "mapq": pd.Series(dtype="uint8"),
+            "mapq_available": pd.Series(dtype="bool"),
+            "mapq_recovered_from_pysam": pd.Series(dtype="bool"),
+            "nh": pd.Series(dtype="float"),
+            "xa": pd.Series(dtype="float"),
+        }
+    )
 
 
 def _get_oxbow_column(
@@ -428,7 +449,7 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
 
     batch_df = pd.DataFrame()
     read_names = _get_oxbow_column(oxbow_df, _READ_NAME_COLUMNS, "read name")
-    batch_df['read_name'] = read_names.astype("category")
+    batch_df["read_name"] = read_names.astype("category")
 
     # Compute read length from CIGAR as the number of read bases consumed by the
     # alignment (M, =, X, I). This is robust to reference-side gaps (D) and avoids
@@ -438,9 +459,14 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
         try:
             parts = [] if not isinstance(cigar, str) else cigar
             # Find all (length, op) pairs
-            pairs = [] if not parts else [
-                (int(n), op) for n, op in __import__("re").findall(r"(\d+)([MIDNSHP=XB])", parts)
-            ]
+            pairs = (
+                []
+                if not parts
+                else [
+                    (int(n), op)
+                    for n, op in __import__("re").findall(r"(\d+)([MIDNSHP=XB])", parts)
+                ]
+            )
             if not pairs:
                 return seqlen
             return int(sum(n for n, op in pairs if op in ("M", "=", "X", "I")))
@@ -462,23 +488,18 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     # aligned base. This is required for accurate A-site/P-site offset detection.
     # CIGAR pattern: optional leading hard-clip (\d+H), then optional soft-clip (\d+S)
     soft_clip_5 = (
-        oxbow_df["cigar"]
-        .str.extract(r"^(?:\d+H)?(\d+)S", expand=False)
-        .fillna("0")
-        .astype(int)
+        oxbow_df["cigar"].str.extract(r"^(?:\d+H)?(\d+)S", expand=False).fillna("0").astype(int)
     )
     # Use float to preserve NaN for reads with no mapped position; NaN - int = NaN
     batch_df["reference_start"] = oxbow_df["pos"].astype("float") - soft_clip_5
     # Store the 5' soft-clip count so downstream code can compute soft-clip rates.
     batch_df["soft_clip_5"] = soft_clip_5.astype("uint8")
-    batch_df["first_dinucleotide"] = (oxbow_df["seq"].str.slice(stop=2)
-                                      .astype("category"))
-    batch_df["last_dinucleotide"] = (oxbow_df["seq"].str.slice(stop=-3,
-                                                               step=-1)
-                                     .astype("category"))
-    batch_df["count"] = pd.Series([int(query.split("_x")[-1]) if "_x" in query
-                                   else 1 for query in read_names],
-                                  dtype="category")
+    batch_df["first_dinucleotide"] = oxbow_df["seq"].str.slice(stop=2).astype("category")
+    batch_df["last_dinucleotide"] = oxbow_df["seq"].str.slice(stop=-3, step=-1).astype("category")
+    batch_df["count"] = pd.Series(
+        [int(query.split("_x")[-1]) if "_x" in query else 1 for query in read_names],
+        dtype="category",
+    )
     mapq_values = pd.to_numeric(oxbow_df["mapq"], errors="coerce")
     mapq_available = mapq_values.notna()
     batch_df["mapq"] = mapq_values.fillna(0).astype("uint8")
@@ -495,11 +516,12 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     return batch_df
 
 
-def process_sequences(sequences: list,
-                      counts: list,
-                      pattern_length: int = 1,
-                      max_sequence_length: int = -1,
-                      ) -> dict:
+def process_sequences(
+    sequences: list,
+    counts: list,
+    pattern_length: int = 1,
+    max_sequence_length: int = -1,
+) -> dict:
     """
     Calculate the occurence of nucleotides patterns in the sequences from
     the reads. The nucleotides patterns are stored in lexicographic order
@@ -530,29 +552,26 @@ def process_sequences(sequences: list,
         return {}
 
     # Create the 3D numpy array with zeros
-    sequence_array = np.zeros((num_sequences,
-                               max_sequence_length - pattern_length + 1,
-                               4 ** pattern_length),
-                              dtype=int)
+    sequence_array = np.zeros(
+        (num_sequences, max_sequence_length - pattern_length + 1, 4**pattern_length), dtype=int
+    )
 
     # Populate the sequence array with counts for the corresponding
     # nucleotide patterns
     for i, sequence in enumerate(sequences):
         for j in range(len(sequence) - pattern_length + 1):
-            pattern = sequence[j:j + pattern_length]
+            pattern = sequence[j : j + pattern_length]
             index = pattern_to_index(pattern)
             if index != -1:
                 sequence_array[i, j, index] = 1
     if pattern_length == 2:
         # Calculate background frequencies
-        three_prime_bg = calculate_background(sequence_array,
-                                              sequences,
-                                              pattern_length,
-                                              five_prime=False)
-        five_prime_bg = calculate_background(sequence_array,
-                                             sequences,
-                                             pattern_length,
-                                             five_prime=True)
+        three_prime_bg = calculate_background(
+            sequence_array, sequences, pattern_length, five_prime=False
+        )
+        five_prime_bg = calculate_background(
+            sequence_array, sequences, pattern_length, five_prime=True
+        )
 
     condensed_arrays = {}
 
@@ -562,12 +581,9 @@ def process_sequences(sequences: list,
         result_array = sequence_array * counts_array[:, None, None]
         # Create the condensed 2D arrays for each nucleotide
 
-        nucleotides = ["".join(nt) for nt in
-                       itertools.product('ACGT', repeat=pattern_length)]
+        nucleotides = ["".join(nt) for nt in itertools.product("ACGT", repeat=pattern_length)]
         for nucleotide in nucleotides:
-            nucleotide_counts = np.sum(
-                result_array[:, :, pattern_to_index(nucleotide)],
-                axis=0)
+            nucleotide_counts = np.sum(result_array[:, :, pattern_to_index(nucleotide)], axis=0)
             condensed_arrays[nucleotide] = nucleotide_counts
 
     # Add backgrounds and sequence_number to output dictionary
@@ -586,7 +602,7 @@ def pattern_to_index(pattern: str) -> int:
     (i.e. AA, AC, AG, AT, CA... TG, TT)
     """
     index = 0
-    base_to_index = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+    base_to_index = {"A": 0, "C": 1, "G": 2, "T": 3}
     for nucleotide in pattern:
         if nucleotide in base_to_index:
             index = index * 4 + base_to_index[nucleotide]
@@ -595,11 +611,9 @@ def pattern_to_index(pattern: str) -> int:
     return index
 
 
-def calculate_background(sequence_array: np.ndarray,
-                         sequences: List[str],
-                         pattern_length: int,
-                         five_prime: bool
-                         ) -> Dict[str, float]:
+def calculate_background(
+    sequence_array: np.ndarray, sequences: List[str], pattern_length: int, five_prime: bool
+) -> Dict[str, float]:
     """
     Calculate the background frequency for a list of sequences. The background
     frequency is the proportion of nucleotide patterns without the first or
@@ -636,14 +650,12 @@ def calculate_background(sequence_array: np.ndarray,
             if 0 <= last_pos < n_positions:
                 sequence_bg[i, last_pos, :] = 0
 
-    nucleotides = ["".join(nt) for nt in
-                   itertools.product('ACGT', repeat=pattern_length)]
+    nucleotides = ["".join(nt) for nt in itertools.product("ACGT", repeat=pattern_length)]
     for nucleotide in nucleotides:
-        nucleotide_counts = np.sum(sequence_bg[:, :,
-                                               pattern_to_index(nucleotide)])
+        nucleotide_counts = np.sum(sequence_bg[:, :, pattern_to_index(nucleotide)])
         condensed_arrays[nucleotide] = nucleotide_counts
     total_bg_counts = sum(condensed_arrays.values())
-    return {k: v/total_bg_counts for k, v in condensed_arrays.items()}
+    return {k: v / total_bg_counts for k, v in condensed_arrays.items()}
 
 
 def join_batches(bam_batches: list) -> tuple:
@@ -668,34 +680,33 @@ def join_batches(bam_batches: list) -> tuple:
                         three prime
     """
     print("\nGetting data from async objects..")
-    read_batches, background_batches, sequence_batches = \
-        get_batch_data(bam_batches)
+    read_batches, background_batches, sequence_batches = get_batch_data(bam_batches)
 
     print("Joining batch files..")
     # Joining reads
     read_df_pre = pd.concat(read_batches, ignore_index=True)
-    category_columns = ["read_length",
-                        "reference_name",
-                        "first_dinucleotide",
-                        "last_dinucleotide",
-                        "count"]
-    read_df_pre[category_columns] = (read_df_pre[category_columns]
-                                     .astype("category"))
+    category_columns = [
+        "read_length",
+        "reference_name",
+        "first_dinucleotide",
+        "last_dinucleotide",
+        "count",
+    ]
+    read_df_pre[category_columns] = read_df_pre[category_columns].astype("category")
     # Joining sequence data
     sequence_data = {}
 
     for pattern in sequence_batches:
         # Determine the maximum length among the arrays
-        max_length = max(len(arr) for arr in
-                         sequence_batches[pattern])
+        max_length = max(len(arr) for arr in sequence_batches[pattern])
 
         # Pad the arrays with zeros to match the maximum length
-        padded_arrays = [np.pad(arr, (0, max_length - len(arr)),
-                                mode='constant') for arr in
-                         sequence_batches[pattern]]
+        padded_arrays = [
+            np.pad(arr, (0, max_length - len(arr)), mode="constant")
+            for arr in sequence_batches[pattern]
+        ]
 
-        sequence_data[pattern] = np.sum(padded_arrays,
-                                        axis=0)
+        sequence_data[pattern] = np.sum(padded_arrays, axis=0)
     # Joining sequence backgrounds
     sequence_background: Dict = {}
 
@@ -704,18 +715,16 @@ def join_batches(bam_batches: list) -> tuple:
             continue
 
         sequence_background[background] = {}
-        iterable = background_batches[
-            background][0].keys()
+        iterable = background_batches[background][0].keys()
         for pattern in iterable:
             total_weighted_sum = 0
             total_count = 0
 
-        # Calculate the weighted sum for the current pattern
+            # Calculate the weighted sum for the current pattern
             sum_iter = background_batches[background]
             for i, dictionary in enumerate(sum_iter):
                 proportion = dictionary[pattern]
-                count = background_batches[
-                    "sequence_number"][i]
+                count = background_batches["sequence_number"][i]
                 weighted_sum = proportion * count
                 total_weighted_sum += weighted_sum
                 total_count += count
@@ -725,8 +734,7 @@ def join_batches(bam_batches: list) -> tuple:
             if total_count == 0:
                 continue
             # Calculate the weighted average for the current key
-            sequence_background[background][pattern] = \
-                total_weighted_sum / total_count
+            sequence_background[background][pattern] = total_weighted_sum / total_count
 
     # If no background could be computed (sequence-less BAM), return empty
     # dicts so sequence-based metrics are cleanly skipped downstream.
@@ -736,9 +744,7 @@ def join_batches(bam_batches: list) -> tuple:
     return (read_df_pre, sequence_data, sequence_background)
 
 
-def get_batch_data(
-        bam_batches: list
-        ) -> tuple:
+def get_batch_data(bam_batches: list) -> tuple:
     """
     Return readable data from the multiprocessed pools, separating the
     full sequence data into backgrounds data and sequence data.
@@ -761,9 +767,9 @@ def get_batch_data(
         sequence_data: Dict = {}
         full_sequence_batches = [sequence_data]
         for pattern_length in bam_batches[1].keys():
-            sequence_data[pattern_length] = [result.get() for result
-                                             in bam_batches[1][pattern_length]
-                                             ]
+            sequence_data[pattern_length] = [
+                result.get() for result in bam_batches[1][pattern_length]
+            ]
 
     elif isinstance(bam_batches[0], tuple):
         bam_tuples = bam_batches
@@ -790,13 +796,11 @@ def get_batch_data(
                         if pattern not in background_batches:
                             background_batches[pattern] = [array]
                         else:
-                            (background_batches[pattern]
-                             .append(array))
+                            (background_batches[pattern].append(array))
                     else:
                         if pattern not in sequence_batches:
                             sequence_batches[pattern] = [array]
                         else:
-                            (sequence_batches[pattern]
-                             .append(array))
+                            (sequence_batches[pattern].append(array))
 
     return read_batches, background_batches, sequence_batches

@@ -9,6 +9,7 @@ import pandas as pd
 
 try:
     from xhtml2pdf import pisa
+
     HAS_PDF = True
 except ImportError:
     HAS_PDF = False
@@ -26,8 +27,7 @@ def offset_shift_for_target(offset_target: str) -> int:
         return OFFSET_TARGET_SHIFTS[str(offset_target)]
     except KeyError as exc:
         raise ValueError(
-            "offset_target must be one of: "
-            f"{', '.join(sorted(OFFSET_TARGET_SHIFTS))}"
+            "offset_target must be one of: " f"{', '.join(sorted(OFFSET_TARGET_SHIFTS))}"
         ) from exc
 
 
@@ -101,8 +101,8 @@ def _reference_metadata(reference_names: pd.Series) -> pd.DataFrame:
 
 
 def representative_transcripts_for_offset_metagene(
-        annotated_read_df: pd.DataFrame,
-        ) -> pd.DataFrame:
+    annotated_read_df: pd.DataFrame,
+) -> pd.DataFrame:
     """Keep one representative transcript per gene and read length.
 
     Representative transcripts are chosen from strict unique fragments using the
@@ -112,7 +112,10 @@ def representative_transcripts_for_offset_metagene(
     """
     if annotated_read_df.empty:
         return annotated_read_df
-    if "gene_id" not in annotated_read_df.columns or "transcript_id" not in annotated_read_df.columns:
+    if (
+        "gene_id" not in annotated_read_df.columns
+        or "transcript_id" not in annotated_read_df.columns
+    ):
         return annotated_read_df
 
     weights = (
@@ -150,8 +153,8 @@ def representative_transcripts_for_offset_metagene(
 
 
 def unique_fragments_single_gene_for_offset_metagene(
-        annotated_read_df: pd.DataFrame,
-        ) -> pd.DataFrame:
+    annotated_read_df: pd.DataFrame,
+) -> pd.DataFrame:
     """Keep fragments whose unique-mapper rows resolve to exactly one gene.
 
     STAR transcriptome BAMs can emit several transcript rows for one fragment.
@@ -163,17 +166,16 @@ def unique_fragments_single_gene_for_offset_metagene(
     if "read_name" not in annotated_read_df.columns or "gene_id" not in annotated_read_df.columns:
         return annotated_read_df
 
-    gene_counts = (
-        annotated_read_df.groupby("read_name", observed=True)["gene_id"]
-        .nunique(dropna=True)
+    gene_counts = annotated_read_df.groupby("read_name", observed=True)["gene_id"].nunique(
+        dropna=True
     )
     keep_names = gene_counts[gene_counts == 1].index
     return annotated_read_df[annotated_read_df["read_name"].isin(keep_names)]
 
 
 def frame_safe_unique_fragments(
-        annotated_read_df: pd.DataFrame,
-        ) -> pd.DataFrame:
+    annotated_read_df: pd.DataFrame,
+) -> pd.DataFrame:
     """Collapse annotated reads to frame-safe fragments for periodicity.
 
     Transcriptome BAMs can produce multiple annotated rows per fragment. For
@@ -222,11 +224,11 @@ def frame_safe_unique_fragments(
 
 
 def is_valid_offset(
-        read_length: int,
-        offset: Optional[int],
-        offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
-        max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
-        ) -> bool:
+    read_length: int,
+    offset: Optional[int],
+    offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
+    max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+) -> bool:
     """Return True when an offset is numeric and plausible for a read length."""
     if offset is None:
         return False
@@ -243,20 +245,16 @@ def is_valid_offset(
             int(np.floor(read_length_i * float(max_read_length_fraction))),
         )
 
-    return (
-        offset_i > 0
-        and offset_i < read_length_i
-        and min_offset <= offset_i <= max_offset
-    )
+    return offset_i > 0 and offset_i < read_length_i and min_offset <= offset_i <= max_offset
 
 
 def sanitise_offset(
-        read_length: int,
-        offset: Optional[int],
-        default_offset: int = 15,
-        offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
-        max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
-        ) -> int:
+    read_length: int,
+    offset: Optional[int],
+    default_offset: int = 15,
+    offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
+    max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+) -> int:
     """Return a usable offset, falling back when a caller produced noise."""
     if is_valid_offset(
         read_length,
@@ -284,11 +282,11 @@ def sanitise_offset(
 
 
 def sanitise_offset_dict(
-        offset_dict: Dict[int, int],
-        default_offset: int = 15,
-        offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
-        max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
-        ) -> Dict[int, int]:
+    offset_dict: Dict[int, int],
+    default_offset: int = 15,
+    offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
+    max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+) -> Dict[int, int]:
     """Validate per-read-length offsets and replace implausible calls."""
     return {
         int(read_length): sanitise_offset(
@@ -314,19 +312,18 @@ def read_df_to_cds_read_df(df: pd.DataFrame) -> pd.DataFrame:
         cds_read_df: Dataframe containing the read information for reads
                     that map to the CDS
     """
-    cds_read_df = df[
-        (df["cds_start"] < df["a_site"]) & (df["a_site"] < df["cds_end"])
-    ]
+    cds_read_df = df[(df["cds_start"] < df["a_site"]) & (df["a_site"] < df["cds_end"])]
     return cds_read_df
 
 
-def a_site_calculation(read_df: pd.DataFrame,
-                       offset_file: str = "None",
-                       offset_type: str = "calculate",
-                       global_offset: int = 15,
-                       offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
-                       max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
-                       ) -> pd.DataFrame:
+def a_site_calculation(
+    read_df: pd.DataFrame,
+    offset_file: str = "None",
+    offset_type: str = "calculate",
+    global_offset: int = 15,
+    offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
+    max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+) -> pd.DataFrame:
     """
     Adds a column to the read_df containing the A-site for the reads
 
@@ -341,11 +338,9 @@ def a_site_calculation(read_df: pd.DataFrame,
                     column for the A-site
     """
     # Ensure reference_start is numeric before any arithmetic
-    if 'reference_start' in read_df.columns:
+    if "reference_start" in read_df.columns:
         read_df = read_df.copy()
-        read_df['reference_start'] = pd.to_numeric(
-            read_df['reference_start'], errors='coerce'
-        )
+        read_df["reference_start"] = pd.to_numeric(read_df["reference_start"], errors="coerce")
 
     if offset_type == "calculate":
         print("Calculating offsets")
@@ -368,10 +363,12 @@ def a_site_calculation(read_df: pd.DataFrame,
         # Coerce to numeric; drop any non-numeric header-like rows
         rl_table["read_length_num"] = pd.to_numeric(rl_table["read_length"], errors="coerce")
         rl_table["offset_num"] = pd.to_numeric(rl_table["offset"], errors="coerce")
-        rl_table = rl_table.dropna(subset=["read_length_num", "offset_num"]).astype({
-            "read_length_num": int,
-            "offset_num": int,
-        })
+        rl_table = rl_table.dropna(subset=["read_length_num", "offset_num"]).astype(
+            {
+                "read_length_num": int,
+                "offset_num": int,
+            }
+        )
         offset_dict = dict(zip(rl_table["read_length_num"], rl_table["offset_num"]))
         a_site_df = a_site_calculation_variable_offset(
             read_df,
@@ -383,43 +380,39 @@ def a_site_calculation(read_df: pd.DataFrame,
     elif offset_type == "global":
         df = read_df.copy()
         # Coerce again for safety under different pandas versions
-        df['reference_start'] = pd.to_numeric(df['reference_start'], errors='coerce')
-        df['offset'] = int(global_offset)
-        df['a_site'] = df['reference_start'] + df['offset']
+        df["reference_start"] = pd.to_numeric(df["reference_start"], errors="coerce")
+        df["offset"] = int(global_offset)
+        df["a_site"] = df["reference_start"] + df["offset"]
         a_site_df = df
     elif offset_type == "read_specific":
-        read_offsets = pd.read_csv(
-            offset_file,
-            sep="\t",
-            names=['read_name', 'offset']
-            )
+        read_offsets = pd.read_csv(offset_file, sep="\t", names=["read_name", "offset"])
 
-        merged_df = read_df.merge(read_offsets, on='read_name', how='left')
+        merged_df = read_df.merge(read_offsets, on="read_name", how="left")
         # Robust numeric coercion to avoid object/str arithmetic issues on CI
-        merged_df['offset'] = pd.to_numeric(merged_df['offset'], errors='coerce')
-        merged_df['offset'] = merged_df['offset'].fillna(global_offset).astype(int)
-        merged_df['reference_start'] = pd.to_numeric(merged_df['reference_start'], errors='coerce')
-        merged_df['a_site'] = merged_df['reference_start'] + merged_df['offset']
+        merged_df["offset"] = pd.to_numeric(merged_df["offset"], errors="coerce")
+        merged_df["offset"] = merged_df["offset"].fillna(global_offset).astype(int)
+        merged_df["reference_start"] = pd.to_numeric(merged_df["reference_start"], errors="coerce")
+        merged_df["a_site"] = merged_df["reference_start"] + merged_df["offset"]
 
-        a_site_df = merged_df[read_df.columns.tolist() + ['a_site', 'offset']]
+        a_site_df = merged_df[read_df.columns.tolist() + ["a_site", "offset"]]
     else:
         # Fallback to global behavior with robust numeric handling
         df = read_df.copy()
-        df['reference_start'] = pd.to_numeric(df['reference_start'], errors='coerce')
-        df['offset'] = int(global_offset)
-        df['a_site'] = df['reference_start'] + df['offset']
+        df["reference_start"] = pd.to_numeric(df["reference_start"], errors="coerce")
+        df["offset"] = int(global_offset)
+        df["a_site"] = df["reference_start"] + df["offset"]
         a_site_df = df
     return a_site_df
 
 
 def a_site_calculation_variable_offset(
-        read_df: pd.DataFrame,
-        offset_dict: Optional[dict] = None,
-        default_offset: int = 15,
-        offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
-        max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
-        validate_offsets: bool = False,
-        ) -> pd.DataFrame:
+    read_df: pd.DataFrame,
+    offset_dict: Optional[dict] = None,
+    default_offset: int = 15,
+    offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
+    max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+    validate_offsets: bool = False,
+) -> pd.DataFrame:
     """
     Adds a column to the read_df containing the A-site for the reads
 
@@ -455,17 +448,15 @@ def a_site_calculation_variable_offset(
                 max_read_length_fraction=max_read_length_fraction,
             )
         # Map offsets to corresponding read lengths (cast to built-in int to avoid numpy int hash mismatch)
-        read_len_int = read_df['read_length'].astype(int)
-        read_df['offset'] = read_len_int.map(
-            lambda l: int(offset_dict.get(int(l), default_offset))
-        )
-        read_df['offset'] = read_df['offset'].astype('int64')
-        offset = read_df['offset']
+        read_len_int = read_df["read_length"].astype(int)
+        read_df["offset"] = read_len_int.map(lambda l: int(offset_dict.get(int(l), default_offset)))
+        read_df["offset"] = read_df["offset"].astype("int64")
+        offset = read_df["offset"]
 
-    read_df['reference_start'] = read_df['reference_start'].astype(int)
+    read_df["reference_start"] = read_df["reference_start"].astype(int)
 
     # Calculate A-site based on offset for each read
-    a_site_df = read_df.assign(a_site=read_df['reference_start'] + offset)
+    a_site_df = read_df.assign(a_site=read_df["reference_start"] + offset)
     return a_site_df
 
 
@@ -481,13 +472,10 @@ def read_length_distribution(read_df: pd.DataFrame) -> dict:
     """
     weights = _get_weights(read_df)
     if weights is not None:
-        counts = (read_df.assign(_w=weights)
-                  .groupby("read_length", observed=True)["_w"].sum())
+        counts = read_df.assign(_w=weights).groupby("read_length", observed=True)["_w"].sum()
         return {int(k): int(v) for k, v in counts.to_dict().items()}
     else:
-        read_lengths, read_counts = np.unique(
-            read_df["read_length"], return_counts=True
-        )
+        read_lengths, read_counts = np.unique(read_df["read_length"], return_counts=True)
         return dict(zip(read_lengths.tolist(), read_counts.tolist()))
 
 
@@ -512,13 +500,11 @@ def terminal_nucleotide_bias_distribution(
         of the first pattern of nucleotides in the reads
     """
     terminal_nucleotide_bias_dict: dict = (
-        {target: {}} if target != "both" else {
-            "five_prime": {}, "three_prime": {}
-            }
-                          )
+        {target: {}} if target != "both" else {"five_prime": {}, "three_prime": {}}
+    )
 
     weights = _get_weights(read_df)
-    total_counts = (weights.sum() if weights is not None else len(read_df))
+    total_counts = weights.sum() if weights is not None else len(read_df)
     if weights is not None:
         tmp = read_df.assign(_w=weights)
         prime_counts = {
@@ -538,16 +524,12 @@ def terminal_nucleotide_bias_distribution(
 
     pattern_list = read_df["first_dinucleotide"].cat.categories.to_list()
     pattern_list += read_df["last_dinucleotide"].cat.categories.to_list()
-    pattern_list = sorted(
-        list(set(categories["five_prime"]) | set(categories["three_prime"]))
-        )
+    pattern_list = sorted(list(set(categories["five_prime"]) | set(categories["three_prime"])))
 
     if keep_N:
-        pattern_list = sorted(pattern_list, key=lambda x: ('N' in x, x))
+        pattern_list = sorted(pattern_list, key=lambda x: ("N" in x, x))
     else:
-        pattern_list = [
-            pattern for pattern in pattern_list if 'N' not in pattern
-            ]
+        pattern_list = [pattern for pattern in pattern_list if "N" not in pattern]
 
     for pattern in pattern_list:
         for prime in terminal_nucleotide_bias_dict:
@@ -591,14 +573,15 @@ def normalise_ligation_bias(
     expected_distribution = {
         "five_prime": sequence_background["5_prime_bg"],
         "three_prime": sequence_background["3_prime_bg"],
-        }
+    }
 
     for prime in terminal_nucleotide_bias_dict_norm:
         for pattern in terminal_nucleotide_bias_dict_norm[prime]:
 
             if pattern in expected_distribution[prime]:
-                terminal_nucleotide_bias_dict_norm[prime][pattern]\
-                    -= expected_distribution[prime][pattern]
+                terminal_nucleotide_bias_dict_norm[prime][pattern] -= expected_distribution[prime][
+                    pattern
+                ]
 
     return terminal_nucleotide_bias_dict_norm
 
@@ -619,7 +602,7 @@ def slicer_vectorized(array: np.ndarray, start: int, end: int) -> np.ndarray:
         from the input string array
     """
     sliced_array = array.view(str).reshape(len(array), -1)[:, start:end]
-    return np.frombuffer(sliced_array.tobytes(), dtype=(str, end-start))
+    return np.frombuffer(sliced_array.tobytes(), dtype=(str, end - start))
 
 
 def nucleotide_composition(sequence_data_single: dict) -> dict:
@@ -643,7 +626,7 @@ def nucleotide_composition(sequence_data_single: dict) -> dict:
         for nt in sequence_data_single:
             nucleotide_composition_dict[nt].append(
                 sequence_data_single[nt][position] / position_count
-                )
+            )
 
     return nucleotide_composition_dict
 
@@ -700,14 +683,12 @@ def read_frame_score_trips_viz(read_frame_dict: dict) -> dict:
         else:
             highest_peak_sum += top_two_values[0]
             second_peak_sum += top_two_values[1]
-            scored_read_frame_dict[k] = 1 -\
-                top_two_values[1] / top_two_values[0]
+            scored_read_frame_dict[k] = 1 - top_two_values[1] / top_two_values[0]
 
     if highest_peak_sum == 0:
         scored_read_frame_dict["global"] = 0.0
     else:
-        scored_read_frame_dict["global"] = 1 -\
-            second_peak_sum / highest_peak_sum
+        scored_read_frame_dict["global"] = 1 - second_peak_sum / highest_peak_sum
     return scored_read_frame_dict
 
 
@@ -733,9 +714,11 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
 
     # Group by read_length and frame; sum weights or sizes
     if weights is not None:
-        grouped = (a_site_df
-                   .assign(_w=weights)
-                   .groupby(["read_length", "read_frame"], observed=True)["_w"].sum())
+        grouped = (
+            a_site_df.assign(_w=weights)
+            .groupby(["read_length", "read_frame"], observed=True)["_w"]
+            .sum()
+        )
     else:
         grouped = a_site_df.groupby(["read_length", "read_frame"], observed=True).size()
 
@@ -749,11 +732,11 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
 
 
 def read_frame_distribution_annotated(
-        annotated_read_df: pd.DataFrame,
-        exclusion_length: int = 0,
-        read_length_range: tuple = (20, 40),
-        unique_only: bool = True,
-        ) -> dict:
+    annotated_read_df: pd.DataFrame,
+    exclusion_length: int = 0,
+    read_length_range: tuple = (20, 40),
+    unique_only: bool = True,
+) -> dict:
     """
     Calculate the distribution of the reading frame over the dataset
 
@@ -765,21 +748,23 @@ def read_frame_distribution_annotated(
         read_frame_dict: Nested dictionary containing counts for every reading
         frame at the different read lengths
     """
-    read_lengths: List[int] = [
-        i for i in range(read_length_range[0], read_length_range[1])
-        ]
+    read_lengths: List[int] = [i for i in range(read_length_range[0], read_length_range[1])]
 
     df_slice = filter_unique_mappers(annotated_read_df, enabled=unique_only)
     df_slice = df_slice[df_slice["cds_start"] != 0]
     df_slice = df_slice[
-        (df_slice["a_site"] > df_slice["cds_start"] + exclusion_length) &
-        (df_slice["a_site"] < df_slice["cds_end"] - exclusion_length)
+        (df_slice["a_site"] > df_slice["cds_start"] + exclusion_length)
+        & (df_slice["a_site"] < df_slice["cds_end"] - exclusion_length)
     ]
     base = df_slice.assign(read_frame=(df_slice.a_site - df_slice.cds_start).mod(3))
     base = frame_safe_unique_fragments(base)
     weights = _get_weights(base)
     if weights is not None:
-        frame_df = base.assign(_w=weights).groupby(["read_length", "read_frame"], observed=True)["_w"].sum()
+        frame_df = (
+            base.assign(_w=weights)
+            .groupby(["read_length", "read_frame"], observed=True)["_w"]
+            .sum()
+        )
     else:
         frame_df = base.groupby(["read_length", "read_frame"], observed=True).size()
     read_frame_dict: Dict[int, Dict[int, int]] = {}
@@ -794,9 +779,7 @@ def read_frame_distribution_annotated(
     return read_frame_dict
 
 
-def annotate_reads(
-    a_site_df: pd.DataFrame, annotation_df: pd.DataFrame
-) -> pd.DataFrame:
+def annotate_reads(a_site_df: pd.DataFrame, annotation_df: pd.DataFrame) -> pd.DataFrame:
     """
     Merges the annotation dataframe with the read dataframe
 
@@ -825,9 +808,9 @@ def annotate_reads(
     return annotated_read_df.drop(["reference_name"], axis=1)
 
 
-def chunked_annotate_reads(a_site_df: pd.DataFrame,
-                           annotation_df: pd.DataFrame,
-                           chunk_size: int = 10000000) -> pd.DataFrame:
+def chunked_annotate_reads(
+    a_site_df: pd.DataFrame, annotation_df: pd.DataFrame, chunk_size: int = 10000000
+) -> pd.DataFrame:
     """
     Merges the annotation dataframe with the read dataframe in smaller chunks.
 
@@ -879,7 +862,6 @@ def chunked_annotate_reads(a_site_df: pd.DataFrame,
 
 
 def assign_mRNA_category(annotated_read_df: pd.DataFrame) -> pd.DataFrame:
-
     """
     Adds the mRNA category column to the annotated_read_df, labelling the read
     according to the position of the A-site
@@ -898,21 +880,14 @@ def assign_mRNA_category(annotated_read_df: pd.DataFrame) -> pd.DataFrame:
     conditions = [
         annotated_read_df["a_site"] < annotated_read_df["cds_start"],
         annotated_read_df["a_site"] == annotated_read_df["cds_start"],
-        (annotated_read_df["cds_start"] < annotated_read_df["a_site"]) &
-        (annotated_read_df["a_site"] < annotated_read_df["cds_end"]),
+        (annotated_read_df["cds_start"] < annotated_read_df["a_site"])
+        & (annotated_read_df["a_site"] < annotated_read_df["cds_end"]),
         annotated_read_df["a_site"] == annotated_read_df["cds_end"],
-        annotated_read_df["a_site"] > annotated_read_df["cds_end"]
+        annotated_read_df["a_site"] > annotated_read_df["cds_end"],
     ]
-    choices = [
-        "five_leader", "start_codon", "CDS", "stop_codon", "three_trailer"
-    ]
-    annotated_read_df["mRNA_category"] = np.select(
-        conditions,
-        choices,
-        "unknown"
-        )
-    annotated_read_df["mRNA_category"] = \
-        annotated_read_df["mRNA_category"].astype("category")
+    choices = ["five_leader", "start_codon", "CDS", "stop_codon", "three_trailer"]
+    annotated_read_df["mRNA_category"] = np.select(conditions, choices, "unknown")
+    annotated_read_df["mRNA_category"] = annotated_read_df["mRNA_category"].astype("category")
     return annotated_read_df
 
 
@@ -937,33 +912,33 @@ def mRNA_distribution(annotated_read_df: pd.DataFrame) -> Dict[int, Dict[str, in
         "three_trailer",
     ]
     classes = annotated_read_df["read_length"].unique()
-    idx = pd.MultiIndex.from_product(
-        [classes, categories], names=["class", "category"]
-    )
+    idx = pd.MultiIndex.from_product([classes, categories], names=["class", "category"])
     # Group annotated_read_df
     weights = _get_weights(annotated_read_df)
     if weights is not None:
-        grp = (annotated_read_df.assign(_w=weights)
-               .groupby(["read_length", "mRNA_category"], observed=True)["_w"].sum()
-               .reindex(idx, fill_value=0)
-               .sort_index()
-               .to_frame(name=0)
-               .reset_index())
+        grp = (
+            annotated_read_df.assign(_w=weights)
+            .groupby(["read_length", "mRNA_category"], observed=True)["_w"]
+            .sum()
+            .reindex(idx, fill_value=0)
+            .sort_index()
+            .to_frame(name=0)
+            .reset_index()
+        )
     else:
-        grp = (annotated_read_df
-               .groupby(["read_length", "mRNA_category"], observed=True)
-               .size()
-               .reindex(idx, fill_value=0)
-               .sort_index()
-               .to_frame()  # value column named 0
-               .reset_index())
+        grp = (
+            annotated_read_df.groupby(["read_length", "mRNA_category"], observed=True)
+            .size()
+            .reindex(idx, fill_value=0)
+            .sort_index()
+            .to_frame()  # value column named 0
+            .reset_index()
+        )
     annotated_read_df = grp
 
     # Creating mRNA_distribution_dict from annotated_read_df
     mRNA_distribution_dict: dict = {"global": {}}
-    for read_length, mRNA_category, value in annotated_read_df.itertuples(
-                                                                index=False,
-                                                                name=None):
+    for read_length, mRNA_category, value in annotated_read_df.itertuples(index=False, name=None):
         if read_length not in mRNA_distribution_dict:
             mRNA_distribution_dict[read_length] = {}
         mRNA_distribution_dict[read_length][mRNA_category] = value
@@ -995,10 +970,7 @@ def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
             else:
                 sum_mRNA_dict[k] = v
     if not config["plots"]["mRNA_distribution"]["absolute_counts"]:
-        sum_mRNA_dict = {
-            k: (v / sum(sum_mRNA_dict.values()))
-            for k, v in sum_mRNA_dict.items()
-        }
+        sum_mRNA_dict = {k: (v / sum(sum_mRNA_dict.values())) for k, v in sum_mRNA_dict.items()}
 
     return sum_mRNA_dict
 
@@ -1055,14 +1027,10 @@ def metagene_profile(
         the read and distance to the target as keys and the counts as values
     """
     target_loop = [target] if target != "both" else ["start", "stop"]
-    metagene_profile_dict: Dict[str, Dict[str, dict]] = {
-        "start": {}, "stop": {}
-        }
+    metagene_profile_dict: Dict[str, Dict[str, dict]] = {"start": {}, "stop": {}}
     for current_target in target_loop:
         annotated_read_df = annotated_read_df.assign(
-            metagene_info=metagene_distance(
-                annotated_read_df, current_target, position
-            )
+            metagene_info=metagene_distance(annotated_read_df, current_target, position)
         )
         filtered = annotated_read_df[
             (annotated_read_df["metagene_info"] > distance_range[0] - 1)
@@ -1070,8 +1038,11 @@ def metagene_profile(
         ]
         wts = _get_weights(filtered)
         if wts is not None:
-            pre_series = (filtered.assign(_w=wts)
-                          .groupby(["read_length", "metagene_info"], observed=True)["_w"].sum())
+            pre_series = (
+                filtered.assign(_w=wts)
+                .groupby(["read_length", "metagene_info"], observed=True)["_w"]
+                .sum()
+            )
         else:
             pre_series = filtered.groupby(["read_length", "metagene_info"], observed=True).size()
         pre_metaprofile_dict = pre_series.to_dict()
@@ -1081,7 +1052,8 @@ def metagene_profile(
                 if w_all is not None:
                     pre_metaprofile_dict = (
                         annotated_read_df.assign(_w=w_all)
-                        .groupby(["read_length", "metagene_info"], observed=True)["_w"].sum()
+                        .groupby(["read_length", "metagene_info"], observed=True)["_w"]
+                        .sum()
                         .to_dict()
                     )
                 else:
@@ -1097,20 +1069,16 @@ def metagene_profile(
                 }
 
         # Fill empty read lengths with 0
-        min_length = int(min([x[0] for x
-                              in list(pre_metaprofile_dict.keys())]))
-        max_length = int(max([x[0] for x
-                              in list(pre_metaprofile_dict.keys())]))
+        min_length = int(min([x[0] for x in list(pre_metaprofile_dict.keys())]))
+        max_length = int(max([x[0] for x in list(pre_metaprofile_dict.keys())]))
 
         for y in range(min_length, max_length + 1):
             if y not in [x[0] for x in list(pre_metaprofile_dict.keys())]:
                 pre_metaprofile_dict[(y, 0)] = 0
 
-        neg_distance = int(min([x[1] for x
-                                in list(pre_metaprofile_dict.keys())]))
-        pos_distance = int(max([x[1] for x
-                                in list(pre_metaprofile_dict.keys())]))
-        position_range = range(neg_distance, pos_distance+1)
+        neg_distance = int(min([x[1] for x in list(pre_metaprofile_dict.keys())]))
+        pos_distance = int(max([x[1] for x in list(pre_metaprofile_dict.keys())]))
+        position_range = range(neg_distance, pos_distance + 1)
 
         for key, value in pre_metaprofile_dict.items():
             if key[0] not in metagene_profile_dict[current_target]:
@@ -1126,9 +1094,9 @@ def metagene_profile(
 
 
 def reading_frame_triangle(
-        annotated_read_df: pd.DataFrame,
+    annotated_read_df: pd.DataFrame,
 ) -> Dict[str, List[int]]:
-    '''
+    """
     Get the per-transcript reading-frame counts used by the triangle plot.
 
     Inputs:
@@ -1140,7 +1108,7 @@ def reading_frame_triangle(
         triangle_dict: Dictionary mapping each transcript_id to its raw
         per-frame A-site counts ``[frame0, frame1, frame2]``. The conversion
         to cartesian (ternary) coordinates happens in ``plots.py``.
-    '''
+    """
     if annotated_read_df.empty or "transcript_id" not in annotated_read_df.columns:
         return {}
 
@@ -1148,34 +1116,28 @@ def reading_frame_triangle(
     # when present. Replaces a per-transcript Python groupby loop that scaled
     # linearly in the number of transcripts (~hundreds of thousands).
     frame = (annotated_read_df["a_site"].to_numpy() % 3).astype(int)
-    counts = pd.DataFrame({
-        "transcript_id": annotated_read_df["transcript_id"].to_numpy(),
-        "frame": frame,
-    })
+    counts = pd.DataFrame(
+        {
+            "transcript_id": annotated_read_df["transcript_id"].to_numpy(),
+            "frame": frame,
+        }
+    )
     if "count" in annotated_read_df.columns:
         counts["w"] = annotated_read_df["count"].astype(int).to_numpy()
         grouped = counts.groupby(["transcript_id", "frame"], observed=True)["w"].sum()
     else:
         grouped = counts.groupby(["transcript_id", "frame"], observed=True).size()
 
-    matrix = (
-        grouped.unstack("frame")
-        .reindex(columns=[0, 1, 2], fill_value=0)
-        .fillna(0)
-        .astype(int)
-    )
+    matrix = grouped.unstack("frame").reindex(columns=[0, 1, 2], fill_value=0).fillna(0).astype(int)
     return {
         tid: [int(row[0]), int(row[1]), int(row[2])]
         for tid, row in zip(matrix.index, matrix.to_numpy())
     }
 
 
-def sequence_slice(
-    read_df: pd.DataFrame, nt_start: int = 0, nt_count: int = 15
-) -> Dict[str, str]:
+def sequence_slice(read_df: pd.DataFrame, nt_start: int = 0, nt_count: int = 15) -> Dict[str, str]:
     sequence_slice_dict = {
-        k: v[nt_start: nt_start + nt_count]
-        for k, v in read_df["sequence"].to_dict().items()
+        k: v[nt_start : nt_start + nt_count] for k, v in read_df["sequence"].to_dict().items()
     }
     return sequence_slice_dict
 
@@ -1191,17 +1153,17 @@ def convert_html_to_pdf(source_html: str, output_filename: str) -> int:
     result_file.close()
     # xhtml2pdf does not provide type hints; coerce to int explicitly
     try:
-        return int(getattr(pisa_status, 'err'))
+        return int(getattr(pisa_status, "err"))
     except Exception:
         return 1
 
 
 def ribowaltz_psite_prediction(
-        read_counts: Dict[int, Dict[int, int]],
-        flanking_length: int = 9,
-        offset_range: Tuple[int, int] = (10, 18),
-        min_prominence: Optional[float] = None,
-    ) -> Dict[int, Optional[int]]:
+    read_counts: Dict[int, Dict[int, int]],
+    flanking_length: int = 9,
+    offset_range: Tuple[int, int] = (10, 18),
+    min_prominence: Optional[float] = None,
+) -> Dict[int, Optional[int]]:
     """
     Predict P-site offsets for each read length from a 5'-end metagene.
 
@@ -1281,9 +1243,9 @@ def ribowaltz_psite_prediction(
 
 
 def trips_psite_prediction(
-        read_counts: Dict[int, Dict[int, int]],
-        offset_range: Tuple[int, int] = (10, 18),
-        ) -> Dict[int, Optional[int]]:
+    read_counts: Dict[int, Dict[int, int]],
+    offset_range: Tuple[int, int] = (10, 18),
+) -> Dict[int, Optional[int]]:
     """
     Predict P-site offsets for each read length using a Trips-Viz-style peak.
 
@@ -1321,24 +1283,24 @@ def trips_psite_prediction(
 
 
 def trips_asite_prediction(
-        read_counts: Dict[int, Dict[int, int]],
-        offset_range: Tuple[int, int] = (10, 18),
-        ) -> Dict[int, Optional[int]]:
+    read_counts: Dict[int, Dict[int, int]],
+    offset_range: Tuple[int, int] = (10, 18),
+) -> Dict[int, Optional[int]]:
     """Compatibility wrapper for the old Trips helper name."""
     return trips_psite_prediction(read_counts, offset_range=offset_range)
 
 
 def asite_calculation_per_readlength(
-        annotated_read_df: pd.DataFrame,
-        method: str = "ribowaltz",
-        offset_range: Tuple[int, int] = (10, 18),
-        default_offset: int = 15,
-        offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
-        max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
-        min_prominence: Optional[float] = None,
-        unique_only: bool = True,
-        offset_target: str = "a_site",
-        ) -> Dict[int, int]:
+    annotated_read_df: pd.DataFrame,
+    method: str = "ribowaltz",
+    offset_range: Tuple[int, int] = (10, 18),
+    default_offset: int = 15,
+    offset_bounds: Tuple[int, int] = DEFAULT_OFFSET_BOUNDS,
+    max_read_length_fraction: Optional[float] = DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+    min_prominence: Optional[float] = None,
+    unique_only: bool = True,
+    offset_target: str = "a_site",
+) -> Dict[int, int]:
     """
     Calculate offset values per read length for the A-site
     using an improved change point detection method.
@@ -1377,7 +1339,7 @@ def asite_calculation_per_readlength(
             target="start",
             distance_range=[-50, 20],
             position="reference_start",
-            extend=False
+            extend=False,
         )
         if read_length not in read_length_metagene["start"]:
             offset_dict[read_length] = sanitise_offset(
@@ -1398,8 +1360,7 @@ def asite_calculation_per_readlength(
             counts = read_length_metagene["start"][read_length]
             # Search positions corresponding to P-site offsets in offset_range
             candidate_positions = {
-                pos: counts.get(pos, 0)
-                for pos in range(-offset_range[1], -offset_range[0] + 1)
+                pos: counts.get(pos, 0) for pos in range(-offset_range[1], -offset_range[0] + 1)
             }
             peak_count = max(candidate_positions.values(), default=0)
             if peak_count == 0:
@@ -1557,17 +1518,19 @@ def library_complexity_curve(
     if annotated_read_df.empty or "a_site" not in annotated_read_df.columns:
         return empty
     tx_col = (
-        "transcript_id" if "transcript_id" in annotated_read_df.columns
-        else "reference_name" if "reference_name" in annotated_read_df.columns
-        else None
+        "transcript_id"
+        if "transcript_id" in annotated_read_df.columns
+        else "reference_name" if "reference_name" in annotated_read_df.columns else None
     )
     if tx_col is None:
         return empty
 
     weights = _get_weights(annotated_read_df)
-    grp = annotated_read_df.assign(
-        _w=(weights if weights is not None else 1)
-    ).groupby([tx_col, "a_site"], observed=True)["_w"].sum()
+    grp = (
+        annotated_read_df.assign(_w=(weights if weights is not None else 1))
+        .groupby([tx_col, "a_site"], observed=True)["_w"]
+        .sum()
+    )
     counts = grp.to_numpy(dtype=float)
     counts = counts[counts > 0]
     if counts.size == 0:
@@ -1588,8 +1551,7 @@ def library_complexity_curve(
     d_margin = expected_distinct(0.95)
     margin_reads = 0.05 * total_reads
     marginal_rate = (
-        round(float((d_full - d_margin) / margin_reads), 4)
-        if margin_reads > 0 else None
+        round(float((d_full - d_margin) / margin_reads), 4) if margin_reads > 0 else None
     )
 
     return {
@@ -1638,9 +1600,7 @@ def floss_library_heterogeneity(
         return empty
 
     weights = _get_weights(annotated_read_df)
-    df = annotated_read_df.assign(
-        _w=(weights if weights is not None else 1)
-    )
+    df = annotated_read_df.assign(_w=(weights if weights is not None else 1))
     # Per (transcript, read_length) weighted counts -> length histograms.
     grp = (
         df.groupby(["transcript_id", "read_length"], observed=True)["_w"]

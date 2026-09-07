@@ -8,6 +8,7 @@ Each test pins a specific bug that previously passed silently:
   * E1 — bare `RiboMetric` crashed instead of printing help.
   * E2 — --output-offsets crashed because Path was shadowed inside main().
 """
+
 import os
 
 import pandas as pd
@@ -26,8 +27,7 @@ TEST_DATA = os.path.join(os.path.dirname(__file__), "test_data")
 def test_five_and_three_prime_backgrounds_differ():
     seqs = ["AACCGGTT", "TTGGCCAA", "ACGTACGT", "TACGTACG"]
     out = process_sequences(seqs, [1, 1, 1, 1], pattern_length=2)
-    diff = sum(abs(out["5_prime_bg"][k] - out["3_prime_bg"][k])
-               for k in out["5_prime_bg"])
+    diff = sum(abs(out["5_prime_bg"][k] - out["3_prime_bg"][k]) for k in out["5_prime_bg"])
     assert diff > 0, "5' and 3' backgrounds are identical (S1 regression)"
 
 
@@ -36,8 +36,7 @@ def test_three_prime_background_excludes_terminal_pattern():
     # that differs from the 5' background (the 3' terminal pattern is excluded).
     seqs = ["ACGTACGT", "ACGTACGA"]
     out = process_sequences(seqs, [1, 1], pattern_length=2)
-    diff = sum(abs(out["5_prime_bg"][k] - out["3_prime_bg"][k])
-               for k in out["5_prime_bg"])
+    diff = sum(abs(out["5_prime_bg"][k] - out["3_prime_bg"][k]) for k in out["5_prime_bg"])
     assert diff > 0
 
 
@@ -69,11 +68,13 @@ def test_gff_transcript_length_matches_inclusive_exon_sum():
 # S6 — global offset is applied
 # --------------------------------------------------------------------------- #
 def test_global_offset_is_applied():
-    df = pd.DataFrame({
-        "read_name": ["r1", "r2"],
-        "read_length": [28, 30],
-        "reference_start": [100, 200],
-    })
+    df = pd.DataFrame(
+        {
+            "read_name": ["r1", "r2"],
+            "read_length": [28, 30],
+            "reference_start": [100, 200],
+        }
+    )
     out = a_site_calculation(df, offset_type="global", global_offset=12)
     assert list(out["a_site"]) == [112, 212]
 
@@ -109,6 +110,7 @@ def test_evaluate_higher_is_better_unchanged():
 # --------------------------------------------------------------------------- #
 def test_cli_no_command_prints_help(capsys, monkeypatch):
     from RiboMetric import cli
+
     monkeypatch.setattr("sys.argv", ["RiboMetric"])
     rc = cli.main()
     assert rc == 0
@@ -152,6 +154,8 @@ def test_cli_output_offsets_writes_file(tmp_path, monkeypatch):
 
     assert rc == 0
     assert output_offsets.exists()
-    assert output_offsets.read_text().splitlines()[0].startswith(
-        "sample\toffset_source\toffset_target"
+    assert (
+        output_offsets.read_text()
+        .splitlines()[0]
+        .startswith("sample\toffset_source\toffset_target")
     )

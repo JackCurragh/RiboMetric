@@ -23,6 +23,7 @@ from RiboMetric.results_output import (
 # Test Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def sample_results_dict():
     """Sample results dictionary for testing"""
@@ -73,6 +74,7 @@ def qc_thresholds():
 # =============================================================================
 # Legacy Function Tests
 # =============================================================================
+
 
 class TestLegacyFunctions:
     """Test backwards-compatible legacy functions"""
@@ -133,6 +135,7 @@ class TestLegacyFunctions:
 # =============================================================================
 # Improved Function Tests
 # =============================================================================
+
 
 class TestSummaryTSV:
     """Test generate_summary_tsv function"""
@@ -253,7 +256,9 @@ class TestQCStatus:
             assert "summary" in data
             assert "recommendation" in data
 
-    def test_pass_status_for_good_metrics(self, sample_results_dict, sample_config, qc_thresholds, tmp_path):
+    def test_pass_status_for_good_metrics(
+        self, sample_results_dict, sample_config, qc_thresholds, tmp_path
+    ):
         """Test that PASS status is assigned when metrics exceed thresholds"""
         output_file = tmp_path / "qc_status.json"
         generate_qc_status(
@@ -269,7 +274,9 @@ class TestQCStatus:
             data = json.load(f)
             assert data["overall_status"] == "PASS"
             # Check individual metrics passed
-            periodicity_check = [c for c in data["checks"] if c["metric"] == "periodicity_dominance"][0]
+            periodicity_check = [
+                c for c in data["checks"] if c["metric"] == "periodicity_dominance"
+            ][0]
             assert periodicity_check["status"] == "PASS"
 
     def test_warning_status(self, sample_results_dict, sample_config, qc_thresholds, tmp_path):
@@ -289,7 +296,9 @@ class TestQCStatus:
 
         with open(output_file) as f:
             data = json.load(f)
-            periodicity_check = [c for c in data["checks"] if c["metric"] == "periodicity_dominance"][0]
+            periodicity_check = [
+                c for c in data["checks"] if c["metric"] == "periodicity_dominance"
+            ][0]
             assert periodicity_check["status"] == "WARNING"
 
     def test_fail_status(self, sample_results_dict, sample_config, qc_thresholds, tmp_path):
@@ -310,7 +319,9 @@ class TestQCStatus:
         with open(output_file) as f:
             data = json.load(f)
             assert data["overall_status"] == "FAIL"
-            periodicity_check = [c for c in data["checks"] if c["metric"] == "periodicity_dominance"][0]
+            periodicity_check = [
+                c for c in data["checks"] if c["metric"] == "periodicity_dominance"
+            ][0]
             assert periodicity_check["status"] == "FAIL"
 
     def test_summary_counts(self, sample_results_dict, sample_config, qc_thresholds, tmp_path):
@@ -329,7 +340,10 @@ class TestQCStatus:
             data = json.load(f)
             summary = data["summary"]
             assert summary["total_checks"] == len(data["checks"])
-            assert summary["passed"] + summary["warnings"] + summary["failed"] == summary["total_checks"]
+            assert (
+                summary["passed"] + summary["warnings"] + summary["failed"]
+                == summary["total_checks"]
+            )
 
     def test_default_thresholds(self, sample_results_dict, sample_config, tmp_path):
         """Test that default thresholds are used when none provided"""
@@ -521,7 +535,9 @@ class TestGenerateAllOutputs:
         assert (tmp_path / "Sample1_comparison.csv").exists()
         assert (tmp_path / "Sample1_offsets.tsv").exists()
 
-    def test_files_have_correct_content(self, sample_results_dict, sample_config, qc_thresholds, tmp_path):
+    def test_files_have_correct_content(
+        self, sample_results_dict, sample_config, qc_thresholds, tmp_path
+    ):
         """Test that generated files have correct content"""
         generate_all_outputs(
             sample_results_dict,

@@ -5,9 +5,7 @@ from RiboMetric.file_parser import check_annotation, parse_annotation
 
 def test_check_annotation_minimal(tmp_path):
     p = tmp_path / "anno.tsv"
-    p.write_text(
-        "transcript_id\tcds_start\tcds_end\ttranscript_length\nTX1\t0\t90\t90\n"
-    )
+    p.write_text("transcript_id\tcds_start\tcds_end\ttranscript_length\nTX1\t0\t90\t90\n")
     assert check_annotation(str(p)) is True
     df = parse_annotation(str(p))
     assert list(df.columns[:4]) == [
@@ -87,4 +85,3 @@ def test_parse_annotation_tolerates_rare_overrun(tmp_path):
     p.write_text("\n".join(rows) + "\n")
     df = parse_annotation(str(p))
     assert len(df) == 201
-
