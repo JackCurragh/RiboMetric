@@ -14,6 +14,12 @@ import numpy.typing as npt
 from scipy.stats import skew, kurtosis, normaltest
 
 
+# Minimum frame-assigned reads before a per-read-length dominant-frame fraction
+# is reported. At n=100 the sampling standard error on a fraction near the 1/3
+# random floor is ~0.047; below that the estimate is not separable from noise.
+DOMINANCE_MIN_READS = 100
+
+
 def find_category_by_cumulative_percentage(df: pd.DataFrame, percentage: float) -> int:
     """
     Calculate the read_length with cumulative percentages
@@ -900,16 +906,33 @@ def uniformity_gini_index(profile: Mapping[str, Dict[int, Dict[int, int]]]) -> D
     return ginis
 
 
-def periodicity_dominance(read_frame_dict: Dict[int, Dict[int, int]]) -> Dict[int | str, float]:
+def periodicity_dominance(
+    read_frame_dict: Dict[int, Dict[int, int]],
+    min_reads: int = DOMINANCE_MIN_READS,
+) -> Dict[int | str, float]:
     """
     Calculate the read frame dominance metric from the output of
     the read_frame_distribution module.
 
     This metric is the proportion of reads in the dominant frame
 
+    Read lengths carrying fewer than ``min_reads`` frame-assigned reads are
+    omitted from the per-read-length map rather than reported. A dominant-frame
+    fraction estimated from a handful of reads is noise, and it is published as
+    a confident number: a read length with a single read reports a dominance of
+    exactly 1.000, which then appears in cohort tables and as a full-height bar
+    in the recommended-read-lengths plot. ``information_metric_cutoff`` already
+    applies the same convention to the sibling periodicity metric.
+
+    The global values are unaffected: every read still contributes to
+    ``global`` and ``global_by_read_length_max``, so the gated Tier-1 metric
+    keeps its existing meaning.
+
     Inputs:
         read_frame_dict: Dictionary containing the output of the
                 read_frame_distribution module
+        min_reads: Minimum frame-assigned reads for a per-read-length
+                dominance value to be reported
 
     Outputs:
         read_frame_dominance: Dictionary containing the read frame dominance
@@ -924,8 +947,10 @@ def periodicity_dominance(read_frame_dict: Dict[int, Dict[int, int]]) -> Dict[in
             read_frame_dominance[read_length] = 0
             continue
         max_frame = max(read_frame_dict[read_length], key=lambda k: read_frame_dict[read_length][k])
-        read_frame_dominance[read_length] = read_frame_dict[
-            read_length][max_frame] / total_count if total_count > 0 else 0
+        if total_count >= min_reads:
+            read_frame_dominance[read_length] = (
+                read_frame_dict[read_length][max_frame] / total_count
+            )
 
         global_total += total_count
         global_by_read_length_max += read_frame_dict[read_length][max_frame]
@@ -1063,6 +1088,7 @@ def recommend_read_lengths(
     offsets: Optional[Dict] = None,
     min_periodicity: float = 0.5,
     min_read_proportion: float = 0.05,
+    min_frame_reads: int = DOMINANCE_MIN_READS,
 ) -> Dict[str, Any]:
     """Recommend the read lengths carrying clean 3-nt periodicity.
 
@@ -1084,9 +1110,12 @@ def recommend_read_lengths(
     for read_length, frames in read_frame_distribution.items():
         rl = int(read_length)
         frame_total = sum(frames.values())
-        periodicity = (
-            max(frames.values()) / frame_total if frame_total > 0 else 0.0
-        )
+        # Skip read lengths with too few frame-assigned reads to estimate a
+        # dominant-frame fraction. Without this a length backed by one read
+        # reports periodicity 1.0 and is drawn as a full-height bar.
+        if frame_total < min_frame_reads:
+            continue
+        periodicity = max(frames.values()) / frame_total
         proportion = read_length_distribution.get(rl, 0) / total_reads
         recommended = (
             periodicity >= min_periodicity
@@ -1095,6 +1124,7 @@ def recommend_read_lengths(
         entry: Dict[str, Any] = {
             "periodicity": round(periodicity, 4),
             "read_proportion": round(proportion, 4),
+            "n_frame_reads": int(frame_total),
             "recommended": bool(recommended),
         }
         if offsets is not None and rl in offsets:

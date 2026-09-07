@@ -302,15 +302,24 @@ def _metric_direction(metric_name: str, threshold_dict: Dict) -> str:
     return "lower" if metric_name in LOWER_IS_BETTER_METRICS else "higher"
 
 
-def _evaluate_qc_status_scored(results_dict: dict, sample_name: str) -> dict:
+def _evaluate_qc_status_scored(
+    results_dict: dict,
+    sample_name: str,
+    config: Optional[Dict] = None,
+) -> dict:
     """QC status from the unified scoring resolver (default path).
 
     The overall verdict uses only the gated (Tier-1) metrics; non-gated
     metrics are reported as checks but do not fail the sample.
+
+    ``config`` must be the effective run config so that any ``scoring:``
+    overrides it carries are applied here as well as in the HTML report. When
+    it is dropped the gate silently falls back to the code defaults and can
+    disagree with the report built from the same results.
     """
     from .scoring import build_scored_metrics, overall_gate_status
 
-    scored = build_scored_metrics(results_dict, None)
+    scored = build_scored_metrics(results_dict, config)
     overall_status = overall_gate_status(scored)
 
     qc_checks = [
@@ -417,6 +426,7 @@ def evaluate_qc_status(
     results_dict: dict,
     sample_name: str,
     thresholds: Optional[Dict] = None,
+    config: Optional[Dict] = None,
 ) -> dict:
     """
     Score a results dict against pass/warn thresholds.
@@ -429,6 +439,10 @@ def evaluate_qc_status(
         sample_name: Name of the sample
         thresholds: Optional dict of {metric: {"pass": x, "warn": y}}; falls back
             to DEFAULT_QC_THRESHOLDS when None
+        config: Effective run config. Its ``scoring:`` block is merged over the
+            code defaults, exactly as the HTML report does, so both surfaces
+            reach the same verdict. Only used on the default (no-thresholds)
+            path.
 
     Output:
         Dictionary with overall_status, per-check detail, summary counts and a
@@ -439,7 +453,7 @@ def evaluate_qc_status(
     # membership. An explicit thresholds dict (e.g. an external --expected YAML
     # for the `evaluate` subcommand) keeps the legacy raw-value comparison.
     if thresholds is None:
-        return _evaluate_qc_status_scored(results_dict, sample_name)
+        return _evaluate_qc_status_scored(results_dict, sample_name, config)
 
     # An explicit policy names the metrics the caller requires. A metric that is
     # absent or uncomparable is missing evidence, so it fails the gate loudly
@@ -564,7 +578,9 @@ def generate_qc_status(
             output_directory = output_directory[:-1]
         output = output_directory + "/" + name
 
-    qc_status = evaluate_qc_status(results_dict, sample_name, thresholds)
+    qc_status = evaluate_qc_status(
+        results_dict, sample_name, thresholds, config
+    )
 
     with open(output, "w") as f:
         json.dump(qc_status, f, indent=2)

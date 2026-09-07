@@ -121,9 +121,21 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
                     "may reflect degradation, RNA contamination, or poor nuclease "
                     "protection.",
     },
+    # THRESHOLDS ARE ANCHORED TO periodicity_dominance, NOT to the 0-1 scale.
+    # Entropy reduction is a far more compressive scale than the dominant-frame
+    # fraction: for a dominant fraction d with the remainder split evenly,
+    # (log2(3) - H)/log2(3) is 0.255 at d=0.70 and 0.054 at d=0.50. The v1.4.0
+    # thresholds of 0.60/0.30 were carried over from before the sqrt transform
+    # was dropped and were never re-anchored, so they demanded d ~ 0.90 to pass
+    # and d ~ 0.72 to reach WARNING -- strictly harsher than the dominance gate
+    # they were meant to cross-check, and since the verdict fails if any gated
+    # metric fails, this metric silently governed the Tier 1 result.
+    # 0.25/0.05 are the information-content equivalents of dominance 0.70/0.50.
+    # The even-split remainder is the maximum-entropy case for a given d, so
+    # these are lower bounds: a real library at d=0.70 scores at or above 0.25.
     "periodicity_information": {
         "method": "identity",
-        "status": {"pass": 0.60, "warn": 0.30},
+        "status": {"pass": 0.25, "warn": 0.05},
         "gate": True,
         "tier": 1,
         "decision": "Cross-check on frame dominance; large disagreement signals "
@@ -222,8 +234,17 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "decision": "Low score: 3' terminal sequence bias may distort count "
                     "quantification; consider correction.",
     },
+    # NOTE ON DIRECTION: despite the "bias" in the key, the stored raw value is
+    # ``1 - max|observed - expected|`` (see
+    # metrics.terminal_nucleotide_bias_max_absolute_metric) -- it is already a
+    # higher-is-better agreement fraction, so the method is ``identity``.
+    # Scoring these with ``one_minus_rate`` inverts them: a perfectly unbiased
+    # library scores 0.00 and a severely biased one scores 0.80. The key is
+    # scheduled to be renamed to ``terminal_bias_max_deviation_*prime`` holding
+    # the deviation itself (docs/METRIC_NAMING.md §3.1), at which point the
+    # method becomes ``one_minus_rate`` again.
     "terminal_bias_maxabs_5prime": {
-        "method": "one_minus_rate",
+        "method": "identity",
         "status": {"pass": 0.70, "warn": 0.40},
         "gate": False,
         "tier": 3,
@@ -231,7 +252,7 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
                     "over- or under-represented.",
     },
     "terminal_bias_maxabs_3prime": {
-        "method": "one_minus_rate",
+        "method": "identity",
         "status": {"pass": 0.70, "warn": 0.40},
         "gate": False,
         "tier": 3,

@@ -384,7 +384,23 @@ def a_site_calculation(read_df: pd.DataFrame,
         df = read_df.copy()
         # Coerce again for safety under different pandas versions
         df['reference_start'] = pd.to_numeric(df['reference_start'], errors='coerce')
-        df['offset'] = int(global_offset)
+        # A single global offset still has to fit inside each read: applying
+        # 15 to a 15 nt read puts the A-site one base past the read's 3' end.
+        # Clip per read length exactly as the variable-offset path does, so a
+        # global offset degrades gracefully on short footprints instead of
+        # producing out-of-read A-sites (and reporting them in the audit TSV).
+        read_len_int = df['read_length'].astype(int)
+        resolved = {
+            int(rl): sanitise_offset(
+                int(rl),
+                int(global_offset),
+                default_offset=int(global_offset),
+                offset_bounds=offset_bounds,
+                max_read_length_fraction=max_read_length_fraction,
+            )
+            for rl in read_len_int.unique()
+        }
+        df['offset'] = read_len_int.map(resolved).astype('int64')
         df['a_site'] = df['reference_start'] + df['offset']
         a_site_df = df
     elif offset_type == "read_specific":
@@ -454,12 +470,33 @@ def a_site_calculation_variable_offset(
                 offset_bounds=offset_bounds,
                 max_read_length_fraction=max_read_length_fraction,
             )
-        # Map offsets to corresponding read lengths (cast to built-in int to avoid numpy int hash mismatch)
+        # Map offsets to corresponding read lengths (cast to built-in int to
+        # avoid numpy int hash mismatch).
+        #
+        # Read lengths absent from offset_dict must not receive the bare
+        # default_offset: default_offset is sanitised once against an
+        # effectively unbounded read length, so applying it to a short read
+        # can place the A-site at or past the read's 3' end (a 15 nt read was
+        # being given offset 15). Sanitise the default per observed read
+        # length so the read-length ceiling in ``is_valid_offset`` applies to
+        # the fallback too.
+        # Offsets supplied in offset_dict are only re-checked when the caller
+        # asked for validation, so ``validate_offsets`` keeps its meaning.
         read_len_int = read_df['read_length'].astype(int)
-        read_df['offset'] = read_len_int.map(
-            lambda l: int(offset_dict.get(int(l), default_offset))
-        )
-        read_df['offset'] = read_df['offset'].astype('int64')
+        resolved = {}
+        for rl in read_len_int.unique():
+            rl = int(rl)
+            if rl in offset_dict:
+                resolved[rl] = int(offset_dict[rl])
+            else:
+                resolved[rl] = sanitise_offset(
+                    rl,
+                    None,
+                    default_offset=default_offset,
+                    offset_bounds=offset_bounds,
+                    max_read_length_fraction=max_read_length_fraction,
+                )
+        read_df['offset'] = read_len_int.map(resolved).astype('int64')
         offset = read_df['offset']
 
     read_df['reference_start'] = read_df['reference_start'].astype(int)
@@ -988,7 +1025,13 @@ def sum_mRNA_distribution(mRNA_distribution_dict: dict, config: dict) -> dict:
         frame at the different read lengths
     """
     sum_mRNA_dict: dict = {}
-    for inner_dict in mRNA_distribution_dict.values():
+    # mRNA_distribution_dict carries a "global" entry that is already the sum
+    # over every read length. Including it here counts every read twice, which
+    # is invisible in the default proportional view (the doubling cancels in
+    # the denominator) but doubles every value under absolute_counts: True.
+    for read_length, inner_dict in mRNA_distribution_dict.items():
+        if read_length == "global":
+            continue
         for k, v in inner_dict.items():
             if k in sum_mRNA_dict:
                 sum_mRNA_dict[k] += v

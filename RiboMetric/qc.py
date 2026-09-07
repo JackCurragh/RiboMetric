@@ -63,6 +63,7 @@ from .metrics import (
     recommend_read_lengths,
     classify_library_type,
     cds_enrichment_ratio,
+    DOMINANCE_MIN_READS,
 )
 from typing import Any, Dict, Optional, Tuple
 
@@ -1109,10 +1110,19 @@ def annotation_mode(
 
     culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
 
+    # Minimum frame-assigned reads before a per-read-length dominance value is
+    # reported (global values always use every read).
+    _dominance_min_reads = int(
+        config.get("qc", {})
+        .get("read_frame_distribution", {})
+        .get("dominance_min_reads", DOMINANCE_MIN_READS)
+    )
+
     # Default: periodicity dominance (standard frame preference metric)
     if should_calculate_metric("periodicity_dominance", config):
         results_dict["metrics"]["periodicity_dominance"] = periodicity_dominance(
-            culled_read_frame_dict
+            culled_read_frame_dict,
+            min_reads=_dominance_min_reads,
         )
 
     # Optional: trips-viz metric
@@ -1165,6 +1175,7 @@ def annotation_mode(
         offsets=computed_offsets or None,
         min_periodicity=_min_periodicity,
         min_read_proportion=float(_rec_cfg.get("min_read_proportion", 0.05)),
+        min_frame_reads=_dominance_min_reads,
     )
     results_dict["recommended_read_lengths"] = recommended
     results_dict["metrics"]["n_recommended_read_lengths"] = (
