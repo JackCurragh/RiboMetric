@@ -110,13 +110,34 @@ behaviour; it changes what can silently go wrong when releasing it.
   calls a bare `python` — the same "command not found" failure the top-level
   `$(PYTHON)` convention exists to prevent. It now invokes Sphinx directly.
   Added `make docs-strict` for a warnings-fatal build.
-- Sphinx warnings went from 43 to 25 (`language`, `html_static_path`, short
-  title underlines, a dead cross-reference, unknown `tsv`/`csv` lexers, and
-  every "not included in any toctree"). All 25 that remain are inside autodoc'd
-  docstrings that write `Inputs:` with an unindented body; napoleon custom
-  sections absorb the correctly-indented ones, and the rest need the docstrings
-  themselves changed. `fail_on_warning` stays off until then, with a note
-  saying so.
+- **The docs build is now warning-free and warnings are fatal**, in Read the
+  Docs (`fail_on_warning: true`), in CI (a new `docs` job) and locally (`make
+  docs-strict`). It went 43 -> 25 -> 0. The first pass fixed configuration and
+  doc sources; the second fixed the docstrings behind the remaining 25:
+  - Six functions wrote `Inputs:`/`Outputs:` with the body at the *same* indent
+    as the label, which docutils reads as a block quote. 132 other docstrings
+    were already indented correctly, so these were the outliers, not the norm.
+  - The singular `Input:`/`Output:` spelling, used throughout
+    `results_output.py` and `plots.py`, was not registered with napoleon, so 23
+    more docstrings rendered as an undifferentiated paragraph rather than as
+    parameter fields. All four spellings are now registered.
+  - Three functions that return a multi-key dict documented the keys as a
+    column-aligned block under `Returns:`. Google-style `Returns:` takes a
+    single `type: description`, so napoleon read the first key as the return
+    *type* and orphaned the rest. They now read `dict: ...` with the keys as a
+    bullet list.
+  - `autocorrelate_counts` mixed NumPy-style underlines with Google-style
+    colons; it now matches the rest of its module. (`rust.py`'s genuine
+    NumPy-style docstrings are untouched -- they were always valid.)
+  - The `qc` and `rust` module docstrings had prose and an algorithm listing
+    indented under a trailing colon, which is a block quote in RST. They are
+    now a definition list and an enumerated list.
+  - Six of the 25 were not RiboMetric's at all: `HelpScreen.compose` has no
+    docstring, so autodoc inherited **textual's**, which is MkDocs-flavoured
+    Markdown and cannot parse as RST. `autodoc_inherit_docstrings` is off.
+
+  No executable code changed -- verified by checking every modified line in the
+  package falls inside a docstring node.
 - **`docs/RELEASE.md`** is new: the release runbook, the container-tag
   ownership split, and the traps that have actually cost this project releases
   (wheel-filename normalisation, 403-vs-400 diagnosis, the reusable-workflow

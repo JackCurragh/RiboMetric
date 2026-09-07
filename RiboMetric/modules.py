@@ -637,11 +637,11 @@ def read_frame_cull(read_frame_dict: dict, config: dict) -> dict:
     interest are kept
 
     Inputs:
-    read_frame_dict:
-    config:
+        read_frame_dict:
+        config:
 
     Outputs:
-    culled_read_frame_dict
+        culled_read_frame_dict
     """
     culled_read_frame_dict = read_frame_dict.copy()
     cull_list = list(culled_read_frame_dict.keys())
@@ -664,12 +664,12 @@ def read_frame_score_trips_viz(read_frame_dict: dict) -> dict:
     periodicity, while a score closer to 0 has a random spread
 
     Inputs:
-    read_frame_dict: dictionary containing the distribution of the reading
-                    frames over the different read lengths
+        read_frame_dict: dictionary containing the distribution of the reading
+                        frames over the different read lengths
 
     Outputs:
-    scored_read_frame_dict: dictionary containing read frame distribution
-                            scores for each read length and a global score
+        scored_read_frame_dict: dictionary containing read frame distribution
+                                scores for each read length and a global score
     """
     scored_read_frame_dict: Dict[str, float] = {}
     highest_peak_sum, second_peak_sum = 0, 0
@@ -697,12 +697,12 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
     Calculate the distribution of the reading frame over the dataset
 
     Inputs:
-    a_site_df: Dataframe containing the read information with an
-                added column for the a-site location
+        a_site_df: Dataframe containing the read information with an
+                    added column for the a-site location
 
     Outputs:
-    read_frame_dict: Nested dictionary containing counts for every
-                    reading frame at the different read lengths
+        read_frame_dict: Nested dictionary containing counts for every
+                        reading frame at the different read lengths
     """
     read_frame_dict = {}
 
@@ -993,7 +993,7 @@ def metagene_distance(
             a 5'-end metagene (required for accurate offset detection).
 
     Outputs:
-    pd.Series
+        pd.Series
     """
     if target == "start":
         return annotated_read_df[position] - annotated_read_df["cds_start"]
@@ -1432,10 +1432,14 @@ def gene_body_coverage_ramp(
     * the 3' drop-off — declining density toward the stop codon.
 
     Returns:
-        profile                 list[float] of length n_bins, mean-normalised so
-                                a flat profile is ~1.0 everywhere
-        five_prime_ramp_ratio   mean density in the first 10% / middle (40-60%)
-        three_prime_drop_ratio  mean density in the last 10% / middle (40-60%)
+        dict: A dictionary with the keys:
+
+        * ``profile`` -- list[float] of length n_bins, mean-normalised so a
+          flat profile is ~1.0 everywhere
+        * ``five_prime_ramp_ratio`` -- mean density in the first 10% divided
+          by the middle (40-60%)
+        * ``three_prime_drop_ratio`` -- mean density in the last 10% divided
+          by the middle (40-60%)
     """
     empty: Dict[str, object] = {
         "profile": [0.0] * n_bins,
@@ -1502,12 +1506,14 @@ def library_complexity_curve(
     rising curve means the library is under-sequenced.
 
     Returns:
-        fractions                       list of sampling fractions
-        distinct_positions              expected distinct positions at each f
-        total_distinct_positions        distinct positions at full depth
-        marginal_discovery_rate         fraction of reads at the margin (top 5%
-                                        of depth) landing on a new position;
-                                        high => still discovering (undersaturated)
+        dict: A dictionary with the keys:
+
+        * ``fractions`` -- list of sampling fractions
+        * ``distinct_positions`` -- expected distinct positions at each f
+        * ``total_distinct_positions`` -- distinct positions at full depth
+        * ``marginal_discovery_rate`` -- fraction of reads at the margin
+          (top 5% of depth) landing on a new position; a high value means the
+          library is still discovering positions and is undersaturated
     """
     empty: Dict[str, object] = {
         "fractions": [],
@@ -1584,10 +1590,12 @@ def floss_library_heterogeneity(
     ORF/translation classifier.
 
     Returns:
-        floss_median                       median per-transcript FLOSS
-        floss_aberrant_transcript_fraction fraction of transcripts with
-                                           FLOSS > floss_cutoff
-        n_transcripts_scored               transcripts meeting min_reads
+        dict: A dictionary with the keys:
+
+        * ``floss_median`` -- median per-transcript FLOSS
+        * ``floss_aberrant_transcript_fraction`` -- fraction of transcripts
+          with FLOSS > floss_cutoff
+        * ``n_transcripts_scored`` -- transcripts meeting min_reads
     """
     empty: Dict[str, object] = {
         "floss_median": None,

@@ -2,10 +2,13 @@
 Main script for running qc analysis
 
 Three main modes:
-    annotation free: no gff file provided just use the bam file
-    annotation based: gff file provided and use the bam file
-    sequence based: gff file and transcriptome fasta file
-                    provided and use the bam file
+
+``annotation free``
+    No gff file provided, just use the bam file.
+``annotation based``
+    Gff file provided, and use the bam file.
+``sequence based``
+    Gff file and transcriptome fasta file provided, and use the bam file.
 
 """
 

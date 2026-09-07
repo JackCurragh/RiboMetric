@@ -13,16 +13,10 @@ build:
 
 sphinx:
   configuration: docs/conf.py
-  # Not yet warning-fatal. Every remaining warning (25 at the time of writing)
-  # comes from an autodoc'd docstring, not from the docs sources or this
-  # config: the codebase documents parameters as an "Inputs:" block whose body
-  # is at the *same* indent as the label, which docutils reads as a block
-  # quote. napoleon's custom sections (docs/conf.py) fixed the ones that were
-  # indented correctly; the rest need the docstrings themselves re-indented,
-  # which is a code change rather than a docs one. Flip this to true once that
-  # is done -- a docs build that tolerates warnings rots the same way a
-  # commented-out lint gate does.
-  fail_on_warning: false
+  # Fatal, and it is meant to stay that way. The build reached zero warnings on
+  # 2026-09-07; a docs build that tolerates warnings rots exactly the way a
+  # commented-out lint gate does. `make docs-strict` runs the same check.
+  fail_on_warning: true
 
 formats:
   - pdf

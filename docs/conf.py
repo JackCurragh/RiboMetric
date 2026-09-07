@@ -49,10 +49,24 @@ extensions = [
 # emitted ~35 "Unexpected indentation" errors across the API reference. Rather
 # than rewrite every docstring, teach napoleon the two section names the
 # project actually uses, so they render as proper parameter and return fields.
+# Both the plural and singular spellings are in use: "Inputs:"/"Outputs:" in
+# metrics.py and modules.py, "Input:"/"Output:" throughout results_output.py
+# and plots.py. Registering all four means 155 docstrings render as proper
+# parameter and return fields instead of as an undifferentiated paragraph.
 napoleon_custom_sections = [
     ("Inputs", "params_style"),
     ("Outputs", "returns_style"),
+    ("Input", "params_style"),
+    ("Output", "returns_style"),
 ]
+
+# Do not pull docstrings down from base classes. RiboMetric's TUI subclasses
+# textual, whose docstrings are MkDocs-flavoured Markdown -- fenced code
+# blocks, `backtick` spans and [label][target] cross-references, none of which
+# is valid reStructuredText. HelpScreen.compose has no docstring of its own, so
+# autodoc was inheriting textual's and emitting six warnings from a third
+# party's prose that no change here could fix.
+autodoc_inherit_docstrings = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
