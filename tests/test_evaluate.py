@@ -4,16 +4,14 @@ from argparse import Namespace
 
 import pytest
 
-from RiboMetric.results_output import evaluate_qc_status, DEFAULT_QC_THRESHOLDS
 from RiboMetric.evaluate import (
-    evaluate,
+    EXIT_FAIL,
+    EXIT_PASS,
     _load_results,
     _load_thresholds,
-    EXIT_PASS,
-    EXIT_WARNING,
-    EXIT_FAIL,
+    evaluate,
 )
-
+from RiboMetric.results_output import DEFAULT_QC_THRESHOLDS, evaluate_qc_status
 
 THRESHOLDS = {
     "periodicity_dominance": {"pass": 0.7, "warn": 0.5},

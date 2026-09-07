@@ -1,10 +1,11 @@
 """Console script for RiboMetric."""
-import sys
-import logging
 import argparse
+import logging
+import sys
 
-from .RiboMetric import argument_parser as p, main as m
 from . import __version__
+from .RiboMetric import argument_parser as p
+from .RiboMetric import main as m
 
 
 def main() -> int:

@@ -2,10 +2,10 @@
 Tests for the metric selection feature (default vs optional metrics)
 """
 
-import pytest
-from RiboMetric.qc import should_calculate_metric
-from RiboMetric.arg_parser import open_config
 from argparse import Namespace
+
+from RiboMetric.arg_parser import open_config
+from RiboMetric.qc import should_calculate_metric
 
 
 class TestMetricSelection:

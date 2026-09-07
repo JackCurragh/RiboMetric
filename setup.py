@@ -52,12 +52,16 @@ test_requirements = [
 ]
 
 # Development dependencies (linting, formatting, docs)
+# ruff replaces flake8 *and* isort (REPO_CONTRACT §4b); do not add either back.
 dev_requirements = test_requirements + [
-    "flake8>=6.0.0",
-    "black>=23.0.0",
+    "ruff>=0.6",
+    "black>=24.0",
     "sphinx>=5.0.0",
     "mypy>=1.0.0",
     "types-PyYAML>=6.0.12",
+    "build>=1.2",
+    "twine>=5.0",
+    "bump2version>=1.0",
 ]
 
 setup(

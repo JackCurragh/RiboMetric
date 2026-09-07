@@ -6,12 +6,13 @@ respective modules
 
 '''
 
-import pandas as pd
 import math
+from typing import Any, Dict, List, Mapping, Optional, Tuple
+
 import numpy as np
-from typing import Dict, List, Tuple, Any, Optional
 import numpy.typing as npt
-from scipy.stats import skew, kurtosis, normaltest
+import pandas as pd
+from scipy.stats import kurtosis, normaltest, skew
 
 
 def find_category_by_cumulative_percentage(df: pd.DataFrame, percentage: float) -> int:
@@ -750,12 +751,11 @@ def uniformity_entropy(metagene_profile: Dict[str, Dict[int, Dict[int, int]]]) -
             probability = count / global_total_counts
             global_entropy -= probability * math.log(probability, 2)
     global_max_entropy = math.log(len(global_triplet_counts), 2)
-    global_uniformity = global_entropy / global_max_entropy if global_max_entropy > 0 else 0 
+    global_uniformity = global_entropy / global_max_entropy if global_max_entropy > 0 else 0
     read_len_uniformity["global"] = global_uniformity
     return read_len_uniformity
 
 
-from typing import Mapping
 
 
 def uniformity_theil_index(

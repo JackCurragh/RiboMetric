@@ -4,17 +4,15 @@ The functions are called by the main script RiboMetric.py
 if the user specifies the --html flag
 """
 
-from jinja2 import Environment, FileSystemLoader
-from datetime import datetime
-from .modules import convert_html_to_pdf
 import base64
 import json
-
 import os
+from datetime import datetime
+from typing import Any, Dict, List, Tuple
 
+from jinja2 import Environment, FileSystemLoader
 
-from typing import List, Dict, Any, Tuple
-
+from .modules import convert_html_to_pdf
 
 LOWER_IS_BETTER = {
     "duplicate_rate",

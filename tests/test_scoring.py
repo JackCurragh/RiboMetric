@@ -5,22 +5,19 @@ These pin the anchor maths from docs/METRICS_DESIGN.md so the spec and the
 implementation cannot silently drift apart.
 """
 
-import math
-
-import pytest
 
 import pandas as pd
+import pytest
 
+from RiboMetric.metrics import cds_enrichment_ratio
 from RiboMetric.scoring import (
-    score_value,
-    resolve_status,
-    build_scored_metrics,
-    overall_gate_status,
     DEFAULT_SCORING,
     DEFAULT_STATUS,
+    build_scored_metrics,
+    overall_gate_status,
+    resolve_status,
+    score_value,
 )
-from RiboMetric.metrics import cds_enrichment_ratio
-
 
 # --- score method anchors --------------------------------------------------
 

@@ -1,16 +1,22 @@
-import pytest
 import pandas as pd
+import pytest
+
+from RiboMetric.metrics import (
+    information_metric_cutoff,
+    read_frame_information_weighted_score,
+)
+from RiboMetric.metrics import (
+    read_frame_information_content as rfd_metric,
+)
+from RiboMetric.metrics import (
+    read_length_distribution_IQR_normalised_metric as rld_metric,
+)
+from RiboMetric.metrics import (
+    terminal_nucleotide_bias_KL_metric as lbd_metric,
+)
 from RiboMetric.modules import (
     read_length_distribution,
     terminal_nucleotide_bias_distribution,
-)
-
-from RiboMetric.metrics import (
-    read_length_distribution_IQR_normalised_metric as rld_metric,
-    terminal_nucleotide_bias_KL_metric as lbd_metric,
-    read_frame_information_content as rfd_metric,
-    read_frame_information_weighted_score,
-    information_metric_cutoff,
 )
 
 

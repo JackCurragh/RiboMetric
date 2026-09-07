@@ -9,7 +9,7 @@ version = "1.4.3"
 ribometric = "RiboMetric"
 test = "pytest -q"
 test-cov = "pytest --cov=RiboMetric --cov-report=term-missing"
-lint = "flake8 RiboMetric"
+lint = "ruff check RiboMetric tests && black --check RiboMetric tests"
 typecheck = "mypy --config-file mypy.ini RiboMetric"
 
 [dependencies]
@@ -20,6 +20,6 @@ python = ">=3.10,<3.13"
 build = ">=1.3.0, <2"
 twine = ">=6.2.0, <7"
 textual = ">=0.47.0"
-# Editable install with dev extras pulls pytest/coverage/flake8/mypy into the
+# Editable install with dev extras pulls pytest/coverage/ruff/black/mypy into the
 # pixi env so `pixi run test` does not fall through to a system pytest.
 RiboMetric = { path = ".", editable = true, extras = ["dev"] }

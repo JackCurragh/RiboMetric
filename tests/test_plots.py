@@ -2,21 +2,22 @@
 
 """Tests for `plots` package."""
 
-from RiboMetric.plots import (
-    plot_terminal_nucleotide_bias_distribution,
-    plot_nucleotide_composition,
-    plot_read_length_distribution,
-    plot_read_frame_distribution,
-)
+import pandas as pd
+import yaml
+
 from RiboMetric.modules import (
+    a_site_calculation,
+    nucleotide_composition,
+    read_frame_distribution,
     read_length_distribution,
     terminal_nucleotide_bias_distribution,
-    nucleotide_composition,
-    a_site_calculation,
-    read_frame_distribution,
 )
-import yaml
-import pandas as pd
+from RiboMetric.plots import (
+    plot_nucleotide_composition,
+    plot_read_frame_distribution,
+    plot_read_length_distribution,
+    plot_terminal_nucleotide_bias_distribution,
+)
 
 
 def is_plotly_html(fig_html):

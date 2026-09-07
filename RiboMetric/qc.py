@@ -9,62 +9,76 @@ Three main modes:
 
 """
 
+from typing import Any, Dict, Optional, Tuple
+
 import pandas as pd
 
-from .modules import (
-    chunked_annotate_reads,
-    assign_mRNA_category,
-    read_length_distribution,
-    read_df_to_cds_read_df,
-    terminal_nucleotide_bias_distribution,
-    normalise_ligation_bias,
-    nucleotide_composition,
-    read_frame_distribution,
-    read_frame_distribution_annotated,
-    mRNA_distribution,
-    metagene_profile,
-    reading_frame_triangle,
-    read_frame_score_trips_viz,
-    read_frame_cull,
-    asite_calculation_per_readlength,
-    a_site_calculation_variable_offset,
-    a_site_calculation,
-    ribowaltz_psite_prediction,
-    gene_body_coverage_ramp,
-    library_complexity_curve,
-    floss_library_heterogeneity,
-    DEFAULT_OFFSET_BOUNDS,
-    DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
-    filter_unique_mappers,
-    sanitise_offset,
-)
-
 from .metrics import (
-    read_length_distribution_IQR_normalised_metric as rld_metric,
-    read_length_distribution_coefficient_of_variation_metric as rldv_metric,
-    read_length_distribution_normality_metric as rldn_metric,
-    terminal_nucleotide_bias_KL_divergence as lbd_raw,
-    terminal_nucleotide_bias_max_absolute_metric as lbmp_metric,
-    read_frame_information_content as rf_info_metric,
-    read_frame_information_weighted_score,
-    information_metric_cutoff,
     cds_coverage_metric,
-    region_region_ratio_metric,
-    read_length_distribution_max_prop_metric as rldpp_metric,
+    cds_enrichment_ratio,
+    classify_library_type,
+    fourier_transform,
+    information_metric_cutoff,
     periodicity_autocorrelation,
+    periodicity_dominance,
+    proportion_of_reads_in_region,
+    read_frame_information_weighted_score,
+    read_length_distribution_bimodality,
+    recommend_read_lengths,
+    region_region_ratio_metric,
     uniformity_autocorrelation,
     uniformity_entropy,
-    uniformity_theil_index,
     uniformity_gini_index,
-    periodicity_dominance,
-    fourier_transform,
-    read_length_distribution_bimodality,
-    proportion_of_reads_in_region,
-    recommend_read_lengths,
-    classify_library_type,
-    cds_enrichment_ratio,
+    uniformity_theil_index,
 )
-from typing import Any, Dict, Optional, Tuple
+from .metrics import (
+    read_frame_information_content as rf_info_metric,
+)
+from .metrics import (
+    read_length_distribution_coefficient_of_variation_metric as rldv_metric,
+)
+from .metrics import (
+    read_length_distribution_IQR_normalised_metric as rld_metric,
+)
+from .metrics import (
+    read_length_distribution_max_prop_metric as rldpp_metric,
+)
+from .metrics import (
+    read_length_distribution_normality_metric as rldn_metric,
+)
+from .metrics import (
+    terminal_nucleotide_bias_KL_divergence as lbd_raw,
+)
+from .metrics import (
+    terminal_nucleotide_bias_max_absolute_metric as lbmp_metric,
+)
+from .modules import (
+    DEFAULT_OFFSET_BOUNDS,
+    DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION,
+    a_site_calculation,
+    a_site_calculation_variable_offset,
+    asite_calculation_per_readlength,
+    assign_mRNA_category,
+    chunked_annotate_reads,
+    filter_unique_mappers,
+    floss_library_heterogeneity,
+    gene_body_coverage_ramp,
+    library_complexity_curve,
+    metagene_profile,
+    mRNA_distribution,
+    normalise_ligation_bias,
+    nucleotide_composition,
+    read_df_to_cds_read_df,
+    read_frame_cull,
+    read_frame_distribution,
+    read_frame_distribution_annotated,
+    read_frame_score_trips_viz,
+    read_length_distribution,
+    reading_frame_triangle,
+    ribowaltz_psite_prediction,
+    sanitise_offset,
+    terminal_nucleotide_bias_distribution,
+)
 
 # Fallback P-/A-site offsets (nt from the read 5' end) used when no per-read-length
 # offset has been predicted. 12 nt places the P-site on the ribosome's P codon and
@@ -1097,7 +1111,7 @@ def annotation_mode(
                 mRNA_distribution=results_dict["mRNA_distribution"],
                 region="three_trailer",
             )
-        
+
         # Ensure read_frame_dist exists when annotation is False but sequence_background is present
         # so downstream culling and periodicity dominance always have input.
         if not annotation:

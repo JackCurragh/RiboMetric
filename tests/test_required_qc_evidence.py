@@ -12,7 +12,7 @@ from argparse import Namespace
 
 import pytest
 
-from RiboMetric.evaluate import evaluate, EXIT_PASS, EXIT_FAIL
+from RiboMetric.evaluate import EXIT_FAIL, EXIT_PASS, evaluate
 from RiboMetric.results_output import evaluate_qc_status, generate_summary_tsv
 
 

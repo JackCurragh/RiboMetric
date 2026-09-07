@@ -44,10 +44,6 @@ Output:
     --all : Output the results as all of the above
 """
 
-from rich.console import Console
-from rich.text import Text
-from rich.table import Table
-from typing import Dict, Any
 import argparse
 import hashlib
 import json
@@ -55,31 +51,35 @@ import os
 import platform
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Dict
 
+from rich.console import Console
+from rich.table import Table
+from rich.text import Text
+
+from .arg_parser import argument_parser, open_config
 from .file_parser import (
+    check_annotation,
+    check_bam,
+    flagstat_bam,
+    parse_annotation,
     parse_bam,
     parse_fasta,
-    parse_annotation,
     prepare_annotation,
-    flagstat_bam,
-    check_bam,
-    check_annotation
 )
-from .arg_parser import argument_parser, open_config
-from .qc import annotation_mode
-from .plots import generate_plots
 from .html_report import generate_report, parse_json_input
+from .plots import generate_plots
+from .qc import annotation_mode
 from .results_output import (
-    generate_json,
-    generate_csv,
-    generate_summary_tsv,
-    generate_qc_status,
+    generate_all_outputs,
     generate_comparison_ready_csv,
+    generate_csv,
+    generate_json,
     generate_metrics_table_csv,
     generate_offsets_tsv,
-    generate_all_outputs,
+    generate_qc_status,
+    generate_summary_tsv,
 )
-
 
 _HASH_SAMPLE_BYTES = 1024 * 1024
 _FULL_HASH_LIMIT_BYTES = 50 * 1024 * 1024
@@ -289,8 +289,9 @@ def main(args: argparse.Namespace) -> int:
 
     # Handle view command separately (no logo or config needed)
     if args.command == "view":
-        from .tui import run_tui
         import json
+
+        from .tui import run_tui
 
         # Validate file exists and is JSON
         file_path = Path(args.json_file)
@@ -468,7 +469,7 @@ def main(args: argparse.Namespace) -> int:
             # can display total_reads, mapping_rate, etc.
             results_dict.setdefault("alignment_stats", {}).update(flagstat)
             results_dict["provenance"] = _build_run_provenance(args, config)
-    
+
             filename = config["argument"]["bam"].split('/')[-1]
             if "." in filename:
                 filename = filename.split('.')[:-1]

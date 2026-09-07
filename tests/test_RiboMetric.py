@@ -2,14 +2,13 @@
 
 """Tests for `RiboMetric` package."""
 
-from RiboMetric.RiboMetric import main
-
-from argparse import Namespace
-import pytest
-from io import StringIO
-import sys
-import os
 import json
+import os
+import sys
+from argparse import Namespace
+from io import StringIO
+
+from RiboMetric.RiboMetric import main
 
 
 def test_main_prepare():

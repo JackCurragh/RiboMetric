@@ -8,7 +8,7 @@
 import numpy as np
 import pandas as pd
 
-from RiboMetric.metrics import recommend_read_lengths, classify_library_type
+from RiboMetric.metrics import classify_library_type, recommend_read_lengths
 from RiboMetric.modules import gene_body_coverage_ramp, library_complexity_curve
 
 

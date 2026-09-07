@@ -6,10 +6,8 @@ Tests for the new metrics added in v1.2.0:
   - RUST (compute_rust_metrics, _empty_result, _lookup_seq)
 """
 
-import math
-import pandas as pd
 import numpy as np
-import pytest
+import pandas as pd
 
 from RiboMetric.qc import calculate_alignment_stats
 
@@ -266,16 +264,18 @@ class TestCodonEnrichment:
 
 class TestRustHelpers:
     def test_lookup_seq_exact(self):
-        from RiboMetric.rust import _lookup_seq
         from unittest.mock import MagicMock
+
+        from RiboMetric.rust import _lookup_seq
         rec = MagicMock()
         rec.seq = "ATGATG"
         fasta = {"tx1": rec}
         assert _lookup_seq(fasta, "tx1") == "ATGATG"
 
     def test_lookup_seq_pipe_split(self):
-        from RiboMetric.rust import _lookup_seq
         from unittest.mock import MagicMock
+
+        from RiboMetric.rust import _lookup_seq
         rec = MagicMock()
         rec.seq = "ATGATG"
         fasta = {"NM_001": rec}
@@ -286,7 +286,7 @@ class TestRustHelpers:
         assert _lookup_seq({}, "missing_tx") is None
 
     def test_empty_result_shape(self):
-        from RiboMetric.rust import _empty_result, WINDOW_SIZE
+        from RiboMetric.rust import WINDOW_SIZE, _empty_result
         result = _empty_result(WINDOW_SIZE)
         assert result["metagene"] == {}
         assert len(result["kl_divergence"]) == WINDOW_SIZE
@@ -371,14 +371,14 @@ class TestRustCompute:
         assert result["transcripts_used"] >= 1
 
     def test_metagene_has_61_codons(self):
-        from RiboMetric.rust import compute_rust_metrics, SENSE_CODONS
+        from RiboMetric.rust import SENSE_CODONS, compute_rust_metrics
         df, ann_df, fasta = self._make_inputs()
         result = compute_rust_metrics(df, ann_df, fasta)
         # Should have an entry for every sense codon
         assert len(result["metagene"]) == len(SENSE_CODONS)
 
     def test_kl_divergence_length(self):
-        from RiboMetric.rust import compute_rust_metrics, WINDOW_SIZE
+        from RiboMetric.rust import WINDOW_SIZE, compute_rust_metrics
         df, ann_df, fasta = self._make_inputs()
         result = compute_rust_metrics(df, ann_df, fasta)
         assert len(result["kl_divergence"]) == WINDOW_SIZE
@@ -390,7 +390,7 @@ class TestRustCompute:
         assert result["mean_kl_divergence"] >= 0.0
 
     def test_empty_df_returns_empty(self):
-        from RiboMetric.rust import compute_rust_metrics, _empty_result, WINDOW_SIZE
+        from RiboMetric.rust import WINDOW_SIZE, _empty_result, compute_rust_metrics
         _, ann_df, fasta = self._make_inputs()
         empty_df = pd.DataFrame(columns=["reference_name", "a_site", "cds_start", "cds_end", "count"])
         result = compute_rust_metrics(empty_df, ann_df, fasta)

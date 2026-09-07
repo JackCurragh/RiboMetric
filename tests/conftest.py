@@ -2,10 +2,10 @@
 Pytest configuration and fixtures for RiboMetric tests
 """
 
-import pytest
-import pandas as pd
-import os
 from pathlib import Path
+
+import pandas as pd
+import pytest
 
 
 @pytest.fixture(scope="session")

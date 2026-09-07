@@ -5,17 +5,27 @@ A comprehensive Text User Interface for exploring RiboMetric analysis results.
 Supports viewing JSON output files with interactive navigation and visualization.
 """
 
+import base64
+import importlib
 import json
 import sys
-from pathlib import Path
-from typing import Dict, Any, Optional
-import base64
 import tempfile
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import Any as _Any
+from typing import cast as _cast
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Static, TabbedContent, TabPane
-from typing import TYPE_CHECKING, cast as _cast, Any as _Any
-import importlib
+from textual.binding import Binding
+from textual.screen import Screen
+from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
+
+from .plots import (
+    plot_metagene_heatmap,
+    plot_read_frame_distribution,
+    plot_read_length_distribution,
+    plot_terminal_nucleotide_bias_distribution,
+)
 
 # Textual Image widget typing/runtime import without importing at type-check time
 TUIImage: _Any
@@ -27,16 +37,6 @@ if not TYPE_CHECKING:
         TUIImage = None
 else:  # type-checking path
     TUIImage = None
-from textual.binding import Binding
-from textual.screen import Screen
-
-from .plots import (
-    plot_read_frame_distribution,
-    plot_metagene_heatmap,
-    plot_read_length_distribution,
-    plot_terminal_nucleotide_bias_distribution,
-)
-
 
 class RiboMetricData:
     """Wrapper class for RiboMetric JSON data with convenient accessors"""

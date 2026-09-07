@@ -1,8 +1,9 @@
 
-from RiboMetric.file_parser import parse_bam
-from RiboMetric.bam_processing import process_reads
-from RiboMetric.file_splitting import split_idxstats_df
 import pandas as pd
+
+from RiboMetric.bam_processing import process_reads
+from RiboMetric.file_parser import parse_bam
+from RiboMetric.file_splitting import split_idxstats_df
 
 
 def test_bam_parsing(test_data_dir):

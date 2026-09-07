@@ -29,8 +29,8 @@ divergence across the 60 window positions (NA positions excluded).
 
 from __future__ import annotations
 
-import math
 import logging
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np

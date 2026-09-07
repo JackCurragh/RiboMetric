@@ -8,14 +8,13 @@ outcome (0 = PASS, 1 = WARNING, 2 = FAIL) so it can be branched on in a workflow
 """
 import csv
 import json
-from pathlib import Path
 from argparse import Namespace
+from pathlib import Path
 from typing import Any, Dict, cast
 
 import yaml
 
-from .results_output import evaluate_qc_status, DEFAULT_QC_THRESHOLDS
-
+from .results_output import DEFAULT_QC_THRESHOLDS, evaluate_qc_status
 
 # Exit codes used to gate downstream pipeline steps.
 EXIT_PASS = 0

@@ -4,8 +4,8 @@ of the RibosomeProfiler pipeline
 
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 try:
     from xhtml2pdf import pisa
@@ -13,7 +13,7 @@ try:
 except ImportError:
     HAS_PDF = False
 
-from typing import List, Dict, Tuple, Optional, cast
+from typing import Dict, List, Optional, Tuple, cast
 
 DEFAULT_OFFSET_BOUNDS: Tuple[int, int] = (8, 20)
 DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION = 2 / 3
@@ -579,7 +579,7 @@ def normalise_ligation_bias(
         # pattern_length: Length of nucleotide pattern
 
     Outputs:
-        terminal_nucleotide_bias_dict_norm: Modified 
+        terminal_nucleotide_bias_dict_norm: Modified
                                 terminal_nucleotide_bias_dict to show the
                                 difference between observed and expected
                                 distributions

@@ -1,5 +1,5 @@
-import pandas as pd
 import pytest
+
 from RiboMetric.file_parser import check_annotation, parse_annotation
 
 

@@ -11,14 +11,14 @@ This module provides multiple output formats optimized for different use cases:
 - Offsets TSV: Applied offset audit table
 """
 
-import json
 import csv
+import json
 import math
-import pandas as pd
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, cast
 
+import pandas as pd
 
 # =============================================================================
 # Legacy Functions (Backwards Compatibility)

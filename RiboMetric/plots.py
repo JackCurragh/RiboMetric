@@ -3,16 +3,18 @@ This script contains the code for generating the plots for
 RiboMetric reports
 """
 
+import base64
 import os
+from typing import Dict, List
+
+import pandas as pd
+import plotly.express as px
+import plotly.io as pio
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
+
 from .modules import read_frame_cull, read_frame_score_trips_viz, sum_mRNA_distribution
 from .scoring import build_scored_metrics
-import plotly.io as pio
-import base64
-
-import plotly.express as px
-import pandas as pd
 
 
 def _prepare_report_figure(fig: go.Figure) -> go.Figure:
@@ -815,7 +817,6 @@ regions represented in the reads",
     return plot_mRNA_distribution_dict
 
 
-from typing import Dict, List
 
 
 def plot_mRNA_read_breakdown(

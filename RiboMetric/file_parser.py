@@ -4,28 +4,29 @@ in the RiboMetric pipeline
 
 The functions are called by the main script RiboMetric.py
 """
-from Bio import SeqIO
-from pysam import AlignmentFile
-import gffpandas.gffpandas as gffpd
-
-import pandas as pd
-import numpy as np
-import tempfile
 import gzip
 import os
 import subprocess
-
+import tempfile
 from multiprocessing import Pool
 from tempfile import TemporaryDirectory
+from typing import List, Optional
 
+import gffpandas.gffpandas as gffpd
+import numpy as np
+import pandas as pd
+from Bio import SeqIO
+from pysam import AlignmentFile
 
-from .bam_processing import (join_batches,
-                             ox_parse_reads,
-                             )
-from .file_splitting import (split_gff_df,
-                             run_samtools_idxstats,
-                             split_idxstats_df,
-                             )
+from .bam_processing import (
+    join_batches,
+    ox_parse_reads,
+)
+from .file_splitting import (
+    run_samtools_idxstats,
+    split_gff_df,
+    split_idxstats_df,
+)
 
 # Fraction of transcripts whose CDS may overrun the spliced transcript length
 # before the annotation is rejected as non-transcript-relative (see
@@ -253,7 +254,6 @@ def parse_bam(bam_file: str,
     return parsed_bam
 
 
-from typing import List
 
 
 def get_top_transcripts(read_df: pd.DataFrame, num_transcripts: int) -> List[str]:
@@ -418,7 +418,6 @@ def parse_gff(gff_path: str, num_transcripts: int) -> pd.DataFrame:
 
 
 
-from typing import Optional
 
 
 def gff_df_to_cds_df(gff_df: pd.DataFrame, outpath: Optional[str] = None) -> pd.DataFrame:

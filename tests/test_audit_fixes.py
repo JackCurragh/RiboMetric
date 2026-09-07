@@ -11,13 +11,11 @@ Each test pins a specific bug that previously passed silently:
 import os
 
 import pandas as pd
-import pytest
 
 from RiboMetric.bam_processing import process_sequences
-from RiboMetric.file_parser import parse_gff, gff_df_to_cds_df
+from RiboMetric.file_parser import gff_df_to_cds_df, parse_gff
 from RiboMetric.modules import a_site_calculation
 from RiboMetric.results_output import evaluate_qc_status
-
 
 TEST_DATA = os.path.join(os.path.dirname(__file__), "test_data")
 

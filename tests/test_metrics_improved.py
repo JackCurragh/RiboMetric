@@ -2,30 +2,30 @@
 Improved and expanded tests for RiboMetric metrics
 """
 
-import pytest
-import numpy as np
 import pandas as pd
+import pytest
+
 from RiboMetric.metrics import (
-    read_length_distribution_IQR_normalised_metric,
-    read_length_distribution_coefficient_of_variation_metric,
-    read_length_distribution_max_prop_metric,
-    read_length_distribution_bimodality,
-    read_length_distribution_normality_metric,
-    periodicity_dominance,
+    cds_coverage_metric,
+    fourier_transform,
+    information_metric_cutoff,
     periodicity_autocorrelation,
+    periodicity_dominance,
+    proportion_of_reads_in_region,
+    read_frame_information_content,
+    read_frame_information_weighted_score,
+    read_length_distribution_bimodality,
+    read_length_distribution_coefficient_of_variation_metric,
+    read_length_distribution_IQR_normalised_metric,
+    read_length_distribution_max_prop_metric,
+    read_length_distribution_normality_metric,
+    region_region_ratio_metric,
+    terminal_nucleotide_bias_KL_divergence,
+    terminal_nucleotide_bias_KL_metric,
+    terminal_nucleotide_bias_max_absolute_metric,
     uniformity_entropy,
     uniformity_gini_index,
     uniformity_theil_index,
-    fourier_transform,
-    read_frame_information_content,
-    information_metric_cutoff,
-    read_frame_information_weighted_score,
-    terminal_nucleotide_bias_KL_metric,
-    terminal_nucleotide_bias_KL_divergence,
-    terminal_nucleotide_bias_max_absolute_metric,
-    cds_coverage_metric,
-    region_region_ratio_metric,
-    proportion_of_reads_in_region,
 )
 
 

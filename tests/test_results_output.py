@@ -2,23 +2,22 @@
 Tests for results_output.py - both legacy and improved functions
 """
 
-import pytest
 import json
-import csv
+
 import pandas as pd
-from pathlib import Path
+import pytest
+
 from RiboMetric.results_output import (
-    generate_json,
-    generate_csv,
-    normalise_score,
-    generate_summary_tsv,
-    generate_qc_status,
+    generate_all_outputs,
     generate_comparison_ready_csv,
+    generate_csv,
+    generate_json,
     generate_metrics_table_csv,
     generate_offsets_tsv,
-    generate_all_outputs,
+    generate_qc_status,
+    generate_summary_tsv,
+    normalise_score,
 )
-
 
 # =============================================================================
 # Test Fixtures

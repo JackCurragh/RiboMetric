@@ -2,27 +2,27 @@
 This script contains tests for the different functions found in modules.py
 """
 
-from RiboMetric.modules import (
-    read_length_distribution,
-    terminal_nucleotide_bias_distribution,
-    normalise_ligation_bias,
-    nucleotide_composition,
-    a_site_calculation,
-    read_frame_distribution,
-    read_frame_distribution_annotated,
-    annotate_reads,
-    assign_mRNA_category,
-    mRNA_distribution,
-    metagene_profile,
-    filter_unique_mappers,
-    filter_unique_mappers_strict,
-    asite_calculation_per_readlength,
-    representative_transcripts_for_offset_metagene,
-    unique_fragments_single_gene_for_offset_metagene,
-    annotate_reads,
-)
 import pandas as pd
 import pytest
+
+from RiboMetric.modules import (
+    a_site_calculation,
+    annotate_reads,
+    asite_calculation_per_readlength,
+    assign_mRNA_category,
+    filter_unique_mappers,
+    filter_unique_mappers_strict,
+    metagene_profile,
+    mRNA_distribution,
+    normalise_ligation_bias,
+    nucleotide_composition,
+    read_frame_distribution,
+    read_frame_distribution_annotated,
+    read_length_distribution,
+    representative_transcripts_for_offset_metagene,
+    terminal_nucleotide_bias_distribution,
+    unique_fragments_single_gene_for_offset_metagene,
+)
 
 
 def test_a_site_calculation(sample_read_df):

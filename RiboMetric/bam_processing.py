@@ -1,16 +1,18 @@
 """
 This script contains processing steps used to parse bam files.
 """
-import pandas as pd
-import numpy as np
-import itertools
-import oxbow as ox
 import io
+import itertools
 import os
+from typing import Any, Dict, Iterable, List
+
+import numpy as np
+import oxbow as ox
+import pandas as pd
 import pyarrow.ipc
 import pysam
-from .file_splitting import split_bam, format_progress
-from typing import Any, Dict, List, Iterable
+
+from .file_splitting import format_progress, split_bam
 
 # Process 1-in-N read chunks when accumulating sequence composition and
 # terminal-bias backgrounds. 1 = use every read (accurate, the default);
@@ -76,7 +78,7 @@ def ox_parse_reads(bam_file: str,
                         split_num,
                         reference_df,
                         tempdir)
-    
+
     validate_bam(tmp_bam)
 
     print("\n"*(split_num // print_columns),

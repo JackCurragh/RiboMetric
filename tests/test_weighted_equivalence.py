@@ -9,11 +9,11 @@ import pandas as pd
 
 from RiboMetric.modules import (
     a_site_calculation,
-    read_frame_distribution,
     annotate_reads,
     assign_mRNA_category,
-    mRNA_distribution,
     metagene_profile,
+    mRNA_distribution,
+    read_frame_distribution,
 )
 
 

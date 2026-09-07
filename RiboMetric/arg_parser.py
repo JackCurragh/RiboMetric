@@ -1,10 +1,10 @@
 
-import os
-import yaml
-from typing import Dict, Any, cast
 import argparse
-from rich.emoji import Emoji
+import os
+from typing import Any, Dict, cast
 
+import yaml
+from rich.emoji import Emoji
 
 
 def argument_parser() -> argparse.ArgumentParser:
