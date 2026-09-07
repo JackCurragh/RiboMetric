@@ -1,89 +1,109 @@
-.PHONY: clean clean-build clean-pyc clean-test coverage dist docs help install lint lint/flake8 lint/black
+.PHONY: help clean clean-build clean-pyc clean-test lint format typecheck test test-cov \
+        coverage build dist preflight docs servedocs install \
+        bump-patch bump-minor bump-major
 .DEFAULT_GOAL := help
 
-define BROWSER_PYSCRIPT
-import os, webbrowser, sys
-
-from urllib.request import pathname2url
-
-webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])))
-endef
-export BROWSER_PYSCRIPT
-
-define PRINT_HELP_PYSCRIPT
-import re, sys
-
-for line in sys.stdin:
-	match = re.match(r'^([a-zA-Z_-]+):.*?## (.*)$$', line)
-	if match:
-		target, help = match.groups()
-		print("%-20s %s" % (target, help))
-endef
-export PRINT_HELP_PYSCRIPT
-
-BROWSER := python -c "$$BROWSER_PYSCRIPT"
+# Every target runs through one interpreter. Override for a venv or a specific
+# version:  make test PYTHON=.venv/bin/python
+#
+# Tools are invoked as `$(PYTHON) -m <tool>`, never as bare executables: a
+# `pip install --user` puts them in a scripts dir that is usually not on PATH,
+# which is how `make bump-*` fails with "command not found" on a machine where
+# the tool is definitely installed. The module form is equivalent and
+# PATH-independent.
+PYTHON ?= python3
 
 help:
-	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
+	@echo "PYTHON=$(PYTHON)"
+	@echo ""
+	@echo "clean        remove build, test and Python artifacts"
+	@echo "lint         run ruff + black --check (the CI lint gate)"
+	@echo "format       apply black + ruff --fix"
+	@echo "typecheck    run mypy (fatal, as in CI)"
+	@echo "test         run the test suite"
+	@echo "test-cov     run tests with coverage"
+	@echo "build/dist   build sdist + wheel"
+	@echo "preflight    build + twine check + wheel-name check (what CI asserts)"
+	@echo "docs         build the Sphinx HTML docs"
+	@echo "bump-patch   bump patch version, commit and tag (vX.Y.Z)"
+	@echo "bump-minor   bump minor version, commit and tag"
+	@echo "bump-major   bump major version, commit and tag"
 
-clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and Python artifacts
+clean: clean-build clean-pyc clean-test
 
-clean-build: ## remove build artifacts
-	rm -fr build/
-	rm -fr dist/
-	rm -fr .eggs/
+clean-build:
+	rm -fr build/ dist/ .eggs/
 	find . -name '*.egg-info' -exec rm -fr {} +
 	find . -name '*.egg' -exec rm -f {} +
 
-clean-pyc: ## remove Python file artifacts
-	find . -name '*.pyc' -exec rm -f {} +
-	find . -name '*.pyo' -exec rm -f {} +
-	find . -name '*~' -exec rm -f {} +
+clean-pyc:
+	find . -name '*.pyc' -delete
+	find . -name '*.pyo' -delete
 	find . -name '__pycache__' -exec rm -fr {} +
 
-clean-test: ## remove test and coverage artifacts
-	rm -fr .tox/
-	rm -f .coverage
-	rm -fr htmlcov/
-	rm -fr .pytest_cache
+clean-test:
+	rm -fr .tox/ .pytest_cache .mypy_cache htmlcov/
+	rm -f .coverage coverage.xml
 
-lint/flake8: ## check style with flake8
-	flake8 RiboMetric tests
-lint/black: ## check style with black
-	black --check RiboMetric tests
+# ruff replaces flake8 *and* isort (REPO_CONTRACT §4b). Do not add either back.
+lint:
+	$(PYTHON) -m ruff check RiboMetric tests
+	$(PYTHON) -m black --check RiboMetric tests
 
-lint: lint/flake8 lint/black ## check style
+format:
+	$(PYTHON) -m black RiboMetric tests
+	$(PYTHON) -m ruff check --fix RiboMetric tests
 
-test: ## run tests quickly with the default Python
-	pytest
+typecheck:
+	$(PYTHON) -m mypy --config-file mypy.ini RiboMetric
 
-test-all: ## run tests on every Python version with tox
-	tox
+test:
+	RIBOMETRIC_SKIP_IMAGES=1 $(PYTHON) -m pytest -q -n auto
 
-coverage: ## check code coverage quickly with the default Python
-	coverage run --source RiboMetric -m pytest
-	coverage report -m
-	coverage html
-	$(BROWSER) htmlcov/index.html
+test-cov coverage:
+	RIBOMETRIC_SKIP_IMAGES=1 $(PYTHON) -m pytest -n auto \
+		--cov=RiboMetric --cov-report=term-missing --cov-report=xml
 
-docs: ## generate Sphinx HTML documentation, including API docs
-	rm -f docs/RiboMetric.rst
-	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ RiboMetric
-	$(MAKE) -C docs clean
-	$(MAKE) -C docs html
-	$(BROWSER) docs/_build/html/index.html
-
-servedocs: docs ## compile the docs watching for changes
-	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
-
-release: dist ## package and upload a release
-	twine upload dist/*
-
-dist: clean ## builds source and wheel package
-	python setup.py sdist
-	python setup.py bdist_wheel
+build dist: clean
+	$(PYTHON) -m build
 	ls -l dist
 
-install: clean ## install the package to the active Python's site-packages
-	python setup.py install
+# Mirrors ci.yml's `build` job exactly, and is the only rehearsal for a
+# release. There is deliberately no TestPyPI target (REPO_CONTRACT §5.4): it
+# uses a stored token and exercises neither OIDC nor the trusted-publisher
+# binding, so it cannot rehearse the real path. `twine check` alone does not
+# catch a non-normalised wheel filename -- the check below is what does.
+preflight: dist
+	$(PYTHON) -m twine check dist/*
+	@for f in dist/*.whl dist/*.tar.gz; do \
+		case "$$(basename $$f)" in \
+			ribometric-*) ;; \
+			*) echo "ERROR: $$(basename $$f) is not normalised; PyPI needs the 'ribometric-' prefix"; exit 1 ;; \
+		esac; \
+	done
+	@echo "dist filenames normalised:"; ls -1 dist
+
+docs:
+	rm -f docs/RiboMetric.rst docs/modules.rst
+	$(PYTHON) -m sphinx.ext.apidoc -o docs/ RiboMetric
+	$(MAKE) -C docs clean
+	$(MAKE) -C docs html
+
+servedocs: docs
+	$(PYTHON) -m http.server --directory docs/_build/html
+
+install: clean
+	$(PYTHON) -m pip install -e '.[dev]'
+
+# bump2version is the only way the version changes (REPO_CONTRACT §5.2). It
+# rewrites every file in .bumpversion.cfg, commits and tags in one step, so the
+# bump *is* the release-cut action. There is no `release` target that uploads:
+# pushing the tag is what publishes, through release.yml.
+bump-patch:
+	$(PYTHON) -m bumpversion patch
+
+bump-minor:
+	$(PYTHON) -m bumpversion minor
+
+bump-major:
+	$(PYTHON) -m bumpversion major
