@@ -93,9 +93,7 @@ docs:
 	rm -rf docs/_build docs/RiboMetric.rst docs/modules.rst
 	$(PYTHON) -m sphinx -b html docs docs/_build/html
 
-# Treat any sphinx warning as fatal. Not wired into CI yet: 25 warnings remain,
-# all from docstrings using an "Inputs:" block whose body is not indented under
-# the label. See the note in .readthedocs.yaml.
+# Treat any sphinx warning as fatal. This is what CI runs; keep it at zero.
 docs-strict:
 	rm -rf docs/_build docs/RiboMetric.rst docs/modules.rst
 	$(PYTHON) -m sphinx -b html -W --keep-going docs docs/_build/html

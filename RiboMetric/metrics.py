@@ -492,15 +492,15 @@ def region_region_ratio_metric(
     reads in region1 relative to region2.
 
     Inputs:
-    mRNA_distribution: Dictionary containing the output of the
-        mRNA_distribution module
-    region1: String specifying the first region
-    region2: String specifying the second region
-    read_length_range: Tuple containing the minimum and maximum read
-        length to consider for the metric
+        mRNA_distribution: Dictionary containing the output of the
+            mRNA_distribution module
+        region1: String specifying the first region
+        region2: String specifying the second region
+        read_length_range: Tuple containing the minimum and maximum read
+            length to consider for the metric
 
     Outputs:
-    region_region_ratio: Dictionary containing the region-region ratio metric
+        region_region_ratio: Dictionary containing the region-region ratio metric
     """
     region_region_ratio: Dict[int | str, float] = {}
     region1_total, region2_total = 0, 0
@@ -531,12 +531,12 @@ def proportion_of_reads_in_region(
     Calculate the proportion of reads in a specific region
 
     Inputs:
-    mRNA_distribution: Dictionary containing the output of the
-        mRNA_distribution module
-    region: String specifying the region
+        mRNA_distribution: Dictionary containing the output of the
+            mRNA_distribution module
+        region: String specifying the region
 
     Outputs:
-    proportion: Dictionary containing the proportion of reads in the region
+        proportion: Dictionary containing the proportion of reads in the region
     """
     proportion: Dict[int | str, float] = {}
     total = 0
@@ -587,17 +587,12 @@ def autocorrelate_counts(
     Computes the autocorrelation of the ribosome counts at a given lag.
 
     Parameters:
-    -----------
-    metagene_profile: dict
-        The metagene profile to compute the autocorrelation of.
-
-    lag: int
-        The lag to compute the autocorrelation at.
+        metagene_profile: The metagene profile to compute the
+            autocorrelation of.
+        lag: The lag to compute the autocorrelation at.
 
     Returns:
-    --------
-    read_length_scores: dict
-        The autocorrelation scores at the given lag.
+        read_length_scores: The autocorrelation scores at the given lag.
     """
     read_length_scores: Dict[int | str, float] = {}
     global_counts: npt.NDArray[np.float64] | None = None

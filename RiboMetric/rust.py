@@ -1,27 +1,28 @@
 """
 RUST (Ribo-seq Unit Step Transformation) metric for RiboMetric.
 
-Implements the codon-level RUST metagene from:
-    O'Connor, Andreev & Baranov, Nat Commun 2016;7:12915.
-    "Comparative survey of the relative impact of mRNA features on local
-    ribosome profiling read density." doi:10.1038/ncomms12915
+Implements the codon-level RUST metagene from O'Connor, Andreev & Baranov,
+Nat Commun 2016;7:12915, "Comparative survey of the relative impact of mRNA
+features on local ribosome profiling read density", doi:10.1038/ncomms12915.
 
-Algorithm (O'Connor et al.):
-    For each transcript with a valid CDS annotation:
-    1.  Extract the elongation region (CDS[120:-60], skipping first 40 codons
-        and last 20 to avoid initiation/termination artefacts).
-    2.  Build a per-nucleotide A-site density profile.
-    3.  Compute average_gene_density (mean density in the elongation region).
-    4.  For each codon in the elongation region slide a 60-codon window
-        (centred such that the A-site codon is at window position 40, i.e.
-        40 codons upstream and 19 codons downstream are captured):
-          - Increment the "total" counter for every codon in the window.
-          - If the current codon is "enriched" (3-nt density > average),
-            also increment the "enriched" counter.
-    5.  RUST ratio per (codon, window_position) = enriched / total.
-    6.  KL divergence per window position using observed RUST ratios as
-        the observed distribution and per-codon expected enrichment rates
-        as the expected distribution.
+Algorithm (O'Connor et al.), for each transcript with a valid CDS annotation:
+
+1. Extract the elongation region (CDS[120:-60], skipping the first 40 codons
+   and the last 20 to avoid initiation/termination artefacts).
+2. Build a per-nucleotide A-site density profile.
+3. Compute average_gene_density (mean density in the elongation region).
+4. For each codon in the elongation region slide a 60-codon window, centred
+   so the A-site codon is at window position 40 -- that is, 40 codons
+   upstream and 19 downstream are captured:
+
+   - increment the "total" counter for every codon in the window;
+   - if the current codon is "enriched" (3-nt density > average), also
+     increment the "enriched" counter.
+
+5. RUST ratio per (codon, window_position) = enriched / total.
+6. KL divergence per window position, using the observed RUST ratios as the
+   observed distribution and the per-codon expected enrichment rates as the
+   expected distribution.
 
 The scalar summary metric is ``rust_mean_kl_divergence`` — the mean KL
 divergence across the 60 window positions (NA positions excluded).
