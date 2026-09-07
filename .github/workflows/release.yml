@@ -1,56 +1,142 @@
-name: Release to PyPI
+name: Release
 
-# Builds the sdist + wheel on every version tag and publishes to PyPI using
-# Trusted Publishing (OIDC). No API token is stored in the repo.
+# The single release path. Pushing a `vX.Y.Z` tag (which `bump2version`
+# creates -- see .bumpversion.cfg) produces, in this order and only if each
+# step passes:
 #
-# One-time setup on PyPI: add a Trusted Publisher for this repo/workflow under
-# the RiboMetric project settings (https://pypi.org/manage/project/RiboMetric/),
-# and create a GitHub environment named "pypi".
+#   gate    -> the full CI gate, re-run on the tag (calls ci.yml; not a copy)
+#   pypi    -> sdist + wheel to PyPI via Trusted Publishing (OIDC, no token)
+#   image   -> ghcr.io/<owner>/ribometric:vX.Y.Z, :X.Y and :latest
+#   release -> a GitHub Release with the distributions attached
+#
+# `:latest` means "the most recent release" and is written here only. The tip
+# of main is published as `:main` / `:sha-<short>` by ci.yml. Nothing else in
+# the repo pushes a container tag.
+#
+# One-time PyPI setup: a Trusted Publisher under
+# https://pypi.org/manage/project/ribometric/settings/publishing/ and a GitHub
+# environment named `pypi`. Two fields fail as an opaque "not authorised" long
+# after a green build: "Workflow name" wants the *filename* (`release.yml`),
+# not the `name:` above, and the environment name must match `environment:
+# pypi` exactly.
 
 on:
   push:
     tags:
       - 'v*'
 
+permissions:
+  contents: read
+
 jobs:
-  build:
-    name: Build distributions
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  gate:
+    name: CI gate
+    uses: ./.github/workflows/ci.yml
+    # A called workflow's jobs may not request more permission than the
+    # calling job grants, and GitHub validates that at STARTUP -- before any
+    # job-level `if` is evaluated. ci.yml's `image` job declares
+    # `packages: write`, so omitting it here fails the whole run as
+    # `startup_failure` with zero jobs and the message "This run likely failed
+    # because of a workflow file issue", which names neither the job nor the
+    # permission. Grant it so the file validates; that job's `if` still keeps
+    # it from running on a tag.
+    permissions:
+      contents: read
+      packages: write
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Build sdist and wheel
-        run: |
-          python -m pip install --upgrade pip build
-          python -m build
-
-      - name: Check metadata
-        run: |
-          python -m pip install --upgrade twine
-          twine check dist/*
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-  publish:
+  pypi:
     name: Publish to PyPI
-    needs: build
+    needs: gate
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
       id-token: write  # required for Trusted Publishing
+    steps:
+      # Built once by the gate's `build` job; artifacts are shared across the
+      # run, so the published bits are byte-identical to the ones CI checked
+      # rather than a rebuild that might differ.
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      # Diagnosing a failure here: a 403 is the publisher binding; a 400 is
+      # the payload, almost always a non-normalised filename (which the gate's
+      # build job now asserts against). "Found and verified trusted root" in
+      # the log means OIDC worked and the problem is downstream.
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  image:
+    name: Publish release container
+    needs: gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Resolve image name (GHCR requires lowercase)
+        id: img
+        # See the same step in ci.yml: github.repository_owner preserves the
+        # account's casing and GitHub expressions have no lower().
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/ribometric" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.img.outputs.name }}
+          # `latest` is applied only for a non-prerelease semver tag.
+          tags: |
+            type=semver,pattern=v{{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      # Smoke-tested by digest after push. The Dockerfile's CMD is a shell,
+      # not the entrypoint, so the command has to be named explicitly.
+      - name: Smoke test built image
+        run: docker run --rm "${{ steps.img.outputs.name }}@${{ steps.build.outputs.digest }}" RiboMetric --help
+
+  release:
+    name: GitHub Release
+    needs: [pypi, image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
 
-      - name: Publish
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/*
