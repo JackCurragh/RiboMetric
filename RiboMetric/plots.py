@@ -1231,25 +1231,31 @@ def plot_metrics_summary(results_dict: dict, config: dict) -> dict:
     # that don't belong on a universal pass/fail scale.
     _DIAG_KEYS = [
         "disome_proportion",
-        "read_length_distribution_IQR_metric",
-        "read_length_distribution_coefficient_of_variation_metric",
-        "read_length_distribution_maxprop_metric",
-        "read_length_distribution_bimodality_metric",
+        "read_length_iqr_fraction",
+        "read_length_cv",
+        "read_length_max_proportion",
+        "read_length_bimodality_coefficient",
+        "read_length_normality_pvalue",
         "start_codon_enrichment_ratio",
         "stop_codon_readthrough_ratio",
         "five_prime_ramp_ratio",
         "three_prime_drop_ratio",
+        "floss_median",
     ]
+    # Labels name the quantity and, where it has one, its good direction. These
+    # are raw measurements, not scores: see docs/METRIC_NAMING.md.
     _DIAG_LABELS = {
         "disome_proportion": "Di-some proportion",
-        "read_length_distribution_IQR_metric": "Read-length IQR score",
-        "read_length_distribution_coefficient_of_variation_metric": "Read-length CV",
-        "read_length_distribution_maxprop_metric": "Read-length max-proportion",
-        "read_length_distribution_bimodality_metric": "Read-length bimodality",
+        "read_length_iqr_fraction": "Read-length IQR fraction (lower = tighter)",
+        "read_length_cv": "Read-length CV (lower = tighter)",
+        "read_length_max_proportion": "Read-length max proportion",
+        "read_length_bimodality_coefficient": "Read-length bimodality coefficient (lower = unimodal)",
+        "read_length_normality_pvalue": "Read-length normality p-value",
         "start_codon_enrichment_ratio": "Start-codon enrichment ratio",
-        "stop_codon_readthrough_ratio": "Stop-codon read-through ratio",
+        "stop_codon_readthrough_ratio": "Stop-codon read-through ratio (lower = less readthrough)",
         "five_prime_ramp_ratio": "5′ ramp ratio",
         "three_prime_drop_ratio": "3′ drop ratio",
+        "floss_median": "FLOSS median (lower = homogeneous)",
     }
 
     def _disome_caption(raw: float, lib_type: str | None) -> str:
@@ -1289,6 +1295,7 @@ def plot_metrics_summary(results_dict: dict, config: dict) -> dict:
         "metrics": [
             {
                 "key": m["key"],
+                "metric": m["metric"],
                 "name": m["key"].replace("_", " ").capitalize(),
                 "score": round(m["score"], 3) if m["score"] is not None else None,
                 "raw": m["raw"],

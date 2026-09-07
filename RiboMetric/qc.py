@@ -40,17 +40,17 @@ from .modules import (
 )
 
 from .metrics import (
-    read_length_distribution_IQR_normalised_metric as rld_metric,
-    read_length_distribution_coefficient_of_variation_metric as rldv_metric,
-    read_length_distribution_normality_metric as rldn_metric,
+    read_length_iqr_fraction,
+    read_length_cv,
+    read_length_normality_pvalue,
     terminal_nucleotide_bias_KL_divergence as lbd_raw,
-    terminal_nucleotide_bias_max_absolute_metric as lbmp_metric,
+    terminal_nucleotide_bias_max_deviation,
     read_frame_information_content as rf_info_metric,
     read_frame_information_weighted_score,
     information_metric_cutoff,
     cds_coverage_metric,
     region_region_ratio_metric,
-    read_length_distribution_max_prop_metric as rldpp_metric,
+    read_length_max_proportion,
     periodicity_autocorrelation,
     uniformity_autocorrelation,
     uniformity_entropy,
@@ -58,13 +58,15 @@ from .metrics import (
     uniformity_gini_index,
     periodicity_dominance,
     fourier_transform,
-    read_length_distribution_bimodality,
+    read_length_bimodality_coefficient,
     proportion_of_reads_in_region,
     recommend_read_lengths,
     classify_library_type,
     cds_enrichment_ratio,
     DOMINANCE_MIN_READS,
 )
+from .registry import build_legacy_metrics
+from .scoring import build_scored_metrics
 from typing import Any, Dict, Optional, Tuple
 
 # Fallback P-/A-site offsets (nt from the read 5' end) used when no per-read-length
@@ -632,11 +634,12 @@ def annotation_mode(
         key: (round(value, 4) if isinstance(value, float) else value)
         for key, value in alignment_stats.items()
     }
+    # multimapper_rate duplicated rpf_multimapper_rate and unique_rpf_rate is
+    # its complement; both remain available in results["alignment_stats"] and
+    # in results["metrics_legacy"].
     for metric_name in (
         "duplicate_rate",
-        "multimapper_rate",
         "rpf_multimapper_rate",
-        "unique_rpf_rate",
         "alignment_multimapper_rate",
     ):
         results_dict["metrics"][metric_name] = alignment_stats[metric_name]
@@ -674,42 +677,40 @@ def annotation_mode(
         read_df
     )
 
-    # Default read length metrics
+    # Read length shape. These are reported in their natural direction (spread
+    # is spread, not 1 - spread) and are diagnostics, not scores: see
+    # docs/METRIC_NAMING.md.
     if should_calculate_metric("read_length_distribution_IQR", config):
-        results_dict["metrics"][
-            "read_length_distribution_IQR_metric"
-            ] = rld_metric(
-            results_dict["read_length_distribution"]
+        results_dict["metrics"]["read_length_iqr_fraction"] = (
+            read_length_iqr_fraction(results_dict["read_length_distribution"])
         )
 
     if should_calculate_metric("read_length_distribution_coefficient_of_variation", config):
-        results_dict["metrics"][
-            "read_length_distribution_coefficient_of_variation_metric"
-            ] = rldv_metric(
+        results_dict["metrics"]["read_length_cv"] = read_length_cv(
             results_dict["read_length_distribution"]
         )
 
     if should_calculate_metric("read_length_distribution_maxprop", config):
-        results_dict["metrics"][
-            "read_length_distribution_maxprop_metric"] = rldpp_metric(
-            results_dict["read_length_distribution"],
-            num_top_readlens=1
+        results_dict["metrics"]["read_length_max_proportion"] = (
+            read_length_max_proportion(
+                results_dict["read_length_distribution"],
+                num_top_readlens=1,
+            )
         )
 
-    # Optional read length metrics
     if should_calculate_metric("read_length_distribution_bimodality", config):
-        results_dict["metrics"][
-            "read_length_distribution_bimodality_metric"
-            ] = read_length_distribution_bimodality(
+        results_dict["metrics"]["read_length_bimodality_coefficient"] = (
+            read_length_bimodality_coefficient(
                 results_dict["read_length_distribution"]
             )
+        )
 
     if should_calculate_metric("read_length_distribution_normality", config):
-        results_dict["metrics"][
-            "read_length_distribution_normality_metric"
-            ] = rldn_metric(
+        results_dict["metrics"]["read_length_normality_pvalue"] = (
+            read_length_normality_pvalue(
                 results_dict["read_length_distribution"]
             )
+        )
 
     # Di-some proportion — fraction of reads in the di-some read-length window.
     # A secondary peak here indicates di-some contamination or a mixed library.
@@ -742,43 +743,34 @@ def annotation_mode(
                 "nucleotide_count"
             ],
         )
-        # Terminal nucleotide bias (standard + consolidated key aliases)
-        _lbd5_raw = lbd_raw(
+        # Terminal nucleotide bias. Both quantities are reported as bias --
+        # higher means more departure from the background -- under keys that
+        # say so. The 1/(1+KL) and 1-deviation spellings that used to be
+        # emitted alongside them are now derived in results["metrics_legacy"].
+        results_dict["metrics"]["terminal_bias_kl_5prime"] = lbd_raw(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["5_prime_bg"],
             prime="five_prime",
         )
-        _lbd3_raw = lbd_raw(
+        results_dict["metrics"]["terminal_bias_kl_3prime"] = lbd_raw(
             results_dict["terminal_nucleotide_bias_distribution"],
             sequence_background["3_prime_bg"],
             prime="three_prime",
         )
-        _lbd5 = 1 / (1 + _lbd5_raw)
-        _lbd3 = 1 / (1 + _lbd3_raw)
-        _lbm5 = lbmp_metric(
-            results_dict["terminal_nucleotide_bias_distribution"],
-            sequence_background["5_prime_bg"],
-            prime="five_prime",
+        results_dict["metrics"]["terminal_bias_max_deviation_5prime"] = (
+            terminal_nucleotide_bias_max_deviation(
+                results_dict["terminal_nucleotide_bias_distribution"],
+                sequence_background["5_prime_bg"],
+                prime="five_prime",
+            )
         )
-        _lbm3 = lbmp_metric(
-            results_dict["terminal_nucleotide_bias_distribution"],
-            sequence_background["3_prime_bg"],
-            prime="three_prime",
+        results_dict["metrics"]["terminal_bias_max_deviation_3prime"] = (
+            terminal_nucleotide_bias_max_deviation(
+                results_dict["terminal_nucleotide_bias_distribution"],
+                sequence_background["3_prime_bg"],
+                prime="three_prime",
+            )
         )
-        # Legacy keys (preserve)
-        results_dict["metrics"]["terminal_nucleotide_bias_distribution_5_prime_metric"] = _lbd5
-        results_dict["metrics"]["terminal_nucleotide_bias_distribution_3_prime_metric"] = _lbd3
-        results_dict["metrics"]["terminal_nucleotide_bias_max_absolute_metric_5_prime_metric"] = _lbm5
-        results_dict["metrics"]["terminal_nucleotide_bias_max_absolute_metric_3_prime_metric"] = _lbm3
-        # Consolidated keys (new)
-        results_dict["metrics"]["terminal_bias_kl_5prime"] = _lbd5
-        results_dict["metrics"]["terminal_bias_kl_3prime"] = _lbd3
-        results_dict["metrics"]["terminal_bias_kl_5prime_score"] = _lbd5
-        results_dict["metrics"]["terminal_bias_kl_3prime_score"] = _lbd3
-        results_dict["metrics"]["terminal_bias_kl_5prime_raw"] = _lbd5_raw
-        results_dict["metrics"]["terminal_bias_kl_3prime_raw"] = _lbd3_raw
-        results_dict["metrics"]["terminal_bias_maxabs_5prime"] = _lbm5
-        results_dict["metrics"]["terminal_bias_maxabs_3prime"] = _lbm3
         if config["plots"][
                 "terminal_nucleotide_bias_distribution"][
                 "background_freq"]:
@@ -1020,36 +1012,34 @@ def annotation_mode(
             minimum_reads=1,
             in_frame_coverage=config["qc"]["cds_coverage"]["in_frame_coverage"]
             )
-        results_dict["metrics"]["CDS_coverage_metric"] = _cds_cov
+        # One key per number. These were previously emitted twice each, under
+        # a CDS_coverage_metric* and a cds_coverage* spelling: ten keys for
+        # five values, with no way to tell which was canonical.
         results_dict["metrics"]["cds_coverage"] = _cds_cov
-        results_dict["metrics"]["CDS_coverage_metric_not_inframe_1read_1000tx"] = cds_coverage_metric(
+        results_dict["metrics"]["cds_coverage_1read_1000tx"] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=1,
             in_frame_coverage=False,
             num_transcripts=1000
             )
-        results_dict["metrics"]["cds_coverage_not_inframe_1read_1000tx"] = results_dict["metrics"]["CDS_coverage_metric_not_inframe_1read_1000tx"]
-        results_dict["metrics"]["CDS_coverage_metric_not_inframe_100read_100tx"] = cds_coverage_metric(
+        results_dict["metrics"]["cds_coverage_100read_100tx"] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=100,
             in_frame_coverage=False,
             num_transcripts=100
             )
-        results_dict["metrics"]["cds_coverage_not_inframe_100read_100tx"] = results_dict["metrics"]["CDS_coverage_metric_not_inframe_100read_100tx"]
-        results_dict["metrics"]["CDS_coverage_metric_inframe_1read_1000tx"] = cds_coverage_metric(
+        results_dict["metrics"]["cds_coverage_inframe_1read_1000tx"] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=1,
             in_frame_coverage=True,
             num_transcripts=1000
             )
-        results_dict["metrics"]["cds_coverage_inframe_1read_1000tx"] = results_dict["metrics"]["CDS_coverage_metric_inframe_1read_1000tx"]
-        results_dict["metrics"]["CDS_coverage_metric_inframe_100read_100tx"] = cds_coverage_metric(
+        results_dict["metrics"]["cds_coverage_inframe_100read_100tx"] = cds_coverage_metric(
             cds_read_df,
             minimum_reads=100,
             in_frame_coverage=True,
             num_transcripts=100
             )
-        results_dict["metrics"]["cds_coverage_inframe_100read_100tx"] = results_dict["metrics"]["CDS_coverage_metric_inframe_100read_100tx"]
 
         #######################################################################
         # RNA REGIONAL SUPPORT
@@ -1270,6 +1260,28 @@ def annotation_mode(
             )
             results_dict["metrics"]["proline_dwell"] = dwell.get("proline_dwell")
             results_dict["metrics"]["cga_dwell"] = dwell.get("cga_dwell")
+
+    # Derived scores, in their own namespace. Every value is 0-1 and
+    # higher-is-better, and each names the raw metric it came from, so a
+    # consumer never has to know a metric's direction to read a score.
+    results_dict["scores"] = {
+        record["key"]: {
+            "metric": record["metric"],
+            "raw": record["raw"],
+            "score": record["score"],
+            "status": record["status"],
+            "gate": record["gate"],
+            "tier": record["tier"],
+        }
+        for record in build_scored_metrics(results_dict, config)
+    }
+
+    # Pre-2.0 metric spellings, derived from the canonical keys. Kept for one
+    # minor cycle so existing consumers (cohort tables, --expected policies,
+    # riboseq.org ingestion) keep working while they migrate. Remove at v2.1.
+    results_dict["metrics_legacy"] = build_legacy_metrics(
+        results_dict["metrics"]
+    )
 
     return results_dict
 
