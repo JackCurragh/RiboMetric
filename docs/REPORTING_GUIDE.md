@@ -26,7 +26,7 @@ RiboMetric provides multiple output formats optimized for different use cases:
 
 **Format:** One line per sample, easily concatenated
 
-```tsv
+```text
 sample	timestamp	mode	total_reads	periodicity_dominance	uniformity_entropy	cds_enrichment_ratio
 Sample1	2025-01-15T10:30:00	annotation	1500000	0.85	0.78	3.12
 Sample2	2025-01-15T11:45:00	annotation	1200000	0.72	0.65	1.80
@@ -125,7 +125,7 @@ fi
 
 **Format:** Wide format with all metrics as columns
 
-```csv
+```text
 sample,timestamp,periodicity_dominance_global,uniformity_entropy_global,cds_enrichment_ratio,...
 Sample1,2025-01-15T10:30:00,0.85,0.78,3.12,...
 Sample2,2025-01-15T11:45:00,0.72,0.65,1.80,...
@@ -189,7 +189,7 @@ metrics %>%
 
 **Format:**
 
-```csv
+```text
 sample,metric,read_length_or_region,value,description
 Sample1,periodicity_dominance,global,0.85,Proportion of reads in dominant reading frame
 Sample1,periodicity_dominance,28,0.82,Proportion of reads in dominant reading frame
@@ -442,5 +442,5 @@ cat final_reports/sample_summary.tsv >> project_summary.tsv
 ## Further Reading
 
 - [METRICS.md](METRICS.md) - Detailed metric descriptions
-- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - Command-line options
+- `RiboMetric --help` - Command-line options
 - [Documentation](https://ribometric.readthedocs.io) - Full online docs

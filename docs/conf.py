@@ -34,7 +34,25 @@ sys.path.insert(0, os.path.abspath(".."))
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.viewcode"]
+# myst_parser lets the Markdown docs (METRICS.md, METRICS_DESIGN.md,
+# REPORTING_GUIDE.md, RELEASE.md) go in the toctree. Without it
+# source_suffix is .rst only and they are unreachable on the site.
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.napoleon",
+    "myst_parser",
+]
+
+# The codebase documents parameters as "Inputs:" / "Outputs:" with an indented
+# block. That is not valid RST -- docutils read the indent as a block quote and
+# emitted ~35 "Unexpected indentation" errors across the API reference. Rather
+# than rewrite every docstring, teach napoleon the two section names the
+# project actually uses, so they render as proper parameter and return fields.
+napoleon_custom_sections = [
+    ("Inputs", "params_style"),
+    ("Outputs", "returns_style"),
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -43,7 +61,7 @@ templates_path = ["_templates"]
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = ".rst"
+source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
 
 # The master toctree document.
 master_doc = "index"
@@ -67,12 +85,22 @@ release = RiboMetric.__version__
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+# Internal working notes, not user documentation. They live in docs/ for
+# convenience but are deliberately not published.
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "AUDIT_NOTES.md",
+    "SCORING_PHASE1_TASKS.md",
+    "TESTING.md",
+    "V1.2_REPORT_AND_PREPRINT_PLAN.md",
+]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
@@ -97,7 +125,8 @@ html_theme = "alabaster"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
+# No _static assets are shipped; pointing at a missing directory warns.
+html_static_path = []
 
 
 # -- Options for HTMLHelp output ---------------------------------------
@@ -164,3 +193,18 @@ texinfo_documents = [
         "Miscellaneous",
     ),
 ]
+
+
+# `modules` in index.rst is produced by sphinx-apidoc. `make docs` runs that
+# locally, but Read the Docs only runs sphinx-build -- so without this hook the
+# toctree entry dangles and the API reference is missing from the published
+# site. Generating it here means one code path for both.
+def run_apidoc(_):
+    from sphinx.ext.apidoc import main as apidoc_main
+
+    here = os.path.dirname(__file__)
+    apidoc_main(["-o", here, "-f", os.path.join(here, "..", "RiboMetric")])
+
+
+def setup(app):
+    app.connect("builder-inited", run_apidoc)

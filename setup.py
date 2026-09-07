@@ -57,6 +57,7 @@ dev_requirements = test_requirements + [
     "ruff>=0.6",
     "black>=24.0",
     "sphinx>=5.0.0",
+    "myst-parser>=2.0",  # Markdown docs in the Sphinx toctree
     "mypy>=1.0.0",
     "types-PyYAML>=6.0.12",
     "build>=1.2",

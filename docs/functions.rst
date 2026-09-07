@@ -10,7 +10,7 @@ Table of Contents
     Lukas: Doesn't seem to be working (or at least not on github), use github's sections at the top right of this viewer.
     
 File Parsing (file_parser.py)
-=================
+=============================
 
 parse_bam
 ---------------
@@ -63,7 +63,7 @@ The resulting DataFrame ``batch_df`` is returned by the function.
 ----
 
 process_sequences
----------------
+-----------------
 
 Calculate the occurrence of nucleotide patterns in the sequences from the reads. The nucleotide patterns are stored in lexicographic order. The function takes a list of tuples containing read names and sequences, the length of the nucleotide pattern, and the maximum sequence length. It returns a dictionary containing the raw pattern counts, 5' and 3' background frequencies, and the number of sequences in the batch.
 
@@ -99,7 +99,7 @@ The function iterates through each nucleotide in the pattern, converts it to the
 ----
 
 calculate_background
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 Calculate the background frequency for a list of sequences. The background frequency is the proportion of nucleotide patterns without the first or last pattern in the read, for the 5' and 3' ends, respectively.
 
@@ -161,10 +161,10 @@ Finally, the function returns a tuple containing the read batches, background ba
 
 
 Read Data Frame Modifications
-=============
+=============================
 
 a_site_calculation
----------------
+------------------
 
 Adds a column to the ``read_df`` containing the A-site for the reads.
 
@@ -196,7 +196,7 @@ Finally, the function converts the "transcript_id" column to the "category" dtyp
 ----
 
 assign_mRNA_category
----------------
+--------------------
 
 Adds the mRNA category column to the annotated read dataframe, labeling the read according to the position of the A-site. This function takes the annotated read dataframe (`annotated_read_df`) and returns a string with the category for each read.
 
