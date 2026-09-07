@@ -1,19 +1,18 @@
 """Tests for the `evaluate` subcommand and its QC scoring helpers."""
+
 import json
 from argparse import Namespace
 
 import pytest
 
-from RiboMetric.results_output import evaluate_qc_status, DEFAULT_QC_THRESHOLDS
 from RiboMetric.evaluate import (
-    evaluate,
+    EXIT_FAIL,
+    EXIT_PASS,
     _load_results,
     _load_thresholds,
-    EXIT_PASS,
-    EXIT_WARNING,
-    EXIT_FAIL,
+    evaluate,
 )
-
+from RiboMetric.results_output import DEFAULT_QC_THRESHOLDS, evaluate_qc_status
 
 THRESHOLDS = {
     "periodicity_dominance": {"pass": 0.7, "warn": 0.5},
@@ -22,8 +21,7 @@ THRESHOLDS = {
 
 
 def test_evaluate_qc_status_pass():
-    results = {"metrics": {"periodicity_dominance": {"global": 0.8},
-                           "prop_reads_CDS": 0.9}}
+    results = {"metrics": {"periodicity_dominance": {"global": 0.8}, "prop_reads_CDS": 0.9}}
     status = evaluate_qc_status(results, "s", THRESHOLDS)
     assert status["overall_status"] == "PASS"
     assert status["summary"]["passed"] == 2
@@ -56,8 +54,7 @@ def test_evaluate_qc_status_fails_on_missing_metrics():
 
 def test_load_results_json(tmp_path):
     p = tmp_path / "r.json"
-    p.write_text(json.dumps(
-        {"results": {"metrics": {"prop_reads_CDS": 0.5}}, "config": {}}))
+    p.write_text(json.dumps({"results": {"metrics": {"prop_reads_CDS": 0.5}}, "config": {}}))
     results = _load_results(p)
     assert results["metrics"]["prop_reads_CDS"] == 0.5
 
@@ -107,8 +104,7 @@ def test_load_thresholds_nested_and_flat(tmp_path):
 
 def test_evaluate_exit_codes(tmp_path):
     res = tmp_path / "r.json"
-    res.write_text(json.dumps({"metrics": {"periodicity_dominance": 0.9,
-                                           "prop_reads_CDS": 0.9}}))
+    res.write_text(json.dumps({"metrics": {"periodicity_dominance": 0.9, "prop_reads_CDS": 0.9}}))
     thr = tmp_path / "t.yml"
     thr.write_text("prop_reads_CDS:\n  pass: 0.7\n  warn: 0.5\n")
 
@@ -120,14 +116,12 @@ def test_evaluate_exit_codes(tmp_path):
 
 
 def test_evaluate_missing_file(tmp_path):
-    args = Namespace(input=str(tmp_path / "nope.json"),
-                     expected=None, output=None, name=None)
+    args = Namespace(input=str(tmp_path / "nope.json"), expected=None, output=None, name=None)
     assert evaluate(args) == EXIT_FAIL
 
 
 def test_default_thresholds_used_when_none():
-    status = evaluate_qc_status(
-        {"metrics": {"periodicity_dominance": 0.9}}, "s", None)
+    status = evaluate_qc_status({"metrics": {"periodicity_dominance": 0.9}}, "s", None)
     # periodicity_dominance is in the defaults
     assert any(c["metric"] == "periodicity_dominance" for c in status["checks"])
     assert "periodicity_dominance" in DEFAULT_QC_THRESHOLDS

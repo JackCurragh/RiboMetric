@@ -1,10 +1,12 @@
 """Console script for RiboMetric."""
-import sys
-import logging
-import argparse
 
-from .RiboMetric import argument_parser as p, main as m
+import argparse
+import logging
+import sys
+
 from . import __version__
+from .RiboMetric import argument_parser as p
+from .RiboMetric import main as m
 
 
 def main() -> int:
@@ -12,8 +14,9 @@ def main() -> int:
     parser: argparse.ArgumentParser = p()
     # Global flags
     parser.add_argument("--version", action="store_true", help="Show version and exit")
-    parser.add_argument("-v", "--verbose", action="count", default=0,
-                        help="Increase verbosity (-v, -vv)")
+    parser.add_argument(
+        "-v", "--verbose", action="count", default=0, help="Increase verbosity (-v, -vv)"
+    )
     parser.add_argument("-q", "--quiet", action="store_true", help="Reduce output")
     args = parser.parse_args()
     if getattr(args, "version", False):

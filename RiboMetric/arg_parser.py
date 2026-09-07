@@ -1,10 +1,9 @@
-
-import os
-import yaml
-from typing import Dict, Any, cast
 import argparse
-from rich.emoji import Emoji
+import os
+from typing import Any, Dict, cast
 
+import yaml
+from rich.emoji import Emoji
 
 
 def argument_parser() -> argparse.ArgumentParser:
@@ -30,23 +29,10 @@ def argument_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(dest="command", title="subcommands")
     # create the parser for the "run" command
-    run_parser = subparsers.add_parser(
-        "run",
-        help="run RiboMetric in normal mode"
-    )
+    run_parser = subparsers.add_parser("run", help="run RiboMetric in normal mode")
     group_run_parser = run_parser.add_mutually_exclusive_group(required=True)
-    group_run_parser.add_argument(
-        "-b",
-        "--bam",
-        type=str,
-        help="Path to bam file"
-    )
-    group_run_parser.add_argument(
-        "-j",
-        "--json-in",
-        type=str,
-        help="Path to json input file"
-    )
+    group_run_parser.add_argument("-b", "--bam", type=str, help="Path to bam file")
+    group_run_parser.add_argument("-j", "--json-in", type=str, help="Path to json input file")
     run_parser.add_argument(
         "-a",
         "--annotation",
@@ -54,13 +40,7 @@ def argument_parser() -> argparse.ArgumentParser:
         required=False,
         help="Path to RiboMetric annotation file",
     )
-    run_parser.add_argument(
-        "-g",
-        "--gff",
-        type=str,
-        required=False,
-        help="Path to gff file"
-    )
+    run_parser.add_argument("-g", "--gff", type=str, required=False, help="Path to gff file")
     run_parser.add_argument(
         "-f",
         "--fasta",
@@ -87,8 +67,8 @@ def argument_parser() -> argparse.ArgumentParser:
         default=None,
         dest="global_offset",
         help="Apply this fixed offset to every read length instead of "
-             "calculating per-read-length offsets. If omitted, offsets are "
-             "calculated automatically.",
+        "calculating per-read-length offsets. If omitted, offsets are "
+        "calculated automatically.",
     )
     run_parser.add_argument(
         "--offset-min",
@@ -110,8 +90,7 @@ def argument_parser() -> argparse.ArgumentParser:
         required=False,
         default=None,
         help=(
-            "Maximum plausible offset as a fraction of read length "
-            "(default: config.yml, 0.6667)"
+            "Maximum plausible offset as a fraction of read length " "(default: config.yml, 0.6667)"
         ),
     )
     run_parser.add_argument(
@@ -278,7 +257,7 @@ def argument_parser() -> argparse.ArgumentParser:
         type=str,
         required=False,
         help="Path to write per-read-length offsets TSV (read_len<tab>offset). "
-             "Only written when offsets are calculated internally (not from --offset-read-length).",
+        "Only written when offsets are calculated internally (not from --offset-read-length).",
     )
     run_parser.add_argument(
         "--skip-sequence-metrics",
@@ -309,12 +288,8 @@ def argument_parser() -> argparse.ArgumentParser:
     )
 
     # create the parser for the "prepare" command
-    prepare_parser = subparsers.add_parser(
-        "prepare", help="run RiboMetric in preparation mode"
-    )
-    prepare_parser.add_argument(
-        "-g", "--gff", type=str, required=True, help="Path to gff file"
-    )
+    prepare_parser = subparsers.add_parser("prepare", help="run RiboMetric in preparation mode")
+    prepare_parser.add_argument("-g", "--gff", type=str, required=True, help="Path to gff file")
     prepare_parser.add_argument(
         "-o",
         "--output",
@@ -386,13 +361,10 @@ def argument_parser() -> argparse.ArgumentParser:
 
     # create the parser for the "view" command
     view_parser = subparsers.add_parser(
-        "view",
-        help="view RiboMetric results interactively in the terminal"
+        "view", help="view RiboMetric results interactively in the terminal"
     )
     view_parser.add_argument(
-        "json_file",
-        type=str,
-        help="Path to RiboMetric JSON output file (*_RiboMetric_data.json)"
+        "json_file", type=str, help="Path to RiboMetric JSON output file (*_RiboMetric_data.json)"
     )
 
     return parser
@@ -415,7 +387,7 @@ def open_config(args: argparse.Namespace) -> Dict[str, Any]:
     else:
         # load default config file
         project_dir = os.path.dirname(os.path.abspath(__file__))
-        config_file_path = os.path.join(project_dir, 'config.yml')
+        config_file_path = os.path.join(project_dir, "config.yml")
 
         with open(config_file_path, "r") as yml:
             config = cast(Dict[str, Any], yaml.load(yml, Loader=yaml.Loader))
@@ -442,11 +414,11 @@ def open_config(args: argparse.Namespace) -> Dict[str, Any]:
     if args.command == "run":
         enabled_metrics = set(config.get("metrics", {}).get("default", []))
 
-        if hasattr(args, 'enable_optional_metrics') and args.enable_optional_metrics:
+        if hasattr(args, "enable_optional_metrics") and args.enable_optional_metrics:
             # Add all optional metrics
             enabled_metrics.update(config.get("metrics", {}).get("optional", []))
 
-        if hasattr(args, 'enable_metric') and args.enable_metric:
+        if hasattr(args, "enable_metric") and args.enable_metric:
             # Add specific metrics
             enabled_metrics.update(args.enable_metric)
 

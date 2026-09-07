@@ -5,32 +5,29 @@ These pin the anchor maths from docs/METRICS_DESIGN.md so the spec and the
 implementation cannot silently drift apart.
 """
 
-import math
-
+import pandas as pd
 import pytest
 
-import pandas as pd
-
+from RiboMetric.metrics import cds_enrichment_ratio
 from RiboMetric.scoring import (
-    score_value,
-    resolve_status,
-    build_scored_metrics,
-    overall_gate_status,
     DEFAULT_SCORING,
     DEFAULT_STATUS,
+    build_scored_metrics,
+    overall_gate_status,
+    resolve_status,
+    score_value,
 )
-from RiboMetric.metrics import cds_enrichment_ratio
-
 
 # --- score method anchors --------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "raw,expected",
     [
-        (1.0 / 3.0, 0.0),    # random frame -> 0
-        (2.0 / 3.0, 0.5),    # interior reference -> 0.5
-        (1.0, 1.0),          # all in one frame -> 1
-        (0.25, 0.0),         # below random floor clips to 0
+        (1.0 / 3.0, 0.0),  # random frame -> 0
+        (2.0 / 3.0, 0.5),  # interior reference -> 0.5
+        (1.0, 1.0),  # all in one frame -> 1
+        (0.25, 0.0),  # below random floor clips to 0
         (0.73, pytest.approx(0.595, abs=1e-3)),  # ~PASS boundary
     ],
 )
@@ -46,7 +43,9 @@ def test_one_minus_rate(raw, expected):
     assert score_value("one_minus_rate", raw) == pytest.approx(expected, abs=1e-6)
 
 
-@pytest.mark.parametrize("raw,expected", [(0.0, 0.0), (0.5, 0.5), (1.0, 1.0), (1.5, 1.0), (-0.2, 0.0)])
+@pytest.mark.parametrize(
+    "raw,expected", [(0.0, 0.0), (0.5, 0.5), (1.0, 1.0), (1.5, 1.0), (-0.2, 0.0)]
+)
 def test_identity_clips(raw, expected):
     assert score_value("identity", raw) == pytest.approx(expected, abs=1e-6)
 
@@ -75,9 +74,17 @@ def test_unknown_method_returns_none():
 
 # --- status resolution -----------------------------------------------------
 
+
 @pytest.mark.parametrize(
     "score,expected",
-    [(0.60, "PASS"), (0.75, "PASS"), (0.59, "WARNING"), (0.30, "WARNING"), (0.29, "FAIL"), (0.0, "FAIL")],
+    [
+        (0.60, "PASS"),
+        (0.75, "PASS"),
+        (0.59, "WARNING"),
+        (0.30, "WARNING"),
+        (0.29, "FAIL"),
+        (0.0, "FAIL"),
+    ],
 )
 def test_resolve_status_default_thresholds(score, expected):
     assert resolve_status(score, DEFAULT_STATUS) == expected
@@ -88,6 +95,7 @@ def test_resolve_status_none_is_info():
 
 
 # --- end-to-end over a results dict ----------------------------------------
+
 
 def _results(metrics):
     return {"metrics": metrics}
@@ -131,12 +139,13 @@ def test_metrics_absent_from_spec_are_ignored():
 
 # --- gate membership drives the overall verdict ----------------------------
 
+
 def test_overall_verdict_uses_gated_only():
     # Tier-1 (gated) both strong; a Tier-3 caveat fails but must not fail sample.
     metrics = {
-        "periodicity_dominance": {"global": 1.0},      # gated, PASS
-        "periodicity_information": {"global": 0.9},     # gated, PASS
-        "duplicate_rate": 0.95,                          # not gated, FAIL-ish
+        "periodicity_dominance": {"global": 1.0},  # gated, PASS
+        "periodicity_information": {"global": 0.9},  # gated, PASS
+        "duplicate_rate": 0.95,  # not gated, FAIL-ish
     }
     scored = build_scored_metrics(_results(metrics))
     assert overall_gate_status(scored) == "PASS"
@@ -144,7 +153,7 @@ def test_overall_verdict_uses_gated_only():
 
 def test_overall_verdict_fails_on_gated_fail():
     metrics = {
-        "periodicity_dominance": {"global": 0.4},       # gated -> low score, FAIL
+        "periodicity_dominance": {"global": 0.4},  # gated -> low score, FAIL
         "periodicity_information": {"global": 0.9},
     }
     scored = build_scored_metrics(_results(metrics))
@@ -169,6 +178,7 @@ def test_config_override_changes_gate_and_threshold():
 
 # --- S1: periodicity_dominance uses identity, not frame_dominance_rescaled ----
 
+
 def test_periodicity_dominance_default_uses_identity():
     assert DEFAULT_SCORING["periodicity_dominance"]["method"] == "identity"
     assert "params" not in DEFAULT_SCORING["periodicity_dominance"]
@@ -183,6 +193,7 @@ def test_periodicity_dominance_does_not_use_frame_dominance_rescaled():
 
 
 # --- S3: R-O1 self-consistency (uniform reads ⇒ E ≈ 1 ⇒ score ≈ 0) ----------
+
 
 def _make_uniform_annotated_df():
     """Minimal annotated_read_df with reads distributed uniformly per-nt."""
@@ -203,14 +214,16 @@ def _make_uniform_annotated_df():
                 cat = "stop_codon"
             else:
                 cat = "three_trailer"
-            rows.append({
-                "transcript_id": tx_id,
-                "a_site": pos,
-                "cds_start": cds_s,
-                "cds_end": cds_e,
-                "transcript_length": tx_len,
-                "mRNA_category": cat,
-            })
+            rows.append(
+                {
+                    "transcript_id": tx_id,
+                    "a_site": pos,
+                    "cds_start": cds_s,
+                    "cds_end": cds_e,
+                    "transcript_length": tx_len,
+                    "mRNA_category": cat,
+                }
+            )
     return pd.DataFrame(rows)
 
 

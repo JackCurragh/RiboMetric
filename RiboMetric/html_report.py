@@ -4,17 +4,15 @@ The functions are called by the main script RiboMetric.py
 if the user specifies the --html flag
 """
 
-from jinja2 import Environment, FileSystemLoader
-from datetime import datetime
-from .modules import convert_html_to_pdf
 import base64
 import json
-
 import os
+from datetime import datetime
+from typing import Any, Dict, List, Tuple
 
+from jinja2 import Environment, FileSystemLoader
 
-from typing import List, Dict, Any, Tuple
-
+from .modules import convert_html_to_pdf
 
 LOWER_IS_BETTER = {
     "duplicate_rate",
@@ -179,8 +177,11 @@ def _format_score(score: Any) -> str:
 
 
 _RAW_BITS_KEYS = {"terminal_bias_kl_5prime_raw", "terminal_bias_kl_3prime_raw"}
-_RAW_RATIO_KEYS = {"cds_enrichment_ratio", "start_codon_enrichment_ratio",
-                   "stop_codon_readthrough_ratio"}
+_RAW_RATIO_KEYS = {
+    "cds_enrichment_ratio",
+    "start_codon_enrichment_ratio",
+    "stop_codon_readthrough_ratio",
+}
 
 
 def _format_raw(key: str, raw: Any) -> str:
@@ -248,20 +249,22 @@ def build_report_context(summary: Dict[str, Any]) -> Dict[str, Any]:
             status = _STATUS_SHORT[resolver_status]
         else:
             status = _metric_status(key, score)
-        rows.append({
-            "key": key,
-            "label": _metric_label(key),
-            "score": score,
-            "score_label": _format_score(score),
-            "raw": raw,
-            "raw_label": _format_raw(key, raw),
-            "status": status,
-            "gate": bool(metric.get("gate", False)),
-            "tier": int(metric["tier"]) if metric.get("tier") is not None else None,
-            "direction": "Higher is better",
-            "description": metric.get("decision") or _metric_description(key),
-            "group": _group_for_metric(key),
-        })
+        rows.append(
+            {
+                "key": key,
+                "label": _metric_label(key),
+                "score": score,
+                "score_label": _format_score(score),
+                "raw": raw,
+                "raw_label": _format_raw(key, raw),
+                "status": status,
+                "gate": bool(metric.get("gate", False)),
+                "tier": int(metric["tier"]) if metric.get("tier") is not None else None,
+                "direction": "Higher is better",
+                "description": metric.get("decision") or _metric_description(key),
+                "group": _group_for_metric(key),
+            }
+        )
 
     # --- Tier-based grouping (new primary layout) ---
     def _tier_rows(tier_num: int) -> list:
@@ -272,21 +275,21 @@ def build_report_context(summary: Dict[str, Any]) -> Dict[str, Any]:
             "tier": 1,
             "heading": "Tier 1 — Is this Ribo-seq?",
             "subtitle": "These metrics decide whether frame-dependent analysis is defensible. "
-                        "Failures here mean P-site assignment and ORF calling should not proceed.",
+            "Failures here mean P-site assignment and ORF calling should not proceed.",
             "metrics": _tier_rows(1),
         },
         {
             "tier": 2,
             "heading": "Tier 2 — Is it usable for my analysis?",
             "subtitle": "These metrics describe whether enough usable signal remains after filtering. "
-                        "Weak scores are caveats, not identity failures.",
+            "Weak scores are caveats, not identity failures.",
             "metrics": _tier_rows(2),
         },
         {
             "tier": 3,
             "heading": "Tier 3 — Technical caveats",
             "subtitle": "These describe technical distortions and loss of usable depth. "
-                        "They colour interpretation but do not automatically fail the sample.",
+            "They colour interpretation but do not automatically fail the sample.",
             "metrics": _tier_rows(3),
         },
     ]
@@ -300,18 +303,14 @@ def build_report_context(summary: Dict[str, Any]) -> Dict[str, Any]:
             grouped_metrics.append({"name": group_name, "metrics": group_rows})
 
     metric_map = {row["key"]: row for row in rows}
-    top_cards = [
-        metric_map[key] for key in CARD_METRICS if key in metric_map
-    ][:5]
+    top_cards = [metric_map[key] for key in CARD_METRICS if key in metric_map][:5]
 
     status_rank = {"fail": 3, "warn": 2, "pass": 1, "info": 0}
     gated_rows = [row for row in rows if row.get("gate")]
     verdict_rows = gated_rows if gated_rows else rows
     overall_status = "info"
     if verdict_rows:
-        overall_status = max(
-            verdict_rows, key=lambda row: status_rank[row["status"]]
-        )["status"]
+        overall_status = max(verdict_rows, key=lambda row: status_rank[row["status"]])["status"]
 
     # Three-way framing per METRICS_DESIGN.md §4
     periodicity = metric_map.get("periodicity_dominance")
@@ -356,7 +355,7 @@ def build_report_context(summary: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "top_cards": top_cards,
         "tier_sections": tier_sections,
-        "grouped_metrics": grouped_metrics,   # kept for backwards-compat
+        "grouped_metrics": grouped_metrics,  # kept for backwards-compat
         "overall_status": overall_status,
         "interpretation": interpretation,
         "context_strip": context_strip,
@@ -386,31 +385,22 @@ def generate_report(
     """
     project_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env = Environment(
-        loader=FileSystemLoader(
-            ["templates", f"{project_path}/RiboMetric/templates"]
-        ),
+        loader=FileSystemLoader(["templates", f"{project_path}/RiboMetric/templates"]),
         autoescape=False,
     )
 
     file_names = {"bam": config["argument"]["bam"].split("/")[-1]}
     if config["argument"]["annotation"] is not None:
-        file_names["annotation"] = (config["argument"]["annotation"]
-                                    .split("/")[-1])
+        file_names["annotation"] = config["argument"]["annotation"].split("/")[-1]
     elif config["argument"]["gff"] is not None:
         file_names["annotation"] = config["argument"]["gff"].split("/")[-1]
 
     completion_time = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
-    binary_logo = open(
-        f"{project_path}/RiboMetric/templates/RiboMetric_logo.png",
-        "rb"
-        ).read()
+    binary_logo = open(f"{project_path}/RiboMetric/templates/RiboMetric_logo.png", "rb").read()
     base64_logo = base64.b64encode(binary_logo).decode("utf-8")
 
-    binary_icon = open(
-        f"{project_path}/RiboMetric/templates/RiboMetric_favicon.png",
-        "rb"
-        ).read()
+    binary_icon = open(f"{project_path}/RiboMetric/templates/RiboMetric_favicon.png", "rb").read()
     base64_icon = base64.b64encode(binary_icon).decode("utf-8")
 
     if outdir == "":
@@ -475,7 +465,7 @@ def parse_json_input(json_path: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         results_dict: Dictionary containing results from a RiboMetric analysis
         json_config: Config from the RiboMetric analysis
     """
-    with open(json_path, 'r') as json_file:
+    with open(json_path, "r") as json_file:
         json_dict = json.load(json_file, object_hook=int_keys_hook)
     result_dict = json_dict["results"]
     json_config = json_dict["config"]

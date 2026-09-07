@@ -4,28 +4,30 @@ in the RiboMetric pipeline
 
 The functions are called by the main script RiboMetric.py
 """
-from Bio import SeqIO
-from pysam import AlignmentFile
-import gffpandas.gffpandas as gffpd
 
-import pandas as pd
-import numpy as np
-import tempfile
 import gzip
 import os
 import subprocess
-
+import tempfile
 from multiprocessing import Pool
 from tempfile import TemporaryDirectory
+from typing import List, Optional
 
+import gffpandas.gffpandas as gffpd
+import numpy as np
+import pandas as pd
+from Bio import SeqIO
+from pysam import AlignmentFile
 
-from .bam_processing import (join_batches,
-                             ox_parse_reads,
-                             )
-from .file_splitting import (split_gff_df,
-                             run_samtools_idxstats,
-                             split_idxstats_df,
-                             )
+from .bam_processing import (
+    join_batches,
+    ox_parse_reads,
+)
+from .file_splitting import (
+    run_samtools_idxstats,
+    split_gff_df,
+    split_idxstats_df,
+)
 
 # Fraction of transcripts whose CDS may overrun the spliced transcript length
 # before the annotation is rejected as non-transcript-relative (see
@@ -47,9 +49,7 @@ def parse_annotation(annotation_path: str) -> pd.DataFrame:
     required = {"transcript_id", "cds_start", "cds_end", "transcript_length"}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(
-            f"Annotation file missing required columns: {sorted(missing)}"
-        )
+        raise ValueError(f"Annotation file missing required columns: {sorted(missing)}")
 
     # Coerce dtypes for required columns
     df["transcript_id"] = df["transcript_id"].astype(str)
@@ -197,11 +197,12 @@ def flagstat_bam(bam_path: str) -> dict:
     return flagstat_dict
 
 
-def parse_bam(bam_file: str,
-              num_reads: int,
-              batch_size: int = 10000000,
-              num_processes: int = 4,
-              ) -> tuple:
+def parse_bam(
+    bam_file: str,
+    num_reads: int,
+    batch_size: int = 10000000,
+    num_processes: int = 4,
+) -> tuple:
     """
     Read in the bam file at the provided path and return parsed read and
     sequence data
@@ -223,7 +224,7 @@ def parse_bam(bam_file: str,
                                 frequency of nucleotide patterns for five and
                                 three prime
     """
-    batch_size = int((num_reads/num_processes)*1.02)
+    batch_size = int((num_reads / num_processes) * 1.02)
     # Small percentage increase to ensure remaining reads aren't
     # in separate batch
 
@@ -233,27 +234,20 @@ def parse_bam(bam_file: str,
     bam_batches = []
     with TemporaryDirectory() as tempdir:
         idxstats_df = run_samtools_idxstats(bam_file)
-        reference_dfs = split_idxstats_df(idxstats_df,
-                                          batch_size,
-                                          num_reads)
+        reference_dfs = split_idxstats_df(idxstats_df, batch_size, num_reads)
         for split_num, reference_df in enumerate(reference_dfs):
-            bam_batches.append(pool.apply_async(ox_parse_reads,
-                                                [bam_file,
-                                                 split_num,
-                                                 reference_df,
-                                                 tempdir]))
+            bam_batches.append(
+                pool.apply_async(ox_parse_reads, [bam_file, split_num, reference_df, tempdir])
+            )
 
         pool.close()
         pool.join()
 
-        print("\n"*(split_num // 4))
+        print("\n" * (split_num // 4))
 
         parsed_bam = join_batches(bam_batches)
 
     return parsed_bam
-
-
-from typing import List
 
 
 def get_top_transcripts(read_df: pd.DataFrame, num_transcripts: int) -> List[str]:
@@ -267,11 +261,7 @@ def get_top_transcripts(read_df: pd.DataFrame, num_transcripts: int) -> List[str
     Outputs:
         top_transcripts: List of the top N transcripts
     """
-    count_sorted_df = (
-        read_df.groupby("reference_name")
-               .sum()
-               .sort_values("count", ascending=False)
-    )
+    count_sorted_df = read_df.groupby("reference_name").sum().sort_values("count", ascending=False)
 
     # Ensure a concrete list[str] is returned even if the index dtype is not string
     return [str(x) for x in count_sorted_df.index[:num_transcripts].tolist()]
@@ -290,11 +280,11 @@ def check_annotation(file_path: str) -> bool:
 
 
 def prepare_annotation(
-        gff_path: str,
-        outdir: str,
-        num_transcripts: int,
-        num_processes: int = 4,
-        ) -> pd.DataFrame:
+    gff_path: str,
+    outdir: str,
+    num_transcripts: int,
+    num_processes: int = 4,
+) -> pd.DataFrame:
     """
     Given a path to a gff file, produce a tsv file containing the
     transcript_id, tx_cds_start, tx_cds_end, tx_length for each transcript.
@@ -319,10 +309,7 @@ def prepare_annotation(
     annotation_batches = []
     print("Subsetting CDS regions..")
     for split_df in split_df_list:
-        annotation_batches.append(pool.apply_async(
-                gff_df_to_cds_df,
-                [split_df]
-            ))
+        annotation_batches.append(pool.apply_async(gff_df_to_cds_df, [split_df]))
 
     pool.close()
     pool.join()
@@ -334,7 +321,7 @@ def prepare_annotation(
         annotation_df = pd.concat(results, ignore_index=True)
 
         if outdir is not None:
-            basename = '.'.join(os.path.basename(gff_path).split(".")[:-1])
+            basename = ".".join(os.path.basename(gff_path).split(".")[:-1])
             output_name = f"{basename}_RiboMetric.tsv"
             output_path = os.path.join(outdir, output_name)
             annotation_df.to_csv(output_path, sep="\t", index=False)
@@ -356,12 +343,12 @@ def is_gzipped(file_path: str) -> bool:
         True if gzipped, otherwise False
     """
     try:
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             # Read the first two bytes of the file
             header = f.read(2)
 
         # Check if the file starts with the gzip magic number (0x1f 0x8b)
-        return header == b'\x1f\x8b'
+        return header == b"\x1f\x8b"
 
     except IOError:
         # File not found or unable to open
@@ -381,7 +368,7 @@ def parse_gff(gff_path: str, num_transcripts: int) -> pd.DataFrame:
     if is_gzipped(gff_path):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_filepath = temp_file.name
-            with gzip.open(gff_path, 'rt') as f:
+            with gzip.open(gff_path, "rt") as f:
                 for line in f:
                     temp_file.write(line.encode())
 
@@ -398,12 +385,9 @@ def parse_gff(gff_path: str, num_transcripts: int) -> pd.DataFrame:
     #   Gencode GFF3:  transcript_id=ENST...
     #   GTF:           transcript_id "ENST..."
     _TRANSCRIPT_ID_RE = (
-        r'(?:Parent=transcript:|ID=transcript:|transcript_id=|transcript_id ")'
-        r'([^;"]+)'
+        r'(?:Parent=transcript:|ID=transcript:|transcript_id=|transcript_id ")' r'([^;"]+)'
     )
-    gff_df["transcript_id"] = gff_df["attributes"].str.extract(
-        _TRANSCRIPT_ID_RE, expand=False
-    )
+    gff_df["transcript_id"] = gff_df["attributes"].str.extract(_TRANSCRIPT_ID_RE, expand=False)
 
     cds_df = gff_df[gff_df["type"] == "CDS"]
     coding_tx_ids = cds_df["transcript_id"].unique()[:num_transcripts]
@@ -415,10 +399,6 @@ def parse_gff(gff_path: str, num_transcripts: int) -> pd.DataFrame:
     gff_df = gff_df.sort_values("transcript_id")
 
     return gff_df, coding_tx_ids
-
-
-
-from typing import Optional
 
 
 def gff_df_to_cds_df(gff_df: pd.DataFrame, outpath: Optional[str] = None) -> pd.DataFrame:
@@ -435,9 +415,7 @@ def gff_df_to_cds_df(gff_df: pd.DataFrame, outpath: Optional[str] = None) -> pd.
     cds_df = gff_df[gff_df["type"] == "CDS"]
 
     if exon_df.empty or cds_df.empty:
-        return pd.DataFrame(
-            columns=["transcript_id", "cds_start", "cds_end", "transcript_length"]
-        )
+        return pd.DataFrame(columns=["transcript_id", "cds_start", "cds_end", "transcript_length"])
 
     # Transcript length = sum of exon lengths per transcript.
     # GFF3 coordinates are 1-based and inclusive, so an exon spanning [start, end]
@@ -483,9 +461,7 @@ def gff_df_to_cds_df(gff_df: pd.DataFrame, outpath: Optional[str] = None) -> pd.
     #   + strand: positions s .. min(e, cgs-1)
     #   - strand: positions max(s, cgs+1) .. e
     leader = pd.Series(0.0, index=exon_df.index)
-    leader[plus] = np.maximum(
-        0, np.minimum(e[plus], exon_df.loc[plus, "_cgs"] - 1) - s[plus] + 1
-    )
+    leader[plus] = np.maximum(0, np.minimum(e[plus], exon_df.loc[plus, "_cgs"] - 1) - s[plus] + 1)
     leader[~plus] = np.maximum(
         0, e[~plus] - np.maximum(s[~plus], exon_df.loc[~plus, "_cgs"] + 1) + 1
     )
@@ -496,9 +472,7 @@ def gff_df_to_cds_df(gff_df: pd.DataFrame, outpath: Optional[str] = None) -> pd.
     #   + strand: positions max(s, cge+1) .. e
     #   - strand: positions s .. min(e, cge-1)
     trailer = pd.Series(0.0, index=exon_df.index)
-    trailer[plus] = np.maximum(
-        0, e[plus] - np.maximum(s[plus], exon_df.loc[plus, "_cge"] + 1) + 1
-    )
+    trailer[plus] = np.maximum(0, e[plus] - np.maximum(s[plus], exon_df.loc[plus, "_cge"] + 1) + 1)
     trailer[~plus] = np.maximum(
         0, np.minimum(e[~plus], exon_df.loc[~plus, "_cge"] - 1) - s[~plus] + 1
     )
@@ -510,13 +484,15 @@ def gff_df_to_cds_df(gff_df: pd.DataFrame, outpath: Optional[str] = None) -> pd.
     trailer_sum = exon_df.groupby("transcript_id")["_trailer"].sum()
 
     tx_ids = transcript_length.index
-    result = pd.DataFrame({
-        "transcript_id": tx_ids,
-        "cds_start": leader_sum.reindex(tx_ids).fillna(0).astype(int).values,
-        "cds_end": (
-            transcript_length - trailer_sum.reindex(tx_ids).fillna(0)
-        ).astype(int).values,
-        "transcript_length": transcript_length.astype(int).values,
-    })
+    result = pd.DataFrame(
+        {
+            "transcript_id": tx_ids,
+            "cds_start": leader_sum.reindex(tx_ids).fillna(0).astype(int).values,
+            "cds_end": (transcript_length - trailer_sum.reindex(tx_ids).fillna(0))
+            .astype(int)
+            .values,
+            "transcript_length": transcript_length.astype(int).values,
+        }
+    )
 
     return result

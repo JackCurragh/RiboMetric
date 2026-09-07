@@ -45,6 +45,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the comparison CSV writer, to widen the schema. Concurrent multi-process
   appending remains unsupported.
 
+### Infrastructure
+
+Brings the repo in line with `REPO_CONTRACT.md`, the shared maintenance
+contract for the all-RiboSeq tools. None of this changes RiboMetric's
+behaviour; it changes what can silently go wrong when releasing it.
+
+- **The distribution name is lowercase (`ribometric`).** It was `RiboMetric`,
+  and published only because `pyproject.toml` leaves `setuptools>=64` unpinned
+  so CI happens to resolve a version that normalises the wheel filename itself.
+  Pin setuptools, or build on an older one, and PyPI rejects the upload with a
+  400 that `twine check` does not catch and that reads like an auth failure.
+  The import package is still `RiboMetric` and both console scripts are
+  unchanged.
+- **Lint is enforced.** flake8 was commented out in `ci.yml` while the Makefile
+  and pixi both invoked it, so nothing ran. The toolchain is now ruff (lint and
+  import order, replacing flake8 *and* isort) plus black at line-length 100,
+  both fatal in CI. The findings this exposed -- unused imports, mid-file
+  imports, a duplicated import in the test suite -- are fixed, and the codebase
+  is black-formatted.
+- **`.bumpversion.cfg` replaces hand-editing.** bump2version now rewrites
+  `RiboMetric/__init__.py`, `pixi.toml`, `CITATION.cff` and the conda recipe in
+  one commit, and tags `vX.Y.Z`. `conda-ribometric/meta.yaml` had drifted to
+  0.1.9 while PyPI shipped 1.4.3 because nothing kept them together.
+- **`release.yml` calls `ci.yml` instead of carrying its own copy of the
+  build.** A tagged release now re-runs the full gate -- lint, mypy, tests on
+  3.10 and 3.12, build -- and publishes the artifact the gate built, so the
+  shipped bits are the checked bits. It also creates a GitHub Release, which
+  eleven tags so far have not.
+- **CI asserts the artefact filenames**, and `make preflight` does the same
+  locally.
+- **One owner per container tag.** `build-container.yml` fired on `tags: '*'`
+  with no test gate and wrote `:latest` on every push to `main`. `:latest` now
+  means the most recent release and is written only by `release.yml`; `:main`
+  and `:sha-<short>` come from `ci.yml`, gated on lint and tests.
+- **The dead `lukasdev` CI trigger is removed** (the branch is
+  `lukasdev-archive` now).
+- **`make release` (a bare `twine upload`) is removed** -- it was a second
+  publish path that ran no checks. Pushing the tag is the only one.
+
 ### Notes
 
 - `main` now contains the v1.4.1-v1.4.3 releases, which had been cut from

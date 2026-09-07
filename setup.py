@@ -52,12 +52,16 @@ test_requirements = [
 ]
 
 # Development dependencies (linting, formatting, docs)
+# ruff replaces flake8 *and* isort (REPO_CONTRACT §4b); do not add either back.
 dev_requirements = test_requirements + [
-    "flake8>=6.0.0",
-    "black>=23.0.0",
+    "ruff>=0.6",
+    "black>=24.0",
     "sphinx>=5.0.0",
     "mypy>=1.0.0",
     "types-PyYAML>=6.0.12",
+    "build>=1.2",
+    "twine>=5.0",
+    "bump2version>=1.0",
 ]
 
 setup(
@@ -93,7 +97,14 @@ setup(
     long_description_content_type="text/x-rst",
     include_package_data=True,
     keywords="RiboMetric",
-    name="RiboMetric",
+    # Lowercase deliberately (REPO_CONTRACT §5.3). PyPI rejects a wheel whose
+    # filename is not the normalised project name, with a 400 at upload that
+    # `twine check` does not catch -- three TranslonScorer releases died on
+    # exactly this. Declaring the name lowercase makes the built filenames
+    # `ribometric-*` regardless of the setuptools version; the CI build job
+    # asserts it as well. The import package stays `RiboMetric`, and both
+    # console scripts are unchanged.
+    name="ribometric",
     packages=find_packages(
         include=["RiboMetric", "RiboMetric.*"],
         exclude=[

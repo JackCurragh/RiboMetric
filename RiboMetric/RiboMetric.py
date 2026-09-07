@@ -44,10 +44,6 @@ Output:
     --all : Output the results as all of the above
 """
 
-from rich.console import Console
-from rich.text import Text
-from rich.table import Table
-from typing import Dict, Any
 import argparse
 import hashlib
 import json
@@ -55,31 +51,35 @@ import os
 import platform
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Dict
 
+from rich.console import Console
+from rich.table import Table
+from rich.text import Text
+
+from .arg_parser import argument_parser, open_config
 from .file_parser import (
+    check_annotation,
+    check_bam,
+    flagstat_bam,
+    parse_annotation,
     parse_bam,
     parse_fasta,
-    parse_annotation,
     prepare_annotation,
-    flagstat_bam,
-    check_bam,
-    check_annotation
 )
-from .arg_parser import argument_parser, open_config
-from .qc import annotation_mode
-from .plots import generate_plots
 from .html_report import generate_report, parse_json_input
+from .plots import generate_plots
+from .qc import annotation_mode
 from .results_output import (
-    generate_json,
-    generate_csv,
-    generate_summary_tsv,
-    generate_qc_status,
+    generate_all_outputs,
     generate_comparison_ready_csv,
+    generate_csv,
+    generate_json,
     generate_metrics_table_csv,
     generate_offsets_tsv,
-    generate_all_outputs,
+    generate_qc_status,
+    generate_summary_tsv,
 )
-
 
 _HASH_SAMPLE_BYTES = 1024 * 1024
 _FULL_HASH_LIMIT_BYTES = 50 * 1024 * 1024
@@ -109,14 +109,15 @@ def _file_fingerprint(path_value: Any) -> Dict[str, Any]:
         return record
 
     stat = path.stat()
-    record.update({
-        "size_bytes": stat.st_size,
-        "mtime_ns": stat.st_mtime_ns,
-    })
+    record.update(
+        {
+            "size_bytes": stat.st_size,
+            "mtime_ns": stat.st_mtime_ns,
+        }
+    )
 
     full_hash = (
-        os.environ.get("RIBOMETRIC_FULL_INPUT_HASH", "").lower()
-        in {"1", "true", "yes"}
+        os.environ.get("RIBOMETRIC_FULL_INPUT_HASH", "").lower() in {"1", "true", "yes"}
         or stat.st_size <= _FULL_HASH_LIMIT_BYTES
     )
 
@@ -138,9 +139,7 @@ def _file_fingerprint(path_value: Any) -> Dict[str, Any]:
         h.update(first)
         h.update(last)
         record["sha256_sampled"] = h.hexdigest()
-        record["hash_method"] = (
-            f"first_last_{_HASH_SAMPLE_BYTES}_bytes_sha256"
-        )
+        record["hash_method"] = f"first_last_{_HASH_SAMPLE_BYTES}_bytes_sha256"
     return record
 
 
@@ -177,6 +176,7 @@ def _build_run_provenance(args: argparse.Namespace, config: Dict[str, Any]) -> D
 def _package_version() -> str:
     try:
         from . import __version__
+
         return str(__version__)
     except Exception:
         return "unknown"
@@ -211,7 +211,9 @@ def print_logo(console: Console) -> None:
     console.print(logo)
 
 
-def print_table_run(args: argparse.Namespace, config: Dict[str, Any], console: Console, mode: str) -> None:
+def print_table_run(
+    args: argparse.Namespace, config: Dict[str, Any], console: Console, mode: str
+) -> None:
     console = Console()
 
     Inputs = Table(show_header=True, header_style="bold magenta")
@@ -251,7 +253,9 @@ def print_table_run(args: argparse.Namespace, config: Dict[str, Any], console: C
     console.print(Inputs, Configs, Output, justify=None, style="bold")
 
 
-def print_table_prepare(args: argparse.Namespace, config: Dict[str, Any], console: Console, mode: str) -> None:
+def print_table_prepare(
+    args: argparse.Namespace, config: Dict[str, Any], console: Console, mode: str
+) -> None:
     console = Console()
 
     Inputs = Table(show_header=True, header_style="bold magenta")
@@ -285,12 +289,14 @@ def main(args: argparse.Namespace) -> int:
     # Handle evaluate command separately (no logo or config needed)
     if args.command == "evaluate":
         from .evaluate import evaluate as run_evaluate
+
         return run_evaluate(args)
 
     # Handle view command separately (no logo or config needed)
     if args.command == "view":
-        from .tui import run_tui
         import json
+
+        from .tui import run_tui
 
         # Validate file exists and is JSON
         file_path = Path(args.json_file)
@@ -298,13 +304,13 @@ def main(args: argparse.Namespace) -> int:
             print(f"Error: File not found: {args.json_file}")
             return 1
 
-        if not file_path.suffix == '.json':
+        if not file_path.suffix == ".json":
             print("Error: File must be a JSON file")
             return 1
 
         # Validate it's a RiboMetric JSON file
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 data = json.load(f)
                 if "results" not in data or "config" not in data:
                     print("Warning: File may not be a valid RiboMetric JSON file.")
@@ -329,11 +335,12 @@ def main(args: argparse.Namespace) -> int:
     # Handle inputs and run modes appropriately
     if args.command == "prepare":
         print_table_prepare(args, config, console, "Prepare Mode")
-        prepare_annotation(config["argument"]["gff"],
-                           config["argument"]["output"],
-                           config["argument"]["transcripts"],
-                           config["argument"]["threads"],
-                           )
+        prepare_annotation(
+            config["argument"]["gff"],
+            config["argument"]["output"],
+            config["argument"]["transcripts"],
+            config["argument"]["threads"],
+        )
 
     else:
         print_table_run(args, config, console, "Run Mode")
@@ -357,10 +364,11 @@ def main(args: argparse.Namespace) -> int:
                     """)
 
             flagstat = flagstat_bam(config["argument"]["bam"])
-            if (config["argument"]["subsample"] is None
-                    or flagstat['mapped_reads'] < config[
-                        "argument"]["subsample"]):
-                read_limit = flagstat['mapped_reads']
+            if (
+                config["argument"]["subsample"] is None
+                or flagstat["mapped_reads"] < config["argument"]["subsample"]
+            ):
+                read_limit = flagstat["mapped_reads"]
             else:
                 read_limit = config["argument"]["subsample"]
 
@@ -384,8 +392,7 @@ def main(args: argparse.Namespace) -> int:
                 print("Skipping sequence-based metrics (--skip-sequence-metrics)")
                 sequence_data, sequence_background = {}, {}
             elif not sequence_background:
-                print("No stored sequences detected; "
-                      "sequence-based metrics will be skipped.")
+                print("No stored sequences detected; " "sequence-based metrics will be skipped.")
 
             # Use weighted computations downstream instead of expanding rows
             if "count" not in read_df_pre.columns:
@@ -400,8 +407,7 @@ def main(args: argparse.Namespace) -> int:
                 print("Parsing FASTA for sequence-level metrics...")
                 fasta_dict = parse_fasta(config["argument"]["fasta"])
 
-            if (config["argument"]["gff"] is None and
-                    config["argument"]["annotation"] is None):
+            if config["argument"]["gff"] is None and config["argument"]["annotation"] is None:
                 results_dict = annotation_mode(
                     read_df,
                     sequence_data,
@@ -411,12 +417,12 @@ def main(args: argparse.Namespace) -> int:
                 )
 
             else:
-                if (config["argument"]["annotation"] is not None and
-                        config["argument"]["gff"] is not None):
+                if (
+                    config["argument"]["annotation"] is not None
+                    and config["argument"]["gff"] is not None
+                ):
                     print("Running annotation mode")
-                    annotation_df = parse_annotation(
-                        config["argument"]["annotation"]
-                        )
+                    annotation_df = parse_annotation(config["argument"]["annotation"])
                     # Ensure annotation mode actually runs for this branch
                     results_dict = annotation_mode(
                         read_df,
@@ -426,14 +432,16 @@ def main(args: argparse.Namespace) -> int:
                         config,
                         fasta_dict=fasta_dict,
                     )
-                elif (config["argument"]["annotation"] is None and
-                        config["argument"]["gff"] is not None):
+                elif (
+                    config["argument"]["annotation"] is None
+                    and config["argument"]["gff"] is not None
+                ):
                     print("Gff provided, preparing annotation")
                     annotation_df = prepare_annotation(
                         config["argument"]["gff"],
                         config["argument"]["output"],
                         config["argument"]["transcripts"],
-                        config["argument"]["threads"]
+                        config["argument"]["threads"],
                     )
                     print("Annotation prepared")
                     # Run annotation mode after preparing annotation
@@ -446,12 +454,12 @@ def main(args: argparse.Namespace) -> int:
                         fasta_dict=fasta_dict,
                     )
 
-                elif (config["argument"]["annotation"] is not None and
-                        config["argument"]["gff"] is None):
+                elif (
+                    config["argument"]["annotation"] is not None
+                    and config["argument"]["gff"] is None
+                ):
                     print("Annotation provided, parsing")
-                    annotation_df = parse_annotation(
-                        config["argument"]["annotation"]
-                        )
+                    annotation_df = parse_annotation(config["argument"]["annotation"])
                     print("Annotation parsed")
 
                     print("Running annotation mode")
@@ -468,16 +476,16 @@ def main(args: argparse.Namespace) -> int:
             # can display total_reads, mapping_rate, etc.
             results_dict.setdefault("alignment_stats", {}).update(flagstat)
             results_dict["provenance"] = _build_run_provenance(args, config)
-    
-            filename = config["argument"]["bam"].split('/')[-1]
+
+            filename = config["argument"]["bam"].split("/")[-1]
             if "." in filename:
-                filename = filename.split('.')[:-1]
+                filename = filename.split(".")[:-1]
 
         elif config["argument"]["json_in"]:
             print("JSON input provided")
-            filename = config["argument"]["json_in"].split('/')[-1]
+            filename = config["argument"]["json_in"].split("/")[-1]
             if "." in filename:
-                filename = filename.split('.')[:-1]
+                filename = filename.split(".")[:-1]
 
             json_dicts = parse_json_input(config["argument"]["json_in"])
             results_dict = json_dicts[0]
@@ -506,23 +514,13 @@ def main(args: argparse.Namespace) -> int:
         # Write out the specified output files
         if report_export is not None:
             plots_list = generate_plots(results_dict, config)
-            generate_report(plots_list,
-                            config,
-                            report_export,
-                            report_prefix,
-                            export["output"])
+            generate_report(plots_list, config, report_export, report_prefix, export["output"])
 
         if export.get("json"):
-            generate_json(results_dict,
-                          config,
-                          report_prefix,
-                          export["output"])
+            generate_json(results_dict, config, report_prefix, export["output"])
 
         if export.get("csv"):
-            generate_csv(results_dict,
-                         config,
-                         report_prefix,
-                         export["output"])
+            generate_csv(results_dict, config, report_prefix, export["output"])
 
         # Improved outputs (low-hanging fruit)
         sample_name = "".join(filename)
@@ -536,23 +534,36 @@ def main(args: argparse.Namespace) -> int:
         else:
             if export.get("summary_tsv"):
                 generate_summary_tsv(
-                    results_dict, config, sample_name,
-                    f"{sample_name}_summary.tsv", export.get("output", "")
+                    results_dict,
+                    config,
+                    sample_name,
+                    f"{sample_name}_summary.tsv",
+                    export.get("output", ""),
                 )
             if export.get("metrics_table"):
                 generate_metrics_table_csv(
-                    results_dict, config, sample_name,
-                    f"{sample_name}_metrics_table.csv", export.get("output", "")
+                    results_dict,
+                    config,
+                    sample_name,
+                    f"{sample_name}_metrics_table.csv",
+                    export.get("output", ""),
                 )
             if export.get("qc_status"):
                 generate_qc_status(
-                    results_dict, config, sample_name, None,
-                    f"{sample_name}_qc_status.json", export.get("output", "")
+                    results_dict,
+                    config,
+                    sample_name,
+                    None,
+                    f"{sample_name}_qc_status.json",
+                    export.get("output", ""),
                 )
             if export.get("comparison_csv"):
                 generate_comparison_ready_csv(
-                    results_dict, config, sample_name,
-                    f"{sample_name}_comparison.csv", export.get("output", "")
+                    results_dict,
+                    config,
+                    sample_name,
+                    f"{sample_name}_comparison.csv",
+                    export.get("output", ""),
                 )
             if export.get("offsets_tsv"):
                 generate_offsets_tsv(
@@ -571,8 +582,9 @@ def main(args: argparse.Namespace) -> int:
                 str(output_path.parent) if str(output_path.parent) != "." else "",
             )
 
-
     return 0
+
+
 if __name__ == "__main__":
     parser = argument_parser()
     args = parser.parse_args()

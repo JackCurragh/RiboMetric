@@ -6,10 +6,8 @@ Tests for the new metrics added in v1.2.0:
   - RUST (compute_rust_metrics, _empty_result, _lookup_seq)
 """
 
-import math
-import pandas as pd
 import numpy as np
-import pytest
+import pandas as pd
 
 from RiboMetric.qc import calculate_alignment_stats
 
@@ -17,12 +15,13 @@ from RiboMetric.qc import calculate_alignment_stats
 # Helpers                                                              #
 # ------------------------------------------------------------------ #
 
+
 def _make_read_df(
     n_reads=100,
-    mapq_frac_multi=0.1,   # fraction with MAPQ < 255
-    nh_frac_multi=None,    # fraction with NH > 1; when set, overrides MAPQ
-    dup_count=2,            # collapsed count for half the reads
-    soft_clip_frac=0.2,    # fraction with soft_clip_5 > 0
+    mapq_frac_multi=0.1,  # fraction with MAPQ < 255
+    nh_frac_multi=None,  # fraction with NH > 1; when set, overrides MAPQ
+    dup_count=2,  # collapsed count for half the reads
+    soft_clip_frac=0.2,  # fraction with soft_clip_5 > 0
 ):
     """Build a minimal read_df mimicking the output of join_batches."""
     rng = np.random.default_rng(42)
@@ -49,20 +48,23 @@ def _make_read_df(
 
 
 def _make_annotation_df():
-    return pd.DataFrame({
-        "transcript_id": ["tx1"],
-        "cds_start": [30],
-        "cds_end": [330],
-        "transcript_length": [500],
-        "genomic_cds_starts": [""],
-        "genomic_cds_ends": [""],
-    })
+    return pd.DataFrame(
+        {
+            "transcript_id": ["tx1"],
+            "cds_start": [30],
+            "cds_end": [330],
+            "transcript_length": [500],
+            "genomic_cds_starts": [""],
+            "genomic_cds_ends": [""],
+        }
+    )
 
 
 # ------------------------------------------------------------------ #
 # Alignment stats (inline logic, tested by calling annotation_mode   #
 # internals through a minimal read_df)                                #
 # ------------------------------------------------------------------ #
+
 
 class TestAlignmentStats:
     def test_duplicate_rate_computation(self):
@@ -177,6 +179,7 @@ class TestUniqueMapperFiltering:
 # Di-some proportion                                                   #
 # ------------------------------------------------------------------ #
 
+
 class TestDisomeProportion:
     def _make_rld(self, counts_dict):
         """Build a read_length_distribution dict."""
@@ -205,6 +208,7 @@ class TestDisomeProportion:
 # ------------------------------------------------------------------ #
 # Stop / start codon ratios                                            #
 # ------------------------------------------------------------------ #
+
 
 class TestCodonEnrichment:
     def _make_metagene(self, positions, base_count=10, boost_range=None, boost_mult=5):
@@ -264,18 +268,23 @@ class TestCodonEnrichment:
 # RUST module                                                          #
 # ------------------------------------------------------------------ #
 
+
 class TestRustHelpers:
     def test_lookup_seq_exact(self):
-        from RiboMetric.rust import _lookup_seq
         from unittest.mock import MagicMock
+
+        from RiboMetric.rust import _lookup_seq
+
         rec = MagicMock()
         rec.seq = "ATGATG"
         fasta = {"tx1": rec}
         assert _lookup_seq(fasta, "tx1") == "ATGATG"
 
     def test_lookup_seq_pipe_split(self):
-        from RiboMetric.rust import _lookup_seq
         from unittest.mock import MagicMock
+
+        from RiboMetric.rust import _lookup_seq
+
         rec = MagicMock()
         rec.seq = "ATGATG"
         fasta = {"NM_001": rec}
@@ -283,10 +292,12 @@ class TestRustHelpers:
 
     def test_lookup_seq_missing(self):
         from RiboMetric.rust import _lookup_seq
+
         assert _lookup_seq({}, "missing_tx") is None
 
     def test_empty_result_shape(self):
-        from RiboMetric.rust import _empty_result, WINDOW_SIZE
+        from RiboMetric.rust import WINDOW_SIZE, _empty_result
+
         result = _empty_result(WINDOW_SIZE)
         assert result["metagene"] == {}
         assert len(result["kl_divergence"]) == WINDOW_SIZE
@@ -311,19 +322,22 @@ class TestRustCompute:
         cds_end = 600
 
         # Annotation
-        ann_df = pd.DataFrame({
-            "transcript_id": [transcript_id],
-            "cds_start": [cds_start],
-            "cds_end": [cds_end],
-            "transcript_length": [600],
-            "genomic_cds_starts": [""],
-            "genomic_cds_ends": [""],
-        })
+        ann_df = pd.DataFrame(
+            {
+                "transcript_id": [transcript_id],
+                "cds_start": [cds_start],
+                "cds_end": [cds_end],
+                "transcript_length": [600],
+                "genomic_cds_starts": [""],
+                "genomic_cds_ends": [""],
+            }
+        )
 
         # FASTA dict: simple string (no SeqRecord needed)
         class _FakeSeq:
             def __str__(self):
                 return cds_seq
+
             def __repr__(self):
                 return cds_seq
 
@@ -337,19 +351,22 @@ class TestRustCompute:
         rng = np.random.default_rng(0)
         n = 500
         a_sites = rng.integers(120, 540, size=n).tolist()
-        df = pd.DataFrame({
-            "reference_name": [transcript_id] * n,
-            "a_site": a_sites,
-            "cds_start": [cds_start] * n,
-            "cds_end": [cds_end] * n,
-            "count": [1] * n,
-            "mRNA_category": [2] * n,
-        })
+        df = pd.DataFrame(
+            {
+                "reference_name": [transcript_id] * n,
+                "a_site": a_sites,
+                "cds_start": [cds_start] * n,
+                "cds_end": [cds_end] * n,
+                "count": [1] * n,
+                "mRNA_category": [2] * n,
+            }
+        )
 
         return df, ann_df, fasta
 
     def test_compute_runs_without_error(self):
         from RiboMetric.rust import compute_rust_metrics
+
         df, ann_df, fasta = self._make_inputs()
         result = compute_rust_metrics(df, ann_df, fasta)
         assert "metagene" in result
@@ -359,40 +376,48 @@ class TestRustCompute:
 
     def test_transcripts_used_gt_zero(self):
         from RiboMetric.rust import compute_rust_metrics
+
         df, ann_df, fasta = self._make_inputs()
         result = compute_rust_metrics(df, ann_df, fasta)
         assert result["transcripts_used"] >= 1
 
     def test_accepts_transcript_id_column_from_annotation_merge(self):
         from RiboMetric.rust import compute_rust_metrics
+
         df, ann_df, fasta = self._make_inputs()
         df = df.rename(columns={"reference_name": "transcript_id"})
         result = compute_rust_metrics(df, ann_df, fasta)
         assert result["transcripts_used"] >= 1
 
     def test_metagene_has_61_codons(self):
-        from RiboMetric.rust import compute_rust_metrics, SENSE_CODONS
+        from RiboMetric.rust import SENSE_CODONS, compute_rust_metrics
+
         df, ann_df, fasta = self._make_inputs()
         result = compute_rust_metrics(df, ann_df, fasta)
         # Should have an entry for every sense codon
         assert len(result["metagene"]) == len(SENSE_CODONS)
 
     def test_kl_divergence_length(self):
-        from RiboMetric.rust import compute_rust_metrics, WINDOW_SIZE
+        from RiboMetric.rust import WINDOW_SIZE, compute_rust_metrics
+
         df, ann_df, fasta = self._make_inputs()
         result = compute_rust_metrics(df, ann_df, fasta)
         assert len(result["kl_divergence"]) == WINDOW_SIZE
 
     def test_mean_kl_non_negative(self):
         from RiboMetric.rust import compute_rust_metrics
+
         df, ann_df, fasta = self._make_inputs()
         result = compute_rust_metrics(df, ann_df, fasta)
         assert result["mean_kl_divergence"] >= 0.0
 
     def test_empty_df_returns_empty(self):
-        from RiboMetric.rust import compute_rust_metrics, _empty_result, WINDOW_SIZE
+        from RiboMetric.rust import WINDOW_SIZE, _empty_result, compute_rust_metrics
+
         _, ann_df, fasta = self._make_inputs()
-        empty_df = pd.DataFrame(columns=["reference_name", "a_site", "cds_start", "cds_end", "count"])
+        empty_df = pd.DataFrame(
+            columns=["reference_name", "a_site", "cds_start", "cds_end", "count"]
+        )
         result = compute_rust_metrics(empty_df, ann_df, fasta)
         expected = _empty_result(WINDOW_SIZE)
         assert result["transcripts_used"] == 0
@@ -400,6 +425,7 @@ class TestRustCompute:
 
     def test_no_fasta_match_returns_empty(self):
         from RiboMetric.rust import compute_rust_metrics
+
         df, ann_df, _ = self._make_inputs()
         result = compute_rust_metrics(df, ann_df, {})  # empty fasta
         assert result["transcripts_used"] == 0

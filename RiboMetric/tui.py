@@ -5,17 +5,27 @@ A comprehensive Text User Interface for exploring RiboMetric analysis results.
 Supports viewing JSON output files with interactive navigation and visualization.
 """
 
+import base64
+import importlib
 import json
 import sys
-from pathlib import Path
-from typing import Dict, Any, Optional
-import base64
 import tempfile
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import Any as _Any
+from typing import cast as _cast
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Static, TabbedContent, TabPane
-from typing import TYPE_CHECKING, cast as _cast, Any as _Any
-import importlib
+from textual.binding import Binding
+from textual.screen import Screen
+from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
+
+from .plots import (
+    plot_metagene_heatmap,
+    plot_read_frame_distribution,
+    plot_read_length_distribution,
+    plot_terminal_nucleotide_bias_distribution,
+)
 
 # Textual Image widget typing/runtime import without importing at type-check time
 TUIImage: _Any
@@ -27,15 +37,6 @@ if not TYPE_CHECKING:
         TUIImage = None
 else:  # type-checking path
     TUIImage = None
-from textual.binding import Binding
-from textual.screen import Screen
-
-from .plots import (
-    plot_read_frame_distribution,
-    plot_metagene_heatmap,
-    plot_read_length_distribution,
-    plot_terminal_nucleotide_bias_distribution,
-)
 
 
 class RiboMetricData:
@@ -51,7 +52,7 @@ class RiboMetricData:
 
     def _load_data(self) -> Dict[str, Any]:
         """Load JSON data from file"""
-        with open(self.filepath, 'r') as f:
+        with open(self.filepath, "r") as f:
             return _cast(Dict[str, Any], json.load(f))
 
     def get_sample_name(self) -> str:
@@ -192,10 +193,14 @@ def render_periodicity(data: RiboMetricData) -> str:
     global_score = periodicity.get("global", 0)
 
     score_color = "green" if global_score > 0.7 else "yellow" if global_score > 0.5 else "red"
-    lines.append(f"[bold]Global Periodicity Score:[/bold] [{score_color}]{global_score:.3f}[/{score_color}]\n")
+    lines.append(
+        f"[bold]Global Periodicity Score:[/bold] [{score_color}]{global_score:.3f}[/{score_color}]\n"
+    )
 
     # Per-length breakdown
-    per_length = {k: v for k, v in periodicity.items() if k != "global" and isinstance(v, (int, float))}
+    per_length = {
+        k: v for k, v in periodicity.items() if k != "global" and isinstance(v, (int, float))
+    }
     if per_length:
         lines.append("[bold cyan]Per-Length Periodicity:[/bold cyan]\n")
         lines.append(f"{'Length':>8s} {'Score':>10s}  {'Visualization':30s}  {'Status':10s}")
@@ -234,11 +239,7 @@ def render_regions(data: RiboMetricData) -> str:
     lines.append(f"{'Region':>15s} {'Proportion':>12s}  {'Distribution':40s}")
     lines.append("─" * 75)
 
-    regions = [
-        ("5' Leader", prop_leader),
-        ("CDS", prop_cds),
-        ("3' Trailer", prop_trailer)
-    ]
+    regions = [("5' Leader", prop_leader), ("CDS", prop_cds), ("3' Trailer", prop_trailer)]
 
     for region_name, proportion in regions:
         if proportion is not None:
@@ -283,7 +284,9 @@ def render_all_metrics(data: RiboMetricData) -> str:
             if len(per_length) > 3:
                 lines.append(f"{'    ... and ' + str(len(per_length) - 3) + ' more':50s} {''}")
         elif isinstance(metric_value, (int, float)):
-            val_str = f"{metric_value:.4f}" if isinstance(metric_value, float) else str(metric_value)
+            val_str = (
+                f"{metric_value:.4f}" if isinstance(metric_value, float) else str(metric_value)
+            )
             lines.append(f"{metric_name:50s} {'Scalar':12s} {val_str:>15s}")
 
     return "\n".join(lines)
@@ -293,8 +296,8 @@ def render_raw_data(data: RiboMetricData) -> str:
     """Render raw JSON data"""
     json_str = json.dumps(data.data, indent=2)
     # Limit to first 100 lines for display
-    lines = json_str.split('\n')[:100]
-    if len(json_str.split('\n')) > 100:
+    lines = json_str.split("\n")[:100]
+    if len(json_str.split("\n")) > 100:
         lines.append("... (truncated, use text editor to view full file)")
     return "\n".join(lines)
 
@@ -390,16 +393,26 @@ class RiboMetricTUI(App):
             self._plots.clear()
             if res.get("read_frame_distribution"):
                 p = plot_read_frame_distribution(res["read_frame_distribution"], cfg)
-                self._plots["frames_plot"] = self._write_image_from_b64(p.get("fig_image", ""), "frames_plot")
+                self._plots["frames_plot"] = self._write_image_from_b64(
+                    p.get("fig_image", ""), "frames_plot"
+                )
             if res.get("read_length_distribution"):
                 p = plot_read_length_distribution(res["read_length_distribution"], cfg)
-                self._plots["lengths_plot"] = self._write_image_from_b64(p.get("fig_image", ""), "lengths_plot")
+                self._plots["lengths_plot"] = self._write_image_from_b64(
+                    p.get("fig_image", ""), "lengths_plot"
+                )
             if res.get("terminal_nucleotide_bias_distribution"):
-                p = plot_terminal_nucleotide_bias_distribution(res["terminal_nucleotide_bias_distribution"], cfg)
-                self._plots["ligation_plot"] = self._write_image_from_b64(p.get("fig_image", ""), "ligation_plot")
+                p = plot_terminal_nucleotide_bias_distribution(
+                    res["terminal_nucleotide_bias_distribution"], cfg
+                )
+                self._plots["ligation_plot"] = self._write_image_from_b64(
+                    p.get("fig_image", ""), "ligation_plot"
+                )
             if res.get("metagene_profile"):
                 p = plot_metagene_heatmap(res["metagene_profile"], cfg)
-                self._plots["metagene_plot"] = self._write_image_from_b64(p.get("fig_image", ""), "metagene_plot")
+                self._plots["metagene_plot"] = self._write_image_from_b64(
+                    p.get("fig_image", ""), "metagene_plot"
+                )
         except Exception:
             # Non-fatal if images disabled or deps missing
             self._plots.clear()
@@ -436,7 +449,9 @@ class RiboMetricTUI(App):
             # Optional visual plots (images)
             with TabPane("Lengths (Plot)", id="lengths_plot"):
                 if TUIImage and self._plots.get("lengths_plot"):
-                    yield TUIImage(self._plots["lengths_plot"])  # TUIImage is Any at type-check time
+                    yield TUIImage(
+                        self._plots["lengths_plot"]
+                    )  # TUIImage is Any at type-check time
                 else:
                     yield Static("Plot image not available.")
 
@@ -448,13 +463,17 @@ class RiboMetricTUI(App):
 
             with TabPane("Lig. Bias (Plot)", id="ligation_plot"):
                 if TUIImage and self._plots.get("ligation_plot"):
-                    yield TUIImage(self._plots["ligation_plot"])  # TUIImage is Any at type-check time
+                    yield TUIImage(
+                        self._plots["ligation_plot"]
+                    )  # TUIImage is Any at type-check time
                 else:
                     yield Static("Plot image not available (requires sequence background).")
 
             with TabPane("Metagene (Plot)", id="metagene_plot"):
                 if TUIImage and self._plots.get("metagene_plot"):
-                    yield TUIImage(self._plots["metagene_plot"])  # TUIImage is Any at type-check time
+                    yield TUIImage(
+                        self._plots["metagene_plot"]
+                    )  # TUIImage is Any at type-check time
                 else:
                     yield Static("Plot image not available (requires annotation).")
 

@@ -1,11 +1,11 @@
-"""
+""" """
 
-"""
-
-import subprocess
-import pandas as pd
-import numpy as np
 import os
+import subprocess
+from typing import List
+
+import numpy as np
+import pandas as pd
 
 
 def run_samtools_idxstats(bam_file: str) -> pd.DataFrame:
@@ -20,28 +20,22 @@ def run_samtools_idxstats(bam_file: str) -> pd.DataFrame:
         idxstats_df: dataframe containing idxstats for the bam file
     """
     # Run samtools idxstats command and capture the output
-    process = subprocess.Popen(['samtools', 'idxstats', bam_file],
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
+    process = subprocess.Popen(
+        ["samtools", "idxstats", bam_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     stdout, stderr = process.communicate()
 
     # Convert the output to a pandas DataFrame
-    lines = stdout.decode().strip().split('\n')
-    data = [line.split('\t') for line in lines]
-    df = pd.DataFrame(data, columns=['Reference',
-                                     'Length',
-                                     'Mapped_Reads',
-                                     'Unmapped_Reads'])
+    lines = stdout.decode().strip().split("\n")
+    data = [line.split("\t") for line in lines]
+    df = pd.DataFrame(data, columns=["Reference", "Length", "Mapped_Reads", "Unmapped_Reads"])
 
     return df
 
 
-from typing import List
-
-
-def split_idxstats_df(idxstats_df: pd.DataFrame,
-                      batch_size: int,
-                      num_reads: int) -> List[pd.DataFrame]:
+def split_idxstats_df(
+    idxstats_df: pd.DataFrame, batch_size: int, num_reads: int
+) -> List[pd.DataFrame]:
     """
     Split the idxstats data frame into a list of data frames limited to
     the max read count while also preparing the dataframe for conversion to
@@ -55,10 +49,11 @@ def split_idxstats_df(idxstats_df: pd.DataFrame,
     Outputs:
         split_dfs
     """
+
     def _bed_df(row_indices: List[int]) -> pd.DataFrame:
         current_df = idxstats_df.iloc[row_indices, [0, 1]].copy()
-        current_df['Start'] = np.zeros(len(row_indices), dtype=np.int8)
-        return current_df[['Reference', 'Start', 'Length']]
+        current_df["Start"] = np.zeros(len(row_indices), dtype=np.int8)
+        return current_df[["Reference", "Start", "Length"]]
 
     split_dfs: List[pd.DataFrame] = []
     current_indices: List[int] = []
@@ -66,7 +61,7 @@ def split_idxstats_df(idxstats_df: pd.DataFrame,
     emitted_reads = 0
 
     for i, row in idxstats_df.iterrows():
-        reads = int(row['Mapped_Reads']) + int(row['Unmapped_Reads'])
+        reads = int(row["Mapped_Reads"]) + int(row["Unmapped_Reads"])
 
         if current_indices and current_sum > 0 and current_sum + reads > batch_size:
             split_dfs.append(_bed_df(current_indices))
@@ -93,11 +88,7 @@ def split_idxstats_df(idxstats_df: pd.DataFrame,
     return split_dfs
 
 
-def split_bam(bam_file: str,
-              split_num: int,
-              reference_df: pd.DataFrame,
-              tempdir: str
-              ) -> str:
+def split_bam(bam_file: str, split_num: int, reference_df: pd.DataFrame, tempdir: str) -> str:
     """
     Splits the bam files with the bed files generated from the idxstats
 
@@ -117,12 +108,15 @@ def split_bam(bam_file: str,
     outfile = f"{tempdir}/split_sorted_{split_num}.bam"
     view = subprocess.run(
         (
-            'samtools',
-            'view',
-            '-F', '256',
-            '-b',
-            '-L', bedfile,
-            '-o', unsorted,
+            "samtools",
+            "view",
+            "-F",
+            "256",
+            "-b",
+            "-L",
+            bedfile,
+            "-o",
+            unsorted,
             bam_file,
         ),
         capture_output=True,
@@ -133,10 +127,12 @@ def split_bam(bam_file: str,
 
     sort = subprocess.run(
         (
-            'samtools',
-            'sort',
-            '-O', 'bam',
-            '-o', outfile,
+            "samtools",
+            "sort",
+            "-O",
+            "bam",
+            "-o",
+            outfile,
             unsorted,
         ),
         capture_output=True,
@@ -146,7 +142,7 @@ def split_bam(bam_file: str,
         raise RuntimeError(f"samtools sort failed: {sort.stderr.strip()}")
 
     index = subprocess.run(
-        ('samtools', 'index', outfile),
+        ("samtools", "index", outfile),
         capture_output=True,
         text=True,
     )
@@ -160,7 +156,7 @@ def split_bam(bam_file: str,
 
 
 def split_gff_file(input_file: str, outdir: str, num_files: int) -> List[str]:
-    with open(input_file, 'r') as f:
+    with open(input_file, "r") as f:
         gff_lines = f.readlines()
 
     num_lines = len(gff_lines)
@@ -174,19 +170,19 @@ def split_gff_file(input_file: str, outdir: str, num_files: int) -> List[str]:
         if line_number >= lines_per_split:
             if line.startswith("#"):
                 continue
-            if line.split('\t')[2] == "gene":
+            if line.split("\t")[2] == "gene":
                 split_indices.append(i)
                 line_number = 0
 
     split_indices.append(num_lines)
     split_gffs = []
-    for i in range(len(split_indices)-1):
+    for i in range(len(split_indices) - 1):
         start_index = split_indices[i]
         end_index = split_indices[i + 1]
         file_lines = gff_lines[start_index:end_index]
 
         output_file = f"{outdir}/temp_gff_{i + 1}.gff"
-        with open(output_file, 'w') as f_out:
+        with open(output_file, "w") as f_out:
             f_out.writelines(file_lines)
 
         split_gffs.append(output_file)
@@ -215,38 +211,29 @@ def split_gff_df(gff_df: pd.DataFrame, split_num: int) -> List[pd.DataFrame]:
     split_df_list = []
     for split in range(split_num):
 
-        lower_limit = (split_length * split)
-        upper_limit = (split_length * (split + 1))
+        lower_limit = split_length * split
+        upper_limit = split_length * (split + 1)
 
         if upper_limit + offset >= df_length:
-            split_df = gff_df.iloc[lower_limit + prev_offset:
-                                   df_length]
+            split_df = gff_df.iloc[lower_limit + prev_offset : df_length]
             split_df_list.append(split_df)
             return split_df_list
 
-        last_transcript_id = gff_df["transcript_id"].iloc[upper_limit
-                                                          - 1
-                                                          + offset]
-        next_transcript_id = gff_df["transcript_id"].iloc[upper_limit
-                                                          + offset]
+        last_transcript_id = gff_df["transcript_id"].iloc[upper_limit - 1 + offset]
+        next_transcript_id = gff_df["transcript_id"].iloc[upper_limit + offset]
 
         while last_transcript_id == next_transcript_id:
 
             if upper_limit + offset + 1 > df_length:
-                split_df = gff_df.iloc[lower_limit + prev_offset:
-                                       df_length]
+                split_df = gff_df.iloc[lower_limit + prev_offset : df_length]
                 split_df_list.append(split_df)
                 return split_df_list
 
             offset += 1
-            last_transcript_id = gff_df["transcript_id"].iloc[upper_limit
-                                                              - 1
-                                                              + offset]
-            next_transcript_id = gff_df["transcript_id"].iloc[upper_limit
-                                                              + offset]
+            last_transcript_id = gff_df["transcript_id"].iloc[upper_limit - 1 + offset]
+            next_transcript_id = gff_df["transcript_id"].iloc[upper_limit + offset]
 
-        split_df = gff_df.iloc[lower_limit + prev_offset:
-                               upper_limit + offset]
+        split_df = gff_df.iloc[lower_limit + prev_offset : upper_limit + offset]
         prev_offset = offset
         split_df_list.append(split_df)
 
