@@ -97,7 +97,14 @@ setup(
     long_description_content_type="text/x-rst",
     include_package_data=True,
     keywords="RiboMetric",
-    name="RiboMetric",
+    # Lowercase deliberately (REPO_CONTRACT §5.3). PyPI rejects a wheel whose
+    # filename is not the normalised project name, with a 400 at upload that
+    # `twine check` does not catch -- three TranslonScorer releases died on
+    # exactly this. Declaring the name lowercase makes the built filenames
+    # `ribometric-*` regardless of the setuptools version; the CI build job
+    # asserts it as well. The import package stays `RiboMetric`, and both
+    # console scripts are unchanged.
+    name="ribometric",
     packages=find_packages(
         include=["RiboMetric", "RiboMetric.*"],
         exclude=[

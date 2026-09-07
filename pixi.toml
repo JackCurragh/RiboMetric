@@ -22,4 +22,4 @@ twine = ">=6.2.0, <7"
 textual = ">=0.47.0"
 # Editable install with dev extras pulls pytest/coverage/ruff/black/mypy into the
 # pixi env so `pixi run test` does not fall through to a system pytest.
-RiboMetric = { path = ".", editable = true, extras = ["dev"] }
+ribometric = { path = ".", editable = true, extras = ["dev"] }
