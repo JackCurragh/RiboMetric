@@ -80,6 +80,18 @@ def test_main_run():
     assert "terminal_bias_kl_5prime_raw" in metrics
     assert metrics["terminal_bias_kl_5prime"] == metrics["terminal_bias_kl_5prime_score"]
 
+    provenance = results["provenance"]
+    assert "effective_config_sha256" in provenance
+    assert provenance["inputs"]["bam"]["hash_method"] == "full_sha256"
+    assert provenance["inputs"]["annotation"]["hash_method"] == "full_sha256"
+
+    offsets = results["offsets"]
+    assert offsets["source"] == "global"
+    assert offsets["global_offset"] == 15
+    assert offsets["target"] == "a_site"
+    assert offsets["applied_by_read_length"]
+    assert os.path.exists(f"{file_path}/test_offsets.tsv")
+
 
 def test_main_run_no_server_flag_anymore():
     # Keeping a placeholder test to assert absence of server option at CLI level.

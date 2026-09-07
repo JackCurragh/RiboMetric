@@ -49,6 +49,12 @@ from rich.text import Text
 from rich.table import Table
 from typing import Dict, Any
 import argparse
+import hashlib
+import json
+import os
+import platform
+from datetime import datetime, timezone
+from pathlib import Path
 
 from .file_parser import (
     parse_bam,
@@ -70,8 +76,110 @@ from .results_output import (
     generate_qc_status,
     generate_comparison_ready_csv,
     generate_metrics_table_csv,
+    generate_offsets_tsv,
     generate_all_outputs,
 )
+
+
+_HASH_SAMPLE_BYTES = 1024 * 1024
+_FULL_HASH_LIMIT_BYTES = 50 * 1024 * 1024
+
+
+def _config_path_used(args: argparse.Namespace) -> str:
+    if os.path.exists(args.config):
+        return args.config
+    return str(Path(__file__).with_name("config.yml"))
+
+
+def _sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _file_fingerprint(path_value: Any) -> Dict[str, Any]:
+    """Return a reproducibility fingerprint without forcing huge full-file hashes."""
+    if not path_value:
+        return {"path": path_value, "exists": False}
+
+    path = Path(str(path_value))
+    record: Dict[str, Any] = {
+        "path": str(path),
+        "exists": path.exists(),
+    }
+    if not path.exists() or not path.is_file():
+        return record
+
+    stat = path.stat()
+    record.update({
+        "size_bytes": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
+    })
+
+    full_hash = (
+        os.environ.get("RIBOMETRIC_FULL_INPUT_HASH", "").lower()
+        in {"1", "true", "yes"}
+        or stat.st_size <= _FULL_HASH_LIMIT_BYTES
+    )
+
+    h = hashlib.sha256()
+    if full_hash:
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                h.update(chunk)
+        record["sha256"] = h.hexdigest()
+        record["hash_method"] = "full_sha256"
+    else:
+        with path.open("rb") as handle:
+            first = handle.read(_HASH_SAMPLE_BYTES)
+            if stat.st_size > _HASH_SAMPLE_BYTES:
+                handle.seek(max(0, stat.st_size - _HASH_SAMPLE_BYTES))
+                last = handle.read(_HASH_SAMPLE_BYTES)
+            else:
+                last = b""
+        h.update(first)
+        h.update(last)
+        record["sha256_sampled"] = h.hexdigest()
+        record["hash_method"] = (
+            f"first_last_{_HASH_SAMPLE_BYTES}_bytes_sha256"
+        )
+    return record
+
+
+def _build_run_provenance(args: argparse.Namespace, config: Dict[str, Any]) -> Dict[str, Any]:
+    arg_cfg = config.get("argument", {})
+    input_keys = [
+        "bam",
+        "annotation",
+        "gff",
+        "fasta",
+        "json_in",
+        "offset_read_length",
+        "offset_read_specific",
+    ]
+    config_path = _config_path_used(args)
+    return {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "command": getattr(args, "command", None),
+        "package_version": _package_version(),
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "config_file": _file_fingerprint(config_path),
+        "effective_config_sha256": _sha256_bytes(
+            json.dumps(config, sort_keys=True, default=str).encode("utf-8")
+        ),
+        "inputs": {
+            key: _file_fingerprint(arg_cfg.get(key))
+            for key in input_keys
+            if arg_cfg.get(key) is not None
+        },
+    }
+
+
+def _package_version() -> str:
+    try:
+        from . import __version__
+        return str(__version__)
+    except Exception:
+        return "unknown"
 
 
 def print_logo(console: Console) -> None:
@@ -183,7 +291,6 @@ def main(args: argparse.Namespace) -> int:
     if args.command == "view":
         from .tui import run_tui
         import json
-        from pathlib import Path
 
         # Validate file exists and is JSON
         file_path = Path(args.json_file)
@@ -360,6 +467,7 @@ def main(args: argparse.Namespace) -> int:
             # Merge samtools flagstat data into alignment_stats so the report
             # can display total_reads, mapping_rate, etc.
             results_dict.setdefault("alignment_stats", {}).update(flagstat)
+            results_dict["provenance"] = _build_run_provenance(args, config)
     
             filename = config["argument"]["bam"].split('/')[-1]
             if "." in filename:
@@ -378,6 +486,7 @@ def main(args: argparse.Namespace) -> int:
 
             if config["argument"]["json_config"]:
                 config["plots"] = json_config["plots"]
+            results_dict["provenance"] = _build_run_provenance(args, config)
 
         # Indentify output requirements
         if export["name"] is not None:
@@ -445,20 +554,22 @@ def main(args: argparse.Namespace) -> int:
                     results_dict, config, sample_name,
                     f"{sample_name}_comparison.csv", export.get("output", "")
                 )
+            if export.get("offsets_tsv"):
+                generate_offsets_tsv(
+                    results_dict,
+                    sample_name,
+                    f"{sample_name}_offsets.tsv",
+                    export.get("output", ""),
+                )
 
         if export.get("output_offsets"):
-            offsets_data = results_dict.get("computed_offsets", {})
-            if offsets_data:
-                with open(export["output_offsets"], "w") as f:
-                    f.write("read_len\toffset\n")
-                    for length, offset in sorted(
-                        offsets_data.items(), key=lambda x: int(x[0])
-                    ):
-                        f.write(f"{length}\t{offset}\n")
-                print(f"Offsets written to {export['output_offsets']}")
-            else:
-                print("Warning: --output-offsets set but no computed offsets available. "
-                      "Offsets are only calculated when no external offset file is provided.")
+            output_path = Path(export["output_offsets"])
+            generate_offsets_tsv(
+                results_dict,
+                sample_name,
+                output_path.name,
+                str(output_path.parent) if str(output_path.parent) != "." else "",
+            )
 
 
     return 0

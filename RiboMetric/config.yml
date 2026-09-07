@@ -13,8 +13,9 @@ argument:
   transcripts: null           # Number of transcripts processed from a gff file, null being the entire file
   html: True                  # Output HTML report
   pdf: False                  # Output PDF report
-  json: False                 # Output results as JSON
+  json: True                  # Output results as JSON
   csv: False                  # Output metrics as CSV
+  offsets_tsv: True           # Output applied offsets as TSV
   offset_calculation_method: "ribowaltz"
   offset_target: "a_site"     # Site represented by calculated offsets: "a_site" or "p_site"
   offset_min: 8               # Minimum plausible final offset from the read 5' end

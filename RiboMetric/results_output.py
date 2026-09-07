@@ -8,6 +8,7 @@ This module provides multiple output formats optimized for different use cases:
 - QC Status JSON: Pass/warn/fail status for automated QC
 - Comparison CSV: Wide format for multi-sample comparison
 - Metrics Table CSV: Detailed long-format metrics
+- Offsets TSV: Applied offset audit table
 """
 
 import json
@@ -600,6 +601,108 @@ def generate_metrics_table_csv(
     print(f"Detailed metrics table written to {output}")
 
 
+def generate_offsets_tsv(
+    results_dict: dict,
+    sample_name: str,
+    name: str = "RiboMetric_offsets.tsv",
+    output_directory: str = "",
+) -> None:
+    """Write a flat table of the offsets actually applied during the run."""
+    if output_directory == "":
+        output = name
+    else:
+        if output_directory.endswith("/") and output_directory != "":
+            output_directory = output_directory[:-1]
+        output = output_directory + "/" + name
+
+    offsets = results_dict.get("offsets", {})
+    applied = offsets.get("applied_by_read_length", {}) or {}
+    computed = offsets.get("computed_offsets", {}) or {}
+    final = offsets.get("final_offsets", computed) or {}
+    raw = offsets.get("raw_offsets", {}) or {}
+    frame_adjustments = offsets.get("frame_adjustments", {}) or {}
+    columns = [
+        "sample",
+        "offset_source",
+        "offset_target",
+        "offset_calculation_method",
+        "read_length",
+        "n_reads",
+        "n_unique_offsets",
+        "applied_offsets",
+        "raw_offset",
+        "final_offset",
+        "min_offset",
+        "max_offset",
+        "computed_offset",
+        "global_offset",
+        "frame_adjusted",
+        "old_offset",
+        "new_offset",
+        "dominant_frame",
+        "dominant_fraction",
+        "frame_adjustment_reads",
+    ]
+    rows = []
+
+    if applied:
+        for read_length, record in sorted(
+            applied.items(), key=lambda item: int(item[0])
+        ):
+            adjustment = frame_adjustments.get(str(read_length), {})
+            offset_values = record.get("offsets", [])
+            rows.append({
+                "sample": sample_name,
+                "offset_source": offsets.get("source"),
+                "offset_target": offsets.get("target"),
+                "offset_calculation_method": offsets.get("offset_calculation_method"),
+                "read_length": read_length,
+                "n_reads": record.get("n_reads"),
+                "n_unique_offsets": record.get("n_unique_offsets"),
+                "applied_offsets": "|".join(str(v) for v in offset_values),
+                "min_offset": record.get("min_offset"),
+                "max_offset": record.get("max_offset"),
+                "raw_offset": raw.get(str(read_length)),
+                "final_offset": final.get(str(read_length)),
+                "computed_offset": final.get(str(read_length), computed.get(str(read_length))),
+                "global_offset": offsets.get("global_offset"),
+                "frame_adjusted": bool(adjustment),
+                "old_offset": adjustment.get("old_offset"),
+                "new_offset": adjustment.get("new_offset"),
+                "dominant_frame": adjustment.get("dominant_frame"),
+                "dominant_fraction": adjustment.get("dominant_fraction"),
+                "frame_adjustment_reads": adjustment.get("reads"),
+            })
+    else:
+        rows.append({
+            "sample": sample_name,
+            "offset_source": offsets.get("source"),
+            "offset_target": offsets.get("target"),
+            "offset_calculation_method": offsets.get("offset_calculation_method"),
+            "read_length": "",
+            "n_reads": "",
+            "n_unique_offsets": "",
+            "applied_offsets": "",
+            "min_offset": "",
+            "max_offset": "",
+            "computed_offset": "",
+            "global_offset": offsets.get("global_offset"),
+            "frame_adjusted": False,
+            "old_offset": "",
+            "new_offset": "",
+            "dominant_frame": "",
+            "dominant_fraction": "",
+            "frame_adjustment_reads": "",
+        })
+
+    with open(output, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=columns, delimiter="\t")
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"Offsets TSV written to {output}")
+
+
 def generate_all_outputs(
     results_dict: dict,
     config: dict,
@@ -640,6 +743,11 @@ def generate_all_outputs(
     generate_comparison_ready_csv(
         results_dict, config, sample_name,
         f"{sample_name}_comparison.csv", output_directory
+    )
+
+    generate_offsets_tsv(
+        results_dict, sample_name,
+        f"{sample_name}_offsets.tsv", output_directory
     )
 
     print("All improved outputs generated successfully!")

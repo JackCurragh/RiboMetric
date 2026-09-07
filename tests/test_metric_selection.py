@@ -104,6 +104,32 @@ class TestArgParser:
         # Should not include all optionals (unless they're in config file defaults)
         # This depends on your config.yml content
 
+    def test_json_output_defaults_on(self, config_path, test_data_dir):
+        """JSON is a production audit artifact and should be on by default."""
+        args = Namespace(
+            command="run",
+            bam=str(test_data_dir / "test.bam"),
+            annotation=str(test_data_dir / "1000_entry_RiboMetric.tsv"),
+            config=str(config_path),
+            gff=None,
+            fasta=None,
+            subsample=None,
+            transcripts=None,
+            threads=2,
+            json=False,
+            html=False,
+            pdf=False,
+            csv=False,
+            all=False,
+            enable_optional_metrics=False,
+            enable_metric=None,
+            offset_calculation_method="changepoint",
+        )
+
+        config = open_config(args)
+
+        assert config["argument"]["json"] is True
+
     def test_enable_all_optional_metrics(self, config_path, test_data_dir):
         """Test --enable-optional-metrics flag"""
         args = Namespace(

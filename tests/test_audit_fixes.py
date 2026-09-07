@@ -6,6 +6,7 @@ Each test pins a specific bug that previously passed silently:
   * S6 — --offset-global was never applied.
   * U1 — evaluate gate ignored metric directionality.
   * E1 — bare `RiboMetric` crashed instead of printing help.
+  * E2 — --output-offsets crashed because Path was shadowed inside main().
 """
 import os
 
@@ -115,3 +116,44 @@ def test_cli_no_command_prints_help(capsys, monkeypatch):
     assert rc == 0
     captured = capsys.readouterr()
     assert "subcommands" in captured.out or "usage" in captured.out
+
+
+# --------------------------------------------------------------------------- #
+# E2 — --output-offsets must run through the CLI entry point
+# --------------------------------------------------------------------------- #
+def test_cli_output_offsets_writes_file(tmp_path, monkeypatch):
+    from RiboMetric import cli
+
+    output_offsets = tmp_path / "applied_offsets.tsv"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "RiboMetric",
+            "run",
+            "--bam",
+            os.path.join(TEST_DATA, "test.bam"),
+            "--annotation",
+            os.path.join(TEST_DATA, "1000_entry_RiboMetric.tsv"),
+            "--output",
+            str(tmp_path),
+            "--config",
+            os.path.join(TEST_DATA, "../../config.yml"),
+            "--offset-global",
+            "15",
+            "--json",
+            "--output-offsets",
+            str(output_offsets),
+            "--subsample",
+            "1000",
+            "--threads",
+            "1",
+        ],
+    )
+
+    rc = cli.main()
+
+    assert rc == 0
+    assert output_offsets.exists()
+    assert output_offsets.read_text().splitlines()[0].startswith(
+        "sample\toffset_source\toffset_target"
+    )

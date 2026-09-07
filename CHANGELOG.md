@@ -9,6 +9,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.3] — 2026-08-19
+
+### Fixed
+
+- **Canonical final offsets** — frame-calibrated per-read-length offsets are now
+  consistently used by annotation-dependent metrics and downstream profiles,
+  and are reported in JSON and TSV audit outputs.
+- **Offset provenance** — JSON now distinguishes raw estimates from final
+  offsets; applied offsets no longer come from a stale pre-calibration dataframe.
+- **External offset semantics** — externally supplied offsets are explicitly
+  marked as final offsets because internal frame calibration is bypassed.
+
+## [1.4.2] — 2026-07-10
+
+### Fixed
+
+- **`--output-offsets` CLI crash** — removed a function-local `Path` import that
+  shadowed the module-level import and caused `UnboundLocalError` on normal
+  `RiboMetric run --output-offsets ...` executions.
+
+## [1.4.1] — 2026-07-07
+
+### Added
+
+- **Production run provenance** — JSON outputs now include a `results["provenance"]`
+  block with timestamp, package/Python/platform details, effective config SHA-256,
+  config file fingerprint, and input file fingerprints. Small files are fully
+  SHA-256 hashed; large files receive an explicit sampled fingerprint unless
+  `RIBOMETRIC_FULL_INPUT_HASH=1` is set.
+- **Offset audit record** — JSON outputs now include `results["offsets"]`, recording
+  the offset source, target, bounds, method, computed offsets, global/external
+  offset inputs, frame-adjustment details, and the offsets actually applied by
+  read length.
+- **Applied offsets TSV** — RiboMetric now writes `{sample}_offsets.tsv` by default
+  (`offsets_tsv: True`). The table is suitable for cohort-level offset checks and
+  includes applied offsets, read counts, computed/global offsets, and frame
+  adjustment fields.
+
+### Changed
+
+- **JSON output is on by default** so production runs retain the complete audit
+  object without requiring `--json`.
+- **`--output-offsets` now writes the applied-offset audit TSV schema** instead of
+  only writing internally computed offsets. This makes the explicit path useful
+  for global, external read-length, and read-specific offset modes as well.
+
 ## [1.4.0] — 2026-06-11
 
 ### Added
