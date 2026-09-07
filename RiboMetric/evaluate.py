@@ -101,12 +101,25 @@ def evaluate(args: Namespace) -> int:
     results = _load_results(results_path)
     sample_name = getattr(args, "name", None) or results_path.stem
 
-    status = evaluate_qc_status(results, sample_name, thresholds)
+    try:
+        status = evaluate_qc_status(results, sample_name, thresholds)
+    except ValueError as exc:
+        # A policy that cannot be evaluated is a configuration error, not a
+        # verdict on the sample. Exit non-zero so a pipeline stops rather than
+        # treating an unusable policy as a pass.
+        print(f"Error: {exc}")
+        return EXIT_FAIL
 
     # Human-readable report
     print(f"\nQC evaluation for '{sample_name}': {status['overall_status']}")
     for check in status["checks"]:
         cmp = "<=" if check.get("direction") == "lower" else ">="
+        if check["value"] is None:
+            print(
+                f"  [{check['status']:<7}] {check['metric']} = n/a "
+                f"({check.get('reason', 'no value available')})"
+            )
+            continue
         print(
             f"  [{check['status']:<7}] {check['metric']} = "
             f"{check['value']:.4g} "

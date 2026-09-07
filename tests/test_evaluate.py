@@ -41,10 +41,17 @@ def test_evaluate_qc_status_fail():
     assert status["overall_status"] == "FAIL"
 
 
-def test_evaluate_qc_status_skips_missing_metrics():
+def test_evaluate_qc_status_fails_on_missing_metrics():
+    """An explicit policy is a required-check contract.
+
+    Previously every named metric was skipped when absent, so a results file
+    with no metrics at all reported PASS with zero checks performed.
+    """
     status = evaluate_qc_status({"metrics": {}}, "s", THRESHOLDS)
-    assert status["checks"] == []
-    assert status["overall_status"] == "PASS"
+    assert status["overall_status"] == "FAIL"
+    assert len(status["checks"]) == len(THRESHOLDS)
+    assert all(c["status"] == "FAIL" for c in status["checks"])
+    assert all(c["value"] is None and c["reason"] for c in status["checks"])
 
 
 def test_load_results_json(tmp_path):

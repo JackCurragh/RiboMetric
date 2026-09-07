@@ -13,10 +13,11 @@ This module provides multiple output formats optimized for different use cases:
 
 import json
 import csv
+import math
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional, Sequence, cast
+from typing import Dict, List, Optional, Sequence, Tuple, cast
 
 
 # =============================================================================
@@ -210,14 +211,48 @@ def generate_summary_tsv(
         elif isinstance(metric_value, (int, float)):
             summary_row[metric_name] = metric_value
 
-    # Write with headers
-    file_exists = Path(output).exists()
+    # Write with headers. When appending, the existing header is authoritative:
+    # the metric key set is not constant across runs (e.g. the terminal bias
+    # metrics are only produced when a sequence background is available), so
+    # writing this row's own key order would silently place values under the
+    # wrong column names.
+    path = Path(output)
+    file_exists = path.exists() and path.stat().st_size > 0
+
+    if file_exists:
+        with open(output, newline='') as f:
+            header = next(csv.reader(f, delimiter='\t'), [])
+        if not header or any(not col for col in header):
+            raise ValueError(
+                f"{output} has a missing or malformed header row; refusing to "
+                "append. Remove the file or write to a new one."
+            )
+        if len(set(header)) != len(header):
+            raise ValueError(
+                f"{output} has duplicate column names; refusing to append. "
+                "Remove the file or write to a new one."
+            )
+        new_columns = [col for col in summary_row if col not in header]
+        if new_columns:
+            raise ValueError(
+                f"{output} has no column(s) for {', '.join(sorted(new_columns))}. "
+                "Appending would produce a row inconsistent with the header. "
+                "Write this sample to a fresh summary file, or use the "
+                "comparison CSV writer, which handles a changing metric set."
+            )
+        # Columns present in the header but absent from this sample are left
+        # blank rather than shifting every later value one column to the left.
+        fieldnames = header
+        row = {col: summary_row.get(col, "") for col in header}
+    else:
+        fieldnames = list(summary_row)
+        row = summary_row
 
     with open(output, "a" if file_exists else "w", newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=summary_row.keys(), delimiter='\t')
+        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter='\t')
         if not file_exists:
             writer.writeheader()
-        writer.writerow(summary_row)
+        writer.writerow(row)
 
     print(f"Summary line written to {output}")
 
@@ -308,6 +343,76 @@ def _evaluate_qc_status_scored(results_dict: dict, sample_name: str) -> dict:
     }
 
 
+def _validate_explicit_thresholds(thresholds: Dict) -> None:
+    """Reject a threshold policy that cannot be evaluated as written.
+
+    An explicit policy is a contract: every metric it names must actually be
+    checked. A policy that is empty or malformed cannot express that, so it is
+    an error rather than something to work around silently.
+    """
+    if not isinstance(thresholds, dict) or not thresholds:
+        raise ValueError(
+            "Threshold policy is empty or not a mapping; expected "
+            "{metric: {pass: x, warn: y}}."
+        )
+    for metric_name, spec in thresholds.items():
+        if not isinstance(spec, dict):
+            raise ValueError(
+                f"Threshold policy for '{metric_name}' must be a mapping with "
+                f"'pass' and 'warn' keys, got {type(spec).__name__}."
+            )
+        for bound in ("pass", "warn"):
+            if bound not in spec:
+                raise ValueError(
+                    f"Threshold policy for '{metric_name}' is missing '{bound}'."
+                )
+            bound_value = spec[bound]
+            if isinstance(bound_value, bool) or not isinstance(
+                bound_value, (int, float)
+            ):
+                raise ValueError(
+                    f"Threshold '{bound}' for '{metric_name}' must be a number, "
+                    f"got {bound_value!r}."
+                )
+            if not math.isfinite(bound_value):
+                raise ValueError(
+                    f"Threshold '{bound}' for '{metric_name}' must be finite, "
+                    f"got {bound_value!r}."
+                )
+        direction = spec.get("direction")
+        if direction is not None and direction not in ("higher", "lower"):
+            raise ValueError(
+                f"Threshold direction for '{metric_name}' must be 'higher' or "
+                f"'lower', got {direction!r}."
+            )
+
+
+def _resolve_metric_value(
+    metric_value: object,
+) -> Tuple[Optional[float], Optional[str]]:
+    """Reduce a stored metric to a comparable number.
+
+    Returns ``(value, reason)``. ``reason`` is None when the value is usable;
+    otherwise it explains why the metric could not be compared, and ``value``
+    is None.
+    """
+    if isinstance(metric_value, dict):
+        if "global" in metric_value:
+            return _resolve_metric_value(metric_value["global"])
+        return None, (
+            "reported per read length or region only; no 'global' value to "
+            "compare against the threshold"
+        )
+    if isinstance(metric_value, bool) or not isinstance(metric_value, (int, float)):
+        return None, (
+            f"value is not numeric ({type(metric_value).__name__}: "
+            f"{metric_value!r})"
+        )
+    if not math.isfinite(metric_value):
+        return None, f"value is not finite ({metric_value!r})"
+    return float(metric_value), None
+
+
 def evaluate_qc_status(
     results_dict: dict,
     sample_name: str,
@@ -336,28 +441,57 @@ def evaluate_qc_status(
     if thresholds is None:
         return _evaluate_qc_status_scored(results_dict, sample_name)
 
+    # An explicit policy names the metrics the caller requires. A metric that is
+    # absent or uncomparable is missing evidence, so it fails the gate loudly
+    # instead of being skipped, which previously let an empty or misspelled
+    # policy report PASS with no checks performed at all.
+    _validate_explicit_thresholds(thresholds)
+
     metrics = results_dict.get("metrics", {})
+    if not isinstance(metrics, dict):
+        raise ValueError(
+            "Results 'metrics' must be a mapping, got "
+            f"{type(metrics).__name__}."
+        )
     qc_checks = []
     overall_status = "PASS"
 
     for metric_name, threshold_dict in thresholds.items():
+        direction = _metric_direction(metric_name, threshold_dict)
+        base_check = {
+            "metric": metric_name,
+            "direction": direction,
+            "threshold_pass": threshold_dict["pass"],
+            "threshold_warn": threshold_dict["warn"],
+        }
+
         if metric_name not in metrics:
+            qc_checks.append({
+                **base_check,
+                "value": None,
+                "status": "FAIL",
+                "reason": (
+                    "required metric not present in results; QC evidence is "
+                    "incomplete for this sample"
+                ),
+            })
+            overall_status = "FAIL"
             continue
 
-        metric_value = metrics[metric_name]
-
-        # Handle global metrics
-        if isinstance(metric_value, dict) and "global" in metric_value:
-            value = metric_value["global"]
-        elif isinstance(metric_value, (int, float)):
-            value = metric_value
-        else:
+        value, reason = _resolve_metric_value(metrics[metric_name])
+        if reason is not None:
+            qc_checks.append({
+                **base_check,
+                "value": None,
+                "status": "FAIL",
+                "reason": f"required metric could not be evaluated: {reason}",
+            })
+            overall_status = "FAIL"
             continue
 
         # Determine status, respecting metric directionality. For lower-is-
         # better metrics (e.g. duplicate_rate) a value at or below "pass" is a
         # PASS; treating these as higher-is-better would let a bad sample pass.
-        direction = _metric_direction(metric_name, threshold_dict)
         if direction == "lower":
             if value <= threshold_dict["pass"]:
                 status = "PASS"
@@ -380,12 +514,10 @@ def evaluate_qc_status(
                 overall_status = "FAIL"
 
         qc_checks.append({
-            "metric": metric_name,
+            **base_check,
             "value": value,
             "status": status,
-            "direction": direction,
-            "threshold_pass": threshold_dict["pass"],
-            "threshold_warn": threshold_dict["warn"],
+            "reason": None,
         })
 
     return {
