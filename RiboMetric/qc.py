@@ -271,7 +271,7 @@ def _offsets_used_by_read_length(
         else:
             offsets = sorted({int(v) for v in group["offset"].astype(int).tolist()})
         key = str(int(read_length))
-        record = {
+        record: Dict[str, Any] = {
             "n_reads": int(len(group)),
             "n_unique_offsets": int(len(offsets)),
         }
