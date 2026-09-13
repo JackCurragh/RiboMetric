@@ -57,7 +57,8 @@ METRIC_REGISTRY: Dict[str, MetricSpec] = {
             "periodicity_dominance",
             "fraction",
             HIGHER_BETTER,
-            "Fraction of coding A-sites in the dominant reading frame.",
+            "Fraction of coding A-sites in the dominant reading frame; the global "
+            "value uses one shared dominant frame.",
             "periodicity_dominance_score",
         ),
         _m(

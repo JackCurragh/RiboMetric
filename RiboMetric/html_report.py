@@ -13,29 +13,20 @@ from typing import Any, Dict, List, Tuple
 from jinja2 import Environment, FileSystemLoader
 
 from .modules import convert_html_to_pdf
-from .registry import METRIC_REGISTRY
+from .registry import LOWER_BETTER, METRIC_REGISTRY
 
-LOWER_IS_BETTER = {
-    "duplicate_rate",
-    "multimapper_rate",
-    "rpf_multimapper_rate",
-    "alignment_multimapper_rate",
-    "soft_clip_rate_5prime",
-    "disome_proportion",
-    "terminal_bias_kl_5prime_raw",
-    "terminal_bias_kl_3prime_raw",
-    "stop_codon_readthrough_ratio",
-    "marginal_position_discovery_rate",
-    "floss_median",
-    "floss_aberrant_transcript_fraction",
-}
+# Raw metrics where lower is better, for badge colouring. Derived from the
+# registry for the same reason as results_output.LOWER_IS_BETTER_METRICS: the
+# hand-kept set named keys 2.0 no longer emits and missed the ones it does.
+LOWER_IS_BETTER = frozenset(
+    {key for key, spec in METRIC_REGISTRY.items() if spec.direction == LOWER_BETTER}
+    | {"disome_proportion"}
+)
 
 METRIC_GROUPS = {
     "Mapping": (
         "duplicate_rate",
-        "multimapper_rate",
         "rpf_multimapper",
-        "unique_rpf",
         "alignment_multimapper",
         "soft_clip_rate",
     ),

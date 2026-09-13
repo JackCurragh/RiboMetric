@@ -22,7 +22,7 @@ Gated. A failure here means frame-dependent analysis should not proceed.
 | `cds_enrichment_score` | `cds_enrichment_ratio` | ratio | higher is better | `enrichment_ratio` | 0.60 / 0.30 |
 | `periodicity_information_score` | `periodicity_information` | fraction | higher is better | `identity` | 0.25 / 0.05 |
 
-- **`periodicity_dominance_score`** — Fraction of coding A-sites in the dominant reading frame. Low score: weak triplet structure; P-site assignment and ORF calling unreliable.
+- **`periodicity_dominance_score`** — Fraction of coding A-sites in the dominant reading frame; the global value uses one shared dominant frame. Low score: weak triplet structure; P-site assignment and ORF calling unreliable.
 - **`cds_enrichment_score`** — Observed CDS-body read fraction over the length-weighted expected fraction (E). Low score: reads not enriched over coding sequence; library may reflect degradation, RNA contamination, or poor nuclease protection.
 - **`periodicity_information_score`** — Entropy reduction of the frame distribution against a uniform three-frame null. Cross-check on frame dominance; large disagreement signals frame mixing or unstable offsets.
 

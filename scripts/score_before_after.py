@@ -22,15 +22,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from RiboMetric.scoring import build_scored_metrics  # noqa: E402
 
-
 # --- OLD scoring behaviour, reproduced for honest comparison ----------------
 # Old summary "score" = raw value (max_mins ranges were [0,1] no-ops, so
 # normalise_score was identity). Old status = html_report._metric_status:
 #   higher-is-better: >=0.7 pass, >=0.5 warn, else fail
 #   lower-is-better : <=0.2 pass, <=0.5 warn, else fail
 OLD_LOWER_IS_BETTER = {
-    "duplicate_rate", "multimapper_rate", "rpf_multimapper_rate",
-    "alignment_multimapper_rate", "soft_clip_rate_5prime", "disome_proportion",
+    "duplicate_rate",
+    "rpf_multimapper_rate",
+    "alignment_multimapper_rate",
+    "soft_clip_rate_5prime",
+    "disome_proportion",
     "marginal_position_discovery_rate",
 }
 
@@ -73,10 +75,15 @@ def main(path):
         raw_s = f"{raw:.3f}" if isinstance(raw, (int, float)) else "n/a"
         old_sc = f"{raw:.3f}" if isinstance(raw, (int, float)) else "n/a"
         new_sc = f"{m['score']:.3f}" if m["score"] is not None else "n/a"
-        chg = " *" if (
-            isinstance(raw, (int, float)) and m["score"] is not None
-            and abs(m["score"] - raw) > 0.005
-        ) else ""
+        chg = (
+            " *"
+            if (
+                isinstance(raw, (int, float))
+                and m["score"] is not None
+                and abs(m["score"] - raw) > 0.005
+            )
+            else ""
+        )
         os_ = old_status(key, raw)
         ns_ = m["status"].lower()
         sflag = "  <-- status changed" if os_ != ns_ else ""
@@ -86,6 +93,7 @@ def main(path):
         )
 
     from RiboMetric.scoring import overall_gate_status
+
     print()
     print(f"NEW overall verdict (gated/Tier-1 only): {overall_gate_status(scored)}")
     print("'*' = score value changed; raw values are unchanged and shown for both.")

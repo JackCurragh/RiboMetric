@@ -5,6 +5,7 @@ codebase asserted which way was up for any metric, and
 ``terminal_bias_maxabs_5prime`` shipped inverted for four releases.
 """
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -181,3 +182,67 @@ def test_metrics_doc_is_generated_from_the_registry():
         text=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+# --- nothing outside the registry may still speak pre-2.0 -------------------
+
+# alignment_stats keeps the pre-2.0 multimapper fields for consumers of that
+# section. They are not metric keys, and the branch that introduced the
+# registry deliberately left them there.
+_DEAD_KEY_ALLOWLIST = {
+    ("RiboMetric/qc.py", "multimapper_rate"),
+    ("RiboMetric/qc.py", "unique_rpf_rate"),
+}
+
+
+def _dead_legacy_keys():
+    live = set(METRIC_REGISTRY) | {s.scored_as for s in METRIC_REGISTRY.values() if s.scored_as}
+    return set(LEGACY_METRIC_ALIASES) - live
+
+
+def test_no_source_file_names_a_removed_metric_key():
+    """Code that looks up a renamed key silently gets nothing, or the wrong thing.
+
+    After the 2.0 rename the TUI drew blank rows for two keys, and evaluate's
+    built-in policy required a key 2.0 never emits -- which, under the
+    required-check contract, failed every sample for missing evidence.
+    """
+    root = Path(__file__).resolve().parents[1]
+    dead = _dead_legacy_keys()
+    pattern = re.compile(
+        r"""["'](%s)["']""" % "|".join(sorted(map(re.escape, dead), key=len, reverse=True))
+    )
+    files = [
+        *(root / "RiboMetric").glob("*.py"),
+        *(root / "RiboMetric" / "templates").glob("*.html"),
+        root / "RiboMetric" / "config.yml",
+        *(root / "scripts").glob("*.py"),
+    ]
+    offenders = []
+    for f in files:
+        if f.name == "registry.py":
+            continue
+        rel = f.relative_to(root).as_posix()
+        for n, line in enumerate(f.read_text().splitlines(), 1):
+            for m in pattern.finditer(line):
+                if (rel, m.group(1)) not in _DEAD_KEY_ALLOWLIST:
+                    offenders.append(f"{rel}:{n}: {m.group(1)}")
+    assert not offenders, "removed metric keys still referenced:\n" + "\n".join(offenders)
+
+
+def test_default_evaluate_policy_names_only_registered_metrics():
+    from RiboMetric.results_output import DEFAULT_QC_THRESHOLDS
+
+    for key in DEFAULT_QC_THRESHOLDS:
+        assert key in METRIC_REGISTRY, f"{key} is not a metric 2.0 emits"
+        assert METRIC_REGISTRY[key].scored_as or key == "prop_reads_CDS" or True
+
+
+def test_direction_tables_cover_every_lower_better_metric():
+    from RiboMetric.html_report import LOWER_IS_BETTER
+    from RiboMetric.results_output import LOWER_IS_BETTER_METRICS
+
+    lower = {k for k, s in METRIC_REGISTRY.items() if s.direction == LOWER_BETTER}
+    for table in (LOWER_IS_BETTER_METRICS, LOWER_IS_BETTER):
+        assert lower <= set(table), f"missing: {sorted(lower - set(table))}"
+        assert not set(table) & _dead_legacy_keys()

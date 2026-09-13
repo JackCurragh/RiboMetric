@@ -38,7 +38,11 @@ goodness transform baked in under a badness-shaped name — which is what made t
 Any cohort table, `--expected` policy or ingestion pipeline carrying those keys
 must be regenerated, not just renamed. The keys were changed rather than reused
 precisely so a stale consumer fails loudly instead of silently reading a flipped
-number.
+number. The one exception is
+`terminal_bias_kl_5prime` / `_3prime`: the name that held `1/(1+KL)` now holds
+KL in bits. `evaluate` takes metric directions from the registry, so a policy on
+those keys is now read lower-is-better, matching what they hold — but a policy
+written for the old 0–1 score still has to be rewritten.
 
 **Score keys** name the good property: `duplicate_rate` →
 `fragment_uniqueness_score`, `marginal_position_discovery_rate` →
@@ -76,6 +80,19 @@ unanchored `1/(1+x)` scores, per `METRICS_DESIGN.md` §Phase 1E.
 
 ### Fixed
 
+- **`RiboMetric evaluate` without `-e` failed every 2.0 sample.** Its built-in
+  policy still required `read_length_distribution_IQR_metric`, which 2.0 no
+  longer emits; under the required-check contract a missing metric is a FAIL for
+  incomplete evidence. The entry is removed rather than renamed — the read-length
+  family is diagnostic-only and carries no pass/fail.
+- **Metric directions for `--expected` policies came from a hand-kept list** that
+  still named `terminal_bias_kl_5prime_raw` and missed the live KL key, so a
+  threshold on `terminal_bias_kl_5prime` would have been gated higher-is-better.
+  The list, and the HTML report's equivalent, are now derived from the registry.
+- The TUI drew blank rows for two keys that no longer exist, and the
+  metrics-table CSV described 2.0's KL-in-bits keys as a "normalized score".
+  Both now read the registry. `tests/test_registry.py` fails if any source file
+  names a removed metric key.
 - **Terminal-bias max-deviation scores were inverted** —
   `metrics.terminal_nucleotide_bias_max_absolute_metric` returns
   `1 - max|observed - expected|`, which is already higher-is-better, but
