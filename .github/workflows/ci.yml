@@ -7,9 +7,13 @@ name: CI
 # a drifting copy of it. A job added here is automatically enforced at release
 # time; there is no second place to update.
 #
-# The `image` job publishes the moving `:main` / `:sha-<short>` container tags
-# and is gated on lint+test. Release tags (`:vX.Y.Z`, `:X.Y`, `:latest`) are
-# published by release.yml instead.
+# Container tags have one owner each:
+#
+#   :latest, :vX.Y.Z, :X.Y   release.yml   the most recent release
+#   :dev                     here          tip of dev -- newest features, unreleased
+#
+# There is no `:main`. main only advances when a release is cut, so a `:main`
+# tag would always be the same image as `:latest`.
 
 on:
   push:
@@ -197,12 +201,13 @@ jobs:
           path: dist/
 
   image:
-    name: Publish :main container
-    # Moving tags for the tip of main only. Release tags come from release.yml,
-    # which is the sole owner of `:latest`. Gated on lint+test so a broken tree
-    # cannot reach the registry -- the old build-container.yml fired on
-    # `tags: '*'` with no gate at all and raced release.yml for the same image.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Publish :dev container
+    # The tip of dev, for anyone who wants unreleased features. Release tags
+    # come from release.yml, which is the sole owner of `:latest`. Gated on
+    # lint+test so a broken tree cannot reach the registry -- the old
+    # build-container.yml fired on `tags: '*'` with no gate at all and raced
+    # release.yml for the same image.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     needs: [lint, test]
     runs-on: ubuntu-latest
     permissions:
@@ -236,8 +241,7 @@ jobs:
         with:
           images: ${{ steps.img.outputs.name }}
           tags: |
-            type=raw,value=main
-            type=sha,prefix=sha-
+            type=raw,value=dev
 
       - name: Build and push
         id: build

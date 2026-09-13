@@ -56,7 +56,11 @@ These follow ``REPO_CONTRACT.md``, the maintenance contract shared across the
 all-RiboSeq tools:
 
 * **Branches.** ``main`` holds releases and is what releases are cut from;
-  ``dev`` is integration. Work on a ``feat/*`` or ``fix/*`` branch off ``dev``.
+  ``dev`` is integration. Work on a ``feat/*`` or ``fix/*`` branch off ``dev``
+  and merge it into ``dev``. ``main`` only moves when a release is cut, by
+  fast-forwarding to a ``dev`` commit whose CI has passed; it is protected, so
+  a push that is not a fast-forward, or that points at a commit without green
+  checks, is rejected.
   There is no limit on how many branches exist, but a branch carrying commits
   that are not on ``main`` is unlanded work, not clutter -- land it or say
   explicitly that it is abandoned.

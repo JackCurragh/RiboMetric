@@ -14,7 +14,8 @@ no checks.
 
 | job | does |
 |---|---|
-| `gate` | **calls** `ci.yml` — lint, mypy, tests on 3.10 and 3.12, build |
+| `verify` | the tagged commit is on `main`; the tag equals `__version__` and `CITATION.cff` |
+| `gate` | **calls** `ci.yml` — lint, mypy, tests on 3.10 and 3.12, docs, build |
 | `pypi` | uploads the sdist + wheel **the gate built** via Trusted Publishing |
 | `image` | pushes `ghcr.io/jackcurragh/ribometric:vX.Y.Z`, `:X.Y`, `:latest` |
 | `release` | creates a GitHub Release with the distributions attached |
@@ -24,24 +25,35 @@ enforced at release time. `pypi` publishes the gate's artifact rather than
 rebuilding, so the shipped bits are the checked bits.
 
 `:latest` means *the most recent release* and is written here only. The tip of
-`main` is published separately as `:main` / `:sha-<short>` by `ci.yml`.
+`dev` — the newest features, not yet released — is published as `:dev` by
+`ci.yml`. There is no `:main`: `main` only moves when a release is cut, so it
+would always be the same image as `:latest`.
 
 ## 2. Runbook
 
+`main` is protected by a ruleset: a push must be a fast-forward, to a commit
+whose CI checks have passed, and nobody can bypass it. `main` therefore only
+moves at release time, by fast-forwarding to a `dev` commit that CI has already
+passed. Do the bump on `dev`, not on `main`.
+
 ```bash
-git switch main && git pull && git status          # must be clean
+git switch dev && git pull && git status           # must be clean
 $EDITOR CHANGELOG.md                               # [Unreleased] -> [X.Y.Z], set the date
 $EDITOR CITATION.cff                               # date-released (NOT automated)
-make lint typecheck test preflight PYTHON=.venv/bin/python
+git commit -am "Prepare X.Y.Z"                     # bump2version refuses a dirty tree
+make lint typecheck test preflight docs-strict PYTHON=.venv/bin/python
 python3 -m bumpversion --dry-run --verbose minor   # check what it will rewrite
-python3 -m bumpversion minor                       # commits + tags
-git push origin main --follow-tags
-git branch -f dev main && git push origin dev      # keep the two level
+python3 -m bumpversion minor                       # commits + tags vX.Y.Z, locally
+git push origin dev                                # NOT the tag yet
+# wait for CI on dev to go green: main's ruleset will reject the commit until then
+git switch main && git merge --ff-only dev && git push origin main
+git push origin vX.Y.Z                             # this is what publishes
 ```
 
-`date-released` in `CITATION.cff` is deliberately not automated —
-bump2version has no date support — so it is the one field you must remember to
-set alongside the changelog.
+Order matters. The `verify` job fails a tag whose commit is not on `main`, so
+`main` must be pushed before the tag. `date-released` in `CITATION.cff` is
+deliberately not automated — bump2version has no date support — so it is the
+one field you must remember to set alongside the changelog.
 
 `.bumpversion.cfg` covers `RiboMetric/__init__.py` (the single source of truth,
 which `setup.py` reads), `pixi.toml`, `CITATION.cff` and
@@ -56,6 +68,7 @@ pip install ribometric
 RiboMetric --help
 curl -s https://pypi.org/pypi/ribometric/json | jq '.info.version, [.urls[].filename]'
 docker run --rm ghcr.io/jackcurragh/ribometric:latest RiboMetric --help
+docker run --rm ghcr.io/jackcurragh/ribometric:vX.Y.Z RiboMetric --version
 ```
 
 ## 4. After the PyPI upload: the conda recipe
@@ -107,9 +120,18 @@ this at *startup*, before any job-level `if` is evaluated, so omitting it fails
 the entire run as `startup_failure` with zero jobs and a message naming neither
 the job nor the permission — even though that job never runs on a tag.
 
-## 6. Releases are cut from `main`
+## 6. Releases are cut from `main`, and `main` is protected
 
-v1.4.1 through v1.4.3 were cut from `release/v1.3.0`, which `ci.yml` does not
-watch, so the gate never ran on a single released commit and v1.4.3 shipped
-with type and lint errors. `main` and `dev` were levelled on 2026-09-07. Cut
-from `main`.
+v1.4.1 through v1.4.3 were cut from `release/v1.3.0`, which `ci.yml` did not
+watch, so the gate never ran on a single released commit and v1.4.3 shipped with
+type and lint errors. Three things now make that structurally impossible rather
+than a matter of discipline:
+
+- the `main` ruleset requires every CI check to have passed on a commit before
+  `main` can point at it, and forbids force-pushes and deletion;
+- `release.yml`'s `verify` job refuses a tag whose commit is not on `main`;
+- the same job refuses a tag that disagrees with `__version__` or
+  `CITATION.cff`, so a hand-made tag cannot publish a version it does not name.
+
+If a CI outage ever blocks an urgent release, the ruleset can be switched off
+under Settings → Rules, and should be switched back on immediately afterwards.
