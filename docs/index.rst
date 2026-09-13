@@ -11,6 +11,7 @@ Welcome to RiboMetric's documentation!
    METRICS
    METRICS_DESIGN
    METRIC_NAMING
+   METRIC_CONTRACT
    REPORTING_GUIDE
    results
    functions
