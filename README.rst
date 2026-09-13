@@ -37,13 +37,13 @@ To install RiboMetric:
 
 .. code-block:: console
 
-    $ pip install RiboMetric
+    $ pip install ribometric
 
 For PDF export support (adds ~30 dependencies):
 
 .. code-block:: console
 
-    $ pip install RiboMetric[pdf]
+    $ pip install "ribometric[pdf]"
 
 Usage
 ------------
@@ -64,7 +64,7 @@ View results interactively in your terminal:
 
 .. code-block:: console
 
-    $ RiboMetric view output_RiboMetric_data.json
+    $ RiboMetric view bam_file_RiboMetric.json
 
 By default, RiboMetric calculates standard Ribo-Seq QC metrics. To enable optional (theoretical) metrics:
 
@@ -98,7 +98,7 @@ Gate a pipeline on QC thresholds (exits 0/1/2 for PASS/WARN/FAIL):
 
 .. code-block:: console
 
-    $ RiboMetric evaluate -i sample_RiboMetric_data.json -e thresholds.yml
+    $ RiboMetric evaluate -i sample_RiboMetric.json -e thresholds.yml
 
 The thresholds YAML lists per-metric ``pass`` and ``warn`` values::
 
@@ -109,15 +109,19 @@ The thresholds YAML lists per-metric ``pass`` and ``warn`` values::
 If ``-e`` is omitted, built-in defaults are used. Use ``-o`` to save the
 evaluation as JSON. Accepts either a RiboMetric JSON or a metrics-table CSV.
 
-Most RiboMetric metrics are normalised so that **higher is better** (e.g.
-``periodicity_dominance``, ``uniformity_entropy``, ``prop_reads_CDS``). A few are
-**lower is better** — ``duplicate_rate``, ``multimapper_rate``,
-``rpf_multimapper_rate``, ``alignment_multimapper_rate``,
-``soft_clip_rate_5prime``, ``disome_proportion``,
-``stop_codon_readthrough_ratio`` and the raw terminal-bias divergences.
-``evaluate`` knows these directions, so a high duplicate rate fails rather than
-passes. To force a direction for a custom metric, add ``direction: lower`` (or
-``higher``) alongside its ``pass``/``warn`` values in the thresholds YAML::
+A result keeps measurements and judgements apart. ``results["metrics"]`` holds
+raw measurements in their natural units and natural direction: a rate goes up as
+the library gets worse, and its key says so (``duplicate_rate``,
+``terminal_bias_kl_5prime`` in bits). ``results["scores"]`` holds 0–1 scores that
+are always higher-is-better and are named for the good property
+(``fragment_uniqueness_score``, ``periodicity_dominance_score``). The full
+contract is in `docs/METRIC_NAMING.md <https://github.com/JackCurragh/RiboMetric/blob/main/docs/METRIC_NAMING.md>`_.
+
+``evaluate`` thresholds apply to raw metrics, and ``evaluate`` takes each
+metric's direction from the metric registry, so a high duplicate rate fails
+rather than passes. To force a direction for a custom metric, add
+``direction: lower`` (or ``higher``) alongside its ``pass``/``warn`` values in
+the thresholds YAML::
 
     thresholds:
       duplicate_rate: {pass: 0.3, warn: 0.5, direction: lower}
@@ -138,8 +142,9 @@ For BAMs with no stored sequences, skip sequence-based metrics to avoid errors:
 
 Multimapper metrics use ``NH:i:N`` when the tag is present. Otherwise they fall
 back to the STAR convention where ``MAPQ=255`` is unique and ``MAPQ<255`` is
-multi-mapping. ``multimapper_rate`` is retained as an alias for the weighted
-RPF-level metric, while ``alignment_multimapper_rate`` is row-based.
+multi-mapping. ``rpf_multimapper_rate`` is weighted at the RPF level, while
+``alignment_multimapper_rate`` is row-based. (The pre-2.0 ``multimapper_rate``
+alias is no longer a metric; it survives only in ``alignment_stats``.)
 
 Control multimapper handling for frame-sensitive calculations:
 
@@ -201,15 +206,19 @@ RiboMetric provides multiple output formats for different use cases:
 
 See REPORTING_GUIDE.md_ for complete documentation and examples.
 
-Deprecated metric keys
-----------------------
+Upgrading to 2.0: renamed metric keys
+-------------------------------------
 
-RiboMetric now publishes both consolidated and legacy metric names to ease upgrades:
+2.0 renames or removes 25 metric keys, and eight of them changed value as well
+as name. For example ``terminal_bias_maxabs_5prime`` held ``1 − max deviation``;
+``terminal_bias_max_deviation_5prime`` now holds the deviation itself. The full
+mapping is in `docs/METRIC_NAMING.md <https://github.com/JackCurragh/RiboMetric/blob/main/docs/METRIC_NAMING.md>`_.
 
-- Consolidated: ``terminal_bias_kl_5prime``, ``terminal_bias_kl_3prime``, ``terminal_bias_maxabs_5prime``, ``terminal_bias_maxabs_3prime``, ``cds_coverage``
-- Legacy: ``terminal_nucleotide_bias_distribution_5_prime_metric``, ``terminal_nucleotide_bias_distribution_3_prime_metric``, ``terminal_nucleotide_bias_max_absolute_metric_5_prime_metric``, ``terminal_nucleotide_bias_max_absolute_metric_3_prime_metric``, ``CDS_coverage_metric``
-
-Plots and summary normalization accept both. We recommend migrating dashboards and downstream code to the consolidated names.
+For one minor cycle every pre-2.0 spelling is still written under
+``results["metrics_legacy"]``, with its pre-2.0 value, so pipelines can migrate
+key by key; it is removed in 2.1. Cohort tables and ``--expected`` policies
+that name the renamed keys must be regenerated rather than search-and-replaced,
+because the values changed.
 
 .. _REPORTING_GUIDE.md: docs/REPORTING_GUIDE.md
 

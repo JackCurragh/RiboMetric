@@ -38,7 +38,7 @@ Sample2	2025-01-15T11:45:00	annotation	1200000	0.72	0.65	1.80
 # Generate summary for each sample
 for sample in *.bam; do
     RiboMetric run -b $sample -a annotation.tsv \
-        --output-summary-tsv
+        --summary-tsv
 done
 
 # Concatenate all summaries
@@ -228,45 +228,45 @@ plt.savefig('periodicity_by_readlength.png')
 ### Command-Line Usage
 
 ```bash
-# Standard outputs (HTML, JSON, CSV)
+# HTML, JSON, CSV and PDF
 RiboMetric run -b sample.bam -a annotation.tsv --all
 
 # Add improved outputs
 RiboMetric run -b sample.bam -a annotation.tsv \
-    --output-summary-tsv \
-    --output-qc-status \
-    --output-comparison \
-    --output-metrics-table
+    --summary-tsv \
+    --qc-status \
+    --comparison-csv \
+    --metrics-table
 
-# Generate all formats
-RiboMetric run -b sample.bam -a annotation.tsv --all-outputs
+# All four pipeline outputs at once
+RiboMetric run -b sample.bam -a annotation.tsv --improved-outputs
 ```
 
 ### Python API Usage
 
+The pipeline outputs can be regenerated from any saved result, for example
+with different thresholds, without re-running the analysis:
+
 ```python
-from RiboMetric import run_analysis
-from RiboMetric.results_output_improved import generate_all_outputs
+import json
 
-# Run analysis
-results = run_analysis('sample.bam', 'annotation.tsv')
+from RiboMetric.results_output import generate_all_outputs
 
-# Generate all improved outputs
+with open("sample_RiboMetric.json") as fh:
+    data = json.load(fh)
+
 generate_all_outputs(
-    results_dict=results,
-    config=config,
-    sample_name='Sample1',
-    output_directory='./results',
-    thresholds={
-        'periodicity_dominance': {'pass': 0.7, 'warn': 0.5},
-        'uniformity_entropy': {'pass': 0.7, 'warn': 0.5},
-    }
+    results_dict=data["results"],
+    config=data["config"],
+    sample_name="Sample1",
+    output_directory="./results",
 )
 ```
 
-## Customizing QC Thresholds
+Passing `thresholds=` makes the QC status an explicit required-check policy:
+every metric it names must be present, or that check fails.
 
-Create a `qc_thresholds.yaml` file:
+## Customizing QC Thresholds
 
 Thresholds live in the `scoring:` section of `config.yml` (or a custom config passed via `--config`). Each entry sets the 0–1 score thresholds — the raw value is always preserved alongside the score:
 
@@ -369,7 +369,7 @@ for bam in data/*.bam; do
 
     # Run RiboMetric
     RiboMetric run -b $bam -a annotation.tsv \
-        --output-qc-status \
+        --qc-status \
         -o qc_results/
 
     # Check status
@@ -397,7 +397,7 @@ done
 for bam in data/*.bam; do
     sample=$(basename $bam .bam)
     RiboMetric run -b $bam -a annotation.tsv \
-        --output-comparison \
+        --comparison-csv \
         -o comparison_results/
 done
 
@@ -410,7 +410,7 @@ Rscript compare_samples.R all_samples_comparison.csv
 ```bash
 # Generate full reports for final samples
 RiboMetric run -b sample.bam -a annotation.tsv \
-    --all-outputs \
+    --improved-outputs \
     --html --pdf \
     -o final_reports/
 
