@@ -10,6 +10,7 @@ Welcome to RiboMetric's documentation!
    usage
    METRICS
    METRICS_DESIGN
+   METRIC_NAMING
    REPORTING_GUIDE
    results
    functions

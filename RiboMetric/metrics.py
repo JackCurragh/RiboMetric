@@ -248,7 +248,7 @@ def terminal_nucleotide_bias_max_deviation(
         expected_freq: Dictionary containing the expected frequencies
 
     Outputs:
-        max_deviation (float): max |observed - expected| over dinucleotides
+        max_deviation (float): max ``|observed - expected|`` over dinucleotides
     """
     scores = {}
     exp_map2: Dict[str, float]
