@@ -111,6 +111,7 @@ exclude_patterns = [
     "Thumbs.db",
     ".DS_Store",
     "AUDIT_NOTES.md",
+    "PRODUCTIONISATION.md",
     "SCORING_PHASE1_TASKS.md",
     "TESTING.md",
     "V1.2_REPORT_AND_PREPRINT_PLAN.md",
