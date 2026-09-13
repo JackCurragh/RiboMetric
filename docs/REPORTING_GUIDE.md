@@ -27,10 +27,14 @@ RiboMetric provides multiple output formats optimized for different use cases:
 **Format:** One line per sample, easily concatenated
 
 ```text
-sample	timestamp	mode	total_reads	periodicity_dominance	uniformity_entropy	cds_enrichment_ratio
-Sample1	2025-01-15T10:30:00	annotation	1500000	0.85	0.78	3.12
-Sample2	2025-01-15T11:45:00	annotation	1200000	0.72	0.65	1.80
+sample	timestamp	mode	total_reads	duplicate_rate	…	uniformity_entropy	…	cds_enrichment_ratio	…	periodicity_dominance	…
+Sample1	2025-01-15T10:30:00	annotation	1500000	0.31	…	0.78	…	3.12	…	0.85	…
+Sample2	2025-01-15T11:45:00	annotation	1200000	0.44	…	0.65	…	1.80	…	0.72	…
 ```
+
+One column per metric in `results["metrics"]` (abridged above), each holding the
+whole-library value. Which metrics appear depends on the inputs: a run without
+an annotation or FASTA has fewer columns.
 
 **Usage in pipelines:**
 
@@ -41,12 +45,14 @@ for sample in *.bam; do
         --summary-tsv
 done
 
-# Concatenate all summaries
+# Concatenate all summaries (only safe when every sample used the same inputs,
+# so the columns match)
 cat *_summary.tsv | head -1 > all_samples_summary.tsv
 tail -n +2 -q *_summary.tsv >> all_samples_summary.tsv
 
-# Filter passing samples
-awk -F'\t' '$5 > 0.7 && $6 > 0.7' all_samples_summary.tsv > passing_samples.tsv
+# Filter by column NAME: positions change with the inputs and between releases
+awk -F'\t' 'NR==1 {for (i = 1; i <= NF; i++) col[$i] = i; print; next}
+            $col["periodicity_dominance"] >= 0.7' all_samples_summary.tsv > passing_samples.tsv
 ```
 
 ### 2. QC Status JSON - Automated Decisions
@@ -64,11 +70,13 @@ awk -F'\t' '$5 > 0.7 && $6 > 0.7' all_samples_summary.tsv > passing_samples.tsv
   "overall_status": "PASS",
   "checks": [
     {
-      "metric": "periodicity_dominance",
+      "metric": "periodicity_dominance_score",
+      "source_metric": "periodicity_dominance",
       "value": 0.85,
+      "score": 0.85,
       "status": "PASS",
-      "threshold_pass": 0.7,
-      "threshold_warn": 0.5
+      "gate": true,
+      "tier": 1
     }
   ],
   "summary": {
@@ -80,6 +88,10 @@ awk -F'\t' '$5 > 0.7 && $6 > 0.7' all_samples_summary.tsv > passing_samples.tsv
   "recommendation": "Sample passed all QC checks. Proceed with downstream analysis."
 }
 ```
+
+Each check pairs a score (`metric`, 0–1, higher-is-better) with the raw metric
+it came from (`source_metric`, and its natural-units `value`). Only checks with
+`"gate": true` — Tier 1 — decide `overall_status`; the rest are reported.
 
 **Usage in pipelines:**
 
@@ -121,15 +133,17 @@ fi
 
 **Best for:** Comparing metrics across many samples
 
-**Location:** `{sample}_comparison.csv` (appends to same file)
+**Location:** `{sample}_comparison.csv`, one file per sample
 
-**Format:** Wide format with all metrics as columns
+**Format:** Wide format, one column per value. Dict-valued metrics are flattened
+with a suffix — `_global` for the whole library, `_rl<N>` for read length N —
+so samples with different read lengths have different columns. Combine them by
+column name, never by position.
 
 ```text
-sample,timestamp,periodicity_dominance_global,uniformity_entropy_global,cds_enrichment_ratio,...
-Sample1,2025-01-15T10:30:00,0.85,0.78,3.12,...
-Sample2,2025-01-15T11:45:00,0.72,0.65,1.80,...
-Sample3,2025-01-15T13:00:00,0.91,0.82,4.20,...
+sample,timestamp,mode,duplicate_rate,…,uniformity_entropy_global,uniformity_entropy_rl28,…,cds_enrichment_ratio,…,periodicity_dominance_global,…
+Sample1,2025-01-15T10:30:00,annotation,0.31,…,0.78,0.74,…,3.12,…,0.85,…
+Sample2,2025-01-15T11:45:00,annotation,0.44,…,0.65,0.61,…,1.80,…,0.72,…
 ```
 
 **Usage:**
@@ -138,8 +152,12 @@ Sample3,2025-01-15T13:00:00,0.91,0.82,4.20,...
 # R analysis
 library(tidyverse)
 
-# Load comparison data
-metrics <- read_csv("all_samples_comparison.csv")
+# Load every per-sample file; bind_rows() aligns columns by name, which matters
+# because per-read-length columns differ between samples
+metrics <- list.files("comparison_results", pattern = "_comparison\\.csv$",
+                      full.names = TRUE) |>
+  map(read_csv, show_col_types = FALSE) |>
+  bind_rows()
 
 # Quick overview
 metrics %>%
@@ -191,12 +209,16 @@ metrics %>%
 
 ```text
 sample,metric,read_length_or_region,value,description
-Sample1,periodicity_dominance,global,0.85,Proportion of reads in dominant reading frame
-Sample1,periodicity_dominance,28,0.82,Proportion of reads in dominant reading frame
-Sample1,periodicity_dominance,29,0.87,Proportion of reads in dominant reading frame
-Sample1,uniformity_entropy,global,0.78,Shannon entropy of metagene distribution
+Sample1,periodicity_dominance,global,0.85,Fraction of coding A-sites in the dominant reading frame; the global value uses one shared dominant frame.
+Sample1,periodicity_dominance,28,0.82,Fraction of coding A-sites in the dominant reading frame; the global value uses one shared dominant frame.
+Sample1,periodicity_dominance,29,0.87,Fraction of coding A-sites in the dominant reading frame; the global value uses one shared dominant frame.
+Sample1,uniformity_entropy,global,0.78,Normalised entropy of the codon-binned start-codon metagene.
 ...
 ```
+
+Descriptions come from the metric registry, the same source that generates
+[METRICS.md](METRICS.md). Besides `global` and per-read-length rows, some metrics
+add summary rows such as `global_by_read_length_max`.
 
 **Usage:**
 
@@ -209,7 +231,9 @@ metrics = pd.read_csv('sample_metrics_table.csv')
 
 # Analyze read-length specific periodicity
 periodicity = metrics[metrics['metric'] == 'periodicity_dominance']
-periodicity = periodicity[periodicity['read_length_or_region'] != 'global']
+# per-read-length rows have a numeric label; 'global' and summary rows do not
+per_length = periodicity['read_length_or_region'].astype(str).str.isdigit()
+periodicity = periodicity[per_length].copy()
 periodicity['read_length'] = periodicity['read_length_or_region'].astype(int)
 
 # Plot
@@ -268,27 +292,44 @@ every metric it names must be present, or that check fails.
 
 ## Customizing QC Thresholds
 
-Thresholds live in the `scoring:` section of `config.yml` (or a custom config passed via `--config`). Each entry sets the 0–1 score thresholds — the raw value is always preserved alongside the score:
+Report thresholds live in the `scoring:` section of `config.yml` (or a custom
+config passed via `--config`). Each entry is keyed by the score it produces,
+names the raw `metric` it reads, and sets `pass`/`warn` on the 0–1 score scale;
+`gate: true` puts it in the Tier 1 verdict. These drive both the HTML report and
+`qc_status.json`, so the two always agree. The entries below are copied from the
+shipped `config.yml`:
 
 ```yaml
 scoring:
-  periodicity_dominance:
-    method: identity
-    status: {pass: 0.70, warn: 0.50}   # raw in-frame fraction
-
-  cds_enrichment_ratio:
-    method: enrichment_ratio            # score = 1 - 1/E
-    status: {pass: 0.60, warn: 0.30}   # E ≈ 2.5 to pass
-
-  uniformity_entropy:
+  periodicity_dominance_score:
+    metric: periodicity_dominance
     method: identity
     status: {pass: 0.70, warn: 0.50}
-
-  terminal_bias_kl_5prime_raw:
+    gate: true
+    tier: 1
+  cds_enrichment_score:
+    metric: cds_enrichment_ratio
+    method: enrichment_ratio
+    status: {pass: 0.60, warn: 0.30}
+    gate: true
+    tier: 1
+  coverage_uniformity_score:
+    metric: uniformity_entropy
+    method: identity
+    status: {pass: 0.60, warn: 0.30}
+    gate: false
+    tier: 2
+  terminal_evenness_kl_5prime_score:
+    metric: terminal_bias_kl_5prime
     method: inverse_linear
-    params: {max_value: 2.0}            # KL in bits; 0 = no bias, ≥2 → score 0
+    params: {max_value: 2.0}
     status: {pass: 0.70, warn: 0.40}
+    gate: false
+    tier: 3
 ```
+
+`RiboMetric evaluate -e thresholds.yml` is separate: its YAML sets pass/warn on
+*raw* metrics, and each metric's direction comes from the metric registry.
 
 Use with:
 
@@ -325,36 +366,23 @@ RiboMetric run -b sample.bam -a annotation.tsv \
 
 ## Interpreting Metrics
 
-### Tier 1 — Ribo-seq Identity (gated: failures block overall PASS)
+Every score, the metric it comes from, its tier and its pass/warn thresholds are
+listed in [METRICS.md](METRICS.md). That page is generated from the metric
+registry and the live scoring spec, so it cannot drift from the code — which the
+hand-kept tables that used to be here had.
 
-| Metric | Good range | Interpretation |
-|--------|------------|----------------|
-| `periodicity_dominance` | > 0.70 | Raw in-frame fraction; 1/3 = random baseline |
-| `cds_enrichment_ratio` | E > ~2.5 | CDS enrichment above length-weighted expectation |
-| `periodicity_information` | > 0.70 | Shannon information cross-check on frame signal |
-
-### Tier 2 — Usability
-
-| Metric | Good range | Interpretation |
-|--------|------------|----------------|
-| `recommended_read_proportion` | > 0.70 | Fraction of library with clean 3-nt periodicity |
-| `uniformity_entropy` | > 0.70 | Even signal across the start-codon metagene window |
-
-### Tier 3 — Technical Caveats (informational, not gated)
-
-| Metric | Good range | Interpretation |
-|--------|------------|----------------|
-| `terminal_bias_kl_5prime_raw` | < 0.5 bits | Raw 5′ terminal KL divergence; > 2.0 bits = strong ligation bias |
-| `terminal_bias_kl_3prime_raw` | < 0.5 bits | Raw 3′ terminal KL divergence |
-| `duplicate_rate` | < 0.5 | PCR/library duplication fraction |
-| `rpf_multimapper_rate` | protocol-dependent | Multi-mapping fraction; expected high on transcriptome BAMs |
+In short, **Tier 1** (CDS enrichment, periodicity dominance, periodicity information) is gated: a Tier 1 failure fails the sample.
+**Tier 2** (coverage uniformity, library saturation, usable read fraction) says whether the library suits a given analysis. **Tier 3**
+(alignment unique mapping, footprint homogeneity, fragment uniqueness, RPF unique mapping, terminal evenness KL 3prime, terminal evenness KL 5prime, terminal evenness maxdev 3prime, terminal evenness maxdev 5prime, terminal integrity 5prime) is informational.
 
 ### Warning Signs
 
-- **Low periodicity** (< 0.5): RNA contamination, poor digestion, wrong read lengths
-- **Low CDS enrichment** (E < 1.5): rRNA contamination, poor mapping, or annotation mismatch
-- **Low uniformity** (< 0.5): Biased coverage, PCR artifacts, degradation
-- **High terminal KL** (> 2.0 bits): Adapter ligation artifacts
+Raw-value equivalents of the shipped thresholds:
+
+- **Weak periodicity:** `periodicity_dominance` below 0.50 fails the Tier 1 gate (0.70 to pass); one third is the random baseline.
+- **Low CDS enrichment:** E below ~1.4 fails, and E of about 2.5 is needed to pass.
+- **Uneven coverage:** `uniformity_entropy` below 0.30 fails (0.60 to pass).
+- **Strong terminal bias:** 5′ KL above 1.2 bits fails and above 0.6 bits warns; 2.0 bits or more scores zero.
 
 ## Example Workflows
 
@@ -388,21 +416,15 @@ done
 
 ```bash
 #!/bin/bash
-# Generate comparison across all samples
-
-# Initialize comparison file
-> all_samples_comparison.csv
-
-# Process each sample
+# Each run writes its own comparison_results/{sample}_comparison.csv
 for bam in data/*.bam; do
-    sample=$(basename $bam .bam)
     RiboMetric run -b $bam -a annotation.tsv \
         --comparison-csv \
         -o comparison_results/
 done
 
-# Analyze in R
-Rscript compare_samples.R all_samples_comparison.csv
+# Combine by column name and analyse (see the R example above)
+Rscript compare_samples.R comparison_results/
 ```
 
 ### Workflow 3: Detailed Review
@@ -429,7 +451,7 @@ cat final_reports/sample_summary.tsv >> project_summary.tsv
 
 ### Issue: QC status doesn't match expectations
 
-**Solution:** Review and adjust thresholds in `qc_thresholds.yaml`. Different protocols may need different cutoffs.
+**Solution:** Adjust the `scoring:` block of your config — it drives both the HTML report and `qc_status.json`. For `RiboMetric evaluate`, pass a thresholds YAML with `-e`. Different protocols may need different cutoffs.
 
 ### Issue: HTML report too large
 
@@ -437,10 +459,11 @@ cat final_reports/sample_summary.tsv >> project_summary.tsv
 
 ### Issue: Can't compare samples
 
-**Solution:** Use the comparison CSV format which has consistent columns across samples.
+**Solution:** Combine the per-sample comparison CSVs by column name (`bind_rows()` in R, `pd.concat()` in pandas). Per-read-length columns (`_rl<N>`) differ between samples, so never concatenate them positionally.
 
 ## Further Reading
 
-- [METRICS.md](METRICS.md) - Detailed metric descriptions
+- [METRICS.md](METRICS.md) - Every metric and score, generated from the registry
+- [METRIC_NAMING.md](METRIC_NAMING.md) - The 2.0 naming contract and the pre-2.0 key mapping
 - `RiboMetric --help` - Command-line options
 - [Documentation](https://ribometric.readthedocs.io) - Full online docs
