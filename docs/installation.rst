@@ -9,13 +9,14 @@ From PyPI (recommended)
 
 .. code-block:: console
 
-    $ pip install RiboMetric
+    $ pip install ribometric
 
-This installs the latest stable release.  For PDF export support:
+This installs the latest release (the name is case-insensitive, so
+``pip install RiboMetric`` works too).  For PDF export support:
 
 .. code-block:: console
 
-    $ pip install RiboMetric[pdf]
+    $ pip install "ribometric[pdf]"
 
 From source
 -----------
@@ -48,7 +49,14 @@ Using pixi
 Docker
 ------
 
-A Docker image is built and pushed on every tagged release:
+Images are published to the GitHub Container Registry:
+
+* ``:latest`` — the most recent release.
+* ``:vX.Y.Z`` and ``:X.Y`` — a specific release; pin one of these for
+  reproducible runs. (Releases up to 1.4.3 were tagged without the ``v``, for
+  example ``:1.4.3``.)
+* ``:dev`` — the tip of the ``dev`` branch: the newest features, not yet
+  released.
 
 .. code-block:: console
 

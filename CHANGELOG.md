@@ -231,6 +231,16 @@ behaviour; it changes what can silently go wrong when releasing it.
 
 ### Documentation
 
+- **The user docs describe 2.0.** README, installation, usage and results
+  explain the split between raw `metrics` and 0–1 `scores`, the renamed keys and
+  the `metrics_legacy` shim, the container tags, and the JSON as it is actually
+  written. REPORTING_GUIDE's flags, Python example, output-file examples and
+  threshold config are corrected against real 2.0 output; its hand-kept tier
+  tables (which had drifted — one threshold was 0.70 against a live 0.25) now
+  point at the generated METRICS.md. Two of its examples would have silently
+  produced wrong results: a positional `awk` filter that, with 2.0's column
+  order, kept the samples with the *highest duplicate rate*; and a batch workflow
+  that appended to a shared comparison file the tool never writes.
 - **The Read the Docs build was broken.** `.readthedocs.yaml` used
   `python.version`, a key removed from config v2 years ago, and had no `build:`
   block — which is required, so the build failed before Sphinx ran. It now

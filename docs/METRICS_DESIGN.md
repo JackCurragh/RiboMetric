@@ -1,9 +1,9 @@
 # RiboMetric Score Design Spec
 
-**Status:** proposal for review; not yet implemented
+**Status:** implemented. The score model shipped in the 1.4 series; the naming contract that refines it shipped in 2.0 — see [METRIC_NAMING.md](METRIC_NAMING.md).
 **Scope:** defines what each metric should mean to a user and how that meaning is turned into a 0–1 score before code changes are made.
 
-This is a design document, not a description of current behaviour. For current behaviour, see `METRICS.md` and `AUDIT_NOTES.md`.
+This is the design rationale. The live scoring spec is the `scoring:` block in `RiboMetric/config.yml` (defaults in `RiboMetric/scoring.py`), and the current metric list is [METRICS.md](METRICS.md), generated from the metric registry. **Configuration examples below use pre-2.0 key spellings**; [METRIC_NAMING.md](METRIC_NAMING.md) maps each to its 2.0 name.
 
 > **Design note:** This document should remain a score-design specification, not an implementation PR. The main goal of this first iteration is to define interpretable directionality, anchors, provisional status thresholds, and metric roles. Empirical validation and recalibration come later once a reference corpus exists.
 
@@ -428,9 +428,9 @@ These values describe shape, context, or experiment-specific behaviour. They sho
 
 Metrics:
 
-* `read_length_distribution_IQR_metric`
-* `read_length_distribution_CV_metric`
-* `read_length_distribution_max_prop_metric`
+* `read_length_iqr_fraction`
+* `read_length_cv`
+* `read_length_max_proportion`
 * `read_length_distribution_bimodality`
 * `read_length_distribution_normality`
 

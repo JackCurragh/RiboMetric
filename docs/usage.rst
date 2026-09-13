@@ -83,11 +83,15 @@ Evaluate (pipeline gating)
 
 Gate a pipeline step on QC thresholds — exits 0 (PASS), 1 (WARN), or 2 (FAIL)::
 
-    RiboMetric evaluate -i sample_RiboMetric_data.json
+    RiboMetric evaluate -i sample_RiboMetric.json
 
 Provide a YAML of custom thresholds (built-in defaults used if omitted)::
 
-    RiboMetric evaluate -i sample_RiboMetric_data.json -e thresholds.yml -o eval.json
+    RiboMetric evaluate -i sample_RiboMetric.json -e thresholds.yml -o eval.json
+
+Thresholds apply to raw metrics (``results["metrics"]``). Each metric's
+direction comes from the metric registry, so lower-is-better rates such as
+``duplicate_rate`` need no extra configuration.
 
 Threshold YAML format::
 
@@ -102,7 +106,7 @@ Interactive viewer
 
 Explore a JSON result in an interactive terminal UI::
 
-    RiboMetric view sample_RiboMetric_data.json
+    RiboMetric view sample_RiboMetric.json
 
 Multimapper handling
 --------------------
