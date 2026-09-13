@@ -122,6 +122,9 @@ def test_evaluate_missing_file(tmp_path):
 
 def test_default_thresholds_used_when_none():
     status = evaluate_qc_status({"metrics": {"periodicity_dominance": 0.9}}, "s", None)
-    # periodicity_dominance is in the defaults
-    assert any(c["metric"] == "periodicity_dominance" for c in status["checks"])
+    # Checks are named by their score key; the raw metric they were derived
+    # from travels alongside as source_metric.
+    check = next(c for c in status["checks"] if c["metric"] == "periodicity_dominance_score")
+    assert check["source_metric"] == "periodicity_dominance"
+    assert check["value"] == 0.9
     assert "periodicity_dominance" in DEFAULT_QC_THRESHOLDS

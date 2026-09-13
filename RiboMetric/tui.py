@@ -122,11 +122,18 @@ def render_summary(data: RiboMetricData) -> str:
     # Key metrics
     lines.append("[bold cyan]Key Metrics:[/bold cyan]")
 
+    # 2.0 names CDS coverage by its thresholds (cds_coverage_<n>read_<n>tx), so
+    # look it up rather than hard-coding one spelling. The two pre-2.0 keys this
+    # list used to name no longer exist and drew nothing.
+    cds_coverage_key = next(
+        (k for k in sorted(data.metrics) if k.startswith("cds_coverage_") and "inframe" not in k),
+        None,
+    )
     key_metrics = [
         ("periodicity_dominance", "Periodicity Dominance"),
         ("prop_reads_CDS", "CDS Proportion"),
-        ("CDS_coverage_metric", "CDS Coverage"),
-        ("read_length_distribution_IQR_metric", "Read Length IQR"),
+        *([(cds_coverage_key, "CDS Coverage")] if cds_coverage_key else []),
+        ("read_length_iqr_fraction", "Read Length IQR (fraction)"),
     ]
 
     for metric_key, display_name in key_metrics:

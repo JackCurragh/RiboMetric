@@ -101,9 +101,15 @@ SCORE_METHODS: Dict[str, Callable[..., float]] = {
 
 DEFAULT_STATUS = {"pass": 0.60, "warn": 0.30}
 
+# Keyed by SCORE name; each entry names the raw ``metric`` it is derived from.
+# Score keys name the good property and are always higher-is-better; metric
+# keys name the measured quantity in its natural direction. The ``method`` is
+# the only place a direction flip is allowed to live. See
+# docs/METRIC_NAMING.md and RiboMetric/registry.py.
 DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
     # ---- Tier 1: is this Ribo-seq-like? (gated) ------------------------
-    "periodicity_dominance": {
+    "periodicity_dominance_score": {
+        "metric": "periodicity_dominance",
         "method": "identity",
         "status": {"pass": 0.70, "warn": 0.50},
         "gate": True,
@@ -111,7 +117,8 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "decision": "Low score: weak triplet structure; P-site assignment and "
         "ORF calling unreliable.",
     },
-    "cds_enrichment_ratio": {
+    "cds_enrichment_score": {
+        "metric": "cds_enrichment_ratio",
         "method": "enrichment_ratio",
         "status": {"pass": 0.60, "warn": 0.30},
         "gate": True,
@@ -120,16 +127,30 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "may reflect degradation, RNA contamination, or poor nuclease "
         "protection.",
     },
-    "periodicity_information": {
+    # THRESHOLDS ARE ANCHORED TO periodicity_dominance, NOT to the 0-1 scale.
+    # Entropy reduction is a far more compressive scale than the dominant-frame
+    # fraction: for a dominant fraction d with the remainder split evenly,
+    # (log2(3) - H)/log2(3) is 0.255 at d=0.70 and 0.054 at d=0.50. The v1.4.0
+    # thresholds of 0.60/0.30 were carried over from before the sqrt transform
+    # was dropped and were never re-anchored, so they demanded d ~ 0.90 to pass
+    # and d ~ 0.72 to reach WARNING -- strictly harsher than the dominance gate
+    # they were meant to cross-check, and since the verdict fails if any gated
+    # metric fails, this metric silently governed the Tier 1 result.
+    # 0.25/0.05 are the information-content equivalents of dominance 0.70/0.50.
+    # The even-split remainder is the maximum-entropy case for a given d, so
+    # these are lower bounds: a real library at d=0.70 scores at or above 0.25.
+    "periodicity_information_score": {
+        "metric": "periodicity_information",
         "method": "identity",
-        "status": {"pass": 0.60, "warn": 0.30},
+        "status": {"pass": 0.25, "warn": 0.05},
         "gate": True,
         "tier": 1,
         "decision": "Cross-check on frame dominance; large disagreement signals "
         "frame mixing or unstable offsets.",
     },
     # ---- Tier 2: usable for my analysis? (not gated) -------------------
-    "recommended_read_proportion": {
+    "usable_read_fraction_score": {
+        "metric": "recommended_read_proportion",
         "method": "identity",
         "status": {"pass": 0.60, "warn": 0.30},
         "gate": False,
@@ -137,7 +158,8 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "decision": "Low score: little of the library survives recommended-read "
         "filtering for frame-sensitive work.",
     },
-    "uniformity_entropy": {
+    "coverage_uniformity_score": {
+        "metric": "uniformity_entropy",
         "method": "identity",
         "status": {"pass": 0.60, "warn": 0.30},
         "gate": False,
@@ -145,7 +167,8 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "decision": "Low score: coverage dominated by a few hotspots; broad "
         "quantification may be unreliable.",
     },
-    "marginal_position_discovery_rate": {
+    "library_saturation_score": {
+        "metric": "marginal_position_discovery_rate",
         "method": "one_minus_rate",
         "status": {"pass": 0.60, "warn": 0.30},
         "gate": False,
@@ -154,7 +177,8 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "discover substantially more positions.",
     },
     # ---- Tier 3: technical caveats (not gated) -------------------------
-    "duplicate_rate": {
+    "fragment_uniqueness_score": {
+        "metric": "duplicate_rate",
         "method": "one_minus_rate",
         "status": {"pass": 0.60, "warn": 0.30},
         "gate": False,
@@ -162,21 +186,16 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "decision": "Low score: usable molecule diversity much lower than read "
         "depth suggests (protocol-dependent).",
     },
-    "rpf_multimapper_rate": {
+    "rpf_unique_mapping_score": {
+        "metric": "rpf_multimapper_rate",
         "method": "one_minus_rate",
         "status": {"pass": 0.60, "warn": 0.30},
         "gate": False,
         "tier": 3,
         "decision": "Low score: reduced confidence in locus/transcript-level " "quantification.",
     },
-    "multimapper_rate": {
-        "method": "one_minus_rate",
-        "status": {"pass": 0.60, "warn": 0.30},
-        "gate": False,
-        "tier": 3,
-        "decision": "Low score: reduced confidence in locus/transcript-level " "quantification.",
-    },
-    "alignment_multimapper_rate": {
+    "alignment_unique_mapping_score": {
+        "metric": "alignment_multimapper_rate",
         "method": "one_minus_rate",
         "status": {"pass": 0.60, "warn": 0.30},
         "gate": False,
@@ -184,14 +203,8 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "decision": "Low score: many alignment rows have evidence of another "
         "reported alignment.",
     },
-    "unique_rpf_rate": {
-        "method": "identity",
-        "status": {"pass": 0.60, "warn": 0.30},
-        "gate": False,
-        "tier": 3,
-        "decision": "Low score: few fragments map uniquely.",
-    },
-    "soft_clip_rate_5prime": {
+    "terminal_integrity_5prime_score": {
+        "metric": "soft_clip_rate_5prime",
         "method": "one_minus_rate",
         "status": {"pass": 0.60, "warn": 0.30},
         "gate": False,
@@ -199,9 +212,18 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "decision": "Low score: 5' read ends frequently clipped; offset and "
         "terminal-bias interpretation may be unreliable.",
     },
-    # Terminal bias (S4): raw KL bits via inverse_linear; 1/(1+KL) _score
-    # variants are retired from the scored set and kept only as legacy keys.
-    "terminal_bias_kl_5prime_raw": {
+    "footprint_homogeneity_score": {
+        "metric": "floss_aberrant_transcript_fraction",
+        "method": "one_minus_rate",
+        "status": {"pass": 0.60, "warn": 0.30},
+        "gate": False,
+        "tier": 3,
+        "decision": "Low score: many transcripts have footprint-length profiles "
+        "unlike the library aggregate; heterogeneous or contaminated "
+        "library.",
+    },
+    "terminal_evenness_kl_5prime_score": {
+        "metric": "terminal_bias_kl_5prime",
         "method": "inverse_linear",
         "params": {"max_value": 2.0},
         "status": {"pass": 0.70, "warn": 0.40},
@@ -210,7 +232,8 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "decision": "Low score: 5' terminal sequence bias may distort count "
         "quantification; consider correction.",
     },
-    "terminal_bias_kl_3prime_raw": {
+    "terminal_evenness_kl_3prime_score": {
+        "metric": "terminal_bias_kl_3prime",
         "method": "inverse_linear",
         "params": {"max_value": 2.0},
         "status": {"pass": 0.70, "warn": 0.40},
@@ -219,7 +242,8 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "decision": "Low score: 3' terminal sequence bias may distort count "
         "quantification; consider correction.",
     },
-    "terminal_bias_maxabs_5prime": {
+    "terminal_evenness_maxdev_5prime_score": {
+        "metric": "terminal_bias_max_deviation_5prime",
         "method": "one_minus_rate",
         "status": {"pass": 0.70, "warn": 0.40},
         "gate": False,
@@ -227,7 +251,8 @@ DEFAULT_SCORING: Dict[str, Dict[str, Any]] = {
         "decision": "Low score: at least one 5' terminal dinucleotide is strongly "
         "over- or under-represented.",
     },
-    "terminal_bias_maxabs_3prime": {
+    "terminal_evenness_maxdev_3prime_score": {
+        "metric": "terminal_bias_max_deviation_3prime",
         "method": "one_minus_rate",
         "status": {"pass": 0.70, "warn": 0.40},
         "gate": False,
@@ -295,27 +320,32 @@ def build_scored_metrics(
 ) -> List[Dict[str, Any]]:
     """Produce the canonical scored-metric records consumed everywhere.
 
-    Returns one record per metric present in both the results and the scoring
-    spec::
+    Returns one record per score whose source metric is present in the
+    results::
 
-        {key, raw, score, status, gate, tier, decision}
+        {key, metric, raw, score, status, gate, tier, decision}
 
-    Metrics whose raw value is missing or not applicable (e.g. a ``None``
-    saturation rate) are returned with ``score=None`` and ``status="INFO"`` so
-    they can be shown without a misleading 0%.
+    ``key`` is the score key (always higher-is-better, named for the good
+    property); ``metric`` is the raw metric it was derived from and ``raw`` its
+    value in natural units. Scores whose source metric is missing or not
+    applicable (e.g. a ``None`` saturation rate) are returned with
+    ``score=None`` and ``status="INFO"`` so they can be shown without a
+    misleading 0%.
     """
     spec = get_scoring_spec(config)
     metrics = results_dict.get("metrics", {})
     records: List[Dict[str, Any]] = []
     for key, mspec in spec.items():
-        if key not in metrics:
+        metric_key = mspec.get("metric", key)
+        if metric_key not in metrics:
             continue
-        raw = _extract_raw(metrics[key])
+        raw = _extract_raw(metrics[metric_key])
         score = score_value(mspec["method"], raw, mspec.get("params")) if raw is not None else None
         status_thresholds = mspec.get("status", DEFAULT_STATUS)
         records.append(
             {
                 "key": key,
+                "metric": metric_key,
                 "raw": raw,
                 "score": score,
                 "status": resolve_status(score, status_thresholds),

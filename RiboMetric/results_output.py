@@ -20,6 +20,8 @@ from typing import Dict, List, Optional, Sequence, Tuple, cast
 
 import pandas as pd
 
+from .registry import LOWER_BETTER, METRIC_REGISTRY
+
 # =============================================================================
 # Legacy Functions (Backwards Compatibility)
 # =============================================================================
@@ -260,11 +262,17 @@ def generate_summary_tsv(
 
 
 # Default pass/warn thresholds used when no override YAML is supplied.
+#
+# Every key must be a metric 2.0 actually emits. An explicit policy is a
+# required-check contract, so a stale key here is not skipped -- it fails every
+# sample for "missing evidence". That is exactly what the pre-2.0
+# `read_length_distribution_IQR_metric` entry did after the rename. It is not
+# replaced by `read_length_iqr_fraction`: the read-length family is
+# diagnostic-only (docs/METRIC_NAMING.md section 3.1) and carries no pass/fail.
 DEFAULT_QC_THRESHOLDS: Dict[str, Dict[str, float]] = {
     "periodicity_dominance": {"pass": 0.7, "warn": 0.5},
     "uniformity_entropy": {"pass": 0.7, "warn": 0.5},
     "prop_reads_CDS": {"pass": 0.7, "warn": 0.5},
-    "read_length_distribution_IQR_metric": {"pass": 0.3, "warn": 0.2},
     "recommended_read_proportion": {"pass": 0.5, "warn": 0.3},
 }
 
@@ -272,23 +280,17 @@ DEFAULT_QC_THRESHOLDS: Dict[str, Dict[str, float]] = {
 # at or below the "pass" threshold. Everything else is treated as higher-is-
 # better. A thresholds YAML can override this per metric with
 # ``direction: lower`` / ``direction: higher``.
+#
+# Derived from the registry so it cannot drift from the naming contract. The
+# hand-kept set this replaces still listed ``terminal_bias_kl_5prime_raw`` after
+# 2.0 moved KL-in-bits to ``terminal_bias_kl_5prime`` -- so a policy on the live
+# key would have been gated higher-is-better, silently inverted.
+# ``disome_proportion`` is context-dependent (registry.CONTEXT: expected in a
+# di-some experiment, contamination in a monosome one) and keeps its pre-2.0
+# lower-is-better default; set ``direction:`` explicitly for di-some work.
 LOWER_IS_BETTER_METRICS = frozenset(
-    {
-        "duplicate_rate",
-        "multimapper_rate",
-        "rpf_multimapper_rate",
-        "alignment_multimapper_rate",
-        "soft_clip_rate_5prime",
-        "disome_proportion",
-        "terminal_bias_kl_5prime_raw",
-        "terminal_bias_kl_3prime_raw",
-        "stop_codon_readthrough_ratio",
-        # High marginal discovery = library still un-saturated (under-sequenced).
-        "marginal_position_discovery_rate",
-        # High FLOSS heterogeneity = more transcripts with aberrant length profiles.
-        "floss_median",
-        "floss_aberrant_transcript_fraction",
-    }
+    {key for key, spec in METRIC_REGISTRY.items() if spec.direction == LOWER_BETTER}
+    | {"disome_proportion"}
 )
 
 
@@ -306,20 +308,33 @@ def _metric_direction(metric_name: str, threshold_dict: Dict) -> str:
     return "lower" if metric_name in LOWER_IS_BETTER_METRICS else "higher"
 
 
-def _evaluate_qc_status_scored(results_dict: dict, sample_name: str) -> dict:
+def _evaluate_qc_status_scored(
+    results_dict: dict,
+    sample_name: str,
+    config: Optional[Dict] = None,
+) -> dict:
     """QC status from the unified scoring resolver (default path).
 
     The overall verdict uses only the gated (Tier-1) metrics; non-gated
     metrics are reported as checks but do not fail the sample.
+
+    ``config`` must be the effective run config so that any ``scoring:``
+    overrides it carries are applied here as well as in the HTML report. When
+    it is dropped the gate silently falls back to the code defaults and can
+    disagree with the report built from the same results.
     """
     from .scoring import build_scored_metrics, overall_gate_status
 
-    scored = build_scored_metrics(results_dict, None)
+    scored = build_scored_metrics(results_dict, config)
     overall_status = overall_gate_status(scored)
 
     qc_checks = [
         {
+            # "metric" names the score being evaluated (higher is better);
+            # "source_metric" and "value" name the raw quantity it came from,
+            # in its natural units and direction. See docs/METRIC_NAMING.md.
             "metric": m["key"],
+            "source_metric": m["metric"],
             "value": m["raw"],
             "score": m["score"],
             "status": m["status"],
@@ -411,6 +426,7 @@ def evaluate_qc_status(
     results_dict: dict,
     sample_name: str,
     thresholds: Optional[Dict] = None,
+    config: Optional[Dict] = None,
 ) -> dict:
     """
     Score a results dict against pass/warn thresholds.
@@ -423,6 +439,10 @@ def evaluate_qc_status(
         sample_name: Name of the sample
         thresholds: Optional dict of {metric: {"pass": x, "warn": y}}; falls back
             to DEFAULT_QC_THRESHOLDS when None
+        config: Effective run config. Its ``scoring:`` block is merged over the
+            code defaults, exactly as the HTML report does, so both surfaces
+            reach the same verdict. Only used on the default (no-thresholds)
+            path.
 
     Output:
         Dictionary with overall_status, per-check detail, summary counts and a
@@ -433,7 +453,7 @@ def evaluate_qc_status(
     # membership. An explicit thresholds dict (e.g. an external --expected YAML
     # for the `evaluate` subcommand) keeps the legacy raw-value comparison.
     if thresholds is None:
-        return _evaluate_qc_status_scored(results_dict, sample_name)
+        return _evaluate_qc_status_scored(results_dict, sample_name, config)
 
     # An explicit policy names the metrics the caller requires. A metric that is
     # absent or uncomparable is missing evidence, so it fails the gate loudly
@@ -561,7 +581,7 @@ def generate_qc_status(
             output_directory = output_directory[:-1]
         output = output_directory + "/" + name
 
-    qc_status = evaluate_qc_status(results_dict, sample_name, thresholds)
+    qc_status = evaluate_qc_status(results_dict, sample_name, thresholds, config)
 
     with open(output, "w") as f:
         json.dump(qc_status, f, indent=2)
@@ -680,25 +700,11 @@ def generate_metrics_table_csv(
     metrics = results_dict.get("metrics", {})
     rows = []
 
-    # Metric descriptions for context
-    descriptions = {
-        "periodicity_dominance": "Proportion of reads in dominant reading frame; global uses one shared dominant frame",
-        "uniformity_entropy": "Shannon entropy of codon-binned start-codon metagene window",
-        "read_length_distribution_IQR_metric": "Normalized IQR of read length distribution",
-        "terminal_nucleotide_bias_distribution_5_prime_metric": "Normalized 5' terminal bias score from KL divergence",
-        "terminal_nucleotide_bias_distribution_3_prime_metric": "Normalized 3' terminal bias score from KL divergence",
-        "terminal_bias_kl_5prime": "Normalized 5' terminal bias score from KL divergence",
-        "terminal_bias_kl_3prime": "Normalized 3' terminal bias score from KL divergence",
-        "terminal_bias_kl_5prime_score": "Normalized 5' terminal bias score from KL divergence",
-        "terminal_bias_kl_3prime_score": "Normalized 3' terminal bias score from KL divergence",
-        "terminal_bias_kl_5prime_raw": "Raw 5' terminal KL divergence in bits",
-        "terminal_bias_kl_3prime_raw": "Raw 3' terminal KL divergence in bits",
-        "CDS_coverage_metric": "Proportion of CDS covered by reads",
-        "prop_reads_CDS": "Proportion of reads mapping to CDS",
-        "prop_reads_leader": "Proportion of reads mapping to 5' leader",
-        "prop_reads_trailer": "Proportion of reads mapping to 3' trailer",
-        "ratio_cds:leader": "Ratio of CDS to 5'UTR reads",
-    }
+    # Metric descriptions for context. The registry's summary is authoritative
+    # for every registered metric, so a renamed or re-scaled metric can never
+    # carry a stale description: the hand-kept table this replaces described
+    # 2.0's KL-in-bits keys as a "normalized ... score".
+    descriptions = {key: spec.summary for key, spec in METRIC_REGISTRY.items()}
 
     for metric_name, metric_value in metrics.items():
         desc = descriptions.get(metric_name, "")

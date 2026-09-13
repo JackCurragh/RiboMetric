@@ -7,6 +7,7 @@ import json
 import pandas as pd
 import pytest
 
+from RiboMetric.registry import METRIC_REGISTRY
 from RiboMetric.results_output import (
     generate_all_outputs,
     generate_comparison_ready_csv,
@@ -493,10 +494,10 @@ class TestMetricsTableCSV:
 
         df = pd.read_csv(output_file)
         periodicity_row = df[df["metric"] == "periodicity_dominance"].iloc[0]
-        assert (
-            periodicity_row["description"]
-            == "Proportion of reads in dominant reading frame; global uses one shared dominant frame"
-        )
+        # Descriptions come from the registry, the single source that also
+        # generates docs/METRICS.md, so the CSV and the docs cannot disagree.
+        assert periodicity_row["description"] == METRIC_REGISTRY["periodicity_dominance"].summary
+        assert "shared dominant frame" in periodicity_row["description"]
 
     def test_global_metrics_labeled_correctly(self, sample_results_dict, sample_config, tmp_path):
         """Test that global metrics are labeled as 'global'"""

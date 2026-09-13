@@ -9,7 +9,132 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### BREAKING — metric naming and direction (targets 2.0.0)
+
+`results["metrics"]` is now raw measurements only, in natural units and natural
+direction, and scores live in their own `results["scores"]` namespace. See
+[docs/METRIC_NAMING.md](docs/METRIC_NAMING.md). **54 metric keys become 39**,
+plus 15 scores. Pre-2.0 spellings are reproduced under
+`results["metrics_legacy"]` for one minor cycle and removed at v2.1.
+
+The rule: a metric key names the quantity that was measured and its number goes
+up as the library gets worse if that is the quantity's nature; a score key names
+the good property, lies in [0, 1] and is always higher-is-better; the direction
+flip lives only in the `method` field of the scoring spec.
+
+**Eight metrics changed value, not just name.** Their metric functions had a
+goodness transform baked in under a badness-shaped name — which is what made the
+`terminal_bias_maxabs` inversion likely in the first place:
+
+| pre-2.0 key | held | canonical key | now holds |
+|---|---|---|---|
+| `terminal_bias_maxabs_5prime` / `_3prime` | `1 − max deviation` | `terminal_bias_max_deviation_5prime` / `_3prime` | the deviation |
+| `terminal_bias_kl_5prime` / `_score` / `_raw` | `1/(1+KL)`, `1/(1+KL)`, KL | `terminal_bias_kl_5prime` | KL in bits |
+| `read_length_distribution_IQR_metric` | `1 − IQR/range` | `read_length_iqr_fraction` | `IQR/(P90−P10)` |
+| `read_length_distribution_coefficient_of_variation_metric` | `1/(1+CV)` | `read_length_cv` | CV |
+| `read_length_distribution_bimodality_metric` | `1/(1+BC)` | `read_length_bimodality_coefficient` | BC |
+| `read_length_distribution_normality_metric` | `1 − p` | `read_length_normality_pvalue` | p |
+
+Any cohort table, `--expected` policy or ingestion pipeline carrying those keys
+must be regenerated, not just renamed. The keys were changed rather than reused
+precisely so a stale consumer fails loudly instead of silently reading a flipped
+number. The one exception is
+`terminal_bias_kl_5prime` / `_3prime`: the name that held `1/(1+KL)` now holds
+KL in bits. `evaluate` takes metric directions from the registry, so a policy on
+those keys is now read lower-is-better, matching what they hold — but a policy
+written for the old 0–1 score still has to be rewritten.
+
+**Score keys** name the good property: `duplicate_rate` →
+`fragment_uniqueness_score`, `marginal_position_discovery_rate` →
+`library_saturation_score`, `rpf_multimapper_rate` → `rpf_unique_mapping_score`,
+`soft_clip_rate_5prime` → `terminal_integrity_5prime_score`,
+`floss_aberrant_transcript_fraction` → `footprint_homogeneity_score`, and so on.
+Scored records and QC checks carry both the score key and the `source_metric`.
+
+**Twenty alias keys removed**: the three spellings of the terminal-bias KL
+score, the two of max-deviation, `multimapper_rate` (duplicated
+`rpf_multimapper_rate`), `unique_rpf_rate` (its complement), and the ten
+`CDS_coverage_metric*` / `cds_coverage*` keys that carried five numbers, now
+`cds_coverage[_inframe]_<minreads>read_<ntx>tx`.
+
+**The whole read-length family is now a diagnostic** rather than carrying
+unanchored `1/(1+x)` scores, per `METRICS_DESIGN.md` §Phase 1E.
+
+### Added
+
+- **`RiboMetric/registry.py`** — the machine-readable naming contract: unit,
+  direction and score key for every emitted metric, plus the legacy alias table
+  and the transform that reproduces each pre-2.0 value.
+- **`tests/test_registry.py`** — enforces the contract. Every lower-is-better
+  metric must be scored through a flipping `method`; no context-dependent metric
+  may carry a pass/fail badge; no key may be both a metric and a score; every
+  rate must be lower-is-better. These are the assertions whose absence let the
+  inverted score ship for four releases.
+- **`scripts/generate_metrics_doc.py`** — `docs/METRICS.md` is now generated
+  from the registry and the scoring spec, and a test runs it with `--check`. The
+  hand-written version documented four metric names that were never emitted and
+  omitted 32 that were.
+- **`results["scores"]`** — every score with its source metric, raw value,
+  status, gate membership and tier.
+- **`results["metrics_legacy"]`** — the compatibility shim described above.
+
 ### Fixed
+
+- **`RiboMetric evaluate` without `-e` failed every 2.0 sample.** Its built-in
+  policy still required `read_length_distribution_IQR_metric`, which 2.0 no
+  longer emits; under the required-check contract a missing metric is a FAIL for
+  incomplete evidence. The entry is removed rather than renamed — the read-length
+  family is diagnostic-only and carries no pass/fail.
+- **Metric directions for `--expected` policies came from a hand-kept list** that
+  still named `terminal_bias_kl_5prime_raw` and missed the live KL key, so a
+  threshold on `terminal_bias_kl_5prime` would have been gated higher-is-better.
+  The list, and the HTML report's equivalent, are now derived from the registry.
+- The TUI drew blank rows for two keys that no longer exist, and the
+  metrics-table CSV described 2.0's KL-in-bits keys as a "normalized score".
+  Both now read the registry. `tests/test_registry.py` fails if any source file
+  names a removed metric key.
+- **Terminal-bias max-deviation scores were inverted** —
+  `metrics.terminal_nucleotide_bias_max_absolute_metric` returns
+  `1 - max|observed - expected|`, which is already higher-is-better, but
+  `terminal_bias_maxabs_5prime`/`_3prime` were scored with `one_minus_rate`. A
+  perfectly unbiased library scored 0.00 FAIL and a severely biased one scored
+  0.80 PASS, in every report since v1.4.0. Now scored with `identity`.
+- **`periodicity_information` silently governed the Tier 1 gate** — the `sqrt`
+  transform was dropped in v1.4.0 but its status thresholds (0.60/0.30) were
+  carried over unchanged. On the entropy-reduction scale those demand a
+  dominant-frame fraction of ~0.90 to pass and ~0.72 to reach WARNING, strictly
+  harsher than the `periodicity_dominance` gate they cross-check. Re-anchored to
+  0.25/0.05, the information-content equivalents of dominance 0.70/0.50.
+- **Config `scoring:` overrides never reached the QC gate** —
+  `generate_qc_status` dropped its `config` argument, so a user override moved
+  the HTML report's badges but not the verdict in `qc_status.json`. The same
+  results and config could yield PASS in one and WARNING in the other.
+- **A-site offsets were not clipped to the read length** — read lengths absent
+  from the computed offset map, and every read on the `--global-offset` path,
+  received the raw default offset with no per-read-length bound. A 15 nt read
+  was given an offset of 15, placing its A-site one base past its own 3' end,
+  and that value was reported in the offsets audit TSV.
+- **Per-read-length periodicity was reported from as little as one read** — a
+  read length backed by a single frame-assigned read published a dominant-frame
+  fraction of exactly 1.000 and was drawn as a full-height bar in the
+  recommended-read-lengths plot. Per-read-length values now require
+  `qc.read_frame_distribution.dominance_min_reads` (default 100) frame-assigned
+  reads; global periodicity still uses every read and is unchanged.
+- **The `global` aggregate was plotted as a data point** — "mRNA Reads Breakdown
+  over Read Length" passed `global` to plotly as its first x category alongside
+  numeric read lengths, making the library-wide total the tallest point on the
+  chart and doubling the normalisation denominator. `sum_mRNA_distribution` had
+  the same double-count, which was invisible in the default proportional view
+  but doubled every value under `absolute_counts: True`.
+- **Report labelling** — the headline read "CDS enrichment E=E = 1.35"; the
+  metagene panels were titled "Distance from 5'/3'" when they show distance from
+  the start and stop codons; both ligation-bias panels were labelled "Read
+  Start"; and the mRNA breakdown-over-read-length chart was titled "Nucleotide
+  Distribution".
+- **A missing output directory crashed after the whole run** — every output path
+  is built from `--output` but nothing wrote to it until the end, so a
+  non-existent directory raised `FileNotFoundError` once the analysis was
+  already computed. The directory is now created up front.
 
 - **QC gating could pass with no evidence** — in the explicit-thresholds path
   (`RiboMetric evaluate --expected`), a metric that was absent from the results
@@ -30,6 +155,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `release.yml` publishes on tag push with no test dependency.
 
 ### Changed
+
+- **`qc_status.json` is written by default** (`qc_status: True`). It is the
+  output a pipeline gates on and is far cheaper to produce than the HTML report
+  that was already on by default. `--qc-status` is retained and is now a no-op.
+- **`recommend_read_lengths` entries carry `n_frame_reads`**, so every
+  per-read-length periodicity value states how many reads back it.
 
 - **An explicit threshold policy is now a required-check contract.** Every
   metric it names must be present and finite; otherwise the check fails with a
@@ -161,6 +292,11 @@ behaviour; it changes what can silently go wrong when releasing it.
 
 ### Notes
 
+- `docs/METRIC_NAMING.md` proposes the metric naming and direction scheme that
+  makes the inverted-score class of bug impossible: metric keys name the raw
+  quantity in its natural direction, score keys name the good property, and the
+  direction flip lives only in the `method` field. Not implemented; it is a
+  breaking JSON change and belongs in a major version.
 - `main` now contains the v1.4.1-v1.4.3 releases, which had been cut from
   `release/v1.3.0` and never merged back. `dev` is the integration branch.
 

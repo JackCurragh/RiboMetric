@@ -14,6 +14,11 @@ import numpy.typing as npt
 import pandas as pd
 from scipy.stats import kurtosis, normaltest, skew
 
+# Minimum frame-assigned reads before a per-read-length dominant-frame fraction
+# is reported. At n=100 the sampling standard error on a fraction near the 1/3
+# random floor is ~0.047; below that the estimate is not separable from noise.
+DOMINANCE_MIN_READS = 100
+
 
 def find_category_by_cumulative_percentage(df: pd.DataFrame, percentage: float) -> int:
     """
@@ -24,24 +29,24 @@ def find_category_by_cumulative_percentage(df: pd.DataFrame, percentage: float) 
     return int(read_length)
 
 
-def read_length_distribution_IQR_normalised_metric(
+def read_length_iqr_fraction(
     rld_dict: Dict[int, int],
 ) -> float:
     """
-    Calculate the read length distribution metric from the output of
-    the read_length_distribution module.
+    Interquartile range of the read length distribution as a fraction of its
+    10th-90th percentile range.
 
-    This metric is the IQR of the read length distribution and is
-    calculated as the difference between the 75th and 25th percentile
-    The metric is then normalised by dividing by the range of the
-    read length distribution between the 10th and 90th percentile
+    Direction: LOWER IS BETTER. A tight footprint length distribution is the
+    good case, so this returns the spread itself rather than ``1 - spread``.
+    The score derived from it (``read_length_concentration_score``) applies the
+    flip; see docs/METRIC_NAMING.md.
 
     Inputs:
         rld_dict: Dictionary containing the output of the
                 read_length_distribution module
 
     Outputs:
-        rld_df: Dataframe containing the read length distribution metric
+        iqr_fraction (float): IQR / (P90 - P10), 0 when the range is degenerate
     """
     rld_df = pd.DataFrame.from_dict(rld_dict, orient="index")
     rld_df = rld_df.reset_index()
@@ -56,21 +61,20 @@ def read_length_distribution_IQR_normalised_metric(
     ) - find_category_by_cumulative_percentage(rld_df, 0.1)
 
     if max_range == 0:
-        return 1.0  # Perfect concentration, IQR = 0
-    return 1 - (inter_quartile_range / max_range)
+        return 0.0  # Perfect concentration, IQR = 0
+    return inter_quartile_range / max_range
 
 
-def read_length_distribution_coefficient_of_variation_metric(
+def read_length_cv(
     rld_dict: dict,
 ) -> float:
     """
-    Calculate the read length distribution metric from the output of
-    the read_length_distribution module.
+    Coefficient of variation of the read length distribution: the standard
+    deviation divided by the mean.
 
-    This metric is the coefficient of variation of the read length
-    distribution and is calculated as the standard deviation of the
-    read length distribution divided by the mean of the read length
-    distribution
+    Direction: LOWER IS BETTER, and reported as the CV itself. The previous
+    ``1/(1 + CV)`` transform was monotonic but not anchored to anything, and it
+    hid the direction behind a badness-shaped name.
 
     Inputs:
         rld_dict: Dictionary containing the output of the
@@ -88,13 +92,15 @@ def read_length_distribution_coefficient_of_variation_metric(
         "read_count"
     ].sum()
     coefficient_of_variation = math.sqrt(variance) / mean if mean != 0 else 0
-    # Transform so that higher scores indicate tighter (better) distributions.
-    return 1 / (1 + coefficient_of_variation)
+    return float(coefficient_of_variation)
 
 
-def read_length_distribution_bimodality(data: Dict[int, int]) -> float:
+def read_length_bimodality_coefficient(data: Dict[int, int]) -> float:
     """
-    Calculate the bimodality coefficient for a given dataset.
+    Sarle's bimodality coefficient of the read length distribution.
+
+    Direction: LOWER IS BETTER (a unimodal footprint distribution is the good
+    case), and reported as the coefficient itself rather than ``1/(1 + BC)``.
 
     Args:
         data (dict): A dictionary containing the read length distribution.
@@ -114,19 +120,20 @@ def read_length_distribution_bimodality(data: Dict[int, int]) -> float:
     denominator = kurt_value + (3 * ((n - 1) ** 2 / ((n - 2) * (n - 3))))
     bimodality_coeff = numerator / denominator if denominator != 0 else 0
 
-    # Lower bimodality is preferred; map to (0,1] where 1 is best (unimodal).
-    bimodality_coeff = max(bimodality_coeff, 0)
-    return 1 / (1 + bimodality_coeff)
+    return float(max(bimodality_coeff, 0))
 
 
-def read_length_distribution_normality_metric(
+def read_length_normality_pvalue(
     rld_dict: Dict[int, int],
 ) -> float:
     """
-    Calculate the read length distribution (non) normality metric from the output of
-    the read_length_distribution module.
+    p-value of D'Agostino-Pearson normaltest on the read length distribution.
 
-    This metric is normaltest statistic of the read length distribution
+    Reported as the p-value itself. It has no "good" direction: a Ribo-seq
+    footprint distribution is not expected to be normal, so this is a shape
+    diagnostic, not a quality score. The previous ``1 - p`` transform under a
+    "normality" name implied both a direction and a quality judgement it does
+    not carry.
 
     Inputs:
         rld_dict: Dictionary containing the output of the
@@ -146,16 +153,19 @@ def read_length_distribution_normality_metric(
         # Older SciPy returns tuple (stat, pvalue)
         _, pvalue = normaltest(expanded)
         pvalue = float(pvalue)
-    # Non-normal distributions are expected; invert p-value so higher is better.
-    return max(0.0, min(1.0, 1 - pvalue))
+    return max(0.0, min(1.0, pvalue))
 
 
-def read_length_distribution_max_prop_metric(
+def read_length_max_proportion(
     rld_dict: Dict[int, int],
     num_top_readlens: int = 1,
 ) -> float:
     """
-    Calculate the proportion of reads in the most frequent read length
+    Proportion of reads carried by the most frequent read length(s).
+
+    Direction: CONTEXT. High concentration is normal for a clean monosome
+    library and abnormal for a mixed one, so this is reported as a diagnostic
+    with no score attached.
 
     Inputs:
         rld_dict: Dictionary containing the output of the
@@ -217,38 +227,20 @@ def terminal_nucleotide_bias_KL_divergence(
     return max(0.0, kl_divergence)
 
 
-def terminal_nucleotide_bias_KL_metric(
+def terminal_nucleotide_bias_max_deviation(
     observed_freq: Dict[str, Dict[str, float]],
     expected_freq: Dict[str, float] | Dict[str, Dict[str, float]],
     prime: str = "five_prime",
 ) -> float:
     """
-    Calculate a normalized terminal nucleotide bias score from raw KL divergence.
+    Largest absolute difference between an observed terminal dinucleotide
+    frequency and its expected background frequency.
 
-    The returned value is a goodness score, not the raw divergence: 1.0 means
-    observed terminal dinucleotide frequencies match the expected background,
-    and lower values indicate stronger bias.
-    """
-    kl_divergence = terminal_nucleotide_bias_KL_divergence(
-        observed_freq,
-        expected_freq,
-        prime=prime,
-    )
-    # Higher values signal less bias; map divergence to (0,1].
-    return 1 / (1 + kl_divergence)
-
-
-def terminal_nucleotide_bias_max_absolute_metric(
-    observed_freq: Dict[str, Dict[str, float]],
-    expected_freq: Dict[str, float] | Dict[str, Dict[str, float]],
-    prime: str = "five_prime",
-) -> float:
-    """
-    Calculate the ligation bias metric from the output of
-    the terminal_nucleotide_bias_distribution module.
-
-    This metric is the maximum difference in observed and expected
-    frequencies of dinucleotides
+    Direction: LOWER IS BETTER, and reported as the deviation itself. This
+    previously returned ``1 - max_diff`` under a key named for bias, so the
+    name promised a badness and the value delivered a goodness. Scoring it as
+    a rate then inverted it: a perfectly unbiased library scored 0.00 FAIL.
+    See docs/METRIC_NAMING.md section 1.
 
     Inputs:
         observed_freq: Dictionary containing the output of the
@@ -256,7 +248,7 @@ def terminal_nucleotide_bias_max_absolute_metric(
         expected_freq: Dictionary containing the expected frequencies
 
     Outputs:
-        lbd_df: Dataframe containing the ligation bias metric in bits
+        max_deviation (float): max ``|observed - expected|`` over dinucleotides
     """
     scores = {}
     exp_map2: Dict[str, float]
@@ -270,9 +262,7 @@ def terminal_nucleotide_bias_max_absolute_metric(
         expected_prob = exp_map2[dinucleotide]
         scores[dinucleotide] = abs(observed_prob - expected_prob)
 
-    max_diff = max(scores.values()) if scores else 0
-    # Perfect agreement should score 1, larger deviations trend towards 0.
-    return max(0.0, 1 - max_diff)
+    return float(max(scores.values())) if scores else 0.0
 
 
 def cds_coverage_metric(
@@ -864,16 +854,33 @@ def uniformity_gini_index(
     return ginis
 
 
-def periodicity_dominance(read_frame_dict: Dict[int, Dict[int, int]]) -> Dict[int | str, float]:
+def periodicity_dominance(
+    read_frame_dict: Dict[int, Dict[int, int]],
+    min_reads: int = DOMINANCE_MIN_READS,
+) -> Dict[int | str, float]:
     """
     Calculate the read frame dominance metric from the output of
     the read_frame_distribution module.
 
     This metric is the proportion of reads in the dominant frame
 
+    Read lengths carrying fewer than ``min_reads`` frame-assigned reads are
+    omitted from the per-read-length map rather than reported. A dominant-frame
+    fraction estimated from a handful of reads is noise, and it is published as
+    a confident number: a read length with a single read reports a dominance of
+    exactly 1.000, which then appears in cohort tables and as a full-height bar
+    in the recommended-read-lengths plot. ``information_metric_cutoff`` already
+    applies the same convention to the sibling periodicity metric.
+
+    The global values are unaffected: every read still contributes to
+    ``global`` and ``global_by_read_length_max``, so the gated Tier-1 metric
+    keeps its existing meaning.
+
     Inputs:
         read_frame_dict: Dictionary containing the output of the
                 read_frame_distribution module
+        min_reads: Minimum frame-assigned reads for a per-read-length
+                dominance value to be reported
 
     Outputs:
         read_frame_dominance: Dictionary containing the read frame dominance
@@ -888,9 +895,10 @@ def periodicity_dominance(read_frame_dict: Dict[int, Dict[int, int]]) -> Dict[in
             read_frame_dominance[read_length] = 0
             continue
         max_frame = max(read_frame_dict[read_length], key=lambda k: read_frame_dict[read_length][k])
-        read_frame_dominance[read_length] = (
-            read_frame_dict[read_length][max_frame] / total_count if total_count > 0 else 0
-        )
+        if total_count >= min_reads:
+            read_frame_dominance[read_length] = (
+                read_frame_dict[read_length][max_frame] / total_count
+            )
 
         global_total += total_count
         global_by_read_length_max += read_frame_dict[read_length][max_frame]
@@ -1011,6 +1019,7 @@ def recommend_read_lengths(
     offsets: Optional[Dict] = None,
     min_periodicity: float = 0.5,
     min_read_proportion: float = 0.05,
+    min_frame_reads: int = DOMINANCE_MIN_READS,
 ) -> Dict[str, Any]:
     """Recommend the read lengths carrying clean 3-nt periodicity.
 
@@ -1032,12 +1041,18 @@ def recommend_read_lengths(
     for read_length, frames in read_frame_distribution.items():
         rl = int(read_length)
         frame_total = sum(frames.values())
-        periodicity = max(frames.values()) / frame_total if frame_total > 0 else 0.0
+        # Skip read lengths with too few frame-assigned reads to estimate a
+        # dominant-frame fraction. Without this a length backed by one read
+        # reports periodicity 1.0 and is drawn as a full-height bar.
+        if frame_total < min_frame_reads:
+            continue
+        periodicity = max(frames.values()) / frame_total
         proportion = read_length_distribution.get(rl, 0) / total_reads
         recommended = periodicity >= min_periodicity and proportion >= min_read_proportion
         entry: Dict[str, Any] = {
             "periodicity": round(periodicity, 4),
             "read_proportion": round(proportion, 4),
+            "n_frame_reads": int(frame_total),
             "recommended": bool(recommended),
         }
         if offsets is not None and rl in offsets:
