@@ -178,6 +178,8 @@ unanchored `1/(1+x)` scores, per `METRICS_DESIGN.md` §Phase 1E.
 
 ### Infrastructure
 
+- `update_git.sh` removed: a personal `git add . && commit && push` script
+  with hardcoded local paths.
 Brings the repo in line with `REPO_CONTRACT.md`, the shared maintenance
 contract for the all-RiboSeq tools. None of this changes RiboMetric's
 behaviour; it changes what can silently go wrong when releasing it.
@@ -231,6 +233,13 @@ behaviour; it changes what can silently go wrong when releasing it.
 
 ### Documentation
 
+- **`example-reports/` regenerated** with 2.0 and the corrected annotation,
+  replacing reports produced in the 1.x schema against the pre-fix annotation
+  (CDS in genomic rather than transcript coordinates). The example library still
+  fails QC — its periodicity is weak at every read length, and at ten times the
+  depth — so it is now an honest example of a failing library rather than a
+  misleading one. `example_report_offsets.tsv`, written by default since 1.4.1,
+  is included.
 - **The user docs describe 2.0.** README, installation, usage and results
   explain the split between raw `metrics` and 0–1 `scores`, the renamed keys and
   the `metrics_legacy` shim, the container tags, and the JSON as it is actually
