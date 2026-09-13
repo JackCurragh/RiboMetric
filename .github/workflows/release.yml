@@ -4,14 +4,16 @@ name: Release
 # creates -- see .bumpversion.cfg) produces, in this order and only if each
 # step passes:
 #
+#   verify  -> the tagged commit is on main, and the tag matches the version in
+#              RiboMetric/__init__.py and CITATION.cff
 #   gate    -> the full CI gate, re-run on the tag (calls ci.yml; not a copy)
 #   pypi    -> sdist + wheel to PyPI via Trusted Publishing (OIDC, no token)
 #   image   -> ghcr.io/<owner>/ribometric:vX.Y.Z, :X.Y and :latest
 #   release -> a GitHub Release with the distributions attached
 #
 # `:latest` means "the most recent release" and is written here only. The tip
-# of main is published as `:main` / `:sha-<short>` by ci.yml. Nothing else in
-# the repo pushes a container tag.
+# of dev is published as `:dev` by ci.yml. Nothing else in the repo pushes a
+# container tag.
 #
 # One-time PyPI setup: a Trusted Publisher under
 # https://pypi.org/manage/project/ribometric/settings/publishing/ and a GitHub
@@ -29,8 +31,44 @@ permissions:
   contents: read
 
 jobs:
+  verify:
+    name: Verify tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Releases are cut from main. v1.4.1-v1.4.3 were tagged on a side branch
+      # (release/v1.3.0) that CI did not watch, so the gate never ran on any of
+      # them. The gate now runs on the tag itself, but a tag on a side branch
+      # would still publish code main has never had -- and main is the branch
+      # the protection ruleset guarantees is CI-green.
+      - name: Tagged commit is on main
+        run: |
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) is not on main. Fast-forward main to it and push main before the tag (docs/RELEASE.md)."
+            exit 1
+          fi
+
+      # The tag triggers the publish, but the version PyPI records comes from
+      # RiboMetric/__init__.py. A hand-made tag, or a bump whose commit never
+      # got pushed, would publish a version the tag does not name. CITATION.cff
+      # is checked too: a citation record with the wrong version is a
+      # correctness bug, and TranslonScorer's drifted three releases unnoticed.
+      - name: Tag matches the package and citation versions
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(sed -nE 's/^__version__ = "([^"]+)".*/\1/p' RiboMetric/__init__.py)
+          cff=$(sed -nE 's/^version: *"?([^"]+)"?$/\1/p' CITATION.cff)
+          echo "tag=$tag package=$pkg citation=$cff"
+          [ "$tag" = "$pkg" ] || { echo "::error::tag $GITHUB_REF_NAME does not match RiboMetric.__version__ ($pkg)"; exit 1; }
+          [ "$tag" = "$cff" ] || { echo "::error::tag $GITHUB_REF_NAME does not match CITATION.cff version ($cff)"; exit 1; }
+
   gate:
     name: CI gate
+    needs: verify
     uses: ./.github/workflows/ci.yml
     # A called workflow's jobs may not request more permission than the
     # calling job grants, and GitHub validates that at STARTUP -- before any

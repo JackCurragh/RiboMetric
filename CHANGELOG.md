@@ -182,6 +182,20 @@ Brings the repo in line with `REPO_CONTRACT.md`, the shared maintenance
 contract for the all-RiboSeq tools. None of this changes RiboMetric's
 behaviour; it changes what can silently go wrong when releasing it.
 
+- **Container tags: `:latest` for releases, `:dev` for the tip of `dev`.** The
+  `:main` and `:sha-<short>` tags are gone. `main` only moves when a release is
+  cut, so `:main` was always the same image as `:latest`; `:dev` is the one
+  that carries unreleased work. `:vX.Y.Z` and `:X.Y` still pin a release.
+- **`release.yml` verifies the tag before anything publishes.** A new `verify`
+  job fails the release if the tagged commit is not on `main`, or if the tag
+  disagrees with `RiboMetric.__version__` or `CITATION.cff`.
+- **`main` is protected.** A ruleset requires every CI check to pass on a
+  commit before `main` can move to it, and blocks force-pushes and deletion,
+  with no bypass. The release runbook (`docs/RELEASE.md`) now bumps on `dev`
+  and fast-forwards `main` to it.
+- **Stale branches archived.** Eight branches from 2023, and two fully-merged
+  ones, were removed from the remote. Those holding commits not on `main` are
+  preserved as `archive/*` tags, so nothing was lost.
 - **The distribution name is lowercase (`ribometric`).** It was `RiboMetric`,
   and published only because `pyproject.toml` leaves `setuptools>=64` unpinned
   so CI happens to resolve a version that normalises the wheel filename itself.
