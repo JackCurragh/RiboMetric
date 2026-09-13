@@ -80,10 +80,18 @@ Ordered roughly by risk.
    `max_mins` ranges (`[0,1]`) and any QC pass/fail thresholds for these three
    metrics have **not** been calibrated against real distributions.
 
-7. **Example reports are stale.**
-   `example-reports/*` were generated against the *broken* annotation (this is
-   the source of the 0.366 dominance in the repo). Regenerate against the fixed
-   annotation before release or they misrepresent the tool.
+7. **Example reports — regenerated 2026-09-13.**
+   `example-reports/*` were regenerated with the 2.0 code against the corrected
+   annotation, using the invocation recorded in the old JSON (1% BAM, ribowaltz
+   offsets). The annotation fix is visible: `prop_reads_CDS` 0.568 → 0.798 and
+   recommended read proportion 0.000 → 0.454. **The sample still FAILs QC**,
+   though: periodicity dominance 0.436 (was 0.366), CDS enrichment E = 1.35.
+   That is the library, not depth or offsets — the 10% BAM (828k reads) gives
+   0.45 and 1.35; dominance is weak at every read length (0.42–0.64) with sane
+   offsets (14–16 nt); and the metric reached 0.79 on SRR11005875 when the
+   annotation fix was validated. The examples are therefore an honest *failing*
+   library. Before 2.0, decide whether the showcase should be a passing dataset
+   (for example a subsample of SRR11005875) instead.
 
 8. **`prepare` output dropped the genomic CDS columns.**
    The current `gff_df_to_cds_df` emits only 4 columns; `parse_annotation` still
@@ -99,6 +107,17 @@ Ordered roughly by risk.
    empty-result behaviour through the metric layer, not just the plot.
 
 ---
+
+10. **Per-sample pipeline outputs are appended to, not rewritten.** (found 2026-09-13)
+   `{sample}_summary.tsv` and `{sample}_comparison.csv` are opened for append when the file
+   already exists. Re-running a sample into the same output directory therefore
+   adds a duplicate row, silently, on the same version. After an upgrade that
+   changes the metric set — every 1.x → 2.0 upgrade — the summary writer's
+   schema check (correctly) refuses the append, and the run exits 1 *after* the
+   HTML and JSON are written but *before* `qc_status.json`, which is what
+   pipelines gate on. Reproduced by regenerating `example-reports/` over the 1.x
+   files. Decide whether per-sample files should be overwritten, leaving cohort
+   accumulation to an explicit option or to concatenation.
 
 ## 2. Optimisation opportunities
 

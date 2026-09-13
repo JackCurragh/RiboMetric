@@ -1,54 +1,150 @@
 {
   "sample": "example_report",
-  "timestamp": "2026-06-07T19:06:12.146311",
+  "timestamp": "2026-09-13T11:02:28.746906",
   "overall_status": "FAIL",
   "checks": [
     {
-      "metric": "periodicity_dominance",
-      "value": 0.36604434072345393,
+      "metric": "periodicity_dominance_score",
+      "source_metric": "periodicity_dominance",
+      "value": 0.43641204177759574,
+      "score": 0.43641204177759574,
       "status": "FAIL",
-      "direction": "higher",
-      "threshold_pass": 0.7,
-      "threshold_warn": 0.5
+      "gate": true,
+      "tier": 1
     },
     {
-      "metric": "uniformity_entropy",
-      "value": 0.9173325310965127,
-      "status": "PASS",
-      "direction": "higher",
-      "threshold_pass": 0.7,
-      "threshold_warn": 0.5
+      "metric": "cds_enrichment_score",
+      "source_metric": "cds_enrichment_ratio",
+      "value": 1.3495133933428538,
+      "score": 0.25899216344721177,
+      "status": "FAIL",
+      "gate": true,
+      "tier": 1
     },
     {
-      "metric": "prop_reads_CDS",
-      "value": 0.5684655658477648,
+      "metric": "periodicity_information_score",
+      "source_metric": "periodicity_information",
+      "value": 0.08760132723396731,
+      "score": 0.08760132723396731,
       "status": "WARNING",
-      "direction": "higher",
-      "threshold_pass": 0.7,
-      "threshold_warn": 0.5
+      "gate": true,
+      "tier": 1
     },
     {
-      "metric": "read_length_distribution_IQR_metric",
-      "value": 0.4,
+      "metric": "usable_read_fraction_score",
+      "source_metric": "recommended_read_proportion",
+      "value": 0.4542,
+      "score": 0.4542,
+      "status": "WARNING",
+      "gate": false,
+      "tier": 2
+    },
+    {
+      "metric": "coverage_uniformity_score",
+      "source_metric": "uniformity_entropy",
+      "value": 0.9151519544081076,
+      "score": 0.9151519544081076,
       "status": "PASS",
-      "direction": "higher",
-      "threshold_pass": 0.3,
-      "threshold_warn": 0.2
+      "gate": false,
+      "tier": 2
     },
     {
-      "metric": "recommended_read_proportion",
-      "value": 0.0,
+      "metric": "library_saturation_score",
+      "source_metric": "marginal_position_discovery_rate",
+      "value": 0.9842,
+      "score": 0.015800000000000036,
       "status": "FAIL",
-      "direction": "higher",
-      "threshold_pass": 0.5,
-      "threshold_warn": 0.3
+      "gate": false,
+      "tier": 2
+    },
+    {
+      "metric": "fragment_uniqueness_score",
+      "source_metric": "duplicate_rate",
+      "value": 0.4766797725711446,
+      "score": 0.5233202274288554,
+      "status": "WARNING",
+      "gate": false,
+      "tier": 3
+    },
+    {
+      "metric": "rpf_unique_mapping_score",
+      "source_metric": "rpf_multimapper_rate",
+      "value": 0.21690515515149744,
+      "score": 0.7830948448485026,
+      "status": "PASS",
+      "gate": false,
+      "tier": 3
+    },
+    {
+      "metric": "alignment_unique_mapping_score",
+      "source_metric": "alignment_multimapper_rate",
+      "value": 0.1749854057209574,
+      "score": 0.8250145942790426,
+      "status": "PASS",
+      "gate": false,
+      "tier": 3
+    },
+    {
+      "metric": "terminal_integrity_5prime_score",
+      "source_metric": "soft_clip_rate_5prime",
+      "value": 0.0,
+      "score": 1.0,
+      "status": "PASS",
+      "gate": false,
+      "tier": 3
+    },
+    {
+      "metric": "footprint_homogeneity_score",
+      "source_metric": "floss_aberrant_transcript_fraction",
+      "value": 0.1081,
+      "score": 0.8919,
+      "status": "PASS",
+      "gate": false,
+      "tier": 3
+    },
+    {
+      "metric": "terminal_evenness_kl_5prime_score",
+      "source_metric": "terminal_bias_kl_5prime",
+      "value": 0.04677388210509265,
+      "score": 0.9766130589474536,
+      "status": "PASS",
+      "gate": false,
+      "tier": 3
+    },
+    {
+      "metric": "terminal_evenness_kl_3prime_score",
+      "source_metric": "terminal_bias_kl_3prime",
+      "value": 0.12110112645992033,
+      "score": 0.9394494367700399,
+      "status": "PASS",
+      "gate": false,
+      "tier": 3
+    },
+    {
+      "metric": "terminal_evenness_maxdev_5prime_score",
+      "source_metric": "terminal_bias_max_deviation_5prime",
+      "value": 0.04359669711300243,
+      "score": 0.9564033028869976,
+      "status": "PASS",
+      "gate": false,
+      "tier": 3
+    },
+    {
+      "metric": "terminal_evenness_maxdev_3prime_score",
+      "source_metric": "terminal_bias_max_deviation_3prime",
+      "value": 0.06111132343825709,
+      "score": 0.9388886765617429,
+      "status": "PASS",
+      "gate": false,
+      "tier": 3
     }
   ],
   "summary": {
-    "total_checks": 5,
-    "passed": 2,
-    "warnings": 1,
-    "failed": 2
+    "total_checks": 15,
+    "gated_checks": 3,
+    "passed": 9,
+    "warnings": 3,
+    "failed": 3
   },
-  "recommendation": "Sample failed QC for: periodicity_dominance, recommended_read_proportion. Consider excluding from analysis or investigating issues."
+  "recommendation": "Sample failed QC for: periodicity_dominance_score, cds_enrichment_score. Consider excluding from analysis or investigating issues."
 }
