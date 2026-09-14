@@ -51,7 +51,7 @@ import os
 import platform
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from rich.console import Console
 from rich.table import Table
@@ -146,7 +146,9 @@ def _file_fingerprint(path_value: Any) -> Dict[str, Any]:
 
 
 def _build_run_provenance(
-    args: argparse.Namespace, config: Dict[str, Any], subsampling=None
+    args: argparse.Namespace,
+    config: Dict[str, Any],
+    subsampling: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     arg_cfg = config.get("argument", {})
     input_keys = [

@@ -285,7 +285,7 @@ def cds_coverage_metric(
     minimum_reads: int = 1,
     in_frame_coverage: bool = True,
     num_transcripts: int = 100,
-) -> float:
+) -> Optional[float]:
     """
     Calculates the proportion of CDS covered by ribosomal protected fragments
 
@@ -426,7 +426,7 @@ def read_frame_information_content(
 def information_metric_cutoff(
     frame_info_content_dict: Dict[int, Tuple[float, int]],
     min_count_threshold: float = 0.05,
-) -> Dict[int | str, float]:
+) -> Dict[int | str, Optional[float]]:
     """
     Apply the cut off to the information content metric and calculate a global score
 
@@ -440,7 +440,7 @@ def information_metric_cutoff(
         information_content_metric: Dictionary containing the information
                 content metric for each read length and a global score
     """
-    information_content_metric: Dict[int | str, float] = {}
+    information_content_metric: Dict[int | str, Optional[float]] = {}
     total_reads = sum(frame_info_content_dict[key][1] for key in frame_info_content_dict)
     total_weighted_score: float = 0.0
     total_count_above_threshold: float = 0.0
@@ -466,7 +466,7 @@ def information_metric_cutoff(
 
 def read_frame_information_weighted_score(
     frame_info_content_dict: Dict[int, Tuple[float, int]],
-) -> float:
+) -> Optional[float]:
     """
     Produce a single metric for the triplet periodicity by taking the weighted
     average of the scores for each read length.
@@ -492,7 +492,7 @@ def region_region_ratio_metric(
     region1: str = "leader",
     region2: str = "CDS",
     read_length_range: Optional[tuple] = None,
-) -> Dict[int | str, float]:
+) -> Dict[int | str, Optional[float]]:
     """
     Calculate the region-region ratio metric. This metric is the ratio of
     reads in region1 relative to region2.
@@ -508,7 +508,7 @@ def region_region_ratio_metric(
     Outputs:
         region_region_ratio: Dictionary containing the region-region ratio metric
     """
-    region_region_ratio: Dict[int | str, float] = {}
+    region_region_ratio: Dict[int | str, Optional[float]] = {}
     region1_total, region2_total = 0, 0
     read_lengths = (
         set(mRNA_distribution)
@@ -536,7 +536,7 @@ def region_region_ratio_metric(
 def proportion_of_reads_in_region(
     mRNA_distribution: Dict[int, Dict[str, int]],
     region: str = "CDS",
-) -> Dict[int | str, float]:
+) -> Dict[int | str, Optional[float]]:
     """
     Calculate the proportion of reads in a specific region
 
@@ -548,7 +548,7 @@ def proportion_of_reads_in_region(
     Outputs:
         proportion: Dictionary containing the proportion of reads in the region
     """
-    proportion: Dict[int | str, float] = {}
+    proportion: Dict[int | str, Optional[float]] = {}
     total = 0
     read_len_total: Dict[int, int] = {}
     for read_len in mRNA_distribution:
@@ -592,7 +592,7 @@ def autocorrelate(signal: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.float
 
 def autocorrelate_counts(
     metagene_profile: Dict[int, Dict[int, int]], mode: str = "uniformity", lag: int = 0
-) -> Dict[int | str, float]:
+) -> Dict[int | str, Optional[float]]:
     """
     Computes the autocorrelation of the ribosome counts at a given lag.
 
@@ -605,7 +605,7 @@ def autocorrelate_counts(
         read_length_scores: The autocorrelation scores at the given lag.
     """
 
-    def _score(values: List[float]) -> float:
+    def _score(values: List[float]) -> Optional[float]:
         if not values or sum(values) <= 0:
             return None
         if mode == "uniformity":
@@ -622,7 +622,7 @@ def autocorrelate_counts(
     # lengths position by position. The global periodicity value is now the
     # same statistic as the per-length one; it used to be
     # (r_lag - mean r) / mean r, a different quantity on a different scale.
-    read_length_scores: Dict[int | str, float] = {}
+    read_length_scores: Dict[int | str, Optional[float]] = {}
     global_series: Dict[int, float] = {}
     for read_length, profile in metagene_profile.items():
         positions = sorted(profile)
@@ -636,7 +636,7 @@ def autocorrelate_counts(
 
 def periodicity_autocorrelation(
     metagene_profile: Dict[str, Dict[int, Dict[int, int]]], lag: int = 3
-) -> Dict[int | str, float]:
+) -> Dict[int | str, Optional[float]]:
     """
     Computes the autocorrelation of the ribosome counts at a given lag.
 
@@ -657,7 +657,7 @@ def periodicity_autocorrelation(
 
 def uniformity_autocorrelation(
     metagene_profile: Dict[str, Dict[int, Dict[int, int]]], lag: int = 3
-) -> Dict[int | str, float]:
+) -> Dict[int | str, Optional[float]]:
     """
     Computes the autocorrelation of the ribosome counts at a given lag.
 
@@ -678,7 +678,7 @@ def uniformity_autocorrelation(
 
 def uniformity_entropy(
     metagene_profile: Dict[str, Dict[int, Dict[int, int]]],
-) -> Dict[int | str, float]:
+) -> Dict[int | str, Optional[float]]:
     """
     Computes the uniformity of the metagene profile. Inspired by ORQAS
 
@@ -691,7 +691,7 @@ def uniformity_entropy(
             The uniformity scores for each read length.
     """
 
-    def _normalised_codon_entropy(values: List[float]) -> float:
+    def _normalised_codon_entropy(values: List[float]) -> Optional[float]:
         codons = [sum(values[i : i + 3]) for i in range(0, len(values), 3)]
         total = sum(codons)
         if total <= 0 or len(codons) < 2:
@@ -702,7 +702,7 @@ def uniformity_entropy(
     # Positions are read in position order and the global profile sums read
     # lengths position by position. Both used to rely on dict insertion
     # order, which put zero-count positions last (O-024).
-    read_len_uniformity: Dict[int | str, float] = {}
+    read_len_uniformity: Dict[int | str, Optional[float]] = {}
     global_series: Dict[int, float] = {}
     for read_len, profile in metagene_profile["start"].items():
         positions = sorted(profile)
@@ -730,7 +730,7 @@ def _sum_by_position(series_list: Sequence[Mapping[int, float]]) -> Dict[int, fl
     return total
 
 
-def _theil_t(values: List[float]) -> float:
+def _theil_t(values: List[float]) -> Optional[float]:
     x = np.asarray(values, dtype=float)
     if x.size == 0 or x.sum() <= 0:
         return None
@@ -738,7 +738,7 @@ def _theil_t(values: List[float]) -> float:
     return float(np.sum(ratio * np.log(ratio)) / x.size)
 
 
-def _gini(values: List[float]) -> float:
+def _gini(values: List[float]) -> Optional[float]:
     x = sorted(float(v) for v in values)
     n, total = len(x), sum(x)
     if n == 0 or total <= 0:
@@ -750,7 +750,7 @@ def _gini(values: List[float]) -> float:
 def uniformity_theil_index(
     profile: Mapping[str, Dict[int, Dict[int, int]]],
     read_lengths: Optional[List[int]] = None,
-) -> Dict[int | str, float]:
+) -> Dict[int | str, Optional[float]]:
     """
     Theil T index of codon-binned coverage in the start-codon window.
 
@@ -772,7 +772,7 @@ def uniformity_theil_index(
     """
     if read_lengths is None:
         read_lengths = list(profile["start"].keys())
-    theils: Dict[int | str, float] = {}
+    theils: Dict[int | str, Optional[float]] = {}
     included = []
     for read_len, series in profile["start"].items():
         theils[read_len] = _theil_t(_codon_bins(series))
@@ -784,7 +784,7 @@ def uniformity_theil_index(
 
 def uniformity_gini_index(
     profile: Mapping[str, Dict[int, Dict[int, int]]],
-) -> Dict[int | str, float]:
+) -> Dict[int | str, Optional[float]]:
     """
     Gini coefficient of codon-binned coverage in the start-codon window.
 
@@ -802,7 +802,7 @@ def uniformity_gini_index(
     Returns:
         dict: Gini coefficient per read length and ``global``.
     """
-    ginis: Dict[int | str, float] = {}
+    ginis: Dict[int | str, Optional[float]] = {}
     for read_len, series in profile["start"].items():
         ginis[read_len] = _gini(_codon_bins(series))
     ginis["global"] = _gini(_codon_bins(_sum_by_position(list(profile["start"].values()))))
@@ -812,7 +812,7 @@ def uniformity_gini_index(
 def periodicity_dominance(
     read_frame_dict: Dict[int, Dict[int, int]],
     min_reads: int = DOMINANCE_MIN_READS,
-) -> Dict[int | str, float]:
+) -> Dict[int | str, Optional[float]]:
     """
     Calculate the read frame dominance metric from the output of
     the read_frame_distribution module.
@@ -840,7 +840,7 @@ def periodicity_dominance(
     Outputs:
         read_frame_dominance: Dictionary containing the read frame dominance
     """
-    read_frame_dominance: Dict[int | str, float] = {}
+    read_frame_dominance: Dict[int | str, Optional[float]] = {}
     global_total: int = 0
     global_by_read_length_max: int = 0
     global_frame_counts: Dict[int, int] = {0: 0, 1: 0, 2: 0}

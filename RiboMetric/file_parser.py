@@ -294,7 +294,7 @@ def deterministic_subsample(
     else:
         groups = [(str(i), [pos]) for pos, i in enumerate(read_df.index)]
     groups.sort(key=lambda item: hashlib.sha256(f"{int(seed)}\0{item[0]}".encode()).digest())
-    selected_positions = []
+    selected_positions: list[int] = []
     realised = 0
     for _, positions in groups:
         if realised + len(positions) > target_i and selected_positions:
