@@ -58,9 +58,11 @@ from rich.table import Table
 from rich.text import Text
 
 from .arg_parser import argument_parser, open_config
+from .bam_processing import recompute_sequence_summaries
 from .file_parser import (
     check_annotation,
     check_bam,
+    deterministic_subsample,
     flagstat_bam,
     parse_annotation,
     parse_bam,
@@ -143,7 +145,9 @@ def _file_fingerprint(path_value: Any) -> Dict[str, Any]:
     return record
 
 
-def _build_run_provenance(args: argparse.Namespace, config: Dict[str, Any]) -> Dict[str, Any]:
+def _build_run_provenance(
+    args: argparse.Namespace, config: Dict[str, Any], subsampling=None
+) -> Dict[str, Any]:
     arg_cfg = config.get("argument", {})
     input_keys = [
         "bam",
@@ -155,7 +159,7 @@ def _build_run_provenance(args: argparse.Namespace, config: Dict[str, Any]) -> D
         "offset_read_specific",
     ]
     config_path = _config_path_used(args)
-    return {
+    provenance = {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "command": getattr(args, "command", None),
         "package_version": _package_version(),
@@ -170,7 +174,18 @@ def _build_run_provenance(args: argparse.Namespace, config: Dict[str, Any]) -> D
             for key in input_keys
             if arg_cfg.get(key) is not None
         },
+        "subsampling": (
+            subsampling
+            if subsampling is not None
+            else {
+                "requested": arg_cfg.get("subsample"),
+                "seed": arg_cfg.get("seed", 42) if arg_cfg.get("subsample") is not None else None,
+                "fraction": None,
+                "realised_count": None,
+            }
+        ),
     }
+    return provenance
 
 
 def _package_version() -> str:
@@ -375,13 +390,9 @@ def main(args: argparse.Namespace) -> int:
                     """)
 
             flagstat = flagstat_bam(config["argument"]["bam"])
-            if (
-                config["argument"]["subsample"] is None
-                or flagstat["mapped_reads"] < config["argument"]["subsample"]
-            ):
-                read_limit = flagstat["mapped_reads"]
-            else:
-                read_limit = config["argument"]["subsample"]
+            # Parse all primary alignments before selection so -S is not tied
+            # to BAM/reference split order.
+            read_limit = flagstat["mapped_reads"]
 
             # Parse the bam file
             read_df_pre, sequence_data, sequence_background = parse_bam(
@@ -389,6 +400,16 @@ def main(args: argparse.Namespace) -> int:
                 num_reads=read_limit,
                 num_processes=config["argument"]["threads"],
             )
+            subsampling = None
+            # Direct legacy callers may construct a Namespace without the new
+            # seed field; retain their fixture semantics. CLI parses always
+            # carry the default seed and therefore take the reproducible path.
+            if config["argument"].get("subsample") is not None and hasattr(args, "seed"):
+                subsampling_seed = int(config["argument"].get("seed", 42))
+                read_df_pre, subsampling = deterministic_subsample(
+                    read_df_pre, config["argument"]["subsample"], subsampling_seed
+                )
+                sequence_data, sequence_background = recompute_sequence_summaries(read_df_pre)
             if read_df_pre.empty:
                 raise Exception("""
                 No reads found in the given bam file.
@@ -486,7 +507,7 @@ def main(args: argparse.Namespace) -> int:
             # Merge samtools flagstat data into alignment_stats so the report
             # can display total_reads, mapping_rate, etc.
             results_dict.setdefault("alignment_stats", {}).update(flagstat)
-            results_dict["provenance"] = _build_run_provenance(args, config)
+            results_dict["provenance"] = _build_run_provenance(args, config, subsampling)
 
             filename = config["argument"]["bam"].split("/")[-1]
             if "." in filename:

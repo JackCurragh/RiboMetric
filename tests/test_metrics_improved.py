@@ -38,10 +38,10 @@ class TestReadLengthMetrics:
         assert isinstance(metric, (int, float))
 
     def test_iqr_fraction_single_length(self):
-        """A single read length is perfect concentration: spread 0."""
+        """A single read length has no estimable P10-P90 spread."""
         single_length = {28: 1000}
         metric = read_length_iqr_fraction(single_length)
-        assert metric == 0.0
+        assert metric is None
 
     def test_coefficient_of_variation(self, sample_read_length_dict):
         """CV itself, not 1/(1 + CV); lower is tighter."""
@@ -128,9 +128,9 @@ class TestPeriodicityMetrics:
             28: {0: 0, 1: 0, 2: 0},
         }
         metric = periodicity_dominance(no_reads)
-        # Should handle gracefully
-        assert metric[28] == 0
-        assert metric["global"] == 0
+        # Missing frame evidence is null, not a zero-valued dominance.
+        assert 28 not in metric
+        assert metric["global"] is None
 
     def test_information_content(self, sample_read_frame_dict):
         """Test information content metric"""
@@ -415,8 +415,9 @@ class TestRegionalMetrics:
 
         ratio = region_region_ratio_metric(mRNA_dist, region1="CDS", region2="leader")
 
-        # Should handle zero gracefully
-        assert ratio["global"] == 0 or ratio[28] == 0
+        # A zero denominator makes the ratio uncomputable.
+        assert ratio["global"] is None
+        assert ratio[28] is None
 
     def test_proportion_in_region(self):
         """Test proportion of reads in region"""

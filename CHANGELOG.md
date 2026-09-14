@@ -7,7 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [1.5.0] — 2026-09-14
+
+### BREAKING — measurement corrections found by the metric contract
+
+`docs/METRIC_CONTRACT.md` now defines what every emitted number is supposed to
+be. Testing the implementation against it, with hand-computed unit tests and a
+synthetic transcriptome of known geometry, found the defects below. Every fix
+changes output values. The first also changes values that other tools consume.
+
+- **Reported offsets are 1 nt larger than before, and now correct.** Read
+  starts came from SAM POS, which is 1-based, while annotation coordinates are
+  0-based. RiboMetric's own A-sites stayed self-consistent because computed
+  offsets absorbed the shift, but every reported offset (`computed_offsets`,
+  the offsets TSV) was 1 nt below the 0-based convention: P 11 / A 14 instead
+  of 12 / 15 for a 28 nt footprint.
+  - Tools that apply those offsets to BAM positions placed sites 1 nt
+    upstream. ensembl-genes-nf `bam_to_bed.py` is one.
+  - Offsets passed *into* RiboMetric placed A-sites 1 nt downstream. That
+    covers `--offset-read-length`, `--offset-global` and the default fallback.
+  - Offsets from earlier versions, and anything built from them, should be
+    regenerated.
+- **3′ terminal bias compared reversed dinucleotides.** The last two bases were
+  recorded 3′→5′ (a read ending `…AC` gave `CA`), while the 3′ background is
+  counted 5′→3′. `terminal_bias_kl_3prime` and
+  `terminal_bias_max_deviation_3prime` change.
+- **Metagene profiles were not in position order** when some position had no
+  reads. `uniformity_entropy` (scored as `coverage_uniformity_score`) and the
+  optional spectral and uniformity metrics binned non-adjacent positions.
+  Sparse read lengths and shallow libraries were affected; deep libraries were
+  not.
+- **Annotation measures no longer depend on read sequences.** The frame table,
+  periodicity, metagene, coverage, region metrics and CDS enrichment sat
+  inside the sequence-background branch. With `--skip-sequence-metrics`, or
+  with a BAM without stored sequences, they were lost and the report then
+  crashed; an annotation-free run with sequences crashed too.
+  Annotation-free runs now complete, and report no frame metrics
+  (periodicity, recommended read lengths): with no CDS there is no reading
+  frame, and they had been computed from `a_site % 3`.
+- **`cds_enrichment_ratio`** now weights reads by their collapse count and
+  takes the observed and expected fractions over the same eligible
+  transcripts. It used to count rows over all annotated reads.
+- **Collapse weights always apply.** They used to be dropped library-wide
+  whenever any read name repeated, so a single supplementary alignment switched
+  every weighted module to row counts.
+- **MAPQ recovery joins on read name** when oxbow and pysam list records in a
+  different order. It used to give up, leaving STAR's MAPQ 255 null, which
+  (with no NH tag) emptied the unique-mapper set. XA recovery keeps the raw
+  tag, so BWA `XA:Z` locus lists no longer fail the float conversion.
+- **`periodicity_fourier`** measured DC power, not triplet power: a perfectly
+  periodic profile scored 0.40 and a flat one 1.00. It is now the fraction of
+  the mean-centred series' variance at a period of 3 nt.
+- **`uniformity_gini_index`** is now the Gini coefficient, lower is more
+  uniform as the registry states. It returned `1 − G` with a rank offset.
+- **`uniformity_theil_index`** is now the Theil T index of codon-binned
+  coverage, in [0, ln K]. It measured within-codon frame entropy.
+- **`uniformity_autocorrelation`** no longer includes lag 0, which is 1 by
+  construction.
+- **`periodicity_autocorrelation`**'s `global` is now the same statistic as
+  its per-read-length values.
+- **`reading_frame_triangle`** counts frames relative to the CDS start, over
+  CDS-body reads. It used `a_site % 3` over every read.
+- **Degenerate read-length inputs return `null`** instead of raising or
+  returning `nan`:
+  - bimodality with 3 or fewer reads, or a single length;
+  - normality with fewer than 8 reads;
+  - max proportion with no reads.
+
+### Added (contract)
+
+- `docs/METRIC_CONTRACT.md`: conventions, pipeline stages, and every metric's
+  input, definition, range, meaning, aggregation and degenerate cases.
+- `tests/test_contract_math.py`: a hand-computed answer for each metric
+  definition.
+- `tests/synthetic.py` and `tests/test_contract_pipeline.py`: a six-transcript
+  BAM with known offsets, frames, multimappers and secondary alignments, run
+  end to end through the command line.
 
 ### BREAKING — metric naming and direction (targets 2.0.0)
 

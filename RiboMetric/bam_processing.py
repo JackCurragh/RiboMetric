@@ -5,7 +5,7 @@ This script contains processing steps used to parse bam files.
 import io
 import itertools
 import os
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional
 
 import numpy as np
 import oxbow as ox
@@ -145,10 +145,10 @@ def _recover_alignment_tags_from_pysam(oxbow_df: pd.DataFrame, bam_file: str) ->
         oxbow_df.attrs["mapq_recovered_from_pysam"] = False
         return
 
-    recovered_mapq = []
-    recovered_nh = []
-    recovered_xa = []
-    recovered_qname = []
+    recovered_mapq: List[int] = []
+    recovered_nh: List[Any] = []
+    recovered_xa: List[Any] = []
+    recovered_qname: List[str] = []
     with pysam.AlignmentFile(bam_file, "rb") as bam:
         for read in bam.fetch(until_eof=True):
             if read.is_secondary:
@@ -156,41 +156,55 @@ def _recover_alignment_tags_from_pysam(oxbow_df: pd.DataFrame, bam_file: str) ->
             recovered_mapq.append(read.mapping_quality)
             recovered_nh.append(read.get_tag("NH") if read.has_tag("NH") else np.nan)
             recovered_xa.append(read.get_tag("XA") if read.has_tag("XA") else np.nan)
-            recovered_qname.append(read.query_name)
-            if len(recovered_mapq) >= len(oxbow_df):
-                break
+            recovered_qname.append(read.query_name or "")
 
-    if len(recovered_mapq) != len(oxbow_df):
+    # Join pysam's tags onto oxbow's rows. When both enumerate the same records
+    # in the same order a positional join is exact. Otherwise (genome BAMs,
+    # secondary or supplementary rows, a different record order) join on read
+    # name. The previous code gave up on any order mismatch and left STAR's
+    # MAPQ 255 as oxbow's null, which, absent an NH tag, emptied the
+    # unique-mapper set that offsets and frames are computed from (O-036).
+    name_column = next((c for c in _READ_NAME_COLUMNS if c in oxbow_df.columns), None)
+    oxbow_names = oxbow_df[name_column].astype(str).to_numpy() if name_column is not None else None
+    if len(recovered_mapq) == len(oxbow_df) and (
+        oxbow_names is None or np.array_equal(oxbow_names, np.asarray(recovered_qname, dtype=str))
+    ):
+        rows = np.arange(len(oxbow_df))
+    elif oxbow_names is not None:
+        first_row: Dict[str, int] = {}
+        for i, name in enumerate(recovered_qname):
+            first_row.setdefault(name, i)
+        mapped = pd.Series(oxbow_names).map(first_row)
+        if mapped.isna().any():
+            # A row pysam never reported as a primary: nothing safe to copy.
+            oxbow_df.attrs["mapq_recovered_from_pysam"] = False
+            return
+        rows = mapped.astype(int).to_numpy()
+    else:
         oxbow_df.attrs["mapq_recovered_from_pysam"] = False
         return
 
-    # Row order is only trustworthy when oxbow and pysam enumerate primary reads
-    # identically. That holds for STAR transcriptome BAMs (no secondaries), but
-    # not necessarily for genome BAMs or BAMs with secondary alignments, where
-    # oxbow's row order can diverge from ``fetch(until_eof=True)`` minus
-    # secondaries. Verify per-read identity by qname before trusting the
-    # positional join; bail out (leaving oxbow's values untouched) on any drift.
-    name_column = next((c for c in _READ_NAME_COLUMNS if c in oxbow_df.columns), None)
-    if name_column is not None:
-        oxbow_names = oxbow_df[name_column].astype(str).to_numpy()
-        if not np.array_equal(oxbow_names, np.asarray(recovered_qname, dtype=str)):
-            oxbow_df.attrs["mapq_recovered_from_pysam"] = False
-            return
+    mapq_values = np.asarray(recovered_mapq, dtype=float)[rows]
+    nh_values = np.asarray(recovered_nh, dtype=object)[rows]
+    xa_values = np.asarray(recovered_xa, dtype=object)[rows]
 
     if "mapq" in oxbow_df.columns:
         missing = oxbow_df["mapq"].isna()
         if missing.any():
-            recovered_series = pd.Series(recovered_mapq, index=oxbow_df.index, dtype="float")
+            recovered_series = pd.Series(mapq_values, index=oxbow_df.index, dtype="float")
             oxbow_df.loc[missing, "mapq"] = recovered_series[missing]
             oxbow_df.attrs["mapq_recovered_from_pysam"] = True
         else:
             oxbow_df.attrs["mapq_recovered_from_pysam"] = False
     else:
         oxbow_df.attrs["mapq_recovered_from_pysam"] = False
-    if "nh" not in oxbow_df.columns and any(not pd.isna(x) for x in recovered_nh):
-        oxbow_df["nh"] = pd.Series(recovered_nh, index=oxbow_df.index, dtype="float")
-    if "xa" not in oxbow_df.columns and any(not pd.isna(x) for x in recovered_xa):
-        oxbow_df["xa"] = pd.Series(recovered_xa, index=oxbow_df.index, dtype="float")
+    if "nh" not in oxbow_df.columns and any(not pd.isna(x) for x in nh_values):
+        oxbow_df["nh"] = pd.to_numeric(pd.Series(nh_values, index=oxbow_df.index), errors="coerce")
+    if "xa" not in oxbow_df.columns and any(not pd.isna(x) for x in xa_values):
+        # Keep the raw tag values. process_reads parses both STAR's XA:i count
+        # and BWA's XA:Z locus list (_parse_xa_value); casting to float here
+        # failed on the string form before that parser was ever reached.
+        oxbow_df["xa"] = pd.Series(xa_values, index=oxbow_df.index, dtype="object")
 
 
 def read_pysam_df(bam_file: str) -> pd.DataFrame:
@@ -482,6 +496,7 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     batch_df["read_length"] = pd.Series(rl_series, dtype="category")
 
     batch_df["reference_name"] = oxbow_df["rname"].astype("category")
+    batch_df["_sequence"] = oxbow_df["seq"].astype(str).to_numpy()
 
     # Correct reference_start for 5' soft clips so it points to the true 5' end
     # of the read (first base of the protected fragment) rather than the first
@@ -490,12 +505,22 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     soft_clip_5 = (
         oxbow_df["cigar"].str.extract(r"^(?:\d+H)?(\d+)S", expand=False).fillna("0").astype(int)
     )
+    # oxbow reports SAM POS, which is 1-based. Everything downstream (the
+    # annotation's cds_start/cds_end, offsets, frames) is 0-based, so convert
+    # here. Left 1-based, every computed offset came out 1 nt below the 0-based
+    # convention (P 11 / A 14 for a 28 nt footprint instead of 12 / 15) and
+    # externally supplied offsets landed 1 nt downstream. See
+    # docs/METRIC_CONTRACT.md section 1 (observation O-027).
     # Use float to preserve NaN for reads with no mapped position; NaN - int = NaN
-    batch_df["reference_start"] = oxbow_df["pos"].astype("float") - soft_clip_5
+    batch_df["reference_start"] = oxbow_df["pos"].astype("float") - 1 - soft_clip_5
     # Store the 5' soft-clip count so downstream code can compute soft-clip rates.
     batch_df["soft_clip_5"] = soft_clip_5.astype("uint8")
     batch_df["first_dinucleotide"] = oxbow_df["seq"].str.slice(stop=2).astype("category")
-    batch_df["last_dinucleotide"] = oxbow_df["seq"].str.slice(stop=-3, step=-1).astype("category")
+    # The last two bases in read (5'->3') order, the orientation the 3'
+    # background is counted in. slice(stop=-3, step=-1) returned them reversed
+    # (a read ending ...AC gave "CA"), so the 3' KL compared mismatched
+    # dinucleotides (O-028).
+    batch_df["last_dinucleotide"] = oxbow_df["seq"].str.slice(start=-2).astype("category")
     batch_df["count"] = pd.Series(
         [int(query.split("_x")[-1]) if "_x" in query else 1 for query in read_names],
         dtype="category",
@@ -567,10 +592,10 @@ def process_sequences(
     if pattern_length == 2:
         # Calculate background frequencies
         three_prime_bg = calculate_background(
-            sequence_array, sequences, pattern_length, five_prime=False
+            sequence_array, sequences, pattern_length, five_prime=False, counts=counts
         )
         five_prime_bg = calculate_background(
-            sequence_array, sequences, pattern_length, five_prime=True
+            sequence_array, sequences, pattern_length, five_prime=True, counts=counts
         )
 
     condensed_arrays = {}
@@ -590,9 +615,25 @@ def process_sequences(
     if pattern_length == 2:
         condensed_arrays["3_prime_bg"] = three_prime_bg
         condensed_arrays["5_prime_bg"] = five_prime_bg
-        condensed_arrays["sequence_number"] = num_sequences
+        condensed_arrays["sequence_number"] = int(counts_array.sum())
 
     return condensed_arrays
+
+
+def recompute_sequence_summaries(read_df: pd.DataFrame) -> tuple[dict, dict]:
+    """Rebuild sequence summaries after a deterministic read subsample."""
+    if "_sequence" not in read_df.columns or read_df.empty:
+        return {}, {}
+    sequences = read_df["_sequence"].astype(str).tolist()
+    counts = (
+        read_df["count"].astype(int).tolist() if "count" in read_df.columns else [1] * len(read_df)
+    )
+    one = process_sequences(sequences, counts, pattern_length=1)
+    two = process_sequences(sequences, counts, pattern_length=2)
+    return (
+        {k: v for k, v in one.items() if k != "sequence_number"},
+        {"5_prime_bg": two.get("5_prime_bg", {}), "3_prime_bg": two.get("3_prime_bg", {})},
+    )
 
 
 def pattern_to_index(pattern: str) -> int:
@@ -612,7 +653,11 @@ def pattern_to_index(pattern: str) -> int:
 
 
 def calculate_background(
-    sequence_array: np.ndarray, sequences: List[str], pattern_length: int, five_prime: bool
+    sequence_array: np.ndarray,
+    sequences: List[str],
+    pattern_length: int,
+    five_prime: bool,
+    counts: Optional[List[int]] = None,
 ) -> Dict[str, float]:
     """
     Calculate the background frequency for a list of sequences. The background
@@ -651,8 +696,10 @@ def calculate_background(
                 sequence_bg[i, last_pos, :] = 0
 
     nucleotides = ["".join(nt) for nt in itertools.product("ACGT", repeat=pattern_length)]
+    weights = np.asarray(counts if counts is not None else [1] * len(sequences))
+    weighted_sequence_bg = sequence_bg * weights[:, None, None]
     for nucleotide in nucleotides:
-        nucleotide_counts = np.sum(sequence_bg[:, :, pattern_to_index(nucleotide)])
+        nucleotide_counts = np.sum(weighted_sequence_bg[:, :, pattern_to_index(nucleotide)])
         condensed_arrays[nucleotide] = nucleotide_counts
     total_bg_counts = sum(condensed_arrays.values())
     return {k: v / total_bg_counts for k, v in condensed_arrays.items()}

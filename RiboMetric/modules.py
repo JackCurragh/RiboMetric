@@ -32,14 +32,15 @@ def offset_shift_for_target(offset_target: str) -> int:
 
 
 def _get_weights(df: pd.DataFrame) -> Optional[pd.Series]:
-    """Return integer weights if unexpanded; otherwise None.
+    """Return the collapse weights (the ``count`` column), or None if absent.
 
-    Heuristic: if a 'count' column exists but rows are already expanded
-    (duplicate read_name values), skip weighting to avoid double counting.
+    Each row is one BAM record standing for ``count`` identical reads; rows are
+    never expanded, so the weights always apply. The previous heuristic
+    dropped them library-wide whenever any read name repeated, on the theory
+    that the rows had been expanded, so a single supplementary alignment
+    switched every weighted module to unweighted row counts (O-037).
     """
     if "count" not in df.columns:
-        return None
-    if "read_name" in df.columns and df["read_name"].duplicated().any():
         return None
     return df["count"].astype(int)
 
@@ -773,7 +774,7 @@ def read_frame_distribution(a_site_df: pd.DataFrame) -> dict:
 def read_frame_distribution_annotated(
     annotated_read_df: pd.DataFrame,
     exclusion_length: int = 0,
-    read_length_range: tuple = (20, 40),
+    read_length_range: Optional[tuple] = None,
     unique_only: bool = True,
 ) -> dict:
     """
@@ -787,10 +788,12 @@ def read_frame_distribution_annotated(
         read_frame_dict: Nested dictionary containing counts for every reading
         frame at the different read lengths
     """
-    read_lengths: List[int] = [i for i in range(read_length_range[0], read_length_range[1])]
-
     df_slice = filter_unique_mappers(annotated_read_df, enabled=unique_only)
-    df_slice = df_slice[df_slice["cds_start"] != 0]
+    # ``cds_start == 0`` is valid for transcripts with no 5' UTR.  Only new
+    # prepared annotations have an explicit completeness flag; retain legacy
+    # TSV behaviour when that column is absent.
+    if "cds_start_complete" in df_slice.columns:
+        df_slice = df_slice[df_slice["cds_start_complete"].fillna(False)]
     df_slice = df_slice[
         (df_slice["a_site"] > df_slice["cds_start"] + exclusion_length)
         & (df_slice["a_site"] < df_slice["cds_end"] - exclusion_length)
@@ -806,12 +809,19 @@ def read_frame_distribution_annotated(
         )
     else:
         frame_df = base.groupby(["read_length", "read_frame"], observed=True).size()
+    # The numerical frame table contains every observed read length. Plot
+    # limits are applied later, when a presentation-only view is requested.
+    read_lengths = (
+        set(int(i) for i in range(read_length_range[0], read_length_range[1]))
+        if read_length_range is not None
+        else None
+    )
     read_frame_dict: Dict[int, Dict[int, int]] = {}
     for index, value in frame_df.items():
         read_length: int
         read_frame: int
         read_length, read_frame = index
-        if read_length in read_lengths:
+        if read_lengths is None or read_length in read_lengths:
             if read_length not in read_frame_dict:
                 read_frame_dict[read_length] = {0: 0, 1: 0, 2: 0}
             read_frame_dict[read_length][read_frame] = value
@@ -1130,10 +1140,18 @@ def metagene_profile(
                 metagene_profile_dict[current_target][key[0]] = {}
             metagene_profile_dict[current_target][key[0]][int(key[1])] = value
 
-        # Fill empty distances with 0
-        for position_dict in metagene_profile_dict[current_target].values():
+        # Fill empty distances with 0, then rebuild every profile in position
+        # order. Positions with reads were inserted sorted but the zero-filled
+        # ones were appended at the end, and every consumer reads
+        # list(profile.values()) as a positional series, so codon bins grouped
+        # non-adjacent positions whenever a position had no reads (O-024).
+        target_profiles = metagene_profile_dict[current_target]
+        for read_length in list(target_profiles):
+            position_dict = target_profiles[read_length]
             for pos in position_range:
                 position_dict.setdefault(int(pos), 0)
+            target_profiles[read_length] = dict(sorted(position_dict.items()))
+        metagene_profile_dict[current_target] = dict(sorted(target_profiles.items()))
 
     return metagene_profile_dict
 
@@ -1157,18 +1175,29 @@ def reading_frame_triangle(
     if annotated_read_df.empty or "transcript_id" not in annotated_read_df.columns:
         return {}
 
-    # Vectorised per-transcript frame counts (a_site % 3), weighted by 'count'
-    # when present. Replaces a per-transcript Python groupby loop that scaled
-    # linearly in the number of transcripts (~hundreds of thousands).
-    frame = (annotated_read_df["a_site"].to_numpy() % 3).astype(int)
+    # The frame is (a_site - cds_start) % 3 over CDS-body reads, as everywhere
+    # else (docs/METRIC_CONTRACT.md section 1). It used to be a_site % 3 over
+    # every read, which is relative to the transcript start and mixes UTRs in.
+    df = annotated_read_df
+    if {"cds_start", "cds_end"}.issubset(df.columns):
+        df = df[(df["a_site"] > df["cds_start"]) & (df["a_site"] < df["cds_end"])]
+        if df.empty:
+            return {}
+        frame = ((df["a_site"] - df["cds_start"]).to_numpy() % 3).astype(int)
+    else:
+        frame = (df["a_site"].to_numpy() % 3).astype(int)
+
+    # Vectorised per-transcript frame counts, weighted by 'count' when present.
+    # Replaces a per-transcript Python groupby loop that scaled linearly in the
+    # number of transcripts (~hundreds of thousands).
     counts = pd.DataFrame(
         {
-            "transcript_id": annotated_read_df["transcript_id"].to_numpy(),
+            "transcript_id": df["transcript_id"].to_numpy(),
             "frame": frame,
         }
     )
-    if "count" in annotated_read_df.columns:
-        counts["w"] = annotated_read_df["count"].astype(int).to_numpy()
+    if "count" in df.columns:
+        counts["w"] = df["count"].astype(int).to_numpy()
         grouped = counts.groupby(["transcript_id", "frame"], observed=True)["w"].sum()
     else:
         grouped = counts.groupby(["transcript_id", "frame"], observed=True).size()
@@ -1651,6 +1680,11 @@ def floss_library_heterogeneity(
         return empty
     if annotated_read_df.empty:
         return empty
+
+    if {"a_site", "cds_start", "cds_end"}.issubset(annotated_read_df.columns):
+        annotated_read_df = read_df_to_cds_read_df(annotated_read_df)
+        if annotated_read_df.empty:
+            return empty
 
     weights = _get_weights(annotated_read_df)
     df = annotated_read_df.assign(_w=(weights if weights is not None else 1))

@@ -64,7 +64,6 @@ from .modules import (
     nucleotide_composition,
     read_df_to_cds_read_df,
     read_frame_cull,
-    read_frame_distribution,
     read_frame_distribution_annotated,
     read_frame_score_trips_viz,
     read_length_distribution,
@@ -115,7 +114,22 @@ def calculate_alignment_stats(read_df: pd.DataFrame) -> dict:
         fragment_count_arr = count_arr
         total_weighted = int(count_arr.sum())
     unique_reads = len(read_df)
-    dup_rate = (1.0 - len(unique_fragment_df) / total_weighted) if total_weighted > 0 else 0.0
+    # A rate derived from collapse weights is not meaningful when every row has
+    # weight one: that is an uncollapsed BAM, not evidence of zero duplicates.
+    # Preserve a genuine zero for a collapsed library whose weighted and unique
+    # counts happen to agree.
+    has_collapse_weights = bool((count_arr > 1).any())
+    if not has_collapse_weights and "read_name" in read_df.columns:
+        # A collapsed exporter may retain explicit ``_x1`` suffixes.  That is
+        # a genuine measured zero, unlike an ordinary uncollapsed BAM.
+        has_collapse_weights = bool(
+            read_df["read_name"].astype(str).str.contains(r"_x\d+$", regex=True).any()
+        )
+    dup_rate = (
+        (1.0 - len(unique_fragment_df) / total_weighted)
+        if total_weighted > 0 and has_collapse_weights
+        else None
+    )
 
     if "nh" in read_df.columns and read_df["nh"].notna().any():
         nh_arr = read_df["nh"].astype(float)
@@ -169,11 +183,13 @@ def calculate_alignment_stats(read_df: pd.DataFrame) -> dict:
             (fragment_multimapper_mask.to_numpy() * fragment_count_arr.to_numpy()).sum()
             / total_weighted
         )
-        if total_weighted > 0
-        else 0.0
+        if total_weighted > 0 and method != "unavailable"
+        else None
     )
     alignment_multimapper_rate = (
-        float(alignment_multimapper_mask.sum() / unique_reads) if unique_reads > 0 else 0.0
+        float(alignment_multimapper_mask.sum() / unique_reads)
+        if unique_reads > 0 and method != "unavailable"
+        else None
     )
 
     return {
@@ -183,7 +199,7 @@ def calculate_alignment_stats(read_df: pd.DataFrame) -> dict:
         "duplicate_rate": dup_rate,
         "multimapper_rate": rpf_multimapper_rate,
         "rpf_multimapper_rate": rpf_multimapper_rate,
-        "unique_rpf_rate": 1.0 - rpf_multimapper_rate,
+        "unique_rpf_rate": None if rpf_multimapper_rate is None else 1.0 - rpf_multimapper_rate,
         "alignment_multimapper_rate": alignment_multimapper_rate,
         "multimapper_detection_method": method,
         "mapq_available_rate": (
@@ -235,11 +251,11 @@ def _weighted_read_count(read_df: pd.DataFrame) -> int:
 
 def _offset_source(config: dict, computed_offsets: Dict[int, int]) -> str:
     args = config.get("argument", {})
-    if "offset_read_specific" in args:
+    if args.get("offset_read_specific") is not None:
         return "read_specific_file"
-    if "offset_read_length" in args:
+    if args.get("offset_read_length") is not None:
         return "read_length_file"
-    if "global_offset" in args:
+    if args.get("global_offset") is not None:
         return "global"
     if computed_offsets:
         return "computed_per_read_length"
@@ -302,7 +318,15 @@ def _offset_audit_record(
     source = _offset_source(config, computed_offsets)
     final_offsets = {int(k): int(v) for k, v in computed_offsets.items()}
     is_external = any(
-        key in args for key in ("offset_read_length", "offset_read_specific", "global_offset")
+        args.get(key) is not None
+        for key in ("offset_read_length", "offset_read_specific", "global_offset")
+    )
+    requested_method = args.get("offset_calculation_method")
+    effective_method = (
+        source
+        if source in {"read_specific_file", "read_length_file", "global"}
+        else requested_method
+        or ("computed_per_read_length" if computed_offsets else "default_global")
     )
     record = {
         "source": source,
@@ -310,7 +334,9 @@ def _offset_audit_record(
         "default_offset": int(default_offset),
         "offset_bounds": [int(offset_bounds[0]), int(offset_bounds[1])],
         "offset_max_read_length_fraction": max_read_length_fraction,
-        "offset_calculation_method": args.get("offset_calculation_method"),
+        "offset_calculation_method": requested_method,
+        "offset_effective_method": effective_method,
+        "offsets_externally_supplied": bool(is_external),
         "applied_by_read_length": _offsets_used_by_read_length(
             read_df, final_offsets if final_offsets else None
         ),
@@ -328,11 +354,11 @@ def _offset_audit_record(
         record["final_offsets"] = {str(k): v for k, v in sorted(final_offsets.items())}
     if raw_offsets:
         record["raw_offsets"] = {str(k): int(v) for k, v in sorted(raw_offsets.items())}
-    if "global_offset" in args:
+    if args.get("global_offset") is not None:
         record["global_offset"] = int(args["global_offset"])
-    if "offset_read_length" in args:
+    if args.get("offset_read_length") is not None:
         record["offset_read_length_file"] = args["offset_read_length"]
-    if "offset_read_specific" in args:
+    if args.get("offset_read_specific") is not None:
         record["offset_read_specific_file"] = args["offset_read_specific"]
     if offset_frame_adjustments:
         record["frame_adjustments"] = offset_frame_adjustments
@@ -628,12 +654,11 @@ def annotation_mode(
 
     # duplicate_rate is derived from per-read `count` weights, which are only
     # >1 when read names carry a collapse suffix (e.g. ``..._x12``). For
-    # un-collapsed BAMs every count is 1, so the rate is necessarily 0 and not
-    # informative — flag that explicitly rather than reporting a misleading 0.
+    # un-collapsed BAMs every count is 1, so the rate is not applicable.
     if alignment_stats["total_reads_analysed"] == alignment_stats["unique_read_sequences"]:
         print(
             "Note: reads are not collapsed (no '_xN' suffix); duplicate_rate "
-            "is reported as 0 and should be treated as not applicable."
+            "is reported as null (not applicable)."
         )
 
     if "soft_clip_5" in read_df.columns:
@@ -747,199 +772,202 @@ def annotation_mode(
         print("> nucleotide_composition")
         results_dict["nucleotide_composition"] = nucleotide_composition(sequence_data)
 
+    # Everything below is defined against the annotated CDS and needs no read
+    # sequence. It used to sit inside the sequence-background branch above, so
+    # a BAM without stored sequences (or --skip-sequence-metrics) lost the frame
+    # table, periodicity, metagene, coverage and region metrics and then crashed
+    # in the report, and an annotation-free run with sequences crashed on
+    # cds_read_df (O-025, O-026). Without an annotation there is no reading
+    # frame to measure, so the frame metrics are absent rather than computed
+    # from a_site % 3 (docs/METRIC_CONTRACT.md section 2.6).
+    read_frame_dist: Dict[int, Dict[int, int]] = {}
+    if annotation:
         print("> read_frame_distribution")
-        if annotation:
-            coding_metagene = metagene_profile(
+        coding_metagene = metagene_profile(
+            annotated_read_df,
+            target="start",
+            distance_range=[30, 117],
+            extend=True,
+        )
+
+        # Optionally build P-site aligned metagene for spectral metrics
+        psite_aligned = None
+        if config.get("periodicity", {}).get("use_psite_aligned", False):
+            # Build 5'-end metagene around start codon for P-site detection
+            metagene_5p = metagene_profile(
                 annotated_read_df,
                 target="start",
-                distance_range=[30, 117],
-                extend=True,
+                distance_range=[-50, 20],
+                position="reference_start",
+                extend=False,
             )
+            # Predict P-site offsets (positive ints) per read length
+            try:
+                psite_offsets = ribowaltz_psite_prediction(metagene_5p["start"])
+            except Exception:
+                psite_offsets = {}
 
-            # Optionally build P-site aligned metagene for spectral metrics
-            psite_aligned = None
-            if config.get("periodicity", {}).get("use_psite_aligned", False):
-                # Build 5'-end metagene around start codon for P-site detection
-                metagene_5p = metagene_profile(
-                    annotated_read_df,
-                    target="start",
-                    distance_range=[-50, 20],
-                    position="reference_start",
-                    extend=False,
-                )
-                # Predict P-site offsets (positive ints) per read length
-                try:
-                    psite_offsets = ribowaltz_psite_prediction(metagene_5p["start"])
-                except Exception:
-                    psite_offsets = {}
+            # Shift start metagene counts by offset so P-site at start codon maps to 0
+            aligned_start: Dict[int, Dict[int, int]] = {}
+            for rl, counts in metagene_5p["start"].items():
+                off = psite_offsets.get(rl)
+                if off is None:
+                    continue
+                shifted: Dict[int, int] = {}
+                for pos, val in counts.items():
+                    new_pos = pos + off
+                    shifted[new_pos] = shifted.get(new_pos, 0) + val
+                aligned_start[rl] = shifted
+            if aligned_start:
+                psite_aligned = {"start": aligned_start, "stop": {}}
 
-                # Shift start metagene counts by offset so P-site at start codon maps to 0
-                aligned_start: Dict[int, Dict[int, int]] = {}
-                for rl, counts in metagene_5p["start"].items():
-                    off = psite_offsets.get(rl)
-                    if off is None:
-                        continue
-                    shifted: Dict[int, int] = {}
-                    for pos, val in counts.items():
-                        new_pos = pos + off
-                        shifted[new_pos] = shifted.get(new_pos, 0) + val
-                    aligned_start[rl] = shifted
-                if aligned_start:
-                    psite_aligned = {"start": aligned_start, "stop": {}}
-
-            # read_frame_dist must be computed before periodicity metrics
-            exclude_nt = config["qc"]["read_frame_distribution"].get("exclude_codons", 9)
-            unique_only = (
-                config.get("argument", {}).get("multimap_filter", "unique_only") == "unique_only"
+        # read_frame_dist must be computed before periodicity metrics
+        exclude_nt = config["qc"]["read_frame_distribution"].get("exclude_codons", 9)
+        unique_only = (
+            config.get("argument", {}).get("multimap_filter", "unique_only") == "unique_only"
+        )
+        read_frame_dist = (
+            read_frame_distribution_annotated(
+                cds_read_df, exclusion_length=exclude_nt, unique_only=unique_only
             )
-            read_frame_dist = (
-                read_frame_distribution_annotated(
-                    cds_read_df, exclusion_length=exclude_nt, unique_only=unique_only
-                )
-                if config["qc"]["use_cds_subset"]["read_frame_distribution"] and annotation
-                else read_frame_distribution_annotated(
-                    annotated_read_df, exclusion_length=exclude_nt, unique_only=unique_only
-                )
+            if config["qc"]["use_cds_subset"]["read_frame_distribution"] and annotation
+            else read_frame_distribution_annotated(
+                annotated_read_df, exclusion_length=exclude_nt, unique_only=unique_only
             )
+        )
 
-            # Spectral metagene: prefer P-site aligned if available
-            spectral_metagene = psite_aligned if psite_aligned else coding_metagene
+        # Spectral metagene: prefer P-site aligned if available
+        spectral_metagene = psite_aligned if psite_aligned else coding_metagene
 
-            #######################################################################
-            # Periodicity
-            #######################################################################
-            if should_calculate_metric("periodicity_autocorrelation", config):
-                selected = select_read_lengths_for_global(
-                    read_frame_dist,
-                    results_dict["read_length_distribution"],
-                    config,
-                )
-                metagene_for_autocorr = spectral_metagene
-                if selected:
-                    reduced: Dict[str, Dict[int, Dict[int, int]]] = {"start": {}, "stop": {}}
-                    for rl in selected:
-                        if rl in spectral_metagene["start"]:
-                            reduced["start"][rl] = spectral_metagene["start"][rl]
-                        if rl in spectral_metagene["stop"]:
-                            reduced["stop"][rl] = spectral_metagene["stop"][rl]
-                    metagene_for_autocorr = reduced
-                results_dict["metrics"]["periodicity_autocorrelation"] = (
-                    periodicity_autocorrelation(metagene_for_autocorr.copy())
-                )
-            if should_calculate_metric("periodicity_fourier", config):
-                selected = select_read_lengths_for_global(
-                    read_frame_dist,
-                    results_dict["read_length_distribution"],
-                    config,
-                )
-                metagene_for_fourier = spectral_metagene
-                if selected:
-                    reduced = {"start": {}, "stop": {}}
-                    for rl in selected:
-                        if rl in spectral_metagene["start"]:
-                            reduced["start"][rl] = spectral_metagene["start"][rl]
-                        if rl in spectral_metagene["stop"]:
-                            reduced["stop"][rl] = spectral_metagene["stop"][rl]
-                    metagene_for_fourier = reduced
-                results_dict["metrics"]["periodicity_fourier"] = fourier_transform(
-                    metagene_for_fourier.copy()
-                )
-
-            results_dict["reading_frame_triangle"] = reading_frame_triangle(annotated_read_df)
-            # Compute entropy-based periodicity on culled read lengths
-            culled_for_entropy = read_frame_cull(read_frame_dist, config)
-            frame_info_content_dict = rf_info_metric(culled_for_entropy)
-            results_dict["read_frame_distribution"] = read_frame_dist
-            results_dict["metrics"]["periodicity_information"] = information_metric_cutoff(
-                frame_info_content_dict, config["qc"]["read_frame_distribution"]["3nt_count_cutoff"]
-            )
-
-            results_dict["metrics"]["periodicity_information_weighted_score"] = (
-                read_frame_information_weighted_score(
-                    frame_info_content_dict,
-                )
-            )
-
-        if annotation:
-            print("> mRNA_distribution")
-            results_dict["mRNA_distribution"] = mRNA_distribution(annotated_read_df)
-
-            print("> metagene_profile")
-            metagene_read_df = _metagene_report_reads(annotated_read_df, config)
-            results_dict["metagene_profile"] = metagene_profile(
-                metagene_read_df,
-                config["plots"]["metagene_profile"]["distance_target"],
-                config["plots"]["metagene_profile"]["distance_range"],
-            )
-            results_dict["metagene_profile_stats"] = _metagene_profile_stats(
-                annotated_read_df,
-                metagene_read_df,
-                results_dict["metagene_profile"],
+        #######################################################################
+        # Periodicity
+        #######################################################################
+        if should_calculate_metric("periodicity_autocorrelation", config):
+            selected = select_read_lengths_for_global(
+                read_frame_dist,
+                results_dict["read_length_distribution"],
                 config,
             )
+            metagene_for_autocorr = spectral_metagene
+            if selected:
+                reduced: Dict[str, Dict[int, Dict[int, int]]] = {"start": {}, "stop": {}}
+                for rl in selected:
+                    if rl in spectral_metagene["start"]:
+                        reduced["start"][rl] = spectral_metagene["start"][rl]
+                    if rl in spectral_metagene["stop"]:
+                        reduced["stop"][rl] = spectral_metagene["stop"][rl]
+                metagene_for_autocorr = reduced
+            results_dict["metrics"]["periodicity_autocorrelation"] = periodicity_autocorrelation(
+                metagene_for_autocorr.copy()
+            )
+        if should_calculate_metric("periodicity_fourier", config):
+            selected = select_read_lengths_for_global(
+                read_frame_dist,
+                results_dict["read_length_distribution"],
+                config,
+            )
+            metagene_for_fourier = spectral_metagene
+            if selected:
+                reduced = {"start": {}, "stop": {}}
+                for rl in selected:
+                    if rl in spectral_metagene["start"]:
+                        reduced["start"][rl] = spectral_metagene["start"][rl]
+                    if rl in spectral_metagene["stop"]:
+                        reduced["stop"][rl] = spectral_metagene["stop"][rl]
+                metagene_for_fourier = reduced
+            results_dict["metrics"]["periodicity_fourier"] = fourier_transform(
+                metagene_for_fourier.copy()
+            )
 
-            ###############################################################
-            # STOP CODON READTHROUGH RATIO
-            ###############################################################
-            _stop_meta = results_dict["metagene_profile"].get("stop", {})
-            if _stop_meta:
-                _before_stop = sum(
-                    v for rl_d in _stop_meta.values() for pos, v in rl_d.items() if -30 <= pos < 0
-                )
-                _after_stop = sum(
-                    v for rl_d in _stop_meta.values() for pos, v in rl_d.items() if 0 < pos <= 30
-                )
-                results_dict["metrics"]["stop_codon_readthrough_ratio"] = (
-                    round(_after_stop / _before_stop, 4) if _before_stop > 0 else None
-                )
-            else:
-                results_dict["metrics"]["stop_codon_readthrough_ratio"] = None
+        results_dict["reading_frame_triangle"] = reading_frame_triangle(annotated_read_df)
+        # Plot limits must not alter the numerical periodicity metrics. Keep
+        # every observed read length here; culling is presentation-only.
+        frame_info_content_dict = rf_info_metric(read_frame_dist)
+        results_dict["read_frame_distribution"] = read_frame_dist
+        results_dict["metrics"]["periodicity_information"] = information_metric_cutoff(
+            frame_info_content_dict, config["qc"]["read_frame_distribution"]["3nt_count_cutoff"]
+        )
 
-            ###############################################################
-            # START CODON ENRICHMENT RATIO
-            # (proxy for translation-inhibitor treatment; high values
-            #  indicate harringtonine/LTM use or stalled initiation)
-            ###############################################################
-            _start_meta = results_dict["metagene_profile"].get("start", {})
-            if _start_meta:
-                _near_start = sum(
-                    v for rl_d in _start_meta.values() for pos, v in rl_d.items() if -5 <= pos <= 20
-                )
-                _body_start = sum(
-                    v for rl_d in _start_meta.values() for pos, v in rl_d.items() if 30 <= pos <= 50
-                )
-                results_dict["metrics"]["start_codon_enrichment_ratio"] = (
-                    round(_near_start / _body_start, 4) if _body_start > 0 else None
-                )
-            else:
-                results_dict["metrics"]["start_codon_enrichment_ratio"] = None
+        results_dict["metrics"]["periodicity_information_weighted_score"] = (
+            read_frame_information_weighted_score(
+                frame_info_content_dict,
+            )
+        )
 
+        print("> mRNA_distribution")
+        results_dict["mRNA_distribution"] = mRNA_distribution(annotated_read_df)
+
+        print("> metagene_profile")
+        metagene_read_df = _metagene_report_reads(annotated_read_df, config)
+        results_dict["metagene_profile"] = metagene_profile(
+            metagene_read_df,
+            config["plots"]["metagene_profile"]["distance_target"],
+            config["plots"]["metagene_profile"]["distance_range"],
+        )
+        results_dict["metagene_profile_stats"] = _metagene_profile_stats(
+            annotated_read_df,
+            metagene_read_df,
+            results_dict["metagene_profile"],
+            config,
+        )
+
+        ###############################################################
+        # STOP CODON READTHROUGH RATIO
+        ###############################################################
+        _stop_meta = results_dict["metagene_profile"].get("stop", {})
+        if _stop_meta:
+            _before_stop = sum(
+                v for rl_d in _stop_meta.values() for pos, v in rl_d.items() if -30 <= pos < 0
+            )
+            _after_stop = sum(
+                v for rl_d in _stop_meta.values() for pos, v in rl_d.items() if 3 <= pos <= 32
+            )
+            results_dict["metrics"]["stop_codon_readthrough_ratio"] = (
+                round(_after_stop / _before_stop, 4) if _before_stop > 0 else None
+            )
         else:
-            results_dict["mRNA_distribution"] = {}
-            results_dict["metagene_profile"] = {"start": {}, "stop": {}}
+            results_dict["metrics"]["stop_codon_readthrough_ratio"] = None
+
+        ###############################################################
+        # START CODON ENRICHMENT RATIO
+        # (proxy for translation-inhibitor treatment; high values
+        #  indicate harringtonine/LTM use or stalled initiation)
+        ###############################################################
+        _start_meta = results_dict["metagene_profile"].get("start", {})
+        if _start_meta:
+            _near_start = sum(
+                v for rl_d in _start_meta.values() for pos, v in rl_d.items() if -5 <= pos <= 20
+            )
+            _body_start = sum(
+                v for rl_d in _start_meta.values() for pos, v in rl_d.items() if 30 <= pos <= 50
+            )
+            results_dict["metrics"]["start_codon_enrichment_ratio"] = (
+                round(_near_start / _body_start, 4) if _body_start > 0 else None
+            )
+        else:
+            results_dict["metrics"]["start_codon_enrichment_ratio"] = None
 
         #######################################################################
         # UNIFORMITY
         #######################################################################
         # Default + optional uniformity metrics only when annotation-derived metagene exists
-        if annotation:
-            if should_calculate_metric("uniformity_entropy", config):
-                results_dict["metrics"]["uniformity_entropy"] = uniformity_entropy(
-                    coding_metagene.copy()
-                )
+        if should_calculate_metric("uniformity_entropy", config):
+            results_dict["metrics"]["uniformity_entropy"] = uniformity_entropy(
+                coding_metagene.copy()
+            )
 
-            if should_calculate_metric("uniformity_autocorrelation", config):
-                results_dict["metrics"]["uniformity_autocorrelation"] = uniformity_autocorrelation(
-                    coding_metagene.copy()
-                )
-            if should_calculate_metric("uniformity_theil_index", config):
-                results_dict["metrics"]["uniformity_theil_index"] = uniformity_theil_index(
-                    coding_metagene.copy()
-                )
-            if should_calculate_metric("uniformity_gini_index", config):
-                results_dict["metrics"]["uniformity_gini_index"] = uniformity_gini_index(
-                    coding_metagene.copy()
-                )
+        if should_calculate_metric("uniformity_autocorrelation", config):
+            results_dict["metrics"]["uniformity_autocorrelation"] = uniformity_autocorrelation(
+                coding_metagene.copy()
+            )
+        if should_calculate_metric("uniformity_theil_index", config):
+            results_dict["metrics"]["uniformity_theil_index"] = uniformity_theil_index(
+                coding_metagene.copy()
+            )
+        if should_calculate_metric("uniformity_gini_index", config):
+            results_dict["metrics"]["uniformity_gini_index"] = uniformity_gini_index(
+                coding_metagene.copy()
+            )
 
         #######################################################################
         # COVERAGE
@@ -1008,17 +1036,10 @@ def annotation_mode(
             mRNA_distribution=results_dict["mRNA_distribution"],
             region="three_trailer",
         )
-
-        # Ensure read_frame_dist exists when annotation is False but sequence_background is present
-        # so downstream culling and periodicity dominance always have input.
-        if not annotation:
-            read_frame_dist = read_frame_distribution(read_df)
-            results_dict["read_frame_distribution"] = read_frame_dist
     else:
-        read_frame_dist = read_frame_distribution(read_df)
-        results_dict["read_frame_distribution"] = read_frame_dist
-
-    culled_read_frame_dict = read_frame_cull(read_frame_dist, config)
+        results_dict["mRNA_distribution"] = {}
+        results_dict["metagene_profile"] = {"start": {}, "stop": {}}
+    results_dict["read_frame_distribution"] = read_frame_dist
 
     # Minimum frame-assigned reads before a per-read-length dominance value is
     # reported (global values always use every read).
@@ -1028,17 +1049,18 @@ def annotation_mode(
         .get("dominance_min_reads", DOMINANCE_MIN_READS)
     )
 
-    # Default: periodicity dominance (standard frame preference metric)
-    if should_calculate_metric("periodicity_dominance", config):
+    # Default: periodicity dominance (standard frame preference metric). Like
+    # every frame metric it needs an annotated CDS; without one it is absent.
+    if annotation and should_calculate_metric("periodicity_dominance", config):
         results_dict["metrics"]["periodicity_dominance"] = periodicity_dominance(
-            culled_read_frame_dict,
+            read_frame_dist,
             min_reads=_dominance_min_reads,
         )
 
     # Optional: trips-viz metric
-    if should_calculate_metric("periodicity_trips_viz", config):
+    if annotation and should_calculate_metric("periodicity_trips_viz", config):
         results_dict["metrics"]["periodicity_trips-viz"] = read_frame_score_trips_viz(
-            culled_read_frame_dict
+            read_frame_cull(read_frame_dist, config)
         )
 
     ###########################################################################
@@ -1077,19 +1099,21 @@ def annotation_mode(
         if _cli_min_periodicity is not None
         else float(_rec_cfg.get("min_periodicity", 0.5))
     )
-    recommended = recommend_read_lengths(
-        results_dict["read_frame_distribution"],
-        results_dict["read_length_distribution"],
-        offsets=computed_offsets or None,
-        min_periodicity=_min_periodicity,
-        min_read_proportion=float(_rec_cfg.get("min_read_proportion", 0.05)),
-        min_frame_reads=_dominance_min_reads,
-    )
-    results_dict["recommended_read_lengths"] = recommended
-    results_dict["metrics"]["n_recommended_read_lengths"] = recommended["n_recommended"]
-    results_dict["metrics"]["recommended_read_proportion"] = recommended[
-        "recommended_read_proportion"
-    ]
+    # Recommendation rests on the frame table, so it too needs an annotation.
+    if annotation:
+        recommended = recommend_read_lengths(
+            results_dict["read_frame_distribution"],
+            results_dict["read_length_distribution"],
+            offsets=computed_offsets or None,
+            min_periodicity=_min_periodicity,
+            min_read_proportion=float(_rec_cfg.get("min_read_proportion", 0.05)),
+            min_frame_reads=_dominance_min_reads,
+        )
+        results_dict["recommended_read_lengths"] = recommended
+        results_dict["metrics"]["n_recommended_read_lengths"] = recommended["n_recommended"]
+        results_dict["metrics"]["recommended_read_proportion"] = recommended[
+            "recommended_read_proportion"
+        ]
 
     ###########################################################################
     # ANNOTATION-DERIVED SAMPLE DIAGNOSTICS
@@ -1134,7 +1158,7 @@ def annotation_mode(
         print("> floss_library_heterogeneity")
         _floss_cfg = config.get("qc", {}).get("floss", {}) if config else {}
         floss = floss_library_heterogeneity(
-            annotated_read_df,
+            cds_read_df,
             min_reads_per_transcript=int(_floss_cfg.get("min_reads_per_transcript", 20)),
             floss_cutoff=float(_floss_cfg.get("cutoff", 0.3)),
         )

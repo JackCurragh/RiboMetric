@@ -148,6 +148,15 @@ def test_none_thresholds_still_delegates_to_scored_resolver():
     assert status["overall_status"] in {"PASS", "WARNING", "FAIL"}
 
 
+def test_annotation_mode_null_gated_metric_fails_default_gate():
+    config = {"argument": {"annotation": "prepared.tsv", "gff": None}}
+    status = evaluate_qc_status(
+        _results({"periodicity_dominance": None}), "annotated", None, config
+    )
+    assert status["overall_status"] == "FAIL"
+    assert any(check["gate"] and check["status"] == "FAIL" for check in status["checks"])
+
+
 # ---------------------------------------------------------------------------
 # CLI exit codes
 # ---------------------------------------------------------------------------

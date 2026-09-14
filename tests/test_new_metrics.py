@@ -76,6 +76,15 @@ class TestAlignmentStats:
         assert stats["unique_read_sequences"] == 100
         assert abs(stats["duplicate_rate"] - (1.0 - 100 / 150)) < 1e-9
 
+    def test_uncollapsed_duplicate_rate_is_not_applicable(self):
+        df = _make_read_df(n_reads=20, dup_count=1)
+        assert calculate_alignment_stats(df)["duplicate_rate"] is None
+
+    def test_collapsed_x1_duplicate_rate_is_a_genuine_zero(self):
+        df = _make_read_df(n_reads=20, dup_count=1)
+        df["read_name"] = [f"read_{i}_x1" for i in range(len(df))]
+        assert calculate_alignment_stats(df)["duplicate_rate"] == 0.0
+
     def test_multimapper_rate_zero(self):
         df = _make_read_df(n_reads=50, mapq_frac_multi=0.0)
         stats = calculate_alignment_stats(df)
@@ -161,9 +170,9 @@ class TestUniqueMapperFiltering:
         """The metric layer must not crash on a no-signal read_df."""
         df = pd.DataFrame({"read_name": ["a", "b"], "count": [1, 1]})
         stats = calculate_alignment_stats(df)
-        # With neither NH/XA/MAPQ evidence, multimapper rate is well-defined (0).
-        assert stats["rpf_multimapper_rate"] == 0.0
-        assert stats["unique_rpf_rate"] == 1.0
+        # With neither NH/XA/MAPQ evidence, the rate is not computable.
+        assert stats["rpf_multimapper_rate"] is None
+        assert stats["unique_rpf_rate"] is None
 
     def test_soft_clip_rate(self):
         df = _make_read_df(n_reads=100, soft_clip_frac=0.3, dup_count=1)

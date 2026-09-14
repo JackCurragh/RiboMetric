@@ -6,6 +6,7 @@ The functions are called by the main script RiboMetric.py
 """
 
 import gzip
+import hashlib
 import os
 import subprocess
 import tempfile
@@ -42,7 +43,9 @@ def parse_annotation(annotation_path: str) -> pd.DataFrame:
 
     Accepts both minimal and extended schemas. Required columns:
     transcript_id, cds_start, cds_end, transcript_length.
-    Optional columns (ignored if missing): genomic_cds_starts, genomic_cds_ends.
+    Optional columns: ``cds_start_complete``, genomic_cds_starts and
+    genomic_cds_ends.  Older prepared TSVs do not contain
+    ``cds_start_complete``; those remain usable for backwards compatibility.
     """
     df = pd.read_csv(annotation_path, sep="\t")
 
@@ -55,6 +58,26 @@ def parse_annotation(annotation_path: str) -> pd.DataFrame:
     df["transcript_id"] = df["transcript_id"].astype(str)
     for c in ["cds_start", "cds_end", "transcript_length"]:
         df[c] = df[c].astype(int)
+
+    # ``cds_start == 0`` is a valid coordinate for a transcript with no 5' UTR;
+    # it is not a completeness flag.  New ``prepare`` output carries explicit
+    # evidence. Older TSVs have no way to distinguish complete from incomplete
+    # CDSs, so they remain usable and are handled compatibly by downstream
+    # code.
+    if "cds_start_complete" in df.columns:
+        values = df["cds_start_complete"]
+        if values.dtype == bool:
+            df["cds_start_complete"] = values
+        else:
+            normalised = values.astype(str).str.strip().str.lower()
+            true_values = {"1", "true", "yes", "y"}
+            false_values = {"0", "false", "no", "n"}
+            invalid = ~normalised.isin(true_values | false_values)
+            if invalid.any():
+                raise ValueError(
+                    "Annotation column cds_start_complete must contain true/false values"
+                )
+            df["cds_start_complete"] = normalised.isin(true_values)
 
     # Ensure optional cols exist as strings
     for c in ["genomic_cds_starts", "genomic_cds_ends"]:
@@ -250,6 +273,46 @@ def parse_bam(
     return parsed_bam
 
 
+def deterministic_subsample(
+    read_df: pd.DataFrame, target: Optional[int], seed: int = 42
+) -> tuple[pd.DataFrame, dict]:
+    """Select complete read-name groups in a stable, seed-dependent order."""
+    total = int(len(read_df))
+    if target is None:
+        return read_df, {"requested": None, "seed": None, "fraction": None, "realised_count": total}
+    target_i = max(0, int(target))
+    if total == 0 or target_i >= total:
+        return read_df, {
+            "requested": target_i,
+            "seed": int(seed),
+            "fraction": 1.0 if total else 0.0,
+            "realised_count": total,
+        }
+    if "read_name" in read_df.columns:
+        grouped = read_df.groupby("read_name", sort=False, observed=True).indices
+        groups = [(str(name), list(indices)) for name, indices in grouped.items()]
+    else:
+        groups = [(str(i), [pos]) for pos, i in enumerate(read_df.index)]
+    groups.sort(key=lambda item: hashlib.sha256(f"{int(seed)}\0{item[0]}".encode()).digest())
+    selected_positions = []
+    realised = 0
+    for _, positions in groups:
+        if realised + len(positions) > target_i and selected_positions:
+            continue
+        selected_positions.extend(positions)
+        realised += len(positions)
+        if realised >= target_i:
+            break
+    selected_positions.sort()
+    selected = read_df.iloc[selected_positions].reset_index(drop=True)
+    return selected, {
+        "requested": target_i,
+        "seed": int(seed),
+        "fraction": float(len(selected) / total),
+        "realised_count": int(len(selected)),
+    }
+
+
 def get_top_transcripts(read_df: pd.DataFrame, num_transcripts: int) -> List[str]:
     """
     Get the top N transcripts with the most reads
@@ -415,7 +478,15 @@ def gff_df_to_cds_df(gff_df: pd.DataFrame, outpath: Optional[str] = None) -> pd.
     cds_df = gff_df[gff_df["type"] == "CDS"]
 
     if exon_df.empty or cds_df.empty:
-        return pd.DataFrame(columns=["transcript_id", "cds_start", "cds_end", "transcript_length"])
+        return pd.DataFrame(
+            columns=[
+                "transcript_id",
+                "cds_start",
+                "cds_end",
+                "transcript_length",
+                "cds_start_complete",
+            ]
+        )
 
     # Transcript length = sum of exon lengths per transcript.
     # GFF3 coordinates are 1-based and inclusive, so an exon spanning [start, end]
@@ -483,15 +554,56 @@ def gff_df_to_cds_df(gff_df: pd.DataFrame, outpath: Optional[str] = None) -> pd.
     leader_sum = exon_df.groupby("transcript_id")["_leader"].sum()
     trailer_sum = exon_df.groupby("transcript_id")["_trailer"].sum()
 
+    # GFF3 commonly represents the stop codon as both a ``stop_codon`` feature
+    # and the final three bases of the CDS. The contract exposes ``cds_end``
+    # as the first stop-codon base, so subtract those three bases only when the
+    # stop feature is actually covered by the CDS span. GTFs and GFF3s whose
+    # CDS already excludes the stop codon remain unchanged.
+    stop_df = gff_df[gff_df["type"] == "stop_codon"]
+    stop_inside_cds = pd.Series(False, index=transcript_length.index)
+    if not stop_df.empty:
+        stop_min_start = stop_df.groupby("transcript_id")["start"].min()
+        stop_max_end = stop_df.groupby("transcript_id")["end"].max()
+        stop_inside_cds = (
+            stop_min_start.reindex(transcript_length.index).ge(
+                cds_min_start.reindex(transcript_length.index)
+            )
+            & stop_max_end.reindex(transcript_length.index).le(
+                cds_max_end.reindex(transcript_length.index)
+            )
+        ).fillna(False)
+
+    # A zero transcript-space CDS start is valid when the transcript begins at
+    # its CDS.  Completeness must come from annotation evidence, not from the
+    # coordinate value.  A start_codon feature identifies a known 5' CDS end;
+    # phase 0 on the 5'-most CDS confirms that this boundary is in-frame.
+    start_codon_tx_ids = set(
+        gff_df.loc[gff_df["type"] == "start_codon", "transcript_id"].dropna().astype(str)
+    )
+    first_cds = cds_df.copy()
+    first_cds["_five_prime_coordinate"] = np.where(
+        first_cds["strand"] == "+", first_cds["start"], first_cds["end"]
+    )
+    first_cds = first_cds.loc[first_cds.groupby("transcript_id")["_five_prime_coordinate"].idxmin()]
+    phase_zero = first_cds["phase"].astype(str).str.strip().eq("0")
+    complete_tx_ids = (
+        set(first_cds.loc[phase_zero, "transcript_id"].astype(str)) & start_codon_tx_ids
+    )
+
     tx_ids = transcript_length.index
     result = pd.DataFrame(
         {
             "transcript_id": tx_ids,
             "cds_start": leader_sum.reindex(tx_ids).fillna(0).astype(int).values,
-            "cds_end": (transcript_length - trailer_sum.reindex(tx_ids).fillna(0))
+            "cds_end": (
+                transcript_length
+                - trailer_sum.reindex(tx_ids).fillna(0)
+                - stop_inside_cds.reindex(tx_ids).fillna(False).astype(int) * 3
+            )
             .astype(int)
             .values,
             "transcript_length": transcript_length.astype(int).values,
+            "cds_start_complete": [str(tx_id) in complete_tx_ids for tx_id in tx_ids],
         }
     )
 

@@ -1,6 +1,6 @@
 # RiboMetric productionisation programme
 
-**Status:** adopted 2026-09-13. Phase 0 not started.
+**Status:** adopted 2026-09-13. Progress as of 2026-09-14 is at the end.
 
 The goal is to reach a point where RiboMetric is trusted enough that later
 analyses with it are observations, not debugging exercises. This is a staged
@@ -151,8 +151,8 @@ reproduce it, investigate, then decide.
 - **Pass 2:** the same panel, rerun exactly.
 - **Pass 3:** expand to 100–200 diverse libraries.
 
-Where panel records live is still open; proposed:
-`../RiboMetric-Manuscript/validation/`, created when Phase 2 starts.
+Panel records live in `../RiboMetric-Manuscript/validation/`. Panel v1 (42
+libraries) was selected on 2026-09-14.
 
 **Exit criterion:** pass 3 completes with every surprising result either
 explained or recorded as an open observation. Only then is a Portal-scale run
@@ -232,8 +232,11 @@ validation panel.
 
 - **Provenance block in every result JSON:** tool version and git SHA, command
   line, input names/sizes (optional checksum), annotation path and hash,
-  subsample N and seed, offset method, filters, platform, timestamp. Currently
-  `generate_json` writes only `{results, config}`.
+  subsample N and seed, offset method, filters, platform, timestamp.
+  `results["provenance"]` already has the timestamp, command, package
+  version, Python, platform, config hashes, and input paths, sizes and
+  SHA-256, plus the reproducible subsample seed and offset execution audit.
+  It still lacks the git SHA.
 - CI across supported Python versions, lint and type checking, installation
   from a clean environment, container build, CLI smoke tests, deterministic
   fixtures.
@@ -279,3 +282,24 @@ work can follow.
 | `prepare` memory, pysam double decode | AUDIT_NOTES §2.1–2.2 | 6 |
 | Dead code, duplicated uniqueness logic | AUDIT_NOTES §3 | 4, 6 |
 | riboseqorg-nf module | O-015 | out of scope (legacy) |
+| Stop codon inside or outside the CDS depends on the annotation format | O-038, 0001 | 1 |
+| `cds_start == 0` exclusion empties the frame table on UTR-less annotations | O-039, 0003 | 1 (fix), 2 (yeast and bacterial members) |
+| Gate ignores missing gated evidence | O-041, 0006 | 1 |
+| dev reports version 1.4.3 | O-044 | 6 |
+
+## Progress
+
+As of 2026-09-14. All of it is in the working trees, uncommitted.
+
+| phase | state |
+|---|---|
+| 0 | **Done.** `METRIC_CONTRACT.md` reviewed. Decisions D-1–D-10 recorded in `../RiboMetric-Manuscript/decisions/`: 0002 proposed, the rest accepted. |
+| 1 | **Complete for the implemented contract.** D-3 and the contract test layers are implemented: zero-offset complete CDSs are retained, completeness is explicit, all observed read lengths are preserved, plot limits no longer alter numerical periodicity, and the registry, mathematical, synthetic-pipeline and golden tests pass. Region-granularity D-2 remains proposed for biological validation. |
+| 2 | **Panel v1 selected**, not run. The existing Ensembl integration was inspected read-only: `riboseq_unique_reads` is at `4f7fd45`, and its change has the same stable patch-id as local commit `5ac01ab`; the real-data panel still needs an image built from committed Phase 1 code. |
+| 3–5 | Not started. |
+| 6 | **Release-candidate gate in place.** Provenance includes seeded subsampling and offset execution audit data; 410 tests pass on Python 3.10 and 3.12, with Ruff, Black and strict Sphinx also passing. A clean Python 3.12 environment built and installed the local 1.5.0 sdist/wheel, and CLI smoke tests passed. Git-SHA provenance, container build, publication and real-data validation remain outside this local preparation step. |
+
+O-039 is addressed in the working tree. On UTR-less annotations, a valid
+`cds_start == 0` is retained when the GFF/GTF supplies start-codon and phase
+evidence; incomplete or unknown starts are excluded only from frame-sensitive
+metrics rather than causing the annotation to be rejected.

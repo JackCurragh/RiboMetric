@@ -15,7 +15,7 @@ from typing import Any, Dict, cast
 
 import yaml
 
-from .results_output import DEFAULT_QC_THRESHOLDS, evaluate_qc_status
+from .results_output import evaluate_qc_status
 
 # Exit codes used to gate downstream pipeline steps.
 EXIT_PASS = 0
@@ -89,11 +89,12 @@ def evaluate(args: Namespace) -> int:
         print(f"Error: results file not found: {results_path}")
         return EXIT_FAIL
 
-    if getattr(args, "expected", None):
+    explicit_thresholds = bool(getattr(args, "expected", None))
+    if explicit_thresholds:
         thresholds = _load_thresholds(Path(args.expected))
     else:
-        print("No --expected thresholds provided; using built-in defaults.")
-        thresholds = DEFAULT_QC_THRESHOLDS
+        print("No --expected thresholds provided; using the result scoring contract.")
+        thresholds = None
 
     results = _load_results(results_path)
     sample_name = getattr(args, "name", None) or results_path.stem

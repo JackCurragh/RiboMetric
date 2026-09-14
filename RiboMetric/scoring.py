@@ -363,7 +363,10 @@ def overall_gate_status(scored_metrics: List[Dict[str, Any]]) -> str:
     FAIL if any gated metric fails, else WARNING if any warns, else PASS.
     Returns INFO if no gated metric produced a score.
     """
-    gated = [m for m in scored_metrics if m["gate"] and m["score"] is not None]
+    # A gated metric with missing evidence is a failure once the caller has
+    # declared annotation-mode QC.  Callers that do not require annotation
+    # evidence simply omit/suppress those records and retain INFO semantics.
+    gated = [m for m in scored_metrics if m["gate"]]
     if not gated:
         return "INFO"
     statuses = {m["status"] for m in gated}

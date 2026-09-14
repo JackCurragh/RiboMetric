@@ -1,6 +1,7 @@
 # Metric contract
 
-**Status:** Phase 0 draft, 2026-09-13. Authoritative once reviewed.
+**Status:** reviewed 2026-09-14; authoritative. Phase 0 draft 2026-09-13,
+with the Phase 1 fixes applied (§7) and the decisions of §8 taken.
 
 This document says what every number RiboMetric emits is *supposed* to be:
 its input, its mathematical definition, its range, what it means, the level
@@ -13,8 +14,9 @@ later. This contract only fixes what 0.81 *is*.
 
 Where the implementation does not yet match the contract, the entry says so
 and names the observation in `RiboMetric-Manuscript/OBSERVATIONS.md` (IDs
-`O-NNN`). Section 7 collects those divergences. Section 8 lists the decisions
-that still need the owner, marked **[decision D-n]** where they arise.
+`O-NNN`). Section 7 collects those divergences. Section 8 records the
+decisions that settled open definitions, marked **[D-n]** where they apply;
+each has a record in `RiboMetric-Manuscript/decisions/`.
 
 `registry.py` records name, unit and direction for each metric, and
 `METRICS.md` is generated from it. Both must agree with this contract; a test
@@ -28,18 +30,21 @@ These apply to every entry below unless the entry says otherwise.
 i.e. the reference sequence of a transcriptome BAM.
 
 - `cds_start` is the index of the first nucleotide of the start codon.
-- `cds_end` is the exclusive end of the annotated CDS: one past the last
-  nucleotide covered by the annotation's `CDS` features. Whether the stop
-  codon lies inside `[cds_start, cds_end)` therefore depends on the
-  annotation source. GENCODE GTF `CDS` features exclude it, so there the stop
-  codon occupies `[cds_end, cds_end + 3)`. **[decision D-1]**
+- `cds_end` is the 0-based index of the first nucleotide of the stop codon,
+  so the stop codon occupies `[cds_end, cds_end + 3)`, outside the CDS
+  **[D-1]**. GTF `CDS` features already exclude the stop codon. For GFF3,
+  `prepare` removes the final 3 nt when a `stop_codon` feature is covered by
+  the CDS span; an already-exclusive CDS is left unchanged.
+- `cds_start_complete` is true when the CDS has an annotated start codon and
+  its 5′-most `CDS` feature has phase 0 **[D-3]**. `cds_start == 0` is a
+  valid coordinate and is not itself evidence of an incomplete CDS.
 - `transcript_length` is the sum of exon lengths.
 
 **Read 5′ end.** `p5` is the 0-based transcript position of the first base
 of the read *including* 5′ soft-clipped bases:
 `p5 = POS − 1 − softclip5`, where POS is the 1-based SAM position.
-*Divergence:* the implementation uses the 1-based value, `POS − softclip5`
-(O-027).
+Fixed in Phase 1: the implementation used the 1-based value,
+`POS − softclip5`, so every reported offset was 1 nt low (O-027).
 
 **Read length.** `L` is the number of query bases consumed by the alignment:
 the sum of CIGAR `M`, `I`, `=` and `X` operations. Soft- and hard-clipped
@@ -55,8 +60,8 @@ even when the target is the P-site.
 **Weights.** A BAM record whose read name ends `_xN` stands for `N` identical
 reads (a collapsed library) and carries weight `w = N`; otherwise `w = 1`.
 Every count in this document is a sum of weights unless it says rows.
-*Divergence:* if any read name occurs twice, the implementation drops all
-weights library-wide (O-037), and `cds_enrichment_ratio` never uses them
+Fixed in Phase 1: weights used to be dropped library-wide whenever any read
+name occurred twice (O-037), and `cds_enrichment_ratio` never used them
 (O-031).
 
 **Frame.** For a read assigned to a transcript with a CDS,
@@ -76,11 +81,10 @@ nucleotide of a codon.
 and as `global`, which pools all read lengths by summing weights, not by
 averaging per-length values. Entries that differ say so.
 
-**Missing is not zero.** A quantity that cannot be computed (no reads, a zero
-denominator, an input that was not supplied) is `null` or absent. It is never
-reported as 0, because 0 is a legitimate value for most of these metrics.
-*Divergence:* several metrics report 0 in that situation; listed per entry.
-**[decision D-6]**
+**Missing is not zero.** A quantity is `null` exactly when its input set is
+empty or its denominator is zero, and absent when its input was not supplied
+**[D-6]**. A computed 0 is reported as 0. Any remaining producer-specific
+exception is listed with the metric entry.
 
 **Units.** A *fraction* lies in [0, 1]. A *ratio* is ≥ 0 and unbounded. *Bits*
 are base-2 information. A *count* is an integer. An *index* is a
@@ -98,41 +102,46 @@ produces, defaults to and discards.
   `p5`, 5′ soft-clip length, first and last dinucleotide, weight, MAPQ, NH, XA.
 - **Discards:** secondary alignments (`samtools view -F 256`); unmapped reads.
   Supplementary alignments are kept.
-- **Subsample (`-S N`):** intended as a seeded random sample of N reads drawn
-  across all references, with the seed recorded. *Divergence:* the
-  implementation takes whole references in `samtools idxstats` order until N
-  reads, i.e. a header-order prefix of the transcriptome (O-029).
-  **[decision D-4]**
+- **Subsample (`-S N`):** a seeded random sample of reads **[D-4]**. A read is
+  kept when a hash of its name and the seed falls below N / M, where M is the
+  number of mapped primary records. Every record of a read is kept or
+  dropped together, and the sample does not depend on record order. The seed
+  (default 42), the fraction and the realised count go into `provenance`.
+  Implemented and covered by deterministic pipeline tests.
 - **Alignment tags:** MAPQ 255 is recovered from pysam, because oxbow reads
-  STAR's 255 as null. That recovery only proceeds when read names match row
-  for row. *Divergence:* on a mismatch, MAPQ stays null and the unique set
-  becomes empty when there is no NH tag (O-036).
+  STAR's 255 as null. Tags are joined positionally when both readers list the
+  same records in the same order, and on read name otherwise. Fixed in
+  Phase 1: a mismatch used to leave MAPQ null, which emptied the unique set
+  when there was no NH tag (O-036).
 
 ### 2.2 Sequence background
 
 - **In:** the read sequences of parsed reads.
 - **Out:** for each read end, the frequency of every dinucleotide at all
   positions of the read except the terminal one being tested (the first
-  position for the 5′ background, the last for the 3′). Computed over unique
-  sequences, unweighted. **[decision D-9]**
+  position for the 5′ background, the last for the 3′), weighted by `w` like
+  the observed frequencies **[D-9]**. Implemented and covered by weighted
+  equivalence tests.
 - **Skipped when:** the BAM has no stored sequences, or with
-  `--skip-sequence-metrics`. *Only* the terminal-bias and
-  nucleotide-composition outputs should depend on this stage. *Divergence:* the
-  whole annotation block is currently gated on it, and the run crashes without
+  `--skip-sequence-metrics`. Only the terminal-bias and
+  nucleotide-composition outputs depend on this stage. Fixed in Phase 1: the
+  whole annotation block used to be gated on it, and the run crashed without
   it (O-026).
 
 ### 2.3 Annotation join
 
 - **In:** parsed reads; the annotation TSV (`transcript_id`, `cds_start`,
-  `cds_end`, `transcript_length`) written by `prepare`.
+  `cds_end`, `transcript_length`, and `cds_start_complete` once `prepare`
+  writes it) produced by `prepare`.
 - **Out:** annotated reads.
 - **Discards:** reads on transcripts absent from the annotation. They still
   count toward stage-2.1 statistics (read-length distribution, mapping
   hygiene, terminal bias).
 - **Mode:** `annotation` when at least one read has its site in the CDS
   body; otherwise `annotation_free`. Without an annotation, every
-  annotation-based metric is absent. *Divergence:* annotation-free runs with
-  read sequences crash (O-025).
+  annotation-based metric is absent, including the frame table and every
+  frame metric. Fixed in Phase 1: annotation-free runs with read sequences
+  crashed (O-025).
 
 ### 2.4 Offset inference
 
@@ -147,7 +156,10 @@ Skipped when offsets are supplied (`--offset-read-length`,
 3. Take the P-site offset as the position of the maximum count in the window
    −18…−10, negated. `changepoint`, `tripsviz` and `ribowaltz` all reduce to
    this argmax by default; `ribowaltz` adds an optional prominence check and
-   a consensus fallback (O-030).
+   a consensus fallback (O-030). The offset audit record names the
+   computation that ran, including whether those options were active
+   **[D-8]**. Implemented; the audit also records requested/effective method,
+   external-supply status, raw/final mappings and frame adjustments.
 4. Add 3 for the A-site target.
 5. Keep the offset only if it lies within [8, 20], is at most ⌊2L/3⌋ and is
    below L. Otherwise use the default (P 12 / A 15), itself clipped to fit
@@ -164,27 +176,31 @@ Read lengths with no reads in the offset set receive the clipped default.
 - `a_site = p5 + o(L)`.
 - Region of each annotated read, by `a_site`:
 
-| region | condition |
-|---|---|
-| `five_leader` | `a_site < cds_start` |
-| `start_codon` | `a_site == cds_start` |
-| `CDS` (body) | `cds_start < a_site < cds_end` |
-| `stop_codon` | `a_site == cds_end` |
-| `three_trailer` | `a_site > cds_end` |
+| region | condition | proposed (D-2) |
+|---|---|---|
+| `five_leader` | `a_site < cds_start` | same |
+| `start_codon` | `a_site == cds_start` | `cds_start ≤ a_site < cds_start + 3` |
+| `CDS` (body) | `cds_start < a_site < cds_end` | `cds_start + 3 ≤ a_site < cds_end` |
+| `stop_codon` | `a_site == cds_end` | `cds_end ≤ a_site < cds_end + 3` |
+| `three_trailer` | `a_site > cds_end` | `a_site ≥ cds_end + 3` |
 
 `start_codon` and `stop_codon` are single positions, not codons, so the
-second and third bases of the start codon count as CDS body. The meaning of
-`stop_codon` also depends on D-1. **[decision D-2]**
+second and third bases of the start codon count as CDS body. Whole codons are
+proposed, not accepted **[D-2]**; until they are, the middle column is the
+contract. Under D-1, `stop_codon` is the first nucleotide of the stop codon.
 
 ### 2.6 The frame table
 
 `F[L][f]`, the weighted count of frame-safe reads with read length `L` in
 frame `f`, restricted to reads whose site lies in `(cds_start + 9,
-cds_end − 9)`. That excludes 9 nt (three codons) at each CDS end. Emitted as
+cds_end − 9)` on transcripts with `cds_start_complete` true. That excludes
+9 nt (three codons) at each CDS end, and CDSs whose frame is unknown. Every
+observed read length is kept **[D-3]**. Emitted as
 `read_frame_distribution`. Every frame metric is computed from it.
 
-*Divergences:* only lengths 20–39 are kept (O-033), and transcripts with
-`cds_start == 0` are excluded (O-034). Both are **[decision D-3]**.
+Plot limits in `plots.read_frame_distribution` do not change the numerical
+frame table or periodicity metrics; they are applied only to presentation
+metrics such as `periodicity_trips-viz`.
 
 ### 2.7 Measurement, scoring, evaluation
 
@@ -192,11 +208,14 @@ cds_end − 9)`. That excludes 9 nt (three codons) at each CDS end. Emitted as
 - Scores (§4) are derived from them into `results["scores"]` by the rules in
   `scoring.py`, merged with the `scoring:` block of the config.
 - The QC verdict (`qc_status.json`) is FAIL if any gated score fails, else
-  WARNING if any warns, else PASS; INFO if no gated score exists.
+  WARNING if any warns, else PASS; INFO if no gated score applies. In
+  `annotation` mode a gated score whose metric is `null` or absent counts as
+  FAIL, for missing evidence **[D-6]**. Implemented and covered by QC and
+  evaluation regression tests.
 - `RiboMetric evaluate --expected` applies an explicit threshold policy.
-  Every metric it names must be present and finite. *Divergence:* its default
-  policy (no `--expected`) still uses a separate legacy threshold table
-  (deferred item D3 in `SCORING_PHASE1_TASKS.md`).
+  Every metric it names must be present and finite. Without `--expected`,
+  `evaluate` applies the same scoring rules and gate as `qc_status.json`
+  **[D-10]**. Explicit `--expected` policies remain an opt-in override.
 
 ## 3. Metrics
 
@@ -209,8 +228,8 @@ is confirmed only when the Phase 1 unit test for that entry exists.
 
 #### `periodicity_dominance`
 
-- **Input:** the frame table `F`, restricted to read lengths within
-  `plots.read_frame_distribution` limits (15–40).
+- **Input:** the frame table `F`, every observed read length **[D-3]**. Plot
+  limits (15–40) affect presentation only.
 - **Definition:** per read length with `n_L = Σ_f F[L][f] ≥ 100`:
   `max_f F[L][f] / n_L`. `global`: `max_f Σ_L F[L][f] / Σ_L n_L`, one frame
   shared by all lengths. `global_by_read_length_max`:
@@ -222,10 +241,9 @@ is confirmed only when the Phase 1 unit test for that entry exists.
   `global` below `global_by_read_length_max` means lengths disagree on the
   dominant frame, i.e. offsets are wrong for some lengths.
 - **Aggregation:** per read length, `global`, `global_by_read_length_max`.
-- **Degenerate input:** a length with 1–99 reads is omitted. *Divergence:* a
-  length with 0 reads is reported as 0, and an empty table gives `global` 0;
-  both should be absent or `null`.
-- **Status:** conforms, apart from the zero cases.
+- **Degenerate input:** a length with 0–99 reads is omitted. An empty table
+  gives `global: null` (D-6); dominance cannot be below 1/3.
+- **Status:** conforms.
 
 #### `periodicity_information`
 
@@ -242,8 +260,8 @@ is confirmed only when the Phase 1 unit test for that entry exists.
 - **Meaning:** a cross-check on dominance that uses the whole frame
   distribution rather than only the top frame.
 - **Aggregation:** per read length and `global`.
-- **Degenerate input:** *Divergence:* `global` is 0 when no length passes the
-  cutoff; it should be `null`.
+- **Degenerate input:** `global` is `null` when no length passes the cutoff
+  (D-6).
 - **Status:** conforms.
 
 #### `periodicity_information_weighted_score`
@@ -251,7 +269,7 @@ is confirmed only when the Phase 1 unit test for that entry exists.
 - **Definition:** `Σ_L I_L n_L / Σ_L n_L` over *every* read length in `F`,
   with no share cutoff.
 - **Range:** [0, 1]. **Aggregation:** scalar.
-- **Degenerate input:** *Divergence:* 0 when `F` is empty; should be `null`.
+- **Degenerate input:** `null` when `F` is empty (D-6).
 - **Status:** conforms. It duplicates the `global` of
   `periodicity_information`, except for the cutoff (a Phase 4 question).
 
@@ -270,7 +288,8 @@ is confirmed only when the Phase 1 unit test for that entry exists.
   `recommended_read_lengths` (§5).
 - **Degenerate input:** no recommended lengths gives 0 and 0. These are
   genuine values, not missing.
-- **Status:** conforms. Depends on D-3, because `F` excludes lengths ≥ 40.
+- **Status:** conforms. Changes under D-3, once `F` keeps lengths outside
+  20–39.
 
 #### `periodicity_trips-viz` *(optional)*
 
@@ -294,19 +313,19 @@ is confirmed only when the Phase 1 unit test for that entry exists.
   the position-wise sum.
 - **Range:** [0, 1]; 0 means no triplet component, 1 means all variation is
   triplet.
-- **Status:** *Divergence:* the frequency grid is built with
-  `np.fft.fftfreq(n, 1/n)` (integer frequencies), so the selected bin is
-  always DC. A perfectly periodic profile scores 0.40 and a flat one 1.00
+- **Status:** conforms. Fixed in Phase 1: the frequency grid was
+  `np.fft.fftfreq(n, 1/n)` (integer frequencies), so the selected bin was
+  always DC; a perfectly periodic profile scored 0.40 and a flat one 1.00
   (O-001).
 
 #### `periodicity_autocorrelation` *(optional)*
 
-- **Intended definition:** the autocorrelation at lag 3 of the start-codon
-  metagene count series (position-ordered), normalised by lag 0. Per read
-  length and `global`.
-- **Status:** *Divergence:* per-length values are `r₃/r₀`, but `global` is
-  `(r₃ − mean r)/mean r`, a different statistic. Positions are also not in
-  order when there are gaps (O-024).
+- **Definition:** the autocorrelation at lag 3 of the start-codon metagene
+  count series (position-ordered), normalised by lag 0. Per read length, and
+  `global` on the position-wise sum.
+- **Status:** conforms. Fixed in Phase 1: `global` was
+  `(r₃ − mean r)/mean r`, a different statistic from the per-length `r₃/r₀`,
+  and positions were out of order when there were gaps (O-024).
 
 ### 3.2 Coverage and regions
 
@@ -323,24 +342,26 @@ is confirmed only when the Phase 1 unit test for that entry exists.
   concentrated in few codons. Perfect evenness is *not* the biological ideal;
   the metric is meant for flagging concentration.
 - **Aggregation:** per read length and `global`.
-- **Degenerate input:** *Divergence:* no counts gives 0; should be `null`.
-- **Status:** *Divergence:* positions are not position-ordered when some
-  have no reads, so bins group non-adjacent positions and the per-length sum
-  misaligns (O-024).
+- **Degenerate input:** no counts gives `null` (D-6).
+- **Status:** conforms. Fixed in Phase 1: positions were out of order when
+  some had no reads, so bins grouped non-adjacent positions and the global
+  sum misaligned (O-024).
 
 #### `uniformity_autocorrelation`, `uniformity_gini_index`, `uniformity_theil_index` *(optional)*
 
-- **Intended definitions:** over the same codon-binned start window.
-  - Autocorrelation: the mean normalised autocorrelation at lags 1–4. The
-    implementation includes lag 0, so it is the mean of `[1, r₁ … r₄]`.
-  - Gini: the Gini coefficient `G` of the bin counts. 0 means even, 1 means
-    all counts in one bin; lower is better.
-  - Theil: the Theil T index `(1/K) Σ (x_k/μ) ln(x_k/μ)`, in [0, ln K];
-    lower is better.
-- **Status:** *Divergence:* Gini is reported as `1 − G`. The "Theil" value is
-  `1/(1 + Σ_codons H(within-codon frame proportions))`, which measures lack of
-  periodicity, not inequality of coverage (O-032). All three are also subject
-  to O-024.
+- **Definitions:** over the same codon-binned start window, per read length
+  and `global`.
+  - Autocorrelation: the mean normalised autocorrelation at lags 1–4.
+  - Gini: the Gini coefficient `G` of the bin counts. 0 means even; (K − 1)/K
+    means all counts in one of the K bins. Lower is better.
+  - Theil: the Theil T index `(1/K) Σ (x_k/μ) ln(x_k/μ)`, in [0, ln K].
+    Lower is better.
+- **Status:** conforms. Fixed in Phase 1:
+  - autocorrelation included lag 0;
+  - Gini was reported as `1 − G`, with a rank offset;
+  - the "Theil" value was `1/(1 + Σ_codons H(within-codon frame proportions))`,
+    which measures lack of periodicity, not inequality of coverage (O-032);
+  - all three read positions out of order (O-024).
 
 #### `cds_enrichment_ratio`
 
@@ -359,8 +380,8 @@ is confirmed only when the Phase 1 unit test for that entry exists.
   fraction.
 - **Aggregation:** scalar.
 - **Degenerate input:** `null` when no eligible transcript has reads.
-- **Status:** *Divergence:* `observed` counts rows rather than weights, over
-  all annotated reads including ineligible transcripts (O-031).
+- **Status:** conforms. Fixed in Phase 1: `observed` counted rows rather than
+  weights, over all annotated reads including ineligible transcripts (O-031).
 
 #### `prop_reads_CDS`, `prop_reads_leader`, `prop_reads_trailer`
 
@@ -370,16 +391,15 @@ is confirmed only when the Phase 1 unit test for that entry exists.
   `global`: the same over all lengths pooled. "CDS" means the body region of
   §2.5.
 - **Range:** fraction. **Aggregation:** per read length and `global`.
-- **Degenerate input:** a length with no reads gives 0.
+- **Degenerate input:** `null` for a length with no reads (D-6).
 - **Status:** conforms.
 
 #### `ratio_cds:leader`, `ratio_cds:trailer`, `ratio_leader:trailer`
 
 - **Definition:** per read length, `D[L][A] / D[L][B]`. `global`: `Σ_L D[L][A] / Σ_L D[L][B]`.
 - **Range:** ratio. **Aggregation:** per read length and `global`.
-- **Degenerate input:** *Divergence:* a zero denominator gives 0; should be
-  `null`.
-- **Status:** *Divergence:* only lengths 20–39 are summed (O-033, D-3).
+- **Degenerate input:** a zero denominator gives `null` (D-6).
+- **Status:** conforms; all observed read lengths are included by default.
 
 #### `cds_coverage` and its four variants
 
@@ -400,7 +420,8 @@ is confirmed only when the Phase 1 unit test for that entry exists.
 
 - **Range:** fraction.
 - **Meaning:** breadth of coverage on the best-covered coding sequences.
-- **Degenerate input:** no CDS reads gives 0.
+- **Degenerate input:** with no CDS reads no transcript is selected and the
+  denominator is 0, so the value is `null` (D-6).
 - **Status:** conforms.
 
 #### `start_codon_enrichment_ratio`, `stop_codon_readthrough_ratio`
@@ -410,7 +431,8 @@ is confirmed only when the Phase 1 unit test for that entry exists.
   or `cds_end` (stop).
 - **Definition:**
   - Start: counts at distances −5…20 over counts at 30…50.
-  - Stop: counts at 1…30 over counts at −30…−1, relative to `cds_end`.
+  - Stop: counts at 3…32, the 30 nt after the stop codon, over counts at
+    −30…−1, relative to `cds_end` **[D-1]**.
   - Both are summed over all read lengths.
 - **Range:** ratio.
 - **Meaning:**
@@ -418,8 +440,7 @@ is confirmed only when the Phase 1 unit test for that entry exists.
   - Stop: reads past the stop codon, from readthrough, a wrong annotation or
     RNA contamination.
 - **Degenerate input:** `null` when the denominator is 0.
-- **Status:** conforms. With D-1 unresolved, the stop window's first two
-  nucleotides may be the stop codon itself.
+- **Status:** conforms.
 
 #### `five_prime_ramp_ratio`, `three_prime_drop_ratio`
 
@@ -437,11 +458,11 @@ All computed from the read-length distribution `R` of parsed reads (§5).
 
 | key | definition | range | degenerate input |
 |---|---|---|---|
-| `read_length_iqr_fraction` | `(Q₀.₇₅ − Q₀.₂₅)/(Q₀.₉ − Q₀.₁)`, where `Q_x` is the smallest L with cumulative share ≥ x | fraction | 0 when `Q₀.₉ = Q₀.₁` |
+| `read_length_iqr_fraction` | `(Q₀.₇₅ − Q₀.₂₅)/(Q₀.₉ − Q₀.₁)`, where `Q_x` is the smallest L with cumulative share ≥ x | fraction | `null` when `Q₀.₉ = Q₀.₁` (D-6) |
 | `read_length_cv` | weighted standard deviation over weighted mean (population) | index ≥ 0 | |
-| `read_length_max_proportion` | `max_L R[L] / Σ R` | fraction | *Divergence:* division by zero on empty `R` |
-| `read_length_bimodality_coefficient` | Sarle's `(g₁² + 1)/(g₂ + 3(n−1)²/((n−2)(n−3)))`, with `g₁`, `g₂` the (biased) skewness and excess kurtosis of the expanded lengths, n = `Σ R`, floored at 0 | index ≥ 0; > 5/9 suggests bimodality | *Divergence:* division by zero for n ≤ 3 |
-| `read_length_normality_pvalue` *(optional)* | D'Agostino–Pearson test p-value | [0, 1] | undefined for n < 8 |
+| `read_length_max_proportion` | `max_L R[L] / Σ R` | fraction | `null` on empty `R` |
+| `read_length_bimodality_coefficient` | Sarle's `(g₁² + 1)/(g₂ + 3(n−1)²/((n−2)(n−3)))`, with `g₁`, `g₂` the (biased) skewness and excess kurtosis of the expanded lengths, n = `Σ R`, floored at 0 | index ≥ 0; > 5/9 suggests bimodality | `null` for n ≤ 3 or a single read length |
+| `read_length_normality_pvalue` *(optional)* | D'Agostino–Pearson test p-value | [0, 1] | `null` for n < 8 |
 | `disome_proportion` | `Σ_{L ∈ [50, 70]} R[L] / Σ R`; window in `qc.disome` | fraction | |
 
 These are diagnostics. No score is attached, and the direction is context
@@ -454,13 +475,13 @@ All computed from parsed reads.
 - **`duplicate_rate`:** `1 − U / W`, where U is the number of distinct read
   names and W their total weight. It measures the share of reads that are
   collapse duplicates. For an uncollapsed BAM (every weight 1) it is 0 by
-  construction, which is not a measurement. **[decision D-7]**
+  construction, which is not a measurement, so it is `null` when no record
+  carries a `_xN` suffix **[D-7]**.
 - **`rpf_multimapper_rate`:** the weighted fraction of fragments flagged
   multi-mapping. The flag comes from the first available signal: NH > 1, else
   XA > 0, else MAPQ < 255 where MAPQ is known. The method used is recorded in
   `alignment_stats.multimapper_detection_method`. When no signal exists the
-  method is `unavailable` and the rate should be `null`. *Divergence:* it is
-  reported as 0.
+  method is `unavailable` and the rate is `null` (D-6).
 - **`alignment_multimapper_rate`:** the same flag, as a fraction of alignment
   rows.
 - **`soft_clip_rate_5prime`:** the weighted fraction of reads with a 5′ soft
@@ -477,12 +498,12 @@ Requires the sequence background (§2.2).
 - `obs5[x]`: the weighted fraction of parsed reads whose first two bases
   (5′→3′) are dinucleotide x. `obs3[x]`: the same for the last two bases,
   read 5′→3′. Dinucleotides containing N are left out of the numerators but
-  stay in the denominator. *Divergence:* the 3′ dinucleotide is read in
+  stay in the denominator. Fixed in Phase 1: the 3′ dinucleotide was read in
   reverse (O-028).
-- **`terminal_bias_kl_5prime` / `_3prime`:**
+- **`terminal_bias_kl_5prime`, `terminal_bias_kl_3prime`:**
   `Σ_x obs(x) log₂(obs(x)/bg(x))` over x with `obs > 0` and `bg > 0`, floored
   at 0. Bits; 0 means no departure from the background.
-- **`terminal_bias_max_deviation_5prime` / `_3prime`:** `max_x |obs(x) − bg(x)|`.
+- **`terminal_bias_max_deviation_5prime`, `terminal_bias_max_deviation_3prime`:** `max_x |obs(x) − bg(x)|`.
   Fraction.
 - Both are absent when no sequence background exists.
 
@@ -497,13 +518,13 @@ Requires the sequence background (§2.2).
 - **`complexity_distinct_positions`:** `D(1)`, the number of distinct
   positions. Count.
 - **`floss_median`, `floss_aberrant_transcript_fraction`:** for each
-  transcript with at least 20 weighted annotated reads,
-  `FLOSS_t = ½ Σ_L |f_t(L) − f_ref(L)|`, where `f_t` is the transcript's
-  read-length distribution and `f_ref` the aggregate over all annotated
-  reads. The outputs are the median FLOSS and the fraction of transcripts
-  with FLOSS > 0.3. Fraction; `null` when no transcript qualifies. The
-  docstring says the reference is the CDS aggregate, but the implementation
-  uses all annotated reads. **[decision D-5]**
+  transcript with at least 20 weighted CDS-body reads,
+  `FLOSS_t = ½ Σ_L |f_t(L) − f_ref(L)|`, where `f_t` is the read-length
+  distribution of the transcript's CDS-body reads and `f_ref` the aggregate
+  over all CDS-body reads **[D-5]**, as in Ingolia et al. 2014. The outputs
+  are the median FLOSS and the fraction of transcripts with FLOSS > 0.3.
+  Fraction; `null` when no transcript qualifies. Implemented on CDS-body
+  reads for both distributions and covered by the contract pipeline tests.
 
 ### 3.7 Sequence-dependent *(require `--fasta`)*
 
@@ -553,14 +574,14 @@ are provisional until calibration, which is outside this programme.
 | `alignment_stats` | inputs to §3.4, `multimapper_detection_method`, `mapq_available_rate`, and `samtools flagstat` totals |
 | `terminal_nucleotide_bias_distribution` | `obs − bg` per dinucleotide and end when `background_freq` is true, otherwise `obs` |
 | `nucleotide_composition` | per read position, the fraction of A/C/G/T |
-| `reading_frame_triangle` | per transcript, weighted counts by `a_site mod 3`. *Divergence:* this is not the §1 frame, because it ignores `cds_start` and includes UTR reads. |
+| `reading_frame_triangle` | per transcript, weighted counts of CDS-body reads by the §1 frame. Fixed in Phase 1: it used `a_site mod 3` over every read. |
 | `gene_body_coverage` | the 100-bin profile behind §3.2's ramp and drop |
 | `library_complexity` | `D(f)` at f = 0.1 … 1.0, plus §3.6 |
 | `library_type` | a label with its evidence: `low_quality` if `global` dominance < 0.4 or `global` `prop_reads_CDS` < 0.5; else `initiation` if `start_codon_enrichment_ratio ≥ 3`; else `elongation` |
 | `floss` | per-transcript FLOSS scores and §3.6 |
 | `rust`, `codon_dwell_times` | full outputs behind §3.7 |
 | `metrics_legacy` | pre-2.0 keys derived from the canonical ones (`registry.LEGACY_METRIC_ALIASES`); removed at 2.1 |
-| `provenance` | timestamp, command, package version, Python, platform, config file and effective-config hashes, input paths, sizes and SHA-256 |
+| `provenance` | timestamp, command, package version, Python, platform, config file and effective-config hashes, input paths, sizes and SHA-256; under D-4 also the subsample request, seed, realised fraction and count; offset audit separately records requested/effective method and external/calibrated status |
 
 ## 6. Invariants
 
@@ -580,47 +601,60 @@ These hold for every run and are what the Phase 3 invariance tests check.
 
 ## 7. Divergence register
 
-| # | where | contract | implementation | obs. |
+| # | where | contract | implementation before Phase 1 | obs. | status |
+|---|---|---|---|---|---|
+| 1 | §1, §2.1 | `p5` is 0-based | 1-based; reported offsets 1 nt low | O-027 | fixed |
+| 2 | §3.5 | 3′ dinucleotide read 5′→3′ | reversed | O-028 | fixed |
+| 3 | §3.2 | metagene position-ordered | zero positions appended at the end | O-024 | fixed |
+| 4 | §3.1 | Fourier at 1/3 cycle per nt | DC bin | O-001 | fixed |
+| 5 | §2.2 | only §3.5 needs sequences | annotation block gated on sequences; crash | O-026 | fixed |
+| 6 | §2.3 | annotation-free runs complete | crash | O-025 | fixed |
+| 7 | §3.2 | `cds_enrichment_ratio` weighted, one read set | unweighted, mixed sets | O-031 | fixed |
+| 8 | §3.2 | Gini, Theil as named | `1 − G`; "Theil" measured frame entropy | O-032 | fixed |
+| 9 | §3.1 | autocorrelation one statistic | per-length ≠ global | this doc | fixed |
+| 10 | §2.1 | random seeded subsample | header-order prefix | O-029 | fixed (D-4) |
+| 11 | §2.1 | tag recovery robust | unique set could empty; XA:Z crash | O-036 | fixed |
+| 12 | §1 | weights always applied | dropped if any name repeated | O-037 | fixed |
+| 13 | §1 | missing is `null` | several metrics report 0 | this doc | fixed (D-6) |
+| 14 | §2.7 | one threshold system | `evaluate` default uses legacy table | D3 | fixed (D-10) |
+| 15 | §5 | triangle uses §1 frame | `a_site mod 3` | this doc | fixed |
+| 16 | §3.3 | defined on tiny inputs | division by zero | this doc | fixed |
+| 17 | §1 | stop codon outside the CDS for every format | GFF3 CDS keeps the stop | O-038 | fixed (D-1) |
+| 18 | §1, §2.3 | `cds_start_complete` in the annotation | not written | O-039 | fixed (D-3) |
+| 19 | §2.6 | frame table keeps every read length | 20–39 only | O-033 | fixed (D-3) |
+| 20 | §2.6 | CDSs excluded by completeness | excluded by `cds_start == 0` | O-034, O-039 | fixed (D-3) |
+| 21 | §3.1 | dominance over every read length | plot limits 15–40 | this doc | fixed (D-3) |
+| 22 | §3.2 | stop window after the stop codon | 1…30 from `cds_end` | O-038 | fixed (D-1) |
+| 23 | §2.2 | background weighted | one count per record | O-040 | fixed (D-9) |
+| 24 | §2.7 | `null` gated metric fails the gate | skipped | O-041 | fixed (D-6) |
+| 25 | §3.4 | `duplicate_rate` `null` when uncollapsed | 0 | O-042 | fixed (D-7) |
+| 26 | §3.6 | FLOSS on CDS-body reads | all annotated reads | O-043 | fixed (D-5) |
+| 27 | §2.4 | offset audit names the computation | method name only | O-030 | fixed (D-8) |
+
+Phase 1 and Task 3 (2026-09-14) fixed the items marked fixed above, each
+pinned by focused or end-to-end regression tests. Region granularity D-2
+remains proposed and requires biological validation before changing the
+current single-base assignment semantics.
+
+## 8. Decisions
+
+Taken 2026-09-14 on the owner's delegation. Each has a record in
+`RiboMetric-Manuscript/decisions/` with its evidence and the alternatives
+considered; a later change gets a new record.
+
+| | question | decision | record | status |
 |---|---|---|---|---|
-| 1 | §1, §2.1 | `p5` is 0-based | 1-based; reported offsets are 1 nt low | O-027 |
-| 2 | §3.5 | 3′ dinucleotide read 5′→3′ | reversed | O-028 |
-| 3 | §3.2 | metagene position-ordered | zero positions appended at the end | O-024 |
-| 4 | §3.1 | Fourier at 1/3 cycle per nt | DC bin | O-001 |
-| 5 | §2.2 | only §3.5 needs sequences | annotation block gated on sequences; crash | O-026 |
-| 6 | §2.3 | annotation-free runs complete | crash | O-025 |
-| 7 | §3.2 | `cds_enrichment_ratio` weighted, one read set | unweighted, mixed sets | O-031 |
-| 8 | §3.2 | Gini, Theil as named | `1 − G`; "Theil" measures frame entropy | O-032 |
-| 9 | §3.1 | autocorrelation one statistic | per-length ≠ global | this doc |
-| 10 | §2.1 | random seeded subsample | header-order prefix | O-029 |
-| 11 | §2.1 | tag recovery robust | unique set can empty; XA:Z crash | O-036 |
-| 12 | §1 | weights always applied | dropped if any name repeats | O-037 |
-| 13 | §1 | missing is `null` | several metrics report 0 | this doc |
-| 14 | §2.7 | one threshold system | `evaluate` default uses legacy table | D3 |
-| 15 | §5 | triangle uses §1 frame | `a_site mod 3` | this doc |
-| 16 | §3.3 | defined on tiny inputs | division by zero | this doc |
+| D-1 | the stop codon | always outside the CDS: `cds_end` is its first nucleotide; `prepare` normalises GFF3 | 0001 | accepted |
+| D-2 | region granularity | whole-codon `start_codon` and `stop_codon` | 0002 | proposed |
+| D-3 | read-length windows; `cds_start == 0` | every read length (per-length values still need 100 reads); exclude 5′-incomplete CDSs by `cds_start_complete` | 0003 | accepted |
+| D-4 | subsampling | seeded, by read-name hash; seed, fraction and realised count recorded | 0004 | accepted |
+| D-5 | FLOSS reference | CDS-body reads, for the reference and each transcript | 0005 | accepted |
+| D-6 | missing values | `null` for an empty input or a zero denominator; a `null` gated metric fails the gate in `annotation` mode | 0006 | accepted |
+| D-7 | duplicate rate on uncollapsed BAMs | `null` | 0007 | accepted |
+| D-8 | offset methods | one computation under three names; the audit record names it; Phase 4 settles the names | 0008 | accepted (interim) |
+| D-9 | background weighting | weight the background like the observed frequencies | 0009 | accepted |
+| D-10 | one evaluation path | `evaluate` without `--expected` uses the scoring rules and gate | 0010 | accepted |
 
-Items 1–8 and 11 are correctness bugs, fixed in Phase 1 against a failing
-test first. Items 9, 12, 13, 15 and 16 are fixed in Phase 1 once D-6 is
-settled. Item 10 waits on D-4 and item 14 on the `evaluate` decision.
-
-## 8. Decisions needed
-
-- **D-1 — the stop codon.** Should `prepare` normalise `cds_end` so the stop
-  codon is always inside, or always outside, the CDS, regardless of
-  annotation source?
-- **D-2 — region granularity.** Should `start_codon` and `stop_codon` be whole
-  codons rather than single positions?
-- **D-3 — read-length windows.** Keep the frame table's 20–39 nt and the
-  region ratios' 20–39 nt, or use all observed lengths with the
-  `dominance_min_reads` guard? And keep excluding `cds_start == 0`
-  transcripts?
-- **D-4 — subsampling.** Random seeded sampling across references, with the
-  seed recorded?
-- **D-5 — FLOSS reference.** CDS reads or all annotated reads?
-- **D-6 — missing values.** Adopt `null` for every "cannot compute" case
-  (a breaking change for consumers that expect 0)?
-- **D-7 — duplicate rate on uncollapsed BAMs.** Report `null`?
-- **D-8 — offset methods.** Three names for one computation (O-030). Keep
-  one, or implement genuinely different methods? This is a Phase 4 question.
-- **D-9 — background weighting.** The 5′ and 3′ backgrounds count unique
-  sequences, but the observed frequencies are weighted. Weight both?
+D-2 stays proposed until there is evidence, as the decisions log requires. The
+Phase 2 initiation libraries will show how much signal sits on the second and
+third nucleotides of the start codon.

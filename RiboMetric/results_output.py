@@ -326,6 +326,37 @@ def _evaluate_qc_status_scored(
     from .scoring import build_scored_metrics, overall_gate_status
 
     scored = build_scored_metrics(results_dict, config)
+    # Annotation-mode QC requires the Tier-1 evidence named by the scoring
+    # contract. Missing/non-finite gated metrics are failures, not INFO: INFO
+    # is appropriate for optional caveats but must not allow an annotated run
+    # with no usable evidence to pass.
+    annotation_mode = bool(
+        config
+        and isinstance(config.get("argument"), dict)
+        and (config["argument"].get("annotation") or config["argument"].get("gff"))
+    )
+    if annotation_mode:
+        from .scoring import get_scoring_spec
+
+        existing = {m["key"] for m in scored}
+        for key, spec in get_scoring_spec(config).items():
+            if not spec.get("gate") or key in existing:
+                continue
+            scored.append(
+                {
+                    "key": key,
+                    "metric": spec.get("metric", key),
+                    "raw": None,
+                    "score": None,
+                    "status": "FAIL",
+                    "gate": True,
+                    "tier": spec.get("tier"),
+                    "decision": spec.get("decision", ""),
+                }
+            )
+        for record in scored:
+            if record["gate"] and record["score"] is None:
+                record["status"] = "FAIL"
     overall_status = overall_gate_status(scored)
 
     qc_checks = [

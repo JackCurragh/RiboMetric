@@ -14,8 +14,8 @@ import os
 import pandas as pd
 
 from RiboMetric.bam_processing import process_sequences
-from RiboMetric.file_parser import gff_df_to_cds_df, parse_gff
-from RiboMetric.modules import a_site_calculation
+from RiboMetric.file_parser import deterministic_subsample, gff_df_to_cds_df, parse_gff
+from RiboMetric.modules import a_site_calculation, read_frame_distribution_annotated
 from RiboMetric.results_output import evaluate_qc_status
 
 TEST_DATA = os.path.join(os.path.dirname(__file__), "test_data")
@@ -40,6 +40,23 @@ def test_three_prime_background_excludes_terminal_pattern():
     assert diff > 0
 
 
+def test_terminal_background_uses_count_weights():
+    sequences = ["AAAAAA", "CCCCCC"]
+    weighted = process_sequences(sequences, [9, 1], pattern_length=2)
+    unweighted = process_sequences(sequences, [1, 1], pattern_length=2)
+    assert weighted["5_prime_bg"]["AA"] > unweighted["5_prime_bg"]["AA"]
+
+
+def test_subsample_is_seeded_and_keeps_repeated_names_together():
+    reads = pd.DataFrame({"read_name": ["a", "a", "b", "c", "d"], "value": range(5)})
+    first, info = deterministic_subsample(reads, 2, seed=7)
+    repeat, repeat_info = deterministic_subsample(reads, 2, seed=7)
+    assert first.equals(repeat)
+    assert info == repeat_info
+    assert info["realised_count"] == len(first)
+    assert first["read_name"].value_counts().max() <= 2
+
+
 # --------------------------------------------------------------------------- #
 # S2 — GFF coordinates are 1-based inclusive
 # --------------------------------------------------------------------------- #
@@ -62,6 +79,104 @@ def test_gff_transcript_length_matches_inclusive_exon_sum():
     )
     common = res.index.intersection(inclusive.index)
     assert (res.loc[common, "transcript_length"] == inclusive.loc[common]).all()
+
+
+def test_zero_cds_start_is_retained_and_completeness_is_explicit():
+    """A CDS beginning at transcript offset zero is not automatically partial."""
+    gff_df = pd.DataFrame(
+        [
+            ["chr", "test", "exon", 1, 300, ".", "+", ".", "transcript_id=TX_COMPLETE"],
+            ["chr", "test", "CDS", 1, 300, ".", "+", "0", "transcript_id=TX_COMPLETE"],
+            ["chr", "test", "start_codon", 1, 3, ".", "+", "0", "transcript_id=TX_COMPLETE"],
+            ["chr", "test", "exon", 1001, 1300, ".", "+", ".", "transcript_id=TX_UNKNOWN"],
+            ["chr", "test", "CDS", 1001, 1300, ".", "+", "0", "transcript_id=TX_UNKNOWN"],
+        ],
+        columns=[
+            "seq_id",
+            "source",
+            "type",
+            "start",
+            "end",
+            "score",
+            "strand",
+            "phase",
+            "attributes",
+        ],
+    )
+    gff_df["transcript_id"] = gff_df["attributes"].str.extract(r"transcript_id=([^;]+)")
+
+    result = gff_df_to_cds_df(gff_df).set_index("transcript_id")
+
+    assert result.loc["TX_COMPLETE", "cds_start"] == 0
+    assert bool(result.loc["TX_COMPLETE", "cds_start_complete"])
+    assert result.loc["TX_UNKNOWN", "cds_start"] == 0
+    assert not bool(result.loc["TX_UNKNOWN", "cds_start_complete"])
+
+
+def test_gff_stop_codon_is_normalised_only_when_included_in_cds():
+    """GFF3 CDS spans including stop_codon end at the stop's first base."""
+    rows = [
+        ["chr", "gff3", "exon", 1, 300, ".", "+", ".", "transcript_id=TX_IN"],
+        ["chr", "gff3", "CDS", 1, 300, ".", "+", "0", "transcript_id=TX_IN"],
+        ["chr", "gff3", "stop_codon", 298, 300, ".", "+", "0", "transcript_id=TX_IN"],
+        ["chr", "gff3", "exon", 1001, 1300, ".", "+", ".", "transcript_id=TX_OUT"],
+        ["chr", "gff3", "CDS", 1001, 1297, ".", "+", "0", "transcript_id=TX_OUT"],
+        ["chr", "gff3", "stop_codon", 1298, 1300, ".", "+", "0", "transcript_id=TX_OUT"],
+    ]
+    gff_df = pd.DataFrame(
+        rows,
+        columns=[
+            "seq_id",
+            "source",
+            "type",
+            "start",
+            "end",
+            "score",
+            "strand",
+            "phase",
+            "attributes",
+        ],
+    )
+    gff_df["transcript_id"] = gff_df["attributes"].str.extract(r"transcript_id=([^;]+)")
+
+    result = gff_df_to_cds_df(gff_df).set_index("transcript_id")
+
+    assert result.loc["TX_IN", "cds_end"] == 297
+    assert result.loc["TX_OUT", "cds_end"] == 297
+
+
+def test_frame_distribution_keeps_complete_zero_start_transcripts():
+    reads = pd.DataFrame(
+        {
+            "read_length": [28] * 3,
+            "a_site": [30, 33, 36],
+            "cds_start": [0] * 3,
+            "cds_end": [300] * 3,
+            "cds_start_complete": [True] * 3,
+            "read_name": ["r1", "r2", "r3"],
+            "mapq": [255] * 3,
+            "count": [1] * 3,
+        }
+    )
+    result = read_frame_distribution_annotated(reads, exclusion_length=0)
+    assert result[28] == {0: 3, 1: 0, 2: 0}
+
+
+def test_frame_distribution_keeps_all_read_lengths():
+    reads = pd.DataFrame(
+        {
+            "read_length": [18, 28, 45],
+            "a_site": [30, 30, 30],
+            "cds_start": [0, 0, 0],
+            "cds_end": [300, 300, 300],
+            "cds_start_complete": [True, True, True],
+            "read_name": ["r18", "r28", "r45"],
+            "mapq": [255] * 3,
+            "count": [1] * 3,
+        }
+    )
+    result = read_frame_distribution_annotated(reads, exclusion_length=0)
+    assert set(result) == {18, 28, 45}
 
 
 # --------------------------------------------------------------------------- #

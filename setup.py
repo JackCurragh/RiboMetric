@@ -5,16 +5,14 @@
 import re
 from pathlib import Path
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 with open("README.rst") as readme_file:
     readme = readme_file.read()
 
 # Single source of truth for the version: RiboMetric/__init__.py
 _init = Path(__file__).parent / "RiboMetric" / "__init__.py"
-version = re.search(
-    r'^__version__\s*=\s*["\']([^"\']+)["\']', _init.read_text(), re.M
-).group(1)
+version = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', _init.read_text(), re.M).group(1)
 
 # Core dependencies needed to run RiboMetric
 requirements = [

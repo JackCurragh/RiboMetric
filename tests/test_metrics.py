@@ -32,8 +32,11 @@ def test_terminal_nucleotide_bias_KL_divergence():
     """
     Test the ligation bias distribution metric
     """
-    read_df_pre = pd.read_csv("tests/test_data/test.csv")
-    read_df = read_df_pre.loc[read_df_pre.index.repeat(read_df_pre["count"])].reset_index(drop=True)
+    # Collapsed rows: each row stands for `count` reads and the module weights
+    # by it. This used to expand the rows while keeping `count`, which only
+    # gave the right answer because repeated read names switched the weights
+    # off library-wide (O-037).
+    read_df = pd.read_csv("tests/test_data/test.csv")
     categories = ["first_dinucleotide", "last_dinucleotide"]
     read_df[categories] = read_df[categories].astype("category")
     terminal_nucleotide_bias_dict = terminal_nucleotide_bias_distribution(read_df)

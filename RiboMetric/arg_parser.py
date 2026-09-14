@@ -167,6 +167,13 @@ def argument_parser() -> argparse.ArgumentParser:
         help="Number of reads to subsample from the bam file",
     )
     run_parser.add_argument(
+        "--seed",
+        type=int,
+        required=False,
+        default=42,
+        help="Seed for reproducible read-name subsampling (default: 42)",
+    )
+    run_parser.add_argument(
         "-T",
         "--transcripts",
         type=int,
