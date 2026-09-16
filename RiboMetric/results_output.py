@@ -63,7 +63,7 @@ def generate_json(
     print(f"Results written in {output}")
 
 
-def normalise_score(score: float, min_score: float, max_score: float) -> float:
+def normalise_score(score: Optional[float], min_score: float, max_score: float) -> Optional[float]:
     """
     Normalise the score of a metric
 
@@ -75,6 +75,10 @@ def normalise_score(score: float, min_score: float, max_score: float) -> float:
     Output:
         The normalised score
     """
+    # Nullable and non-finite nested metrics are valid results. Preserve them
+    # as null in the legacy CSV instead of evaluating None > max_score.
+    if score is None or not math.isfinite(float(score)):
+        return None
     if score > max_score:
         print(f"Score {score} is greater than the maximum score {max_score}")
         return 1

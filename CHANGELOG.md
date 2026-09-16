@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- Legacy CSV generation now preserves nullable and non-finite nested metrics as
+  unscored fields instead of raising during score normalisation.
+
 ## [1.5.0] — 2026-09-14
 
 ### BREAKING — measurement corrections found by the metric contract

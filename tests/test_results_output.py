@@ -95,6 +95,10 @@ class TestLegacyFunctions:
         score = normalise_score(-0.5, 0, 1)
         assert score == 0
 
+    @pytest.mark.parametrize("value", [None, float("nan"), float("inf")])
+    def test_normalise_score_nullable_and_nonfinite_are_unscored(self, value):
+        assert normalise_score(value, 0, 1) is None
+
     def test_generate_json(self, sample_results_dict, sample_config, tmp_path):
         """Test JSON generation"""
         output_file = tmp_path / "test.json"
@@ -131,6 +135,13 @@ class TestLegacyFunctions:
 
         ratio_row = df[df["Metric"] == "ratio_cds:leader_global"].iloc[0]
         assert pd.isna(ratio_row["MaxMinScore"])
+
+    def test_generate_csv_with_nullable_nested_metric(self, sample_config, tmp_path):
+        results = {"metrics": {"periodicity_dominance": {"global": None, 28: 0.8}}}
+        generate_csv(results, sample_config, "nullable", str(tmp_path))
+        frame = pd.read_csv(tmp_path / "nullable.csv")
+        row = frame.loc[frame["Metric"] == "periodicity_dominance_global"].iloc[0]
+        assert pd.isna(row["MaxMinScore"])
 
 
 # =============================================================================
