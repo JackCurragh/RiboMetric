@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [1.5.1] - 2026-09-16
 
 ### Fixed
 - Legacy CSV generation now preserves nullable and non-finite nested metrics as
