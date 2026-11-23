@@ -21,13 +21,13 @@ requirements = [
     "Jinja2>=3.0",
     # Prefer newer Kaleido (>=1.0.0) to avoid deprecations and get wheels
     "kaleido>=1.0.0",  # Required for plotly image export
-    # numpy<2 / pandas<2.3: upper caps reflect the tested-compatible range with
-    # oxbow/pyarrow. Revisit once validated against numpy 2.x.
+    # Keep PyArrow below 26 while numpy remains <2; Arrow 26 now requires NumPy 2.
+    # Revisit these caps together once the oxbow path is validated against NumPy 2.x.
     "numpy>=1.24,<2",
     "oxbow>=0.3.0",
     "pandas>=2.0,<2.3",
     "plotly>=5.14",
-    "pyarrow>=10.0.0",
+    "pyarrow>=10.0.0,<26",
     "pysam>=0.21.0",
     "PyYAML>=6.0",
     "rich>=13.3.3",  # Required by textual

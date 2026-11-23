@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Iterable, Optional, Tuple
+from typing import List, Optional, Tuple
 
 _OPS = re.compile(r"(\d+)([MIDNSHP=X])")
 
@@ -46,7 +46,7 @@ def project_five_prime_offset(
         return None
     pairs = parse_cigar(cigar)
     ref = reference_start
-    coordinates = []
+    coordinates: List[Optional[int]] = []
     for n, op in pairs:
         if op in "M=X":
             coordinates.extend(range(ref, ref + n))

@@ -6,6 +6,7 @@ of the RibosomeProfiler pipeline
 
 import numpy as np
 import pandas as pd
+
 from .cigar_geometry import project_five_prime_offset
 
 try:

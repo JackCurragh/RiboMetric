@@ -480,7 +480,6 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     read_names = _get_oxbow_column(oxbow_df, _READ_NAME_COLUMNS, "read name")
     batch_df["read_name"] = read_names.astype("category")
 
-    seq_len_series = oxbow_df["seq"].str.len().fillna(0).astype(int)
     cigar_series = oxbow_df["cigar"].astype(str)
     reverse_series = (
         oxbow_df["is_reverse"].fillna(False).astype(bool)
