@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use RiboMetric in your research, please cite it as below."
 title: "RiboMetric: A comprehensive quality assessment tool for ribosome profiling datasets"
-version: 1.5.1
+version: 1.6.0
 date-released: "2026-11-23"
 license: MIT
 repository-code: "https://github.com/JackCurragh/RiboMetric"
