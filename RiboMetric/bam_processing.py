@@ -37,11 +37,9 @@ def validate_bam(bam_file: str) -> None:
         ox.read_bam(bam_file)
     except Exception as e:
         if "InvalidReferenceSequenceName" in str(e):
-            raise Exception(
-                "InvalidReferenceSequenceName - \
+            raise Exception("InvalidReferenceSequenceName - \
                             Likely an invalid character in sequence name \
-                            eg. ), or ( "
-            )
+                            eg. ), or ( ")
         else:
             raise Exception("Invalid bam file")
 
@@ -122,11 +120,9 @@ def read_oxbow_df(bam_file: str) -> pd.DataFrame:
         arrow_ipc = ox.read_bam(bam_file)
     except Exception as e:
         if "InvalidReferenceSequenceName" in str(e):
-            raise Exception(
-                "InvalidReferenceSequenceName - \
+            raise Exception("InvalidReferenceSequenceName - \
                             Likely an invalid character in sequence name \
-                            eg. ), or ( "
-            )
+                            eg. ), or ( ")
         else:
             raise Exception(f"Invalid bam file {e}")
 
