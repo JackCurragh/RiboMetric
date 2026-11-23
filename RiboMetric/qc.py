@@ -689,10 +689,20 @@ def annotation_mode(
     if profile_eligibility is not None:
         weights = mapped_read_df["count"].astype(int) if "count" in mapped_read_df else 1
         total = int(weights.sum()) if hasattr(weights, "sum") else len(mapped_read_df)
-        eligible_weights = mapped_read_df.loc[profile_eligibility, "count"].astype(int) if "count" in mapped_read_df else profile_eligibility
-        eligible = int(eligible_weights.sum()) if hasattr(eligible_weights, "sum") else int(profile_eligibility.sum())
+        eligible_weights = (
+            mapped_read_df.loc[profile_eligibility, "count"].astype(int)
+            if "count" in mapped_read_df
+            else profile_eligibility
+        )
+        eligible = (
+            int(eligible_weights.sum())
+            if hasattr(eligible_weights, "sum")
+            else int(profile_eligibility.sum())
+        )
         results_dict["alignment_stats"]["profile_eligible_reads"] = eligible
-        results_dict["alignment_stats"]["profile_eligible_fraction"] = round(eligible / total, 4) if total else 0.0
+        results_dict["alignment_stats"]["profile_eligible_fraction"] = (
+            round(eligible / total, 4) if total else 0.0
+        )
 
     #######################################################################
     # READ LENGTH DISTRIBUTION

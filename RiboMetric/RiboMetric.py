@@ -375,21 +375,25 @@ def main(args: argparse.Namespace) -> int:
 
         if config["argument"]["bam"]:
             if not check_bam(config["argument"]["bam"]):
-                raise Exception("""
+                raise Exception(
+                    """
                 Either BAM file or it's index does not exist at given path
 
                 To create an index for a BAM file, run:
                 samtools index <bam_file>
-                """)
+                """
+                )
 
             if config["argument"]["annotation"] is not None:
                 if not check_annotation(config["argument"]["annotation"]):
-                    raise Exception("""
+                    raise Exception(
+                        """
                     Annotation file not found or not in the correct format.
 
                     To create an annotation file, run:
                     RiboMetric prepare -g <gff_file>
-                    """)
+                    """
+                    )
 
             flagstat = flagstat_bam(config["argument"]["bam"])
             # Parse all primary alignments before selection so -S is not tied
@@ -413,11 +417,13 @@ def main(args: argparse.Namespace) -> int:
                 )
                 sequence_data, sequence_background = recompute_sequence_summaries(read_df_pre)
             if read_df_pre.empty:
-                raise Exception("""
+                raise Exception(
+                    """
                 No reads found in the given bam file.
 
                 Please check the file and try again.
-                """)
+                """
+                )
             print("Reads parsed")
 
             # Optionally drop sequence data so sequence-based metrics are

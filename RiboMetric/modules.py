@@ -27,7 +27,9 @@ def _project_sites(df: pd.DataFrame) -> pd.Series:
     """Project 5′-relative query offsets through CIGAR to reference space."""
     if not {"cigar", "is_reverse"}.issubset(df.columns):
         return pd.to_numeric(df["reference_start"], errors="coerce") + df["offset"]
-    reference_column = "reference_leftmost" if "reference_leftmost" in df.columns else "reference_start"
+    reference_column = (
+        "reference_leftmost" if "reference_leftmost" in df.columns else "reference_start"
+    )
     values = []
     for row in df.itertuples():
         try:
