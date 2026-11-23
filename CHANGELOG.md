@@ -9,8 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-23
+
 ### Fixed
 - Make aligned query length, aligned 5′ eligibility, and CIGAR-based offset projection use shared coordinate rules.
+- Cap PyArrow below 26 while RiboMetric supports NumPy below 2.
 
 ## [1.5.1] - 2026-09-16
 
