@@ -50,6 +50,7 @@
   "floss_median": 0.3642,
   "marginal_position_discovery_rate": 0.1556,
   "n_recommended_read_lengths": 2,
+  "offset_projection_unplaced_reads": 0,
   "periodicity_dominance": {
    "28": 1.0,
    "29": 1.0,

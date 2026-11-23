@@ -5,6 +5,7 @@ This script contains processing steps used to parse bam files.
 import io
 import itertools
 import os
+import re
 from typing import Any, Dict, Iterable, List, Optional
 
 import numpy as np
@@ -13,6 +14,7 @@ import pandas as pd
 import pyarrow.ipc
 import pysam
 
+from .cigar_geometry import aligned_query_length, five_prime_soft_clip, is_profile_eligible
 from .file_splitting import format_progress, split_bam
 
 # Process 1-in-N read chunks when accumulating sequence composition and
@@ -149,6 +151,8 @@ def _recover_alignment_tags_from_pysam(oxbow_df: pd.DataFrame, bam_file: str) ->
     recovered_nh: List[Any] = []
     recovered_xa: List[Any] = []
     recovered_qname: List[str] = []
+    recovered_reverse: List[bool] = []
+    recovered_cigar: List[str] = []
     with pysam.AlignmentFile(bam_file, "rb") as bam:
         for read in bam.fetch(until_eof=True):
             if read.is_secondary:
@@ -157,6 +161,8 @@ def _recover_alignment_tags_from_pysam(oxbow_df: pd.DataFrame, bam_file: str) ->
             recovered_nh.append(read.get_tag("NH") if read.has_tag("NH") else np.nan)
             recovered_xa.append(read.get_tag("XA") if read.has_tag("XA") else np.nan)
             recovered_qname.append(read.query_name or "")
+            recovered_reverse.append(bool(read.is_reverse))
+            recovered_cigar.append(read.cigarstring or "")
 
     # Join pysam's tags onto oxbow's rows. When both enumerate the same records
     # in the same order a positional join is exact. Otherwise (genome BAMs,
@@ -187,6 +193,10 @@ def _recover_alignment_tags_from_pysam(oxbow_df: pd.DataFrame, bam_file: str) ->
     mapq_values = np.asarray(recovered_mapq, dtype=float)[rows]
     nh_values = np.asarray(recovered_nh, dtype=object)[rows]
     xa_values = np.asarray(recovered_xa, dtype=object)[rows]
+    if "is_reverse" not in oxbow_df.columns:
+        oxbow_df["is_reverse"] = np.asarray(recovered_reverse, dtype=bool)[rows]
+    if "cigar" not in oxbow_df.columns:
+        oxbow_df["cigar"] = np.asarray(recovered_cigar, dtype=object)[rows]
 
     if "mapq" in oxbow_df.columns:
         missing = oxbow_df["mapq"].isna()
@@ -219,6 +229,7 @@ def read_pysam_df(bam_file: str) -> pd.DataFrame:
                     "qname": read.query_name,
                     "seq": read.query_sequence or "",
                     "cigar": read.cigarstring or "",
+                    "is_reverse": bool(read.is_reverse),
                     "rname": bam.get_reference_name(read.reference_id),
                     "pos": (
                         float(read.reference_start + 1)
@@ -232,7 +243,7 @@ def read_pysam_df(bam_file: str) -> pd.DataFrame:
             )
     return pd.DataFrame.from_records(
         records,
-        columns=["qname", "seq", "cigar", "rname", "pos", "mapq", "nh", "xa"],
+        columns=["qname", "seq", "cigar", "is_reverse", "rname", "pos", "mapq", "nh", "xa"],
     )
 
 
@@ -417,7 +428,11 @@ def _empty_read_batch() -> pd.DataFrame:
             "read_length": pd.Series(dtype="category"),
             "reference_name": pd.Series(dtype="category"),
             "reference_start": pd.Series(dtype="float"),
+            "reference_leftmost": pd.Series(dtype="float"),
+            "cigar": pd.Series(dtype="object"),
+            "is_reverse": pd.Series(dtype="bool"),
             "soft_clip_5": pd.Series(dtype="uint8"),
+            "profile_eligible": pd.Series(dtype="bool"),
             "first_dinucleotide": pd.Series(dtype="category"),
             "last_dinucleotide": pd.Series(dtype="category"),
             "count": pd.Series(dtype="category"),
@@ -465,45 +480,26 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     read_names = _get_oxbow_column(oxbow_df, _READ_NAME_COLUMNS, "read name")
     batch_df["read_name"] = read_names.astype("category")
 
-    # Compute read length from CIGAR as the number of read bases consumed by the
-    # alignment (M, =, X, I). This is robust to reference-side gaps (D) and avoids
-    # counting soft-clipped bases as part of the footprint.
-    # Falls back to SEQ length if CIGAR is missing/malformed.
-    def _read_len_from_cigar(cigar: str, seqlen: int) -> int:
-        try:
-            parts = [] if not isinstance(cigar, str) else cigar
-            # Find all (length, op) pairs
-            pairs = (
-                []
-                if not parts
-                else [
-                    (int(n), op)
-                    for n, op in __import__("re").findall(r"(\d+)([MIDNSHP=XB])", parts)
-                ]
-            )
-            if not pairs:
-                return seqlen
-            return int(sum(n for n, op in pairs if op in ("M", "=", "X", "I")))
-        except Exception:
-            return seqlen
-
     seq_len_series = oxbow_df["seq"].str.len().fillna(0).astype(int)
     cigar_series = oxbow_df["cigar"].astype(str)
-    rl_series = [
-        _read_len_from_cigar(cig, seqlen)
-        for cig, seqlen in zip(cigar_series.tolist(), seq_len_series.tolist())
-    ]
+    reverse_series = (
+        oxbow_df["is_reverse"].fillna(False).astype(bool)
+        if "is_reverse" in oxbow_df.columns
+        else pd.Series(False, index=oxbow_df.index)
+    )
+    rl_series = [aligned_query_length(cig) for cig in cigar_series.tolist()]
     batch_df["read_length"] = pd.Series(rl_series, dtype="category")
 
     batch_df["reference_name"] = oxbow_df["rname"].astype("category")
     batch_df["_sequence"] = oxbow_df["seq"].astype(str).to_numpy()
 
-    # Correct reference_start for 5' soft clips so it points to the true 5' end
-    # of the read (first base of the protected fragment) rather than the first
-    # aligned base. This is required for accurate A-site/P-site offset detection.
-    # CIGAR pattern: optional leading hard-clip (\d+H), then optional soft-clip (\d+S)
-    soft_clip_5 = (
-        oxbow_df["cigar"].str.extract(r"^(?:\d+H)?(\d+)S", expand=False).fillna("0").astype(int)
+    # Keep the leftmost aligned reference coordinate. A remaining aligned-5′
+    # soft clip makes the biological origin unresolved and is excluded from
+    # profile/offset calculations while remaining in mapped-read statistics.
+    soft_clip_5 = pd.Series(
+        [five_prime_soft_clip(cig, reverse) for cig, reverse in zip(cigar_series, reverse_series)],
+        index=oxbow_df.index,
+        dtype="uint8",
     )
     # oxbow reports SAM POS, which is 1-based. Everything downstream (the
     # annotation's cds_start/cds_end, offsets, frames) is 0-based, so convert
@@ -511,10 +507,24 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     # convention (P 11 / A 14 for a 28 nt footprint instead of 12 / 15) and
     # externally supplied offsets landed 1 nt downstream. See
     # docs/METRIC_CONTRACT.md section 1 (observation O-027).
-    # Use float to preserve NaN for reads with no mapped position; NaN - int = NaN
-    batch_df["reference_start"] = oxbow_df["pos"].astype("float") - 1 - soft_clip_5
-    # Store the 5' soft-clip count so downstream code can compute soft-clip rates.
-    batch_df["soft_clip_5"] = soft_clip_5.astype("uint8")
+    # Keep a leftmost coordinate for CIGAR projection and a read-oriented 5′
+    # origin for metagene profiles. Do not move either coordinate across a soft
+    # clip: clipped reads are excluded from profile eligibility separately.
+    reference_leftmost = oxbow_df["pos"].astype("float") - 1
+    def _reference_span(cigar: str) -> int:
+        return sum(int(n) for n, op in re.findall(r"(\d+)([MDN=X])", cigar) if op in "MDN=X")
+    reference_span = pd.Series([_reference_span(cig) for cig in cigar_series], index=oxbow_df.index)
+    batch_df["reference_leftmost"] = reference_leftmost
+    batch_df["reference_start"] = (
+        reference_leftmost + reference_span - 1
+    ).where(reverse_series, reference_leftmost)
+    batch_df["cigar"] = cigar_series.to_numpy()
+    batch_df["is_reverse"] = reverse_series.to_numpy()
+    batch_df["soft_clip_5"] = soft_clip_5.to_numpy()
+    batch_df["profile_eligible"] = [
+        is_profile_eligible(length, clip)
+        for length, clip in zip(rl_series, soft_clip_5.tolist())
+    ]
     batch_df["first_dinucleotide"] = oxbow_df["seq"].str.slice(stop=2).astype("category")
     # The last two bases in read (5'->3') order, the orientation the 3'
     # background is counted in. slice(stop=-3, step=-1) returned them reversed

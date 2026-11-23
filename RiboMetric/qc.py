@@ -484,6 +484,11 @@ def annotation_mode(
         results_dict: Dictionary containing the results of the qc analysis
     """
     print("Calculating A site information...")
+    mapped_read_df = read_df
+    profile_eligibility = None
+    if "profile_eligible" in read_df.columns:
+        profile_eligibility = read_df["profile_eligible"].astype(bool)
+        read_df = read_df.loc[profile_eligibility].copy()
     offset_bounds = (
         int(config.get("argument", {}).get("offset_min", DEFAULT_OFFSET_BOUNDS[0])),
         int(config.get("argument", {}).get("offset_max", DEFAULT_OFFSET_BOUNDS[1])),
@@ -637,7 +642,7 @@ def annotation_mode(
     #######################################################################
     # ALIGNMENT STATS  (from read_df columns computed during BAM parsing)
     #######################################################################
-    alignment_stats = calculate_alignment_stats(read_df)
+    alignment_stats = calculate_alignment_stats(mapped_read_df)
     results_dict["alignment_stats"] = {
         key: (round(value, 4) if isinstance(value, float) else value)
         for key, value in alignment_stats.items()
@@ -661,10 +666,10 @@ def annotation_mode(
             "is reported as null (not applicable)."
         )
 
-    if "soft_clip_5" in read_df.columns:
-        _count_arr = read_df["count"].astype(int)
+    if "soft_clip_5" in mapped_read_df.columns:
+        _count_arr = mapped_read_df["count"].astype(int)
         _total_weighted = alignment_stats["total_reads_analysed"]
-        _sc5 = read_df["soft_clip_5"].astype(int)
+        _sc5 = mapped_read_df["soft_clip_5"].astype(int)
         _sc5_mask = (_sc5 > 0).astype(int)
         _sc5_rate = (
             float((_sc5_mask * _count_arr).sum() / _total_weighted) if _total_weighted > 0 else 0.0
@@ -672,11 +677,28 @@ def annotation_mode(
         results_dict["alignment_stats"]["soft_clip_rate_5prime"] = round(_sc5_rate, 4)
         results_dict["metrics"]["soft_clip_rate_5prime"] = _sc5_rate
 
+    if "profile_eligible" in mapped_read_df.columns and "a_site" in read_df.columns:
+        unplaced = read_df["a_site"].isna()
+        if "count" in read_df.columns:
+            unplaced_reads = int(read_df.loc[unplaced, "count"].astype(int).sum())
+        else:
+            unplaced_reads = int(unplaced.sum())
+        results_dict["alignment_stats"]["offset_projection_unplaced_reads"] = unplaced_reads
+        results_dict["metrics"]["offset_projection_unplaced_reads"] = unplaced_reads
+
+    if profile_eligibility is not None:
+        weights = mapped_read_df["count"].astype(int) if "count" in mapped_read_df else 1
+        total = int(weights.sum()) if hasattr(weights, "sum") else len(mapped_read_df)
+        eligible_weights = mapped_read_df.loc[profile_eligibility, "count"].astype(int) if "count" in mapped_read_df else profile_eligibility
+        eligible = int(eligible_weights.sum()) if hasattr(eligible_weights, "sum") else int(profile_eligibility.sum())
+        results_dict["alignment_stats"]["profile_eligible_reads"] = eligible
+        results_dict["alignment_stats"]["profile_eligible_fraction"] = round(eligible / total, 4) if total else 0.0
+
     #######################################################################
     # READ LENGTH DISTRIBUTION
     #######################################################################
     print("> read_length_distribution")
-    results_dict["read_length_distribution"] = read_length_distribution(read_df)
+    results_dict["read_length_distribution"] = read_length_distribution(mapped_read_df)
 
     # Read length shape. These are reported in their natural direction (spread
     # is spread, not 1 - spread) and are diagnostics, not scores: see

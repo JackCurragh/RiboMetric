@@ -40,22 +40,30 @@ i.e. the reference sequence of a transcriptome BAM.
   valid coordinate and is not itself evidence of an incomplete CDS.
 - `transcript_length` is the sum of exon lengths.
 
-**Read 5′ end.** `p5` is the 0-based transcript position of the first base
-of the read *including* 5′ soft-clipped bases:
-`p5 = POS − 1 − softclip5`, where POS is the 1-based SAM position.
-Fixed in Phase 1: the implementation used the 1-based value,
-`POS − softclip5`, so every reported offset was 1 nt low (O-027).
+**Read 5′ end.** `p5` is the 0-based transcript position of the first aligned
+query base in read orientation. Soft and hard clips are excluded. For a forward
+alignment this is the leftmost aligned reference position; for a reverse
+alignment it is the rightmost aligned reference position. Keep the leftmost
+reference coordinate separately for CIGAR projection.
 
 **Read length.** `L` is the number of query bases consumed by the alignment:
 the sum of CIGAR `M`, `I`, `=` and `X` operations. Soft- and hard-clipped
 bases are not part of the footprint. If the CIGAR is missing, the sequence
 length is used.
 
-**Offsets.** An offset `o(L)` is the 0-based distance from the read 5′ end to
-the first nucleotide of the target codon: `site = p5 + o(L)`. The A-site
-offset is the P-site offset plus 3. For a canonical 28-nt monosome footprint
-these are P 12 and A 15. The analysis site is called `a_site` throughout,
-even when the target is the P-site.
+**Offsets.** An offset `o(L)` is the 0-based distance from the aligned read 5′
+end to the first nucleotide of the target codon. Walk CIGAR in read orientation
+to project it to reference space: `M`, `=`, and `X` consume query and reference;
+`I` consumes query but has no reference coordinate; `D` and `N` advance only
+the reference. A projected insertion offset is unplaceable. The A-site offset
+is the P-site offset plus 3. For a canonical 28-nt monosome footprint these are
+P 12 and A 15. The analysis site is called `a_site` throughout, even when the
+target is the P-site.
+
+Only alignments with aligned query length 20–40 nt and no aligned-5′ soft clip
+are eligible for offset estimation and profile generation. Other mapped reads
+remain in mapped-read statistics. Report eligible and unplaceable multiplicity
+explicitly.
 
 **Weights.** A BAM record whose read name ends `_xN` stands for `N` identical
 reads (a collapsed library) and carries weight `w = N`; otherwise `w = 1`.
@@ -603,7 +611,7 @@ These hold for every run and are what the Phase 3 invariance tests check.
 
 | # | where | contract | implementation before Phase 1 | obs. | status |
 |---|---|---|---|---|---|
-| 1 | §1, §2.1 | `p5` is 0-based | 1-based; reported offsets 1 nt low | O-027 | fixed |
+| 1 | §1, §2.1 | read-oriented aligned `p5` is 0-based | 1-based, clip-subtracted left coordinate; reverse reads and CIGAR projection disagreed | O-027 | fixed |
 | 2 | §3.5 | 3′ dinucleotide read 5′→3′ | reversed | O-028 | fixed |
 | 3 | §3.2 | metagene position-ordered | zero positions appended at the end | O-024 | fixed |
 | 4 | §3.1 | Fourier at 1/3 cycle per nt | DC bin | O-001 | fixed |
