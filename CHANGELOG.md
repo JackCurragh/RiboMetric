@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- Make aligned query length, aligned 5′ eligibility, and CIGAR-based offset projection use shared coordinate rules.
+
 ## [1.5.1] - 2026-09-16
 
 ### Fixed

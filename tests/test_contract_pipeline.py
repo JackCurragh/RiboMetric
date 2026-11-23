@@ -93,7 +93,7 @@ def _write_bam(path: Path, reads):
     pysam.index(str(path))
 
 
-def test_read_start_is_0_based_and_includes_5prime_soft_clip(tmp_path):
+def test_read_start_uses_aligned_five_prime_origin_without_clip_subtraction(tmp_path):
     bam = tmp_path / "c.bam"
     body = "ACGTACGTACGTACGTACGTACGTACGTAC"
     _write_bam(
@@ -104,8 +104,30 @@ def test_read_start_is_0_based_and_includes_5prime_soft_clip(tmp_path):
         ],
     )
     reads, _ = ox_parse_entire_bam(str(bam))
-    assert reads["reference_start"].tolist() == [100.0, 198.0]
+    assert reads["reference_start"].tolist() == [100.0, 200.0]
     assert reads["read_length"].astype(int).tolist() == [30, 30]
+    assert reads["profile_eligible"].tolist() == [True, False]
+
+
+def test_reverse_read_start_is_rightmost_aligned_reference_base(tmp_path):
+    bam = tmp_path / "reverse.bam"
+    header = {"HD": {"VN": "1.6", "SO": "coordinate"}, "SQ": [{"SN": "TX1", "LN": 1000}]}
+    with pysam.AlignmentFile(str(bam), "wb", header=header) as out:
+        read = pysam.AlignedSegment()
+        read.query_name = "reverse_x2"
+        read.query_sequence = "A" * 28
+        read.flag = 16
+        read.reference_id = 0
+        read.reference_start = 100
+        read.mapping_quality = 255
+        read.cigarstring = "28M"
+        read.query_qualities = pysam.qualitystring_to_array("I" * 28)
+        read.set_tag("NH", 1)
+        out.write(read)
+    pysam.index(str(bam))
+    reads, _ = ox_parse_entire_bam(str(bam))
+    assert reads["reference_start"].tolist() == [127.0]
+    assert reads["reference_leftmost"].tolist() == [100.0]
 
 
 def test_last_dinucleotide_is_read_5prime_to_3prime(tmp_path):

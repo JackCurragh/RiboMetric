@@ -6,6 +6,7 @@ of the RibosomeProfiler pipeline
 
 import numpy as np
 import pandas as pd
+from .cigar_geometry import project_five_prime_offset
 
 try:
     from xhtml2pdf import pisa
@@ -19,6 +20,27 @@ from typing import Dict, List, Optional, Tuple, cast
 DEFAULT_OFFSET_BOUNDS: Tuple[int, int] = (8, 20)
 DEFAULT_OFFSET_MAX_READ_LENGTH_FRACTION = 2 / 3
 OFFSET_TARGET_SHIFTS: Dict[str, int] = {"p_site": 0, "a_site": 3}
+
+
+def _project_sites(df: pd.DataFrame) -> pd.Series:
+    """Project 5′-relative query offsets through CIGAR to reference space."""
+    if not {"cigar", "is_reverse"}.issubset(df.columns):
+        return pd.to_numeric(df["reference_start"], errors="coerce") + df["offset"]
+    reference_column = "reference_leftmost" if "reference_leftmost" in df.columns else "reference_start"
+    values = []
+    for row in df.itertuples():
+        try:
+            values.append(
+                project_five_prime_offset(
+                    row.cigar,
+                    int(getattr(row, reference_column)),
+                    bool(row.is_reverse),
+                    int(row.offset),
+                )
+            )
+        except (TypeError, ValueError, OverflowError):
+            values.append(None)
+    return pd.to_numeric(pd.Series(values, index=df.index), errors="coerce")
 
 
 def offset_shift_for_target(offset_target: str) -> int:
@@ -399,7 +421,7 @@ def a_site_calculation(
             for rl in read_len_int.unique()
         }
         df["offset"] = read_len_int.map(resolved).astype("int64")
-        df["a_site"] = df["reference_start"] + df["offset"]
+        df["a_site"] = _project_sites(df)
         a_site_df = df
     elif offset_type == "read_specific":
         read_offsets = pd.read_csv(offset_file, sep="\t", names=["read_name", "offset"])
@@ -409,7 +431,7 @@ def a_site_calculation(
         merged_df["offset"] = pd.to_numeric(merged_df["offset"], errors="coerce")
         merged_df["offset"] = merged_df["offset"].fillna(global_offset).astype(int)
         merged_df["reference_start"] = pd.to_numeric(merged_df["reference_start"], errors="coerce")
-        merged_df["a_site"] = merged_df["reference_start"] + merged_df["offset"]
+        merged_df["a_site"] = _project_sites(merged_df)
 
         a_site_df = merged_df[read_df.columns.tolist() + ["a_site", "offset"]]
     else:
@@ -417,7 +439,7 @@ def a_site_calculation(
         df = read_df.copy()
         df["reference_start"] = pd.to_numeric(df["reference_start"], errors="coerce")
         df["offset"] = int(global_offset)
-        df["a_site"] = df["reference_start"] + df["offset"]
+        df["a_site"] = _project_sites(df)
         a_site_df = df
     return a_site_df
 
@@ -496,7 +518,8 @@ def a_site_calculation_variable_offset(
     read_df["reference_start"] = read_df["reference_start"].astype(int)
 
     # Calculate A-site based on offset for each read
-    a_site_df = read_df.assign(a_site=read_df["reference_start"] + offset)
+    a_site_df = read_df.assign(offset=offset)
+    a_site_df["a_site"] = _project_sites(a_site_df)
     return a_site_df
 
 
