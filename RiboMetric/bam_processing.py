@@ -480,7 +480,6 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     read_names = _get_oxbow_column(oxbow_df, _READ_NAME_COLUMNS, "read name")
     batch_df["read_name"] = read_names.astype("category")
 
-    seq_len_series = oxbow_df["seq"].str.len().fillna(0).astype(int)
     cigar_series = oxbow_df["cigar"].astype(str)
     reverse_series = (
         oxbow_df["is_reverse"].fillna(False).astype(bool)
@@ -511,19 +510,20 @@ def process_reads(oxbow_df: pd.DataFrame) -> pd.DataFrame:
     # origin for metagene profiles. Do not move either coordinate across a soft
     # clip: clipped reads are excluded from profile eligibility separately.
     reference_leftmost = oxbow_df["pos"].astype("float") - 1
+
     def _reference_span(cigar: str) -> int:
         return sum(int(n) for n, op in re.findall(r"(\d+)([MDN=X])", cigar) if op in "MDN=X")
+
     reference_span = pd.Series([_reference_span(cig) for cig in cigar_series], index=oxbow_df.index)
     batch_df["reference_leftmost"] = reference_leftmost
-    batch_df["reference_start"] = (
-        reference_leftmost + reference_span - 1
-    ).where(reverse_series, reference_leftmost)
+    batch_df["reference_start"] = (reference_leftmost + reference_span - 1).where(
+        reverse_series, reference_leftmost
+    )
     batch_df["cigar"] = cigar_series.to_numpy()
     batch_df["is_reverse"] = reverse_series.to_numpy()
     batch_df["soft_clip_5"] = soft_clip_5.to_numpy()
     batch_df["profile_eligible"] = [
-        is_profile_eligible(length, clip)
-        for length, clip in zip(rl_series, soft_clip_5.tolist())
+        is_profile_eligible(length, clip) for length, clip in zip(rl_series, soft_clip_5.tolist())
     ]
     batch_df["first_dinucleotide"] = oxbow_df["seq"].str.slice(stop=2).astype("category")
     # The last two bases in read (5'->3') order, the orientation the 3'
